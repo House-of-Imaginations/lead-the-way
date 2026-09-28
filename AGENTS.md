@@ -14,14 +14,15 @@ This applies to the main session and to every subagent it dispatches. Put it in 
 
 - **Always: `ponytail:ponytail`** before writing any code. Take the simplest thing that works; no speculative abstractions.
 - **Backend (anything in `convex/`): the Convex skills.** Start with `convex`, which routes to the rest. Use `convex-design` or `convex-expert` for schema and functions, `convex-authz` for access and privacy checks, `convex-test` for tests and `convex-reviewer` before calling backend work done.
-- **Frontend (anything in `app/` or `components/`): the React skills.** Use `vercel-react-best-practices` for React and Next.js code, plus `frontend-design:frontend-design` for craft only. @DESIGN.md wins over any skill's advice on look and feel.
+- **Frontend (anything in `src/app/` or `src/components/`): the React skills.** Use `vercel-react-best-practices` for React and Next.js code, plus `frontend-design:frontend-design` for craft only. @DESIGN.md wins over any skill's advice on look and feel.
 
-## Commands (fill in during P0)
+## Commands
 
 - `pnpm dev` runs Next.js; `npx convex dev` runs the Convex dev deployment (run both).
-- `pnpm test` (Vitest + convex-test), `pnpm e2e` (Playwright), `pnpm lint`, `pnpm typecheck`, `pnpm copy-lint`.
-- `npx convex run seed:reset` reseeds Calder Lane.
+- `pnpm test` (Vitest and convex-test, no network), `pnpm e2e` (Playwright with axe; needs both dev servers), `pnpm lint`, `pnpm typecheck`, `pnpm copy-lint`.
+- `npx convex run seed:reset` reseeds Calder Lane (from P2).
 - `npx @google/design.md lint DESIGN.md` checks the design file after edits (one expected warning: disabled button contrast).
+- Specs and plans in `docs/superpowers/` are never committed.
 
 ## Rules that are easy to break (full list in @DESIGN.md, "Do's and Don'ts")
 

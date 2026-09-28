@@ -57,11 +57,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # `tests/src` only -- the pure front-end modules. No `next build` first:
-      # nothing under here imports generated route types, so the build would be
-      # several minutes spent to change nothing.
+      # `tests/src` and `tests/scripts` -- the pure front-end and tooling
+      # modules. No `next build` first: nothing under here imports generated
+      # route types, so the build would be several minutes spent to change
+      # nothing.
       #
       # No provider keys are set, deliberately. The suite must not reach the
       # network -- `tests/setup.ts` enforces it and fails the run if anything
       # tries, and a key in this environment would turn that guard into a bill.
-      - run: pnpm test:frontend
+      - run: pnpm vitest run tests/src tests/scripts
