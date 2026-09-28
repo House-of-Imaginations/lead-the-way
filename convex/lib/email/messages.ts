@@ -75,7 +75,7 @@ export async function sendVerificationEmail(
     ],
     action: { label: "Confirm this address", url: verification.link },
     footer:
-      "If you did not create an account, somebody typed this address by mistake. Ignoring this message is enough -- nothing happens until the link is opened.",
+      "If you did not create an account, somebody typed this address by mistake. Ignoring this message is enough, nothing happens until the link is opened.",
   });
 }
 

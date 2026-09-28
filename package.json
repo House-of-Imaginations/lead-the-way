@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:frontend": "vitest run tests/src",
-    "test:backend": "vitest run tests/convex"
+    "test:backend": "vitest run tests/convex",
+    "copy-lint": "node scripts/copy-lint.mts"
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.12.5",
