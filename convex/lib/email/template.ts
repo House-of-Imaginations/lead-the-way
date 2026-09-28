@@ -87,11 +87,7 @@ export type RenderedEmail = { html: string; text: string };
  * or through a screen reader that prefers plain text. One template producing
  * both is the only way the two stay saying the same thing.
  */
-export function renderEmail(
-  content: EmailContent,
-  /** The logo image's public URL. Without it the header is the word. */
-  logoUrl?: string,
-): RenderedEmail {
+export function renderEmail(content: EmailContent): RenderedEmail {
   const { heading, paragraphs, action, footer } = content;
 
   // Checked once, used by all three renderings below. See `safeUrl`.
@@ -124,14 +120,8 @@ export function renderEmail(
        <p style="margin:0;font-size:13px;line-height:1.6;color:${DIM};">${escapeHtml(footer)}</p>`
     : "";
 
-  // A PNG, not the SVG mark: Gmail and Outlook do not render SVG. Width and
-  // height are set so a client that blocks images still keeps the layout, and
-  // the alt text is the wordmark itself.
-  const logoSrc = logoUrl ? safeUrl(logoUrl) : "#";
-  const logo =
-    logoSrc !== "#"
-      ? `<img src="${escapeHtml(logoSrc)}" width="140" height="30" alt="Lead the Way" style="display:block;border:0;height:30px;width:140px;color:${INK};font-size:18px;font-weight:700;" />`
-      : `<span style="font-size:18px;font-weight:700;color:${INK};">Lead the Way</span>`;
+  // The name is always live type (DESIGN.md "Logo"); there is no wordmark file.
+  const logo = `<span style="font-size:18px;font-weight:600;color:${INK};">Lead the Way</span>`;
 
   const html = `<!doctype html>
 <html lang="en">
@@ -152,7 +142,7 @@ export function renderEmail(
           </tr>
           <tr>
             <td style="background:${CARD};border:1px solid ${HAIRLINE};border-radius:0;padding:32px 28px;">
-              <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:${INK};font-weight:700;">${escapeHtml(heading)}</h1>
+              <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:${INK};font-weight:600;">${escapeHtml(heading)}</h1>
               ${body}
               ${button}
               ${small}
