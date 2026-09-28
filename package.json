@@ -14,7 +14,8 @@
     "format:check": "prettier --check .",
     "test:frontend": "vitest run tests/src",
     "test:backend": "vitest run tests/convex",
-    "copy-lint": "node scripts/copy-lint.mts"
+    "copy-lint": "node scripts/copy-lint.mts",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.12.5",
@@ -30,6 +31,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@edge-runtime/vm": "^5.0.0",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",

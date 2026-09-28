@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: fileURLToPath(new URL(".", import.meta.url)),
   },
+  // Otherwise `next dev` appends an agent rules block to AGENTS.md on every run.
+  agentRules: false,
 };
 
 export default nextConfig;

@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   // The two path aliases `tsconfig.json` declares. Vitest resolves neither on
@@ -14,6 +14,8 @@ export default defineConfig({
     },
   },
   test: {
+    // e2e/ holds Playwright specs, not vitest tests; `pnpm e2e` runs those.
+    exclude: [...configDefaults.exclude, "e2e/**"],
     // convex-test runs functions in Convex's own runtime, not Node.
     environment: "edge-runtime",
     server: { deps: { inline: ["convex-test"] } },
