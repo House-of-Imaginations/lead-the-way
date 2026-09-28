@@ -27,6 +27,19 @@ describe("flags", () => {
     expect(rules(`const b = <Button>Save Agreement</Button>;`)).toEqual(["title-case-button"]);
     expect(rules(`const b = <button type="button">Log In</button>;`)).toEqual(["title-case-button"]);
   });
+  test("title-case button labels inside nested elements and fragments", () => {
+    expect(rules(`const b = <Button><span>Save Agreement</span></Button>;`)).toEqual([
+      "title-case-button",
+    ]);
+    expect(rules(`const b = <Button><>Save Agreement</></Button>;`)).toEqual([
+      "title-case-button",
+    ]);
+  });
+  test("a CSS function elsewhere in the string doesn't hide a real spaced hyphen", () => {
+    expect(
+      rules(`const s = "Width is calc(100% - 48px) - adjust if needed";`),
+    ).toEqual(["spaced-hyphen"]);
+  });
   test("template literal text", () => {
     expect(rules("const s = `${n}–${m} people`;")).toEqual(["dash"]);
   });
@@ -41,6 +54,7 @@ describe("does not flag", () => {
     expect(rules(`const b = <Button>Switch to Dan's view</Button>;`)).toEqual([]);
     expect(rules(`const b = <Button>Download PDF</Button>;`)).toEqual([]);
     expect(rules(`const b = <Button>Continue with Google</Button>;`)).toEqual([]);
+    expect(rules(`const b = <Button><span>Save agreement</span></Button>;`)).toEqual([]);
   });
   test("the one title-case product term", () => {
     expect(rules(`const b = <Button>Open Team AI Agreement</Button>;`)).toEqual([]);

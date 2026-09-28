@@ -9,7 +9,9 @@
  * ponytail: title case is only checked on <Button> and <button> labels, where
  * it is unambiguous. Headings carry proper nouns ("AI Productivity
  * Fundamentals") that no rule can tell apart from title case; review catches
- * those.
+ * those. A label passed as an expression ({label}) is invisible to this
+ * check, and two-word proper nouns in a label can false-positive; review
+ * catches both.
  */
 import ts from "typescript";
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -30,13 +32,35 @@ const SPACED_HYPHEN = / --? /;
 const RANGE =
   /(?<![\w\-:.])\d{1,2}(?::\d{2})?\s?(?:AM|PM)?\s?-\s?\d{1,2}(?::\d{2})?(?![\w\-:])/;
 const EMOJI = /\p{Extended_Pictographic}/u;
-const CSS = /\b(?:calc|var|min|max|clamp)\(/;
+const CSS_FN = /\b(?:calc|var|min|max|clamp)\(/g;
 const PRODUCT_TERM = "Team AI Agreement";
+
+/** Blank out `name(...)` CSS function spans (balanced parens), so a "-" used
+ * as a CSS subtraction, e.g. `calc(100% - 48px)`, isn't mistaken for a
+ * spaced-hyphen dash elsewhere in the same string. */
+function stripCssFunctions(text: string): string {
+  let out = "";
+  let i = 0;
+  CSS_FN.lastIndex = 0;
+  for (let m = CSS_FN.exec(text); m; m = CSS_FN.exec(text)) {
+    out += text.slice(i, m.index) + " ";
+    let depth = 1;
+    let j = m.index + m[0].length;
+    while (j < text.length && depth > 0) {
+      if (text[j] === "(") depth++;
+      else if (text[j] === ")") depth--;
+      j++;
+    }
+    i = j;
+    CSS_FN.lastIndex = j;
+  }
+  return out + text.slice(i);
+}
 
 function textRules(text: string): Rule[] {
   const found: Rule[] = [];
   if (DASH.test(text)) found.push("dash");
-  if (!CSS.test(text) && SPACED_HYPHEN.test(text)) found.push("spaced-hyphen");
+  if (SPACED_HYPHEN.test(stripCssFunctions(text))) found.push("spaced-hyphen");
   if (RANGE.test(text)) found.push("range");
   if (EMOJI.test(text)) found.push("emoji");
   if ((text.match(/·/g) ?? []).length > 1) found.push("middle-dot");
@@ -57,6 +81,17 @@ function isButton(node: ts.Node): boolean {
   if (!ts.isJsxElement(node)) return false;
   const tag = node.openingElement.tagName.getText();
   return tag === "Button" || tag === "button";
+}
+
+/** Text inside a button label, recursing through nested elements and
+ * fragments. Stops at a nested <Button>/<button> and skips expression
+ * containers ({...}), whose text isn't visible to static analysis. */
+function labelText(node: ts.Node): string {
+  if (ts.isJsxText(node)) return node.text;
+  if (ts.isJsxFragment(node)) return node.children.map(labelText).join(" ");
+  if (ts.isJsxElement(node))
+    return isButton(node) ? "" : node.children.map(labelText).join(" ");
+  return "";
 }
 
 function isModuleSpecifier(node: ts.Node): boolean {
@@ -103,9 +138,9 @@ export function lintSource(source: string, fileName: string): Finding[] {
 
     if (isButton(node)) {
       const label = (node as ts.JsxElement).children
-        .filter(ts.isJsxText)
-        .map((child) => child.text)
+        .map(labelText)
         .join(" ")
+        .replace(/\s+/g, " ")
         .trim();
       if (label && isTitleCase(label)) report(node, "title-case-button", label);
     }
