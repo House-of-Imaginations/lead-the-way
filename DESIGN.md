@@ -1,6 +1,421 @@
 ---
-
-## version: alpha name: Lead the Way description: "A calm, Carbon-flavoured work tool for team AI learning. White and Gray 10 surfaces split by hairlines, charcoal type, IBM Plex Sans set light at large sizes, square corners everywhere except tags, and one blue (#0f62fe) reserved for the next action, progress and focus. It should read like a trustworthy enterprise product that respects privacy, never like a campaign." colors: primary: "#0f62fe" on-primary: "#ffffff" neutral: "#ffffff" surface: "#f4f4f4" on-surface: "#161616" error: "#da1e28" background: "#ffffff" layer-01: "#f4f4f4" layer-hover: "#e8e8e8" layer-selected: "#e0e0e0" border-subtle: "#e0e0e0" border-strong: "#8d8d8d" border-inverse: "#161616" text-primary: "#161616" text-secondary: "#525252" text-helper: "#6f6f6f" text-on-color: "#ffffff" text-inverse: "#f4f4f4" layer-inverse: "#393939" interactive: "#0f62fe" interactive-hover: "#0050e6" interactive-active: "#002d9c" link: "#0f62fe" link-hover: "#0043ce" focus: "#0f62fe" button-secondary: "#393939" button-secondary-hover: "#474747" button-disabled: "#c6c6c6" text-disabled: "#8d8d8d" highlight: "#edf5ff" support-info: "#0043ce" support-success: "#24a148" support-success-bg: "#defbe6" support-error: "#da1e28" support-warning: "#f1c21b" tag-gray-bg: "#e0e0e0" tag-gray-text: "#161616" tag-blue-bg: "#d0e2ff" tag-blue-text: "#002d9c" tag-green-bg: "#a7f0ba" tag-green-text: "#0e6027" avatar-manager: "#a6c8ff" avatar-ink: "#001141" chart-before: "#a8a8a8" chart-after: "#0f62fe" typography: display-01: fontFamily: IBM Plex Sans fontSize: 76px fontWeight: 300 lineHeight: 88px letterSpacing: -0.5px display-02: fontFamily: IBM Plex Sans fontSize: 60px fontWeight: 300 lineHeight: 70px letterSpacing: -0.4px display-03: fontFamily: IBM Plex Sans fontSize: 42px fontWeight: 300 lineHeight: 50px heading-01: fontFamily: IBM Plex Sans fontSize: 32px fontWeight: 300 lineHeight: 40px heading-02: fontFamily: IBM Plex Sans fontSize: 28px fontWeight: 300 lineHeight: 36px heading-03: fontFamily: IBM Plex Sans fontSize: 20px fontWeight: 400 lineHeight: 28px heading-04: fontFamily: IBM Plex Sans fontSize: 16px fontWeight: 600 lineHeight: 22px body-01: fontFamily: IBM Plex Sans fontSize: 16px fontWeight: 400 lineHeight: 24px letterSpacing: 0.16px body-02: fontFamily: IBM Plex Sans fontSize: 14px fontWeight: 400 lineHeight: 20px letterSpacing: 0.16px body-emphasis: fontFamily: IBM Plex Sans fontSize: 14px fontWeight: 600 lineHeight: 20px letterSpacing: 0.16px label-01: fontFamily: IBM Plex Sans fontSize: 12px fontWeight: 400 lineHeight: 16px letterSpacing: 0.32px button: fontFamily: IBM Plex Sans fontSize: 14px fontWeight: 400 lineHeight: 18px letterSpacing: 0.16px code: fontFamily: IBM Plex Mono fontSize: 13px fontWeight: 400 lineHeight: 20px rounded: none: 0px tag: 24px full: 9999px spacing: 01: 2px 02: 4px 03: 8px 04: 12px 05: 16px 06: 24px 07: 32px 09: 48px 10: 64px control-sm: 32px control-md: 40px control-lg: 48px control-xl: 64px sidenav: 256px sidenav-rail: 48px page-padding: 32px setup-column: 900px auth-form: 360px content-max: 1312px components: button-primary: backgroundColor: "{colors.interactive}" textColor: "{colors.text-on-color}" typography: "{typography.button}" rounded: "{rounded.none}" padding: "0 16px" height: 48px button-primary-hover: backgroundColor: "{colors.interactive-hover}" button-primary-active: backgroundColor: "{colors.interactive-active}" button-secondary: backgroundColor: "{colors.button-secondary}" textColor: "{colors.text-on-color}" typography: "{typography.button}" rounded: "{rounded.none}" padding: "0 16px" height: 48px button-secondary-hover: backgroundColor: "{colors.button-secondary-hover}" button-tertiary: backgroundColor: "{colors.background}" textColor: "{[colors.link](http://colors.link)}" typography: "{typography.button}" rounded: "{rounded.none}" padding: "0 16px" height: 48px button-tertiary-hover: backgroundColor: "{colors.interactive-hover}" textColor: "{colors.text-on-color}" button-ghost: backgroundColor: "{colors.background}" textColor: "{[colors.link](http://colors.link)}" typography: "{typography.button}" rounded: "{rounded.none}" padding: "0 16px" height: 40px button-ghost-hover: backgroundColor: "{colors.layer-hover}" button-danger: backgroundColor: "{colors.background}" textColor: "{[colors.support](http://colors.support)-error}" typography: "{typography.button}" rounded: "{rounded.none}" padding: "0 16px" height: 40px button-danger-hover: backgroundColor: "{[colors.support](http://colors.support)-error}" textColor: "{colors.text-on-color}" button-disabled: backgroundColor: "{colors.button-disabled}" textColor: "{colors.text-disabled}" button-footer: backgroundColor: "{colors.interactive}" textColor: "{colors.text-on-color}" typography: "{typography.button}" rounded: "{rounded.none}" padding: "14px 16px 0" height: 64px button-sso: backgroundColor: "{colors.background}" textColor: "{colors.text-primary}" typography: "{typography.button}" rounded: "{rounded.none}" padding: "0 16px" height: 48px text-input: backgroundColor: "{colors.layer-01}" textColor: "{colors.text-primary}" typography: "{typography.body-02}" rounded: "{rounded.none}" padding: "0 16px" height: 40px text-input-error: backgroundColor: "{colors.layer-01}" textColor: "{colors.text-primary}" field-label: textColor: "{colors.text-secondary}" typography: "{typography.label-01}" field-helper: textColor: "{colors.text-helper}" typography: "{typography.label-01}" field-error: textColor: "{[colors.support](http://colors.support)-error}" typography: "{typography.label-01}" tag-gray: backgroundColor: "{colors.tag-gray-bg}" textColor: "{colors.tag-gray-text}" typography: "{typography.label-01}" rounded: "{rounded.tag}" padding: "0 8px" height: 24px tag-blue: backgroundColor: "{colors.tag-blue-bg}" textColor: "{colors.tag-blue-text}" typography: "{typography.label-01}" rounded: "{rounded.tag}" padding: "0 8px" height: 24px tag-green: backgroundColor: "{colors.tag-green-bg}" textColor: "{colors.tag-green-text}" typography: "{typography.label-01}" rounded: "{rounded.tag}" padding: "0 8px" height: 24px toggle-off: backgroundColor: "{colors.border-strong}" rounded: "{rounded.full}" width: 48px height: 24px toggle-on: backgroundColor: "{[colors.support](http://colors.support)-success}" rounded: "{rounded.full}" width: 48px height: 24px tab: backgroundColor: "{colors.background}" textColor: "{colors.text-secondary}" typography: "{typography.body-02}" rounded: "{rounded.none}" padding: "0 16px" height: 48px tab-selected: textColor: "{colors.text-primary}" typography: "{typography.body-emphasis}" content-switcher: backgroundColor: "{colors.background}" textColor: "{colors.text-secondary}" typography: "{typography.body-02}" rounded: "{rounded.none}" padding: "0 24px" height: 40px content-switcher-selected: backgroundColor: "{colors.layer-inverse}" textColor: "{colors.text-inverse}" selectable-tile: backgroundColor: "{colors.layer-01}" textColor: "{colors.text-primary}" typography: "{typography.body-02}" rounded: "{rounded.none}" padding: 16px selectable-tile-hover: backgroundColor: "{colors.layer-hover}" notification-info: backgroundColor: "{colors.highlight}" textColor: "{colors.text-primary}" typography: "{typography.body-02}" rounded: "{rounded.none}" padding: "14px 16px" notification-success: backgroundColor: "{[colors.support](http://colors.support)-success-bg}" textColor: "{colors.text-primary}" typography: "{typography.body-02}" rounded: "{rounded.none}" padding: "14px 16px" toast: backgroundColor: "{colors.layer-inverse}" textColor: "{colors.text-inverse}" typography: "{typography.body-02}" rounded: "{rounded.none}" padding: "14px 16px" width: 320px progress-bar: backgroundColor: "{colors.border-subtle}" height: 4px rounded: "{rounded.none}" progress-bar-fill: backgroundColor: "{colors.interactive}" stat-tile: backgroundColor: "{colors.layer-01}" textColor: "{colors.text-primary}" typography: "{typography.display-03}" rounded: "{rounded.none}" padding: 16px side-nav: backgroundColor: "{colors.background}" textColor: "{colors.text-secondary}" typography: "{typography.body-emphasis}" width: 256px side-nav-rail: width: 48px side-nav-item: textColor: "{colors.text-secondary}" typography: "{typography.body-emphasis}" padding: "0 16px" height: 32px side-nav-item-hover: backgroundColor: "{colors.layer-hover}" textColor: "{colors.text-primary}" side-nav-item-selected: backgroundColor: "{colors.layer-selected}" textColor: "{colors.text-primary}" org-block: backgroundColor: "{colors.layer-01}" textColor: "{colors.text-primary}" padding: 8px avatar-manager: backgroundColor: "{colors.avatar-manager}" textColor: "{colors.avatar-ink}" typography: "{typography.label-01}" rounded: "{rounded.none}" size: 32px menu: backgroundColor: "{colors.background}" textColor: "{colors.text-primary}" typography: "{typography.body-02}" rounded: "{rounded.none}" width: 260px menu-item: height: 40px padding: "0 16px" modal: backgroundColor: "{colors.layer-01}" textColor: "{colors.text-primary}" typography: "{typography.body-02}" rounded: "{rounded.none}" padding: 16px width: 560px table-header: backgroundColor: "{colors.layer-selected}" textColor: "{colors.text-primary}" typography: "{typography.body-emphasis}" height: 48px padding: "0 16px" table-row: backgroundColor: "{colors.background}" textColor: "{colors.text-primary}" typography: "{typography.body-02}" height: 48px padding: "0 16px" auth-panel: backgroundColor: "{colors.layer-01}" textColor: "{colors.text-primary}" typography: "{typography.heading-01}" padding: 48px logo-brackets: textColor: "{colors.text-primary}" size: 24px logo-block: backgroundColor: "{colors.interactive}" size: 8px page: backgroundColor: "{colors.neutral}" textColor: "{colors.on-surface}" typography: "{typography.body-02}" link: textColor: "{[colors.link](http://colors.link)}" typography: "{typography.body-02}" link-hover: textColor: "{[colors.link](http://colors.link)-hover}" focus-ring: backgroundColor: "{colors.focus}" width: 2px notification-info-rule: backgroundColor: "{[colors.support](http://colors.support)-info}" width: 3px warning-icon: textColor: "{[colors.support](http://colors.support)-warning}" size: 16px tile-selected-outline: backgroundColor: "{colors.border-inverse}" width: 1px chart-bar-before: backgroundColor: "{colors.chart-before}" height: 24px chart-bar-after: backgroundColor: "{colors.chart-after}" height: 24px
+version: alpha
+name: Lead the Way
+description: "A calm, Carbon-flavoured work tool for team AI learning. White and Gray 10 surfaces split by hairlines, charcoal type, IBM Plex Sans set light at large sizes, square corners everywhere except tags, and one blue (#0f62fe) reserved for the next action, progress and focus. It should read like a trustworthy enterprise product that respects privacy, never like a campaign."
+colors:
+  primary: "#0f62fe"
+  on-primary: "#ffffff"
+  neutral: "#ffffff"
+  surface: "#f4f4f4"
+  on-surface: "#161616"
+  error: "#da1e28"
+  background: "#ffffff"
+  layer-01: "#f4f4f4"
+  layer-hover: "#e8e8e8"
+  layer-selected: "#e0e0e0"
+  border-subtle: "#e0e0e0"
+  border-strong: "#8d8d8d"
+  border-inverse: "#161616"
+  text-primary: "#161616"
+  text-secondary: "#525252"
+  text-helper: "#6f6f6f"
+  text-on-color: "#ffffff"
+  text-inverse: "#f4f4f4"
+  layer-inverse: "#393939"
+  interactive: "#0f62fe"
+  interactive-hover: "#0050e6"
+  interactive-active: "#002d9c"
+  link: "#0f62fe"
+  link-hover: "#0043ce"
+  focus: "#0f62fe"
+  button-secondary: "#393939"
+  button-secondary-hover: "#474747"
+  button-disabled: "#c6c6c6"
+  text-disabled: "#8d8d8d"
+  highlight: "#edf5ff"
+  support-info: "#0043ce"
+  support-success: "#24a148"
+  support-success-bg: "#defbe6"
+  support-error: "#da1e28"
+  support-warning: "#f1c21b"
+  tag-gray-bg: "#e0e0e0"
+  tag-gray-text: "#161616"
+  tag-blue-bg: "#d0e2ff"
+  tag-blue-text: "#002d9c"
+  tag-green-bg: "#a7f0ba"
+  tag-green-text: "#0e6027"
+  avatar-manager: "#a6c8ff"
+  avatar-ink: "#001141"
+  chart-before: "#a8a8a8"
+  chart-after: "#0f62fe"
+typography:
+  display-01:
+    fontFamily: IBM Plex Sans
+    fontSize: 76px
+    fontWeight: 300
+    lineHeight: 88px
+    letterSpacing: -0.5px
+  display-02:
+    fontFamily: IBM Plex Sans
+    fontSize: 60px
+    fontWeight: 300
+    lineHeight: 70px
+    letterSpacing: -0.4px
+  display-03:
+    fontFamily: IBM Plex Sans
+    fontSize: 42px
+    fontWeight: 300
+    lineHeight: 50px
+  heading-01:
+    fontFamily: IBM Plex Sans
+    fontSize: 32px
+    fontWeight: 300
+    lineHeight: 40px
+  heading-02:
+    fontFamily: IBM Plex Sans
+    fontSize: 28px
+    fontWeight: 300
+    lineHeight: 36px
+  heading-03:
+    fontFamily: IBM Plex Sans
+    fontSize: 20px
+    fontWeight: 400
+    lineHeight: 28px
+  heading-04:
+    fontFamily: IBM Plex Sans
+    fontSize: 16px
+    fontWeight: 600
+    lineHeight: 22px
+  body-01:
+    fontFamily: IBM Plex Sans
+    fontSize: 16px
+    fontWeight: 400
+    lineHeight: 24px
+    letterSpacing: 0.16px
+  body-02:
+    fontFamily: IBM Plex Sans
+    fontSize: 14px
+    fontWeight: 400
+    lineHeight: 20px
+    letterSpacing: 0.16px
+  body-emphasis:
+    fontFamily: IBM Plex Sans
+    fontSize: 14px
+    fontWeight: 600
+    lineHeight: 20px
+    letterSpacing: 0.16px
+  label-01:
+    fontFamily: IBM Plex Sans
+    fontSize: 12px
+    fontWeight: 400
+    lineHeight: 16px
+    letterSpacing: 0.32px
+  button:
+    fontFamily: IBM Plex Sans
+    fontSize: 14px
+    fontWeight: 400
+    lineHeight: 18px
+    letterSpacing: 0.16px
+  code:
+    fontFamily: IBM Plex Mono
+    fontSize: 13px
+    fontWeight: 400
+    lineHeight: 20px
+rounded:
+  none: 0px
+  tag: 24px
+  full: 9999px
+spacing:
+  "01": 2px
+  "02": 4px
+  "03": 8px
+  "04": 12px
+  "05": 16px
+  "06": 24px
+  "07": 32px
+  "09": 48px
+  "10": 64px
+  control-sm: 32px
+  control-md: 40px
+  control-lg: 48px
+  control-xl: 64px
+  sidenav: 256px
+  sidenav-rail: 48px
+  page-padding: 32px
+  setup-column: 900px
+  auth-form: 360px
+  content-max: 1312px
+components:
+  button-primary:
+    backgroundColor: "{colors.interactive}"
+    textColor: "{colors.text-on-color}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+    padding: "0 16px"
+    height: 48px
+  button-primary-hover:
+    backgroundColor: "{colors.interactive-hover}"
+  button-primary-active:
+    backgroundColor: "{colors.interactive-active}"
+  button-secondary:
+    backgroundColor: "{colors.button-secondary}"
+    textColor: "{colors.text-on-color}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+    padding: "0 16px"
+    height: 48px
+  button-secondary-hover:
+    backgroundColor: "{colors.button-secondary-hover}"
+  button-tertiary:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.link}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+    padding: "0 16px"
+    height: 48px
+  button-tertiary-hover:
+    backgroundColor: "{colors.interactive-hover}"
+    textColor: "{colors.text-on-color}"
+  button-ghost:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.link}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+    padding: "0 16px"
+    height: 48px
+  button-ghost-hover:
+    backgroundColor: "{colors.layer-hover}"
+  button-danger:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.support-error}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+    padding: "0 16px"
+    height: 48px
+  button-danger-hover:
+    backgroundColor: "{colors.support-error}"
+    textColor: "{colors.text-on-color}"
+  button-disabled:
+    backgroundColor: "{colors.button-disabled}"
+    textColor: "{colors.text-disabled}"
+  button-footer:
+    backgroundColor: "{colors.interactive}"
+    textColor: "{colors.text-on-color}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+    padding: "14px 16px 0"
+    height: 64px
+  button-sso:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+    padding: "0 16px"
+    height: 48px
+  text-input:
+    backgroundColor: "{colors.layer-01}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.body-02}"
+    rounded: "{rounded.none}"
+    padding: "0 16px"
+    height: 40px
+  text-input-error:
+    backgroundColor: "{colors.layer-01}"
+    textColor: "{colors.text-primary}"
+  field-label:
+    textColor: "{colors.text-secondary}"
+    typography: "{typography.label-01}"
+  field-helper:
+    textColor: "{colors.text-helper}"
+    typography: "{typography.label-01}"
+  field-error:
+    textColor: "{colors.support-error}"
+    typography: "{typography.label-01}"
+  tag-gray:
+    backgroundColor: "{colors.tag-gray-bg}"
+    textColor: "{colors.tag-gray-text}"
+    typography: "{typography.label-01}"
+    rounded: "{rounded.tag}"
+    padding: "0 8px"
+    height: 24px
+  tag-blue:
+    backgroundColor: "{colors.tag-blue-bg}"
+    textColor: "{colors.tag-blue-text}"
+    typography: "{typography.label-01}"
+    rounded: "{rounded.tag}"
+    padding: "0 8px"
+    height: 24px
+  tag-green:
+    backgroundColor: "{colors.tag-green-bg}"
+    textColor: "{colors.tag-green-text}"
+    typography: "{typography.label-01}"
+    rounded: "{rounded.tag}"
+    padding: "0 8px"
+    height: 24px
+  toggle-off:
+    backgroundColor: "{colors.border-strong}"
+    rounded: 12px
+    width: 48px
+    height: 24px
+  toggle-on:
+    backgroundColor: "{colors.support-success}"
+    rounded: 12px
+    width: 48px
+    height: 24px
+  tab:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.text-secondary}"
+    typography: "{typography.body-02}"
+    rounded: "{rounded.none}"
+    padding: "0 16px"
+    height: 48px
+  tab-selected:
+    textColor: "{colors.text-primary}"
+    typography: "{typography.body-emphasis}"
+  content-switcher:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.text-secondary}"
+    typography: "{typography.body-02}"
+    rounded: "{rounded.none}"
+    padding: "0 24px"
+    height: 40px
+  content-switcher-selected:
+    backgroundColor: "{colors.layer-inverse}"
+    textColor: "{colors.text-inverse}"
+  selectable-tile:
+    backgroundColor: "{colors.layer-01}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.body-02}"
+    rounded: "{rounded.none}"
+    padding: 16px
+  selectable-tile-hover:
+    backgroundColor: "{colors.layer-hover}"
+  notification-info:
+    backgroundColor: "{colors.highlight}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.body-02}"
+    rounded: "{rounded.none}"
+    padding: "14px 16px"
+  notification-success:
+    backgroundColor: "{colors.support-success-bg}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.body-02}"
+    rounded: "{rounded.none}"
+    padding: "14px 16px"
+  toast:
+    backgroundColor: "{colors.layer-inverse}"
+    textColor: "{colors.text-inverse}"
+    typography: "{typography.body-02}"
+    rounded: "{rounded.none}"
+    padding: "14px 16px"
+    width: 320px
+  progress-bar:
+    backgroundColor: "{colors.border-subtle}"
+    height: 4px
+    rounded: "{rounded.none}"
+  progress-bar-fill:
+    backgroundColor: "{colors.interactive}"
+  stat-tile:
+    backgroundColor: "{colors.layer-01}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.display-03}"
+    rounded: "{rounded.none}"
+    padding: 16px
+  side-nav:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.text-secondary}"
+    typography: "{typography.body-emphasis}"
+    width: 256px
+  side-nav-rail:
+    width: 48px
+  side-nav-item:
+    textColor: "{colors.text-secondary}"
+    typography: "{typography.body-emphasis}"
+    padding: "0 16px"
+    height: 32px
+  side-nav-item-hover:
+    backgroundColor: "{colors.layer-hover}"
+    textColor: "{colors.text-primary}"
+  side-nav-item-selected:
+    backgroundColor: "{colors.layer-selected}"
+    textColor: "{colors.text-primary}"
+  org-block:
+    backgroundColor: "{colors.layer-01}"
+    textColor: "{colors.text-primary}"
+    padding: 8px
+  avatar-manager:
+    backgroundColor: "{colors.avatar-manager}"
+    textColor: "{colors.avatar-ink}"
+    typography: "{typography.label-01}"
+    rounded: "{rounded.none}"
+    size: 32px
+  menu:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.body-02}"
+    rounded: "{rounded.none}"
+    width: 260px
+  menu-item:
+    height: 40px
+    padding: "0 16px"
+  modal:
+    backgroundColor: "{colors.layer-01}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.body-02}"
+    rounded: "{rounded.none}"
+    padding: 16px
+    width: 560px
+  table-header:
+    backgroundColor: "{colors.layer-selected}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.body-emphasis}"
+    height: 48px
+    padding: "0 16px"
+  table-row:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.body-02}"
+    height: 48px
+    padding: "0 16px"
+  auth-panel:
+    backgroundColor: "{colors.layer-01}"
+    textColor: "{colors.text-primary}"
+    typography: "{typography.heading-01}"
+    padding: 48px
+  logo-brackets:
+    textColor: "{colors.text-primary}"
+    size: 24px
+  logo-block:
+    backgroundColor: "{colors.interactive}"
+    size: 8px
+  page:
+    backgroundColor: "{colors.neutral}"
+    textColor: "{colors.on-surface}"
+    typography: "{typography.body-02}"
+  link:
+    textColor: "{colors.link}"
+    typography: "{typography.body-02}"
+  link-hover:
+    textColor: "{colors.link-hover}"
+  focus-ring:
+    backgroundColor: "{colors.focus}"
+    width: 2px
+  notification-info-rule:
+    backgroundColor: "{colors.support-info}"
+    width: 3px
+  warning-icon:
+    textColor: "{colors.support-warning}"
+    size: 16px
+  tile-selected-outline:
+    backgroundColor: "{colors.border-inverse}"
+    width: 1px
+  chart-bar-before:
+    backgroundColor: "{colors.chart-before}"
+    height: 24px
+  chart-bar-after:
+    backgroundColor: "{colors.chart-after}"
+    height: 24px
+---
 
 # Lead the Way
 
@@ -67,7 +482,7 @@ The palette is Carbon's White theme (light, default) and Gray 100 theme (dark). 
 | `tag-blue-bg`            | `#d0e2ff`       | `#002d9c`       | State tags that mean current or active: Active, Now, In progress, Week 4.                                                                       |
 | `tag-blue-text`          | `#002d9c`       | `#d0e2ff`       | Text on tag-blue-bg.                                                                                                                            |
 | `tag-green-bg`           | `#a7f0ba`       | `#044317`       | State tags that mean finished: Completed, Done, Saved, Output reviewed.                                                                         |
-| `tag-green-text`         | `#0e6027`       | `#a7f0ba`       | Text on tag-green-bg.                                                                                                                           |
+| `tag-green-text`         | `#0e6027`       | `#a7f0ba`       | Text on tag-green-bg.                                                                                                                            |
 | `avatar-manager`         | `#a6c8ff`       | `#a6c8ff`       | Manager avatar fill. Text on it is avatar-ink.                                                                                                  |
 | `avatar-ink`             | `#001141`       | `#001141`       | Initials on avatar-manager (Blue 100 navy from the brand palette).                                                                              |
 | `chart-before`           | `#a8a8a8`       | `#6f6f6f`       | The before bar in before and after comparisons. Always labelled with its value.                                                                 |
@@ -107,11 +522,28 @@ One family, IBM Plex Sans (Google Fonts, weights 300, 400, 600), with IBM Plex M
 
 Carbon's 2, 4, 8 spacing scale. Lay out groups with flex or grid and `gap`, not margins.
 
-| `spacing-01` | 2px | Gap between tiles in a tile grid and between tag rows. | | `spacing-02` | 4px | Label to helper text; icon nudges. | | `spacing-03` | 8px | Label to field, icon to text, tags in a row. | | `spacing-04` | 12px | Icon to text in notifications and nav items. | | `spacing-05` | 16px | Tile and notification padding, button horizontal padding, side nav inset. | | `spacing-06` | 24px | Between form fields in a group; section padding inside tiles. | | `spacing-07` | 32px | Main content padding and the gap between page sections. | | `spacing-09` | 48px | Gap between editor and aside columns; large hero padding. | | `spacing-10` | 64px | Setup flow side padding and landing section rhythm. |
+| Token          | Value | Use                                                                        |
+| -------------- | ----- | --------------------------------------------------------------------------- |
+| `spacing-01`   | 2px   | Gap between tiles in a tile grid and between tag rows.                      |
+| `spacing-02`   | 4px   | Label to helper text; icon nudges.                                          |
+| `spacing-03`   | 8px   | Label to field, icon to text, tags in a row.                                |
+| `spacing-04`   | 12px  | Icon to text in notifications and nav items.                                |
+| `spacing-05`   | 16px  | Tile and notification padding, button horizontal padding, side nav inset.   |
+| `spacing-06`   | 24px  | Between form fields in a group; section padding inside tiles.               |
+| `spacing-07`   | 32px  | Main content padding and the gap between page sections.                     |
+| `spacing-09`   | 48px  | Gap between editor and aside columns; large hero padding.                   |
+| `spacing-10`   | 64px  | Setup flow side padding and landing section rhythm.                         |
 
 Fixed sizes:
 
-| `size-control-sm` | 32px | Small buttons, nav items, table row actions. | | `size-control-md` | 40px | Inputs, selects, medium buttons, content switcher. | | `size-control-lg` | 48px | Default buttons, tabs, table rows, mobile touch targets. | | `size-control-xl` | 64px | Full-width footer buttons in setup flows and modals. | | `size-sidenav` | 256px | Default expanded sidebar width. Drag range 200px to 400px. | | `size-sidenav-rail` | 48px | Collapsed sidebar rail: icons, logo and avatars only. |
+| Token                  | Value | Use                                                                  |
+| ----------------------- | ----- | --------------------------------------------------------------------- |
+| `size-control-sm`      | 32px  | Small buttons, nav items, table row actions.                        |
+| `size-control-md`      | 40px  | Inputs, selects, medium buttons, content switcher.                  |
+| `size-control-lg`      | 48px  | Default buttons, tabs, table rows, mobile touch targets.            |
+| `size-control-xl`      | 64px  | Full-width footer buttons in setup flows and modals.                |
+| `size-sidenav`         | 256px | Default expanded sidebar width. Drag range 200px to 400px.          |
+| `size-sidenav-rail`    | 48px  | Collapsed sidebar rail: icons, logo and avatars only.                |
 
 - **App shell:** a left side nav (256px, drag 200 to 400px, collapses to a 48px rail) and a main column padded `spacing-07` (32px). There is no top header inside the app.
 - **Setup flows** (team, protected hour, invite) drop the side nav for a centred 900px column with progress steps at the top and a 64px full-width button pair at the bottom.
@@ -119,7 +551,7 @@ Fixed sizes:
 - **Grids of tiles** use a 2px gap (`spacing-01`) so the tiles read as one object.
 - **Marketing pages** use a 1312px content width with 32px gutters (16px on phones).
 
-## Elevation &amp; Depth
+## Elevation and Depth
 
 Flat. Hierarchy comes from fill and hairlines, not shadow:
 
@@ -133,7 +565,7 @@ Flat. Hierarchy comes from fill and hairlines, not shadow:
 Square is the brand. Every button, field, tile, card, modal, avatar and menu uses `rounded.none` (0px).
 
 - `rounded.tag` (24px, fully rounded at 24px height) is used only on tags.
-- `rounded.full` is used only for status icons, the radio dot and the toggle track and knob.
+- The toggle track radius is 12px. `rounded.full` is used only for status icons, the radio dot and the toggle knob.
 - Never round a button or card, even slightly. A 4px radius is already drift.
 - The logo is square-cornered and built from whole units on a 24px grid.
 
@@ -153,9 +585,9 @@ The reference implementation for every component is `docs/design/design-system/c
 - **Progress bar.** 4px `interactive` fill on a `border-subtle` track, label and count above ("5 of 8 teammates"), never a named person's percentage.
 - **Progress steps.** Horizontal, a 2px top rule per step, `interactive` for done and current, check icons for done.
 - **Stat tile.** `layer-01`, label on top, one large light number (`display-03`), optional helper. In groups of two to four with 2px gaps.
-- **Side nav.** Brand, organisation block, grouped links (32px rows, 600 weight, `text-secondary`), a status block, a Collapse row, the account block that opens a menu upward, and the disclaimer. Collapsed, only the logo, avatars and icons remain and every label hides.
+- **Side nav.** Brand, organisation block, grouped links (32px rows, 600 weight, `text-secondary`), a status block, a Collapse row, the account block that opens a menu upward, and the disclaimer. Collapsed, only the logo, avatars and icons remain and every label hides. Avatar initials use `label-01` at weight 600.
 - **Modal.** `layer-01` panel up to 560px, label and title at the top, a 48px close button, body with 48px bottom padding, 64px button pair.
-- **Tables.** 48px rows, a `layer-selected` header row in 600 weight, hairlines between rows. The members table shows name, role and invitation state only.
+- **Tables.** 48px rows, a `layer-selected` header row in 600 weight, hairlines between rows. The members table shows name, email, role and invitation state only, never participation data.
 
 ## Do's and Don'ts
 
@@ -216,8 +648,8 @@ Carbon productive easing, `cubic-bezier(.2, 0, .38, .9)`, inside the app: 70ms f
 ## Iteration guide
 
 1. Use the tokens by name (`{colors.layer-01}`, `{typography.body-02}`); never hard-code a hex value or font size.
-2. Before building a screen, open its PNG in `docs/design/wireframes/png/` and its section in `docs/design/wireframes/[screens.md](http://screens.md)`; match layout and copy.
+2. Before building a screen, open its PNG in `docs/design/wireframes/png/` and its section in `docs/design/wireframes/screens.md`; match layout and copy.
 3. Add new states as new component entries (`button-primary-pressed`, `text-input-focused`) rather than one-off styles.
 4. When a new surface is needed, choose between `background` and `layer-01`; a third grey is almost always wrong.
-5. After edits to this file, run `npx @google/[design.md](http://design.md) lint [DESIGN.md](http://DESIGN.md)`.
-
+5. After edits to this file, run `npx @google/design.md lint DESIGN.md`.
+</content>
