@@ -20,7 +20,7 @@ Keep these documents updated in the same change that alters a command, an enviro
 
 ## What is already here
 
-- **Auth.** Better Auth inside Convex: email and password (with a username alternative), and Google and Discord OAuth switched on automatically once their client id and secret are set in the Convex deployment environment. `.env.example` also reserves a GitHub pair for when that provider is wired in.
+- **Auth.** Better Auth inside Convex: email and password (with a username alternative), and Google and Discord OAuth switched on automatically once their client id and secret are set in the Convex deployment environment.
 - **Workspaces.** Multi-tenant organizations (`orgs`) with per-workspace custom roles built from a fixed permission vocabulary (`orgRoles`), invitation links with resend and revoke (`orgInvites`), and anti-escalation rules on every role and membership write. See [Organizations and permissions](infrastructure.md#organizations-and-permissions).
 - **Email.** Invitation, verification and password reset mail sent through Resend, gated on `RESEND_API_KEY` and `RESEND_FROM`. With either unset nothing sends, and an invitation still shows a copyable link.
 - **Demo mode.** The `DEMO_MODE` flag exists (`convex/app.ts`), naming the switch a later phase will use for a seeded demo workspace, a persona switch and a demo clock.

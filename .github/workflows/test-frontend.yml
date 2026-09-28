@@ -65,4 +65,4 @@ jobs:
       # No provider keys are set, deliberately. The suite must not reach the
       # network -- `tests/setup.ts` enforces it and fails the run if anything
       # tries, and a key in this environment would turn that guard into a bill.
-      - run: pnpm vitest run tests/src tests/scripts
+      - run: pnpm test:frontend

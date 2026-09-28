@@ -16,6 +16,7 @@ A checklist, not a process. Work through it before `git commit`, not after.
 | --- | --- |
 | `convex/**` | `pnpm typecheck`, `pnpm lint`, `pnpm copy-lint`, `pnpm test:backend` |
 | `src/**` | `pnpm typecheck`, `pnpm lint`, `pnpm copy-lint`, `pnpm test:frontend`; add `pnpm e2e` for anything a user can see or click |
+| `scripts/**` | `pnpm typecheck`, `pnpm lint`, `pnpm copy-lint`, `pnpm test:frontend` (runs `tests/scripts`) |
 | `tests/**` or `e2e/**` | `pnpm lint`, and the suite you changed |
 | `DESIGN.md` | `npx @google/design.md lint DESIGN.md` (one expected warning: disabled button contrast) |
 | `package.json`, `pnpm-lock.yaml`, `tsconfig.json` | the full set below |

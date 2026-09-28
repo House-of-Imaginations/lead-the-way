@@ -4,7 +4,6 @@ import { test as base, expect, type Page } from "@playwright/test";
 export { expect };
 
 export const test = base.extend<{ expectAxeClean: (page: Page) => Promise<void> }>({
-  // eslint-disable-next-line no-empty-pattern
   expectAxeClean: async ({}, use) => {
     // eslint-disable-next-line react-hooks/rules-of-hooks -- Playwright's fixture callback, not React's `use` hook
     await use(async (page) => {

@@ -33,7 +33,6 @@ Set these on the **selected development deployment**, never in `.env.local`, wit
 | `DEMO_MODE` | Optional; `on` enables the seeded Calder Lane workspace, persona switch and demo clock |
 | `DEMO_PASSWORD` | Shared password for the demo accounts, at least 12 characters |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional pair enabling Google sign-in |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | Optional pair enabling GitHub sign-in |
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | Optional pair enabling Discord sign-in |
 | `RESEND_API_KEY` / `RESEND_FROM` | Optional pair enabling outgoing email; without them nothing is emailed and invitations show copyable links |
 
@@ -67,7 +66,7 @@ Five independent workflows, each on every push to `main` and every pull request 
 | [lint.yml](../.github/workflows/lint.yml) | `pnpm lint`, then `pnpm copy-lint` |
 | [format.yml](../.github/workflows/format.yml) | `pnpm format:check` |
 | [typecheck.yml](../.github/workflows/typecheck.yml) | `pnpm build`, then `pnpm typecheck` |
-| [test-frontend.yml](../.github/workflows/test-frontend.yml) | `pnpm vitest run tests/src tests/scripts` |
+| [test-frontend.yml](../.github/workflows/test-frontend.yml) | `pnpm test:frontend` (`tests/src` and `tests/scripts`) |
 | [test-backend.yml](../.github/workflows/test-backend.yml) | `pnpm test:backend` (`tests/convex`, via `convex-test`) |
 
 No provider keys and no deploy key are set in any of them, deliberately: the network guard is only a guard if there is nothing there to spend.
