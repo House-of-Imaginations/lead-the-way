@@ -3,9 +3,9 @@ import { sendEmail, type EmailCtx } from "./send";
 /**
  * Every email this product sends, as one function each.
  *
- * THE WORDS LIVE HERE, not at the call sites, for the reason `src/lib/help.ts`
- * gives about its own prose: text held as data can be checked as data, and
- * three subjects written in three files drift into three different voices.
+ * THE WORDS LIVE HERE, not at the call sites: text held as data can be
+ * checked as data, and three subjects written in three files drift into
+ * three different voices.
  * Nothing in here formats HTML -- `./template.ts` owns the shape, and these
  * only decide what to say.
  *

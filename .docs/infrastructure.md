@@ -14,13 +14,13 @@ This is the current runtime map, not the finished plan. Start with [setup](setup
 
 [`convex/schema.ts`](../convex/schema.ts) is composed from the table modules in `convex/tables`:
 
-| Table | Holds | Indexes |
-| --- | --- | --- |
-| `profiles` | The product's own record of a person: display name, avatar storage id, the workspace the app opens | `by_user`, `by_deletedAt` |
-| `orgs` | A workspace: name, the slug its URLs are built from, an optional picture | `by_slug` |
-| `orgRoles` | A role a workspace invented. A union on `kind`: the owner role carries no permission array | `by_org` |
-| `memberships` | One person's seat in one workspace, pointing at their role | `by_user_and_org`, `by_org`, `by_role` |
-| `orgInvites` | A pending invitation: a 256-bit token, a pinned role, an optional address, an expiry | `by_token`, `by_org`, `by_role` |
+| Table         | Holds                                                                                              | Indexes                                |
+| ------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `profiles`    | The product's own record of a person: display name, avatar storage id, the workspace the app opens | `by_user`, `by_deletedAt`              |
+| `orgs`        | A workspace: name, the slug its URLs are built from, an optional picture                           | `by_slug`                              |
+| `orgRoles`    | A role a workspace invented. A union on `kind`: the owner role carries no permission array         | `by_org`                               |
+| `memberships` | One person's seat in one workspace, pointing at their role                                         | `by_user_and_org`, `by_org`, `by_role` |
+| `orgInvites`  | A pending invitation: a 256-bit token, a pinned role, an optional address, an expiry               | `by_token`, `by_org`, `by_role`        |
 
 `memberships` has no `by_user` index, deliberately: a compound index on `["userId", "orgId"]` already serves a prefix query on `userId` alone.
 

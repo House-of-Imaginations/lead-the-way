@@ -8,9 +8,9 @@
  * other. The last round fixed the valid cases and the empty case and left one:
  * `?theme=purple` with `"dark"` in the store. The script took `q` unvalidated,
  * so `m` became `"purple"`, failed the light/dark check, and set nothing -- the
- * page rendered from `prefers-color-scheme`, while the toggle skipped the
- * invalid URL value, read the store, and highlighted Night. On a light-
- * preference OS: Day mode, "Night" checked.
+ * page rendered from `prefers-color-scheme`, while a caller reading the store
+ * directly skipped the invalid URL value and resolved to dark. On a light-
+ * preference OS: a light page with dark reported as the chosen mode.
  *
  * So both forms live here, next to each other, and `theme.test.ts` runs the
  * actual script string against `resolveThemeMode` over the same case table. A
@@ -48,8 +48,8 @@ export const GROUND_DARK = "#161616";
 export const GROUND_LIGHT = "#ffffff";
 
 /**
- * The colour the browser paints its own furniture with: the iOS status bar and
- * toolbar, Android's task switcher, a desktop PWA's title bar.
+ * The colour the browser paints its own furniture with: the iOS status bar
+ * and toolbar, and Android's task switcher.
  *
  * This is a THIRD implementation of the same resolution, which is exactly the
  * drift this file exists to stop -- so it takes the already-resolved mode
@@ -74,16 +74,17 @@ export function themeColorFor(mode: ThemeMode, prefersLight: boolean): string {
  *
  * It also writes the `theme-color` meta, and that is not a separate concern
  * bolted on: with no meta at all, iOS Safari tints its bars by SAMPLING the
- * page, and what it samples is the `<body>` background -- `--ground`,
+ * page, and what it samples is the `<body>` background -- `--background`,
  * which is not the ground any screen in this app actually paints. That is the
  * two dark bands above and below a Lead the Way page on a phone.
  *
  * `viewport.themeColor` in the layout would be the obvious way to emit this and
  * is the wrong one HERE: Next writes those as `prefers-color-scheme` media
  * queries, which track the OS and cannot see `data-theme`. A user on a dark
- * phone who picks Day would get a paper-white page under a dark status bar --
- * the same mismatch, in the other direction. So the meta is written by the code
- * that already knows the answer, and updated by `ThemeToggle` when it changes.
+ * phone who picks light mode would get a paper-white page under a dark status
+ * bar -- the same mismatch, in the other direction. So the meta is written by
+ * the code that already knows the answer, and updated by `applyThemeColor`'s
+ * caller when the mode changes.
  *
  * The attribute is set BEFORE any of the meta work: if a browser without
  * `matchMedia` (or with the document locked down) throws, the mode is already

@@ -9,8 +9,8 @@ import { renderEmail, type EmailContent } from "./template";
  * `RESEND_FROM`, every send here is skipped and says so in its return value.
  * Whatever caused it still happened: an invitation is still created and its
  * link still works. This is the doctrine `convex/auth.ts` already follows -- a
- * feature detects its own absence rather
- * than making a deployment that has not configured it unusable.
+ * feature detects its own absence rather than making a deployment that has
+ * not configured it unusable.
  *
  * It also keeps the network guard in `tests/setup.ts` satisfied without a stub,
  * because the test environment sets neither variable.
@@ -59,11 +59,7 @@ export async function sendEmail(
   const from = process.env.RESEND_FROM;
   if (!from || !process.env.RESEND_API_KEY) return false;
 
-  const { html, text } = renderEmail(
-    content,
-    // Uploaded to Convex storage by `scripts/upload-email-logo.mjs`.
-    process.env.EMAIL_LOGO_URL,
-  );
+  const { html, text } = renderEmail(content);
   await resend.sendEmail(ctx, { from, to, subject, html, text });
   return true;
 }

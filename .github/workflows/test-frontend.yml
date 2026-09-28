@@ -11,6 +11,7 @@ on:
       - "src/**"
       - "tests/**"
       - "public/**"
+      - "scripts/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "tsconfig.json"
@@ -29,6 +30,7 @@ on:
       - "src/**"
       - "tests/**"
       - "public/**"
+      - "scripts/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "tsconfig.json"
@@ -52,7 +54,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile

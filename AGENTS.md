@@ -32,6 +32,6 @@ This applies to the main session and to every subagent it dispatches. Put it in 
 - Icons from `@carbon/icons-react`, 16px in UI. No emoji, no third-party logos.
 - Copy: sentence case, no em or en dashes, ranges with "to", buttons 1 to 3 words starting with a verb. "Concept prototype. Not an official IBM product." appears on every surface.
 - Privacy is enforced in Convex: manager-facing queries return aggregates only, below 5 responses they return hidden. Never put a name next to a number in a manager view.
-- All identity goes through `convex/lib/viewer.ts#getViewer`. Every public Convex function has argument and return validators.
+- All identity goes through `convex/lib/viewer.ts#getViewer` (from P2). Every public Convex function has argument and return validators.
 - Match the wireframe PNG for any screen you touch (`docs/design/wireframes/png/`), and check both light and dark tokens.
 - Before saying something is done: typecheck, lint, copy lint, unit and e2e tests, and a screenshot compared with its wireframe.

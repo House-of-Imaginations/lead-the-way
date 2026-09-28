@@ -4,13 +4,13 @@ Lead the Way is a manager-first team AI learning experience, built as a concept 
 
 Start here whether you are a developer, a reviewer, or a coding agent. These documents describe the repository as it actually is, not the finished plan.
 
-| Guide | Read it for |
-| --- | --- |
-| [Infrastructure](infrastructure.md) | Runtime boundaries, data, authentication, workspaces and permissions, quotas |
-| [Setup](setup.md) | Install, environment variables, local development, tests, CI |
-| [Coding conventions](coding-conventions.md) | File ownership, Convex patterns, frontend conventions |
-| [Frontend](frontend.md) | Tailwind v4 tokens, the app shell, reading Convex data |
-| [Checklist before commit](checklist-before-commit.md) | What to run before committing, and which pipelines the diff triggers |
+| Guide                                                 | Read it for                                                                  |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [Infrastructure](infrastructure.md)                   | Runtime boundaries, data, authentication, workspaces and permissions, quotas |
+| [Setup](setup.md)                                     | Install, environment variables, local development, tests, CI                 |
+| [Coding conventions](coding-conventions.md)           | File ownership, Convex patterns, frontend conventions                        |
+| [Frontend](frontend.md)                               | Tailwind v4 tokens, the app shell, reading Convex data                       |
+| [Checklist before commit](checklist-before-commit.md) | What to run before committing, and which pipelines the diff triggers         |
 
 The design spec and its implementation plans live under [`docs/superpowers/`](../docs/superpowers/): `specs/` states the design, `plans/` breaks it into tasks. Neither is committed to the repository (see [checklist-before-commit.md](checklist-before-commit.md)).
 

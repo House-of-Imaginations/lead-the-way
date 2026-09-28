@@ -2,13 +2,12 @@
  * The one shape every email this product sends comes out in.
  *
  * WHY THE COLOURS ARE HEX LITERALS AND NOT TOKENS, which is the first thing a
- * reader of `globals.css` will object to. An email has no stylesheet. It is
+ * reader of `tokens.css` will object to. An email has no stylesheet. It is
  * rendered by Gmail, Outlook, Apple Mail and a dozen webmail clients that strip
  * `<style>` blocks, do not resolve `var()`, and in Outlook's case use Word as
  * the layout engine. So the palette is copied here as literals, from the
- * light-mode `--h-*` Harbor tokens in `src/app/globals.css`. If those move,
- * these move with them -- they are a copy, and a copy has to be maintained as
- * one.
+ * light-mode tokens in `src/styles/tokens.css`. If those move, these move with
+ * them -- they are a copy, and a copy has to be maintained as one.
  *
  * WHY IT IS A TABLE. Same reason. Flexbox and grid are unreliable in Outlook;
  * a single-column table with inline styles is the shape that renders the same
@@ -20,13 +19,12 @@
  * alone. Dark text on a light ground survives that inversion.
  */
 
-const PAPER = "#f4f6f5"; // --h-paper, the page
-const CARD = "#ffffff"; // --h-card
-const INK = "#12191d"; // --h-ink, body text
-const NAVY = "#1b3a5c"; // --h-navy, headings -- the wordmark's colour
-const SIGNAL = "#0c7a47"; // --signal, the button fill; white on it is 5.40:1
-const DIM = "#5a6763"; // --text-dim, 5.91:1 on the card
-const HAIRLINE = "#d5dcd9"; // --hairline
+const PAPER = "#f4f4f4"; // --layer-01, the page
+const CARD = "#ffffff"; // --background
+const INK = "#161616"; // --text-primary, body text and headings
+const BUTTON = "#0f62fe"; // --interactive, the button fill; white text on it
+const DIM = "#525252"; // --text-secondary
+const HAIRLINE = "#e0e0e0"; // --border-subtle
 
 /**
  * Five characters, `&` first or the entities the other four produce would be
@@ -108,13 +106,13 @@ export function renderEmail(
 
   // A bulletproof-ish button: a padded anchor rather than a nested table, which
   // is enough everywhere except older Outlook, where it degrades to a plain
-  // green link. The URL is repeated as text underneath for exactly that case,
+  // blue link. The URL is repeated as text underneath for exactly that case,
   // and for anybody whose client strips the anchor entirely.
   const button =
     action && url
       ? `<p style="margin:0 0 16px;">
          <a href="${escapeHtml(url)}"
-            style="display:inline-block;padding:12px 22px;border-radius:6px;background:${SIGNAL};color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">${escapeHtml(action.label)}</a>
+            style="display:inline-block;padding:12px 22px;border-radius:0;background:${BUTTON};color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">${escapeHtml(action.label)}</a>
        </p>
        <p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:${DIM};word-break:break-all;">
          Or paste this into your browser:<br />${escapeHtml(url)}
@@ -132,8 +130,8 @@ export function renderEmail(
   const logoSrc = logoUrl ? safeUrl(logoUrl) : "#";
   const logo =
     logoSrc !== "#"
-      ? `<img src="${escapeHtml(logoSrc)}" width="140" height="30" alt="Lead the Way" style="display:block;border:0;height:30px;width:140px;color:${NAVY};font-size:18px;font-weight:700;" />`
-      : `<span style="font-size:18px;font-weight:700;color:${NAVY};">Lead the Way</span>`;
+      ? `<img src="${escapeHtml(logoSrc)}" width="140" height="30" alt="Lead the Way" style="display:block;border:0;height:30px;width:140px;color:${INK};font-size:18px;font-weight:700;" />`
+      : `<span style="font-size:18px;font-weight:700;color:${INK};">Lead the Way</span>`;
 
   const html = `<!doctype html>
 <html lang="en">
@@ -142,7 +140,7 @@ export function renderEmail(
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>${escapeHtml(heading)}</title>
 </head>
-<body style="margin:0;padding:0;background:${PAPER};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<body style="margin:0;padding:0;background:${PAPER};font-family:'IBM Plex Sans','Helvetica Neue',Arial,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAPER};">
     <tr>
       <td align="center" style="padding:32px 16px;">
@@ -153,8 +151,8 @@ export function renderEmail(
             </td>
           </tr>
           <tr>
-            <td style="background:${CARD};border:1px solid ${HAIRLINE};border-radius:8px;padding:32px 28px;">
-              <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:${NAVY};font-weight:700;">${escapeHtml(heading)}</h1>
+            <td style="background:${CARD};border:1px solid ${HAIRLINE};border-radius:0;padding:32px 28px;">
+              <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:${INK};font-weight:700;">${escapeHtml(heading)}</h1>
               ${body}
               ${button}
               ${small}

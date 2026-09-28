@@ -6,7 +6,8 @@
  * one -- turns a test that reaches the wire into a live, billable call that
  * reports nothing and leaves the suite green. This was a real defect in the
  * project this boilerplate came from: a scheduled action was never drained, and
- * fired one real OpenAI request per run with the whole suite passing.
+ * fired one real request to an outside provider per run with the whole suite
+ * passing.
  *
  * Per-file discipline is what failed there. So the invariant is enforced here
  * instead, once, for every test file, including ones nobody is looking at.
@@ -29,7 +30,7 @@
  * otherwise stay green. The global teardown reads that log and fails the run.
  * Set the variable yourself to inspect the log directly:
  *
- *     NETGUARD_LOG=/tmp/outbound.log OPENAI_API_KEY=sk-dummy npm test
+ *     NETGUARD_LOG=/tmp/outbound.log RESEND_API_KEY=sk-dummy pnpm test
  *     wc -l /tmp/outbound.log   # must be 0
  *
  * A green suite is NOT evidence on its own. It was green throughout the defect.

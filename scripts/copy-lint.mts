@@ -26,8 +26,8 @@ export type Rule =
   | "title-case-button";
 export type Finding = { file: string; line: number; rule: Rule; text: string };
 
-const DASH = /[–—]/;
-const SPACED_HYPHEN = / --? /;
+const DASH = /[‐-―−]/;
+const SPACED_HYPHEN = /\s--?\s/;
 // "2-5", "9 - 30", "2:00 - 3:00 PM"; not "2026-09-09" or "cols-2".
 const RANGE =
   /(?<![\w\-:.])\d{1,2}(?::\d{2})?\s?(?:AM|PM)?\s?-\s?\d{1,2}(?::\d{2})?(?![\w\-:])/;
@@ -155,7 +155,8 @@ function* sourceFiles(dir: string): Generator<string> {
     const path = join(dir, name);
     if (name === "_generated" || name === "node_modules") continue;
     if (statSync(path).isDirectory()) yield* sourceFiles(path);
-    else if (/\.(ts|tsx|mts)$/.test(name) && !name.endsWith(".d.ts")) yield path;
+    else if (/\.(ts|tsx|mts)$/.test(name) && !name.endsWith(".d.ts"))
+      yield path;
   }
 }
 
@@ -175,9 +176,12 @@ if (import.meta.main) {
       lintSource(readFileSync(path, "utf8"), relative(root, path)),
     ),
   );
-  for (const f of findings) console.log(`${f.file}:${f.line} ${f.rule} "${f.text}"`);
+  for (const f of findings)
+    console.log(`${f.file}:${f.line} ${f.rule} "${f.text}"`);
   if (findings.length > 0) {
-    console.error(`\ncopy-lint: ${findings.length} problem(s). See DESIGN.md, "Content and voice".`);
+    console.error(
+      `\ncopy-lint: ${findings.length} problem(s). See DESIGN.md, "Content and voice".`,
+    );
     process.exit(1);
   }
   console.log("copy-lint: clean");

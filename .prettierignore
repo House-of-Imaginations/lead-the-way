@@ -4,6 +4,15 @@
 .superpowers/
 tsconfig.tsbuildinfo
 
+# The committed lockfile: pnpm writes its own formatting, and prettier
+# reformatting it only creates a diff the next install undoes.
+pnpm-lock.yaml
+
+# DESIGN.md and MASTER_PROMPT.md keep their own hand-tuned Markdown tables
+# and line breaks; running prettier over them fights that formatting.
+DESIGN.md
+MASTER_PROMPT.md
+
 # Convex writes these. Reformatting them only means reformatting them again
 # after the next `convex dev`.
 convex/_generated/

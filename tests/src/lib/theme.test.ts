@@ -109,7 +109,8 @@ const CASES: Array<{ name: string; search: string; stored: string | null }> = [
     stored: null,
   },
   // The regression. `?theme=purple` used to make the script set NOTHING while
-  // the toggle read "dark" out of the store -- Day mode with "Night" checked.
+  // a caller reading the store directly resolved to dark -- a light page
+  // with dark reported as the chosen mode.
   {
     name: "an invalid query value over a store",
     search: "?theme=purple",
@@ -167,7 +168,7 @@ for (const { name, search, stored } of CASES) {
   }
 }
 
-/** What `resolveThemeMode` is handed at the call site in `theme.tsx`. */
+/** What `resolveThemeMode` is handed for the `?theme=` half of its input. */
 function searchValue(search: string): string | null {
   return new URLSearchParams(search).get("theme");
 }
