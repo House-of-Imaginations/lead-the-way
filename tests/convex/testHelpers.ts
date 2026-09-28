@@ -3,15 +3,11 @@
  * about them until each one is registered against the test instance. Miss one
  * and every call into it fails with an unhelpful "component not found".
  *
- * Register the same set as `convex/convex.config.ts`, under the same names --
- * a workpool is registered by ITS pool name, not by "workpool".
+ * Register the same set as `convex/convex.config.ts`, under the same names.
  */
 import betterAuth from "@convex-dev/better-auth/test";
-import migrations from "@convex-dev/migrations/test";
-import presence from "@convex-dev/presence/test";
 import rateLimiter from "@convex-dev/rate-limiter/test";
 import resend from "@convex-dev/resend/test";
-import workpool from "@convex-dev/workpool/test";
 import type { GenericSchema, SchemaDefinition } from "convex/server";
 import type { TestConvex } from "convex-test";
 import { components } from "../../convex/_generated/api";
@@ -23,11 +19,8 @@ const componentTest = (t: TestConvex<typeof schema>) =>
 export function registerComponents(t: TestConvex<typeof schema>): void {
   const generic = componentTest(t);
   betterAuth.register(generic, "betterAuth");
-  migrations.register(generic, "migrations");
-  presence.register(generic, "presence");
   rateLimiter.register(generic, "rateLimiter");
   resend.register(generic, "resend");
-  workpool.register(generic, "pushDelivery");
 }
 
 /**

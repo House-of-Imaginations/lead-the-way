@@ -1,10 +1,6 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import { ConvexError } from "convex/values";
-import {
-  runProviderReservation,
-  throwUserError,
-} from "../../../convex/lib/errors";
-import { jsonCompletion } from "../../../convex/lib/openai";
+import { throwUserError } from "../../../convex/lib/errors";
 import { errorCode, userMessage } from "../../../src/lib/errors";
 
 describe("userMessage", () => {
@@ -103,37 +99,4 @@ describe("errorCode", () => {
     expect(errorCode(undefined)).toBeNull();
     expect(errorCode(null)).toBeNull();
   });
-});
-
-test("provider reservation failures stay fail-closed across an action boundary", async () => {
-  await expect(
-    runProviderReservation(async () => {
-      throw new Error("internal quota store unavailable");
-    }),
-  ).rejects.toMatchObject({
-    data: {
-      code: "PROVIDER_QUOTA_UNAVAILABLE",
-      message: expect.stringMatching(/temporarily unavailable/i),
-    },
-  });
-});
-
-test("chat reservation failure happens before any paid fetch", async () => {
-  const originalKey = process.env.OPENAI_API_KEY;
-  const originalFetch = globalThis.fetch;
-  const fetchMock = vi.fn();
-  process.env.OPENAI_API_KEY = "test-openai-key";
-  globalThis.fetch = fetchMock as unknown as typeof fetch;
-  try {
-    await expect(
-      jsonCompletion("{}", async () => {
-        throw new Error("quota transport failed");
-      }),
-    ).rejects.toMatchObject({ data: { code: "PROVIDER_QUOTA_UNAVAILABLE" } });
-    expect(fetchMock).not.toHaveBeenCalled();
-  } finally {
-    globalThis.fetch = originalFetch;
-    if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
-    else process.env.OPENAI_API_KEY = originalKey;
-  }
 });

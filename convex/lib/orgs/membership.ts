@@ -16,14 +16,12 @@ import {
  * a role document -- a role saying `kind: "owner"` guarantees the capability
  * EXISTS, never that anybody holds it. It is a property of the member
  * population, so it has to be re-checked by every path that writes or deletes a
- * membership: changing somebody's role, removing them, leaving, accepting an
- * invite, and deleting an account. Six paths, and one of them forgetting is an
- * org nobody can ever administer again.
+ * membership: changing somebody's role, removing them, leaving and accepting an
+ * invite. One of them forgetting is an org nobody can ever administer again.
  *
  * So no Convex function patches or deletes a `memberships` row directly. They
- * come through here. It is the same arrangement `dropOwner` has in
- * `convex/lib/push/notify.ts`: a helper that owns one table's writes, whose
- * callers did their own authorization first.
+ * come through here: a helper that owns one table's writes, whose callers did
+ * their own authorization first.
  */
 
 /** A seat and what it can do: the answer the gate needs, in one value. */
@@ -243,9 +241,8 @@ export const MAX_MEMBERS_PER_ORG = 200;
  * Refuse a seat that would take this person past the per-account ceiling.
  *
  * BOTH DOORS INTO A WORKSPACE CALL THIS -- creating one and accepting an
- * invitation. Missing either is not a cosmetic overshoot: `seatsOfUser` reads
- * `.take(MAX_ORGS_PER_USER)` and `releaseSeats` iterates exactly that list, so
- * somebody over the ceiling leaves seats behind when their account is deleted.
+ * invitation. `seatsOfUser` reads `.take(MAX_ORGS_PER_USER)`, so a seat past
+ * the ceiling would never show.
  *
  * The read is bounded and its range lands in the transaction's read set, so two
  * simultaneous joins at the ceiling conflict and the second re-runs against the

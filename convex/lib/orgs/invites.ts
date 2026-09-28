@@ -1,9 +1,8 @@
 /**
  * The credential on an invitation link, and how long it is good for.
  *
- * Pure and separate from the mutations, like `lib/account/window.ts`: this is
- * the half where being quietly wrong costs something, so it is testable without
- * a database.
+ * Pure and separate from the mutations: this is the half where being quietly
+ * wrong costs something, so it is testable without a database.
  */
 
 /**

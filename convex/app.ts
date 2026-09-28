@@ -21,12 +21,10 @@ export const FLAGS = {
   /** The kill switch: only the landing page, no auth, no public function. */
   closed: "APP_CLOSED",
   /**
-   * Who-is-here heartbeats (`convex/presence.ts`). Off, and unset means off:
-   * nothing in `src/` calls them yet, and a heartbeat every ten seconds that
-   * no surface reads is pure write load. Turn it on in the same commit as the
-   * first avatar stack, never before.
+   * Demo controls: seeded accounts, persona switch, demo clock and reset. They
+   * only ever act on the demo workspace (`orgs.isDemo`), never on a real one.
    */
-  presence: "PRESENCE",
+  demo: "DEMO_MODE",
 } as const;
 
 export type Flag = keyof typeof FLAGS;

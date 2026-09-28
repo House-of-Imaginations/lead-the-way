@@ -1,8 +1,8 @@
 /**
  * Turning a workspace's name into the thing that goes in a URL.
  *
- * Pure, and separate from the mutation that uses it, for the same reason
- * `lib/account/window.ts` is pure: this is the half that can be wrong quietly.
+ * Pure, and separate from the mutation that uses it: this is the half that can
+ * be wrong quietly.
  * A slug that normalises differently on the read than on the write lets `Acme`
  * and `acme` both land, and the uniqueness check that looked correct never
  * fired.

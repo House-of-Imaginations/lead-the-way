@@ -30,25 +30,6 @@ test("saveProfile on an account with no row creates it through ensureProfile", a
   expect(await t.withIdentity(pat).query(api.profiles.me, {})).toMatchObject({
     displayName: "Pat",
   });
-  // A tombstoned account is still refused silently, as before.
-  await t.withIdentity(pat).mutation(api.account.deleteAccount, {});
-  await expect(
-    t
-      .withIdentity(pat)
-      .mutation(api.profiles.saveProfile, { displayName: "Again" }),
-  ).resolves.toBeNull();
-});
-
-test("deleteAccount without a profile tombstones and returns the dates; twice is refused", async () => {
-  const t = harness();
-  const pat = t.withIdentity({ subject: "user_no_profile" });
-  const result = await pat.mutation(api.account.deleteAccount, {});
-  expect(result.purgeAt).toBeGreaterThan(result.deletedAt);
-  await expect(
-    pat.mutation(api.account.deleteAccount, {}),
-  ).rejects.toMatchObject({
-    data: { code: "ACCOUNT_ALREADY_DELETED" },
-  });
 });
 
 test("orgs.active follows setActiveOrg and falls back when the seat is gone", async () => {

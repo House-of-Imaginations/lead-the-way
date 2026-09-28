@@ -309,83 +309,6 @@ test("a role somebody still holds cannot be deleted", async () => {
   ).rejects.toMatchObject({ data: { code: "ROLE_IN_USE" } });
 });
 
-/**
- * THE PERMANENT BRICK. A sole owner's seat used to outlive their account: for
- * the deletion window they were an owner refused every write, and after the
- * purge the row stayed behind counting as a live owner forever.
- */
-test("deleting an account is refused while it solely owns a shared workspace", async () => {
-  const t = harness();
-  const { orgId } = await workspace(t);
-  const alice = t.withIdentity(ALICE);
-
-  const memberId = await alice.mutation(api.orgRoles.create, {
-    orgId,
-    name: "Member",
-    permissions: ["members:read"],
-  });
-  const token = await alice.mutation(api.invites.create, {
-    orgId,
-    roleId: memberId,
-  });
-  await t
-    .withIdentity(BOB)
-    .mutation(api.invites.accept, { token: token.token });
-
-  await alice.mutation(api.profiles.saveProfile, { displayName: "Alice" });
-  await expect(
-    alice.mutation(api.account.deleteAccount, {}),
-  ).rejects.toMatchObject({ data: { code: "ORG_OWNERSHIP_HELD" } });
-
-  // The throw rolled the tombstone back too: not half-deleted, not deleted.
-  await expect(alice.query(api.profiles.me, {})).resolves.toMatchObject({
-    displayName: "Alice",
-  });
-});
-
-test("deleting an account takes a workspace nobody else is in", async () => {
-  const t = harness();
-  await workspace(t);
-  const alice = t.withIdentity(ALICE);
-  await alice.mutation(api.profiles.saveProfile, { displayName: "Alice" });
-
-  await alice.mutation(api.account.deleteAccount, {});
-
-  const left = await t.run(async (ctx) => ({
-    orgs: (await ctx.db.query("orgs").collect()).length,
-    roles: (await ctx.db.query("orgRoles").collect()).length,
-    members: (await ctx.db.query("memberships").collect()).length,
-  }));
-  expect(left).toEqual({ orgs: 0, roles: 0, members: 0 });
-});
-
-test("a seat is given up at the tap, not left for the purge", async () => {
-  const t = harness();
-  const { orgId } = await workspace(t);
-  const alice = t.withIdentity(ALICE);
-
-  const memberId = await alice.mutation(api.orgRoles.create, {
-    orgId,
-    name: "Member",
-    permissions: ["members:read"],
-  });
-  const token = await alice.mutation(api.invites.create, {
-    orgId,
-    roleId: memberId,
-  });
-  await t
-    .withIdentity(BOB)
-    .mutation(api.invites.accept, { token: token.token });
-
-  await t.withIdentity(BOB).mutation(api.profiles.saveProfile, {
-    displayName: "Bob",
-  });
-  await t.withIdentity(BOB).mutation(api.account.deleteAccount, {});
-
-  const members = await alice.query(api.members.list, { orgId });
-  expect(members.map((m) => m.userId)).toEqual([ALICE.subject]);
-});
-
 /** THE INVITE AS A CREDENTIAL. */
 test("an invitation is single use and cannot be replayed", async () => {
   const t = harness();
@@ -776,8 +699,8 @@ test("there is a ceiling on how many workspaces one account can hold", async () 
   const alice = t.withIdentity(ALICE);
 
   // The ceiling is 50, and it is enforced rather than decorative: `seatsOfUser`
-  // reads exactly that many, so a seat past it is one account deletion cannot
-  // release. See `convex/lib/orgs/membership.ts`.
+  // reads exactly that many, so a seat past it would never show. See
+  // `convex/lib/orgs/membership.ts`.
   for (let n = 0; n < 50; n += 1) {
     await alice.mutation(api.orgs.create, { name: `Workspace ${n}` });
   }

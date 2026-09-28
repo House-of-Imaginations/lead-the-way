@@ -1,25 +1,17 @@
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { authComponent } from "../../auth";
-import { throwUserError } from "../errors";
 import { insertProfile, profileOf } from "./profile";
 
 /**
  * The profile, created from the auth account when missing. The trigger in
  * `convex/auth.ts` creates one at sign-up; this covers accounts that predate it.
- * A tombstoned profile is refused rather than silently returned.
  */
 export async function ensureProfile(
   ctx: MutationCtx,
   userId: string,
 ): Promise<Doc<"profiles">> {
   const profile = await profileOf(ctx, userId);
-  if (profile?.deletedAt !== undefined) {
-    throwUserError(
-      "ACCOUNT_DELETED",
-      "This account is scheduled for deletion.",
-    );
-  }
   if (profile) return profile;
   const user = await authComponent.getAnyUserById(ctx, userId);
   return await insertProfile(

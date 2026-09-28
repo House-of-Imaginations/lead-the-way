@@ -23,8 +23,7 @@ import {
  * there. Keeping them apart is what lets the auth component be upgraded, or
  * swapped, without a migration of product data.
  *
- * `deletedAt` is omitted from the public shape: it is never anything but
- * `undefined` here, because `me` refuses to return a tombstoned profile at all.
+ * `deletedAt` is omitted from the public shape: nothing sets it any more.
  * `avatarId` is omitted and `avatarUrl` added in its place -- the id is a handle
  * only this backend can do anything with, and a stored URL would be a signed,
  * expiring string sitting in a row going stale on its own schedule.
@@ -43,12 +42,6 @@ export const me = publicQuery({
 
     const profile = await profileOf(ctx, userId);
     if (!profile) return null;
-
-    // A deleted account has no profile, as far as the rest of the product is
-    // concerned. Saying so HERE, once, is what keeps every other screen out of
-    // it. The tombstone itself is readable through `account.deletionStatus`,
-    // whose whole job is to be the one function that admits the row is there.
-    if (profile.deletedAt !== undefined) return null;
 
     const { deletedAt: _deletedAt, avatarId, ...rest } = profile;
     // `getUrl` returns null for an id whose file is gone -- a purge, a failed
@@ -83,13 +76,7 @@ export const saveProfile = authenticatedMutation({
       );
     }
 
-    const existing = await profileOf(ctx, userId);
-
-    // A tombstoned account is silently refused rather than told off: the only
-    // way to reach here is a race between two tabs, one of them deleting.
-    if (existing?.deletedAt !== undefined) return null;
-
-    const profile = existing ?? (await ensureProfile(ctx, userId));
+    const profile = await ensureProfile(ctx, userId);
     await ctx.db.patch(profile._id, { displayName: name });
     return null;
   },
@@ -128,8 +115,7 @@ export const generateAvatarUploadUrl = authenticatedMutation({
  * ORDER MATTERS, and not for tidiness. A mutation is a transaction:
  * `throwUserError` rolls back everything the handler did, INCLUDING a
  * `ctx.storage.delete`, so deleting-then-throwing deletes nothing and only
- * reads as though it does. The no-profile path returns instead of throwing, so
- * its delete commits.
+ * reads as though it does.
  */
 export const setAvatar = authenticatedMutation({
   args: { storageId: v.id("_storage") },
@@ -137,14 +123,7 @@ export const setAvatar = authenticatedMutation({
   handler: async (ctx, { storageId }): Promise<null> => {
     const userId = ctx.userId;
 
-    const existing = await profileOf(ctx, userId);
-    // A tombstone still discards the upload and returns: a throw would roll
-    // the delete back and leave the blob behind.
-    if (existing?.deletedAt !== undefined) {
-      await ctx.storage.delete(storageId);
-      return null;
-    }
-    const profile = existing ?? (await ensureProfile(ctx, userId));
+    const profile = await ensureProfile(ctx, userId);
 
     const uploaded = await ctx.db.system.get(storageId);
     if (!uploaded) {

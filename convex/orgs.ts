@@ -222,12 +222,8 @@ export const create = authenticatedMutation({
     }
 
     // Creating is the OTHER door into a workspace, and it has to hold the same
-    // ceiling accepting an invitation does. Missing it was not a cosmetic
-    // overshoot: `seatsOfUser` reads `.take(MAX_ORGS_PER_USER)` and
-    // `releaseSeats` iterates exactly that list, so a person over the ceiling
-    // had seats left behind when their account was deleted -- sole-owner seats
-    // among them, which is the permanently-bricked workspace
-    // `lib/orgs/cascade.ts` exists to prevent, reintroduced from the side.
+    // ceiling accepting an invitation does: `seatsOfUser` reads
+    // `.take(MAX_ORGS_PER_USER)`, so a seat past the ceiling would never show.
     await assertCanCreate(ctx, ctx.userId);
 
     const now = Date.now();

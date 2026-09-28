@@ -8,8 +8,8 @@ import { renderEmail, type EmailContent } from "./template";
  * ENV-GATED, AND THAT IS THE FEATURE. With no `RESEND_API_KEY` and no
  * `RESEND_FROM`, every send here is skipped and says so in its return value.
  * Whatever caused it still happened: an invitation is still created and its
- * link still works. This is the doctrine `convex/lib/openai.ts` and
- * `convex/auth.ts` already follow -- a feature detects its own absence rather
+ * link still works. This is the doctrine `convex/auth.ts` already follows -- a
+ * feature detects its own absence rather
  * than making a deployment that has not configured it unusable.
  *
  * It also keeps the network guard in `tests/setup.ts` satisfied without a stub,

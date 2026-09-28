@@ -29,8 +29,7 @@ import { reserveRateLimit } from "./lib/rateLimits";
  * has to be readable again by the admin who made it, and a hash would forbid
  * that. What keeps it private instead is that no return validator reachable
  * without `members:manage` contains the column -- the same guard `profiles`
- * uses for `avatarId`, and the reason `convex/notes.ts` calls a return
- * validator a leak guard rather than documentation.
+ * uses for `avatarId`. A return validator is a leak guard, not documentation.
  *
  * Accepting DELETES the row rather than stamping it used. A consumed row
  * holding a live-looking credential is a thing somebody has to keep explaining,

@@ -18,17 +18,10 @@ export type ErrorCode =
   | "FIELD_REQUIRED"
   | "NAME_REQUIRED"
   | "NOT_FOUND"
-  | "NOT_DELETED"
-  | "ACCOUNT_DELETED"
-  | "ACCOUNT_ALREADY_DELETED"
-  // The purge has started deleting this account's data, so a restore would
-  // bring back an account with pieces missing.
-  | "ACCOUNT_PURGE_STARTED"
   | "AVATAR_MISSING"
   | "AVATAR_TYPE"
   | "AVATAR_SIZE"
   | "RATE_LIMITED"
-  | "PROVIDER_QUOTA_UNAVAILABLE"
   // Organizations. `NOT_A_MEMBER` and `FORBIDDEN` are deliberately separate:
   // the client sends the first back to the workspace picker and explains the
   // second in place. `NOT_A_MEMBER` also covers "no such org", so probing an
@@ -41,7 +34,6 @@ export type ErrorCode =
   | "ROLE_IN_USE"
   | "ROLE_INVALID"
   | "LAST_OWNER"
-  | "ORG_OWNERSHIP_HELD"
   // Separate from the AVATAR_* codes even though the two share their limits:
   // the sentences differ ("a workspace picture", not "a picture"), and a client
   // branching on the code should not have to also know which screen it is on.
@@ -67,39 +59,6 @@ export function isRateLimitedError(error: unknown): error is ConvexError<{
     typeof record.message === "string" &&
     typeof record.retryAfter === "number"
   );
-}
-
-export function isProviderReservationError(error: unknown): boolean {
-  if (isRateLimitedError(error)) return true;
-  if (!(error instanceof ConvexError)) return false;
-  const data: unknown = error.data;
-  if (typeof data !== "object" || data === null) return false;
-  return (
-    (data as Record<string, unknown>).code === "PROVIDER_QUOTA_UNAVAILABLE"
-  );
-}
-
-export function providerQuotaUnavailableError(): ConvexError<{
-  code: "PROVIDER_QUOTA_UNAVAILABLE";
-  message: string;
-}> {
-  return new ConvexError({
-    code: "PROVIDER_QUOTA_UNAVAILABLE",
-    message:
-      "Provider quota is temporarily unavailable. Please try again later.",
-  });
-}
-
-/** Preserve quota denials while classifying a failed internal action boundary. */
-export async function runProviderReservation(
-  reserve: () => Promise<unknown>,
-): Promise<void> {
-  try {
-    await reserve();
-  } catch (error) {
-    if (isProviderReservationError(error)) throw error;
-    throw providerQuotaUnavailableError();
-  }
 }
 
 export function throwUserError(code: ErrorCode, message: string): never {

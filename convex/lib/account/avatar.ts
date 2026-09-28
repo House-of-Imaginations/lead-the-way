@@ -4,9 +4,7 @@
  * Here rather than in `src/lib` because BOTH ends need it and they must not
  * drift: the browser checks before spending a phone's upload budget on a file
  * that will be refused, and `profiles.setAvatar` checks again after the bytes
- * land, because anything the browser enforces the browser can also skip. Same
- * arrangement as `convex/lib/account.ts`, which the restore screen imports for
- * exactly the same reason.
+ * land, because anything the browser enforces the browser can also skip.
  */
 
 /**

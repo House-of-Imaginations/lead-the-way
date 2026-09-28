@@ -108,8 +108,7 @@ export const orgTables = {
    * link has to be readable again by the admin who created it, which a hash
    * would forbid. What protects it instead is that no return validator a
    * non-admin can reach includes this column -- the same move `profiles` makes
-   * with `avatarId`, and the reason `convex/notes.ts` calls a return validator
-   * a leak guard rather than documentation.
+   * with `avatarId`. A return validator is a leak guard, not documentation.
    *
    * `email`, when present, is ENFORCED at accept against the account's verified
    * address. A pinned address that nothing checks would be a guarantee the
