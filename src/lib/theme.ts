@@ -40,17 +40,12 @@ export function resolveThemeMode(
 }
 
 /**
- * What `--ground` actually resolves to in each mode, as literals.
- *
- * Both modes resolve `--ground` through `globals.css`. They are duplicated here
- * because their third consumer is a `<meta name="theme-color">`, and a meta
- * value is a string the browser reads out of the document -- there is no
- * `var()` to resolve. `theme.test.ts` asserts these against the stylesheet, so
- * a change to the palette fails a test instead of shipping a status bar in
- * last season's colour.
+ * What `--background` resolves to in each mode, as literals for the
+ * `theme-color` meta (a meta value cannot be a `var()`). `theme.test.ts`
+ * asserts them against `src/styles/tokens.css`.
  */
-export const GROUND_DARK = "#0c1f1c";
-export const GROUND_LIGHT = "#f4f6f5";
+export const GROUND_DARK = "#161616";
+export const GROUND_LIGHT = "#ffffff";
 
 /**
  * The colour the browser paints its own furniture with: the iOS status bar and

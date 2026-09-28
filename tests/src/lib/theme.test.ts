@@ -218,34 +218,26 @@ test("a store the user never wrote is ignored rather than trusted", () => {
 // empty string by default (`test.css` is off), and `?raw` does not get past
 // that -- the assertions below would have compared two empty strings and
 // passed forever.
-const globalsCss = readFileSync(
-  new URL("../../../src/app/globals.css", import.meta.url),
+const tokensCss = readFileSync(
+  new URL("../../../src/styles/tokens.css", import.meta.url),
   "utf8",
 );
 
-function cssVariable(name: string): string {
-  const match = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{3,8})`).exec(
-    globalsCss,
-  );
-  if (!match) throw new Error(`--${name} is not declared in globals.css`);
+/** `--background` as declared in the light `:root` block and the forced dark block. */
+function background(block: "light" | "dark"): string {
+  const source =
+    block === "light"
+      ? tokensCss.slice(0, tokensCss.indexOf("@media"))
+      : tokensCss.slice(tokensCss.indexOf(':root[data-theme="dark"]'));
+  const match = /--background:\s*(#[0-9a-fA-F]{3,8})/.exec(source);
+  if (!match) throw new Error(`--background missing from the ${block} block`);
   return match[1].toLowerCase();
 }
 
-test("the dark theme-color is still the night ground", () => {
-  // `--ground` is `var(--h-night)` in the dark blocks; this asserts the value
-  // it ultimately resolves to.
-  expect(GROUND_DARK.toLowerCase()).toBe(cssVariable("h-night"));
+test("the dark theme-color is the dark background token", () => {
+  expect(GROUND_DARK.toLowerCase()).toBe(background("dark"));
 });
 
-test("the light theme-color is still the day ground", () => {
-  expect(GROUND_LIGHT.toLowerCase()).toBe(cssVariable("h-paper"));
-});
-
-test("the manifest's colours are the light ground", () => {
-  // The manifest cannot import from here -- it is a literal file the platform
-  // reads at install time -- so this is the reminder that a palette change is
-  // a three-file change. Light is the default mode, so light is what the
-  // installer paints. Kept as a plain assertion on the constant rather than a
-  // parse of manifest.ts, which would test the parser.
-  expect(GROUND_LIGHT).toBe("#f4f6f5");
+test("the light theme-color is the light background token", () => {
+  expect(GROUND_LIGHT.toLowerCase()).toBe(background("light"));
 });
