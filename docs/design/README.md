@@ -9,7 +9,7 @@
 | `design-system/tailwind-theme.css` | Tailwind v4 `@theme` mapping | Utilities such as `bg-layer-01`, `p-05`, `h-control-lg`, `text-heading-01` |
 | `design-system/components/*.md` | One guideline file per component | Props, when to use, do and don't |
 | `design-system/components/bundle.css`, `bundle.js`, `index.d.ts` | Reference implementation of every component (plain React, no JSX) | Exact paddings, sizes, states. Rebuild as typed components, don't import it |
-| `design-system/assets/icons/*.svg`, `assets/logos/*.svg` | Carbon icons used and the Lead the Way mark | Icon names map to `@carbon/icons-react`; the mark is a 24px blue square with a white stair |
+| `design-system/assets/icons/*.svg`, `assets/logos/*.svg` | Carbon icons used and the Lead the Way mark | Icon names map to `@carbon/icons-react`. The mark is the held hour: a blue block between two square brackets (see `design-system/assets/logos/README.md`). |
 | `wireframes/screens.md` | Every screen: route, persona, research note, links, verbatim copy | The build checklist |
 | `wireframes/png/` | Rendered screens (1440 desktop, 390 mobile) | Visual target |
 | `wireframes/source/*.dc.html` | Prototype HTML for each screen | Exact CSS values and states (ignore the canvas runtime markup) |
