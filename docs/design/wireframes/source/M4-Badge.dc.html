@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Credential (mobile) - Lead the Way</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans','Helvetica Neue',Arial,sans-serif;color:#161616;background:#fff;-webkit-font-smoothing:antialiased;font-size:14px;line-height:20px;letter-spacing:.16px}
+*{box-sizing:border-box}
+h1,h2,h3,p,ol,ul,dl,dd{margin:0}
+ol,ul{padding:0;list-style:none}
+a{color:#0f62fe;text-decoration:none}
+button{font-family:inherit;letter-spacing:inherit}
+:focus-visible{outline:2px solid #0f62fe;outline-offset:-2px}
+.i{width:16px;height:16px;flex-shrink:0;fill:currentColor}
+.t2{color:#525252}
+.cap{font-size:12px;line-height:16px;letter-spacing:.32px}
+.btn{display:flex;align-items:center;justify-content:space-between;height:48px;padding:0 16px;border:1px solid transparent;border-radius:0;font:400 14px/18px 'IBM Plex Sans',sans-serif;letter-spacing:.16px;white-space:nowrap;text-decoration:none;width:100%;cursor:pointer}
+.btn-p{background:#0f62fe;color:#fff}
+.btn-t{background:transparent;color:#0f62fe;border-color:#0f62fe}
+.tag{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:24px;font-size:12px;letter-spacing:.32px;background:#e0e0e0;color:#161616}
+.hd{height:48px;background:#161616;color:#f4f4f4;display:flex;align-items:center;justify-content:space-between}
+.toast{position:absolute;top:56px;left:8px;right:8px;background:#393939;color:#f4f4f4;border-left:3px solid #42be65;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;z-index:40}
+.kv{display:flex;flex-direction:column;gap:4px;padding:12px 0;border-top:1px solid #e0e0e0}
+</style>
+</helmet>
+<div style="width: 390px; height: 1240px; position: relative; display: flex; flex-direction: column; background: #fff; overflow: hidden">
+  <header class="hd">
+    <span style="display: flex; align-items: center"><a href="M3-Work-Project.dc.html" aria-label="Back" style="width: 48px; height: 48px; color: #f4f4f4; display: inline-flex; align-items: center; justify-content: center"><svg class="i" style="width: 20px; height: 20px; transform: rotate(180deg)" viewBox="0 0 32 32" aria-hidden="true"><path d="M18 6 16.57 7.393 24.15 15 4 15 4 17 24.15 17 16.57 24.573 18 26 28 16 18 6z"></path></svg></a><span style="font-weight: 600; font-size: 14px">Credential</span></span>
+  </header>
+
+  <main style="padding: 24px 16px 32px; display: flex; flex-direction: column; gap: 16px">
+    <h1 style="font-size: 32px; line-height: 40px; font-weight: 300">Your credential</h1>
+
+    <section style="background: #f4f4f4" aria-labelledby="b-h">
+      <div style="padding: 16px; display: flex; gap: 16px; align-items: center">
+        <div style="width: 64px; height: 64px; background: #0f62fe; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" style="width: 32px; height: 32px" viewBox="0 0 32 32" aria-hidden="true"><path d="M24 17 25.912 20.703 30 21.297 27 24 27.771 28 24 25.75 20.229 28 21 24 18 21.297 22.2 20.703 24 17z"></path><path d="M6 16H12V18H6z"></path><path d="M6 12H16V14H6z"></path><path d="M6 8H16V10H6z"></path><path d="M16,26H4V6H28V16h2V6a2,2,0,0,0-2-2H4A2,2,0,0,0,2,6V26a2,2,0,0,0,2,2H16Z"></path></svg></div>
+        <div style="display: flex; flex-direction: column; gap: 2px"><span class="cap t2">IBM SkillsBuild badge</span><h2 id="b-h" style="font-size: 20px; line-height: 28px; font-weight: 400">AI Fundamentals</h2><span class="cap t2">Completed 24 September 2026</span></div>
+      </div>
+      <p style="padding: 12px 16px; background: #e0e0e0; font-size: 16px; font-weight: 300">Badge = I learned it.</p>
+    </section>
+
+    <section style="border: 1px solid #0f62fe" aria-labelledby="a-h">
+      <div style="padding: 16px; display: flex; flex-direction: column; gap: 4px">
+        <h2 id="a-h" style="font-size: 20px; line-height: 28px; font-weight: 400">Applied at work</h2>
+        <dl>
+          <div class="kv" style="border-top: 0"><dt class="cap t2">Project</dt><dd>AI-assisted client reporting</dd></div>
+          <div class="kv"><dt class="cap t2">Application</dt><dd>Reduced weekly reporting preparation by approximately 40 minutes while maintaining human review of client metrics.</dd></div>
+          <div class="kv"><dt class="cap t2">Skills shown</dt><dd style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px"><span class="tag">AI prompting</span><span class="tag">Critical evaluation</span><span class="tag">Responsible AI</span><span class="tag">Workflow improvement</span></dd></div>
+        </dl>
+      </div>
+      <p style="padding: 12px 16px; background: #0f62fe; color: #fff; font-size: 16px; font-weight: 300">Applied reflection = I used it.</p>
+    </section>
+
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px">
+      <button class="btn btn-p" onClick="{{ share }}">Share on LinkedIn<svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M26.2,4H5.8C4.8,4,4,4.8,4,5.7v20.5c0,0.9,0.8,1.7,1.8,1.7h20.4c1,0,1.8-0.8,1.8-1.7V5.7C28,4.8,27.2,4,26.2,4z M11.1,24.4H7.6V13h3.5V24.4z M9.4,11.4c-1.1,0-2.1-0.9-2.1-2.1c0-1.2,0.9-2.1,2.1-2.1c1.1,0,2.1,0.9,2.1,2.1S10.5,11.4,9.4,11.4z M24.5,24.3H21v-5.6c0-1.3,0-3.1-1.9-3.1c-1.9,0-2.1,1.5-2.1,2.9v5.7h-3.5V13h3.3v1.5h0.1c0.5-0.9,1.7-1.9,3.4-1.9c3.6,0,4.3,2.4,4.3,5.5V24.3z"></path></svg></button>
+      <button class="btn btn-t" onClick="{{ copy }}">Copy credential link</button>
+    </div>
+    <p class="cap t2">You choose what goes on your credential. Course activity and time spent are never shown.</p>
+  </main>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div class="toast" role="status"><svg class="i" style="width: 20px; height: 20px; color: #42be65" viewBox="0 0 32 32" aria-hidden="true"><path d="M16,2A14,14,0,1,0,30,16,14,14,0,0,0,16,2ZM14,21.5908l-5-5L10.5906,15,14,18.4092,21.41,11l1.5957,1.5859Z"></path></svg><span>{{ toast }}</span></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { toast: null };
+  }
+  componentWillUnmount() { clearTimeout(this._t); }
+  flash(msg) {
+    this.setState({ toast: msg });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ toast: null }), 2600);
+  }
+  renderVals() {
+    return {
+      share: () => this.flash("Post drafted for LinkedIn"),
+      copy: () => this.flash("Credential link copied"),
+      toast: this.state.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+name: Task
+description: "Work that is neither a feature nor a bug: setup, content, admin, chores"
+labels: ["task"]
+body:
+  - type: dropdown
+    id: team
+    attributes:
+      label: Team
+      description: Who owns this. "Both" only when neither team can finish it alone.
+      options: [Engineering, Business, Both]
+    validations: { required: true }
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - p0 - demo blocker
+        - p1 - wanted for the demo
+        - p2 - nice to have
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What needs doing
+      description: What is true when this closes.
+    validations: { required: true }
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [frontend, backend, auth, infra, content, not sure]
+    validations: { required: false }
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Links, accounts, credentials owners, deadlines.
+    validations: { required: false }

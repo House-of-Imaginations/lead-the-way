@@ -1,0 +1,114 @@
+/* Tailwind CSS v4 theme for Lead the Way. Import after tokens.css.
+   Colours point at the CSS variables so light and dark switch automatically;
+   everything else is theme-independent and written as literal values (no self-referencing vars).
+   Utilities: bg-layer-01, text-text-secondary, border-border-subtle, p-05, gap-07, h-control-lg, w-sidenav, text-heading-01, rounded-tag, shadow-float. */
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme inline {
+  /* Carbon spacing steps: p-01 = 2px ... p-10 = 64px. Tailwind's numeric scale stays available. */
+  --color-background: var(--background);
+  --color-layer-01: var(--layer-01);
+  --color-layer-hover: var(--layer-hover);
+  --color-layer-selected: var(--layer-selected);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-border-inverse: var(--border-inverse);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-helper: var(--text-helper);
+  --color-text-on-color: var(--text-on-color);
+  --color-text-inverse: var(--text-inverse);
+  --color-layer-inverse: var(--layer-inverse);
+  --color-interactive: var(--interactive);
+  --color-interactive-hover: var(--interactive-hover);
+  --color-interactive-active: var(--interactive-active);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-focus: var(--focus);
+  --color-button-secondary: var(--button-secondary);
+  --color-button-secondary-hover: var(--button-secondary-hover);
+  --color-button-disabled: var(--button-disabled);
+  --color-text-disabled: var(--text-disabled);
+  --color-highlight: var(--highlight);
+  --color-support-info: var(--support-info);
+  --color-support-success: var(--support-success);
+  --color-support-success-bg: var(--support-success-bg);
+  --color-support-error: var(--support-error);
+  --color-support-warning: var(--support-warning);
+  --color-tag-gray-bg: var(--tag-gray-bg);
+  --color-tag-gray-text: var(--tag-gray-text);
+  --color-tag-blue-bg: var(--tag-blue-bg);
+  --color-tag-blue-text: var(--tag-blue-text);
+  --color-tag-green-bg: var(--tag-green-bg);
+  --color-tag-green-text: var(--tag-green-text);
+  --color-avatar-manager: var(--avatar-manager);
+  --color-avatar-ink: var(--avatar-ink);
+  --color-chart-before: var(--chart-before);
+  --color-chart-after: var(--chart-after);
+
+  --spacing-01: 2px;
+  --spacing-02: 4px;
+  --spacing-03: 8px;
+  --spacing-04: 12px;
+  --spacing-05: 16px;
+  --spacing-06: 24px;
+  --spacing-07: 32px;
+  --spacing-09: 48px;
+  --spacing-10: 64px;
+  --spacing-control-sm: 32px;
+  --spacing-control-md: 40px;
+  --spacing-control-lg: 48px;
+  --spacing-control-xl: 64px;
+  --spacing-sidenav: 256px;
+  --spacing-sidenav-rail: 48px;
+
+  --radius-none: 0px;
+  --radius-tag: 24px;
+  --radius-round: 50%;
+  --shadow-float: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --font-sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  --text-display-01: 76px;
+  --text-display-01--line-height: 88px;
+  --text-display-01--font-weight: 300;
+  --text-display-01--letter-spacing: -0.5px;
+  --text-display-02: 60px;
+  --text-display-02--line-height: 70px;
+  --text-display-02--font-weight: 300;
+  --text-display-02--letter-spacing: -0.4px;
+  --text-display-03: 42px;
+  --text-display-03--line-height: 50px;
+  --text-display-03--font-weight: 300;
+  --text-heading-01: 32px;
+  --text-heading-01--line-height: 40px;
+  --text-heading-01--font-weight: 300;
+  --text-heading-02: 28px;
+  --text-heading-02--line-height: 36px;
+  --text-heading-02--font-weight: 300;
+  --text-heading-03: 20px;
+  --text-heading-03--line-height: 28px;
+  --text-heading-03--font-weight: 400;
+  --text-heading-04: 16px;
+  --text-heading-04--line-height: 22px;
+  --text-heading-04--font-weight: 600;
+  --text-body-01: 16px;
+  --text-body-01--line-height: 24px;
+  --text-body-01--font-weight: 400;
+  --text-body-01--letter-spacing: 0.16px;
+  --text-body-02: 14px;
+  --text-body-02--line-height: 20px;
+  --text-body-02--font-weight: 400;
+  --text-body-02--letter-spacing: 0.16px;
+  --text-body-emphasis: 14px;
+  --text-body-emphasis--line-height: 20px;
+  --text-body-emphasis--font-weight: 600;
+  --text-body-emphasis--letter-spacing: 0.16px;
+  --text-label-01: 12px;
+  --text-label-01--line-height: 16px;
+  --text-label-01--font-weight: 400;
+  --text-label-01--letter-spacing: 0.32px;
+}
+
+/* Square by default: only tags (rounded-tag) and status dots or the toggle knob (rounded-round) are rounded. Never use rounded-md/lg/xl. */

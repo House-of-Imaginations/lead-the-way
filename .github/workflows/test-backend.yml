@@ -1,0 +1,66 @@
+name: Test (backend)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # The application and everything the checks read. A change outside this
+      # list -- documentation, issue templates, agent skills, the architecture
+      # diagram -- cannot change what any of these commands answer.
+      - "convex/**"
+      - "src/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "tsconfig.json"
+      - "*.ts"
+      - "*.mjs"
+      # Editing this pipeline re-runs it. Otherwise a broken workflow file
+      # stays green until unrelated application code happens to land.
+      - ".github/workflows/test-backend.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      # The application and everything the checks read. A change outside this
+      # list -- documentation, issue templates, agent skills, the architecture
+      # diagram -- cannot change what any of these commands answer.
+      - "convex/**"
+      - "src/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "tsconfig.json"
+      - "*.ts"
+      - "*.mjs"
+      # Editing this pipeline re-runs it. Otherwise a broken workflow file
+      # stays green until unrelated application code happens to land.
+      - ".github/workflows/test-backend.yml"
+
+concurrency:
+  group: test-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # `tests/convex` only -- the Convex functions, run by convex-test in
+      # Convex's own runtime. Nothing is deployed; no deploy key belongs here.
+      #
+      # No provider keys are set, deliberately. The suite must not reach the
+      # network -- `tests/setup.ts` enforces it and fails the run if anything
+      # tries, and a key in this environment would turn that guard into a bill.
+      - run: pnpm test:backend

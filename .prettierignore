@@ -1,0 +1,20 @@
+# Build output and local state. Nothing here is edited by hand.
+.next/
+.omc/
+.superpowers/
+tsconfig.tsbuildinfo
+
+# Convex writes these. Reformatting them only means reformatting them again
+# after the next `convex dev`.
+convex/_generated/
+
+# Vendored agent skills, installed from upstream. Formatting them creates a
+# diff that `npx convex ai-files install` (and friends) immediately undoes.
+.agents/
+.claude/skills/
+
+# `docs/architecture.html` is the source the SVG generator reads, and it copies
+# the file's own indentation into `docs/architecture.svg`. Reformatting the HTML
+# reformats 7000 lines of generated SVG with it. Run
+# `python3 scripts/architecture-svg.py` after editing it by hand.
+docs/

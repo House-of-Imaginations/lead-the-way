@@ -1,0 +1,34 @@
+name: Format
+
+# No path filter, unlike the other four. Prettier's scope is the whole
+# repository -- Markdown included -- so a documentation-only change is exactly
+# the kind this check exists to catch. It is also the cheapest job here.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: format-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # `--check`, not `--write`: CI reports, it does not rewrite the branch.
+      # Fix locally with `pnpm format`. What is and is not checked lives in
+      # `.prettierignore`.
+      - run: pnpm format:check

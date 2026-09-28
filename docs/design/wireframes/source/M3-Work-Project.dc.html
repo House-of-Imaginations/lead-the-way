@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Work project (mobile) - Lead the Way</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans','Helvetica Neue',Arial,sans-serif;color:#161616;background:#fff;-webkit-font-smoothing:antialiased;font-size:14px;line-height:20px;letter-spacing:.16px}
+*{box-sizing:border-box}
+h1,h2,h3,p,ol,ul,fieldset,legend{margin:0}
+ol,ul{padding:0;list-style:none}
+fieldset{border:0;padding:0}
+a{color:#0f62fe;text-decoration:none}
+button{font-family:inherit;letter-spacing:inherit}
+:focus-visible{outline:2px solid #0f62fe;outline-offset:-2px}
+.i{width:16px;height:16px;flex-shrink:0;fill:currentColor}
+.t2{color:#525252}
+.cap{font-size:12px;line-height:16px;letter-spacing:.32px}
+.btn{display:flex;align-items:center;justify-content:space-between;height:48px;padding:0 16px;border:1px solid transparent;border-radius:0;font:400 14px/18px 'IBM Plex Sans',sans-serif;letter-spacing:.16px;white-space:nowrap;text-decoration:none;width:100%;cursor:pointer}
+.btn-p{background:#0f62fe;color:#fff}
+.btn-g{background:transparent;color:#0f62fe;padding:0}
+.btn:disabled{background:#c6c6c6;color:#8d8d8d;cursor:not-allowed}
+.lbl{display:block;font-size:12px;line-height:16px;letter-spacing:.32px;color:#525252;margin-bottom:8px}
+.field{width:100%;height:48px;padding:0 16px;border:0;border-bottom:1px solid #8d8d8d;background:#f4f4f4;color:#161616;font:400 16px 'IBM Plex Sans',sans-serif;border-radius:0}
+.field:focus{outline:2px solid #0f62fe;outline-offset:-2px}
+textarea.field{height:auto;min-height:96px;padding:12px 16px;line-height:22px;resize:vertical}
+.field::placeholder{color:#6f6f6f}
+.cb{width:20px;height:20px;margin:0;accent-color:#161616;flex-shrink:0}
+.chk{display:flex;gap:12px;align-items:flex-start;min-height:44px;padding-top:10px}
+.hd{height:48px;background:#161616;color:#f4f4f4;display:flex;align-items:center;justify-content:space-between}
+</style>
+</helmet>
+<div style="width: 390px; height: 1320px; position: relative; display: flex; flex-direction: column; background: #fff; overflow: hidden">
+  <header class="hd">
+    <span style="display: flex; align-items: center"><a href="M2-Employee-Dashboard.dc.html" aria-label="Back" style="width: 48px; height: 48px; color: #f4f4f4; display: inline-flex; align-items: center; justify-content: center"><svg class="i" style="width: 20px; height: 20px; transform: rotate(180deg)" viewBox="0 0 32 32" aria-hidden="true"><path d="M18 6 16.57 7.393 24.15 15 4 15 4 17 24.15 17 16.57 24.573 18 26 28 16 18 6z"></path></svg></a><span style="font-weight: 600; font-size: 14px">Work project</span></span>
+  </header>
+
+  <main style="padding: 24px 16px 32px; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <h1 style="font-size: 32px; line-height: 40px; font-weight: 300">Apply it to your work</h1>
+      <p class="t2" style="font-size: 16px; line-height: 24px">Choose one real task where this week’s learning could create a useful improvement.</p>
+      <button class="btn btn-g" onClick="{{ fill }}" style="height: 44px; width: auto; align-self: flex-start">Use Dan’s example</button>
+    </div>
+
+    <sc-if value="{{ saved }}" hint-placeholder-val="{{ false }}">
+      <div role="status" style="display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; background: #defbe6; border-left: 3px solid #24a148">
+        <strong style="font-weight: 600">Project saved.</strong><span>Only you can see it until you choose to share it.</span><a href="M4-Badge.dc.html">See your credential</a>
+      </div>
+    </sc-if>
+
+    <div><label class="lbl" for="t">Project title</label><input id="t" class="field" placeholder="For example, AI-assisted weekly client reporting" value="{{ title }}" onChange="{{ setTitle }}"></div>
+    <div><label class="lbl" for="b">How did you complete this task before?</label><textarea id="b" class="field" placeholder="It usually took around two hours to structure the first draft." value="{{ before }}" onChange="{{ setBefore }}"></textarea></div>
+    <div><label class="lbl" for="c">What did you apply from the learning?</label><textarea id="c" class="field" placeholder="A reusable prompt for the first draft, then I checked the metrics." value="{{ changed }}" onChange="{{ setChanged }}"></textarea></div>
+    <div><label class="lbl" for="a">What changed?</label><textarea id="a" class="field" style="min-height: 72px" placeholder="It now takes about 1 hour 20 minutes." value="{{ after }}" onChange="{{ setAfter }}"></textarea></div>
+    <div><label class="lbl" for="m">Headline result</label><input id="m" class="field" placeholder="For example, 40 minutes saved per week" value="{{ metric }}" onChange="{{ setMetric }}"></div>
+
+    <fieldset style="padding-top: 16px; border-top: 1px solid #e0e0e0">
+      <legend class="lbl">Checks (both required)</legend>
+      <label class="chk"><input type="checkbox" class="cb" checked="{{ reviewed }}" onChange="{{ toggleReviewed }}">I reviewed the output before using it in work.</label>
+      <label class="chk"><input type="checkbox" class="cb" checked="{{ safe }}" onChange="{{ toggleSafe }}">I did not include restricted client or personal information.</label>
+    </fieldset>
+
+    <div style="display: flex; gap: 12px; align-items: flex-start; padding: 12px; background: #f4f4f4">
+      <svg class="i" style="width: 20px; height: 20px" viewBox="0 0 32 32" aria-hidden="true"><path d="M17 22 17 14 13 14 13 16 15 16 15 22 12 22 12 24 20 24 20 22 17 22z"></path><path d="M16,8a1.5,1.5,0,1,0,1.5,1.5A1.5,1.5,0,0,0,16,8Z"></path><path d="M16,30A14,14,0,1,1,30,16,14,14,0,0,1,16,30ZM16,4A12,12,0,1,0,28,16,12,12,0,0,0,16,4Z"></path></svg>
+      <p>Use approved tools and de-identified data. Don’t upload confidential work files.</p>
+    </div>
+
+    <sc-if value="{{ cannotSave }}" hint-placeholder-val="{{ true }}"><button class="btn btn-p" disabled>Save project</button></sc-if>
+    <sc-if value="{{ canSave }}" hint-placeholder-val="{{ false }}"><button class="btn btn-p" onClick="{{ save }}">Save project<svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M13 24 4 15 5.414 13.586 13 21.171 26.586 7.586 28 9 13 24z"></path></svg></button></sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1320}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { title: "", before: "", changed: "", after: "", metric: "", reviewed: false, safe: false, saved: false };
+  }
+  renderVals() {
+    const s = this.state;
+    const ok = s.reviewed && s.safe && s.title.trim().length > 0;
+    const set = (k) => (e) => { const p = { saved: false }; p[k] = e.target.value; this.setState(p); };
+    return {
+      title: s.title, before: s.before, changed: s.changed, after: s.after, metric: s.metric,
+      setTitle: set("title"), setBefore: set("before"), setChanged: set("changed"), setAfter: set("after"), setMetric: set("metric"),
+      reviewed: s.reviewed, safe: s.safe,
+      toggleReviewed: () => this.setState({ reviewed: !s.reviewed }),
+      toggleSafe: () => this.setState({ safe: !s.safe }),
+      canSave: ok, cannotSave: !ok,
+      saved: s.saved,
+      save: () => this.setState({ saved: true }),
+      fill: () => this.setState({
+        title: "AI-assisted weekly client reporting",
+        before: "Preparing the weekly client report usually took around two hours and required manually structuring the first draft.",
+        changed: "I created a reusable AI prompt to structure the first draft, then checked all client metrics manually.",
+        after: "The process now takes about 1 hour 20 minutes.",
+        metric: "40 minutes saved per week"
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

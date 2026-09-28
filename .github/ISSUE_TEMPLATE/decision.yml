@@ -1,0 +1,47 @@
+name: Decision
+description: A call both teams need made before the work can start
+labels: ["decision"]
+body:
+  - type: dropdown
+    id: team
+    attributes:
+      label: Team
+      description: Who makes the call. Use "Both" when it needs agreement, not just an answer.
+      options: [Engineering, Business, Both]
+    validations: { required: true }
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - p0 - demo blocker
+        - p1 - wanted for the demo
+        - p2 - nice to have
+    validations: { required: true }
+  - type: textarea
+    id: question
+    attributes:
+      label: The question
+      description: One sentence, answerable. Not "discuss pricing" but "do we charge per seat or per workspace".
+    validations: { required: true }
+  - type: textarea
+    id: options
+    attributes:
+      label: Options on the table
+      description: Each one with what it costs and what it buys. Add your recommendation if you have one.
+      value: |
+        - **Option A** - cost, benefit
+        - **Option B** - cost, benefit
+    validations: { required: true }
+  - type: input
+    id: by
+    attributes:
+      label: Needed by
+      description: A date or a milestone. A decision with no deadline is a discussion.
+    validations: { required: false }
+  - type: textarea
+    id: blocked
+    attributes:
+      label: What is blocked until this is answered
+      description: Link the issues that cannot start.
+    validations: { required: false }

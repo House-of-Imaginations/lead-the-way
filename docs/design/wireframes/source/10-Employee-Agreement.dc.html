@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Team agreement - Lead the Way</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans','Helvetica Neue',Arial,sans-serif;color:#161616;background:#fff;-webkit-font-smoothing:antialiased;font-size:14px;line-height:20px;letter-spacing:.16px}
+*{box-sizing:border-box}
+h1,h2,h3,h4,p,ol,ul{margin:0}
+ol,ul{padding:0;list-style:none}
+a{color:#0f62fe;text-decoration:none}a:hover{color:#0043ce;text-decoration:underline}
+button{font-family:inherit;letter-spacing:inherit}
+:focus-visible{outline:2px solid #0f62fe;outline-offset:-2px}
+.i{width:16px;height:16px;flex-shrink:0;fill:currentColor}
+.t2{color:#525252}
+.cap{font-size:12px;line-height:16px;letter-spacing:.32px}
+.title{font-size:32px;line-height:40px;font-weight:300;letter-spacing:0}
+.btn{display:inline-flex;align-items:center;justify-content:space-between;gap:32px;height:48px;padding:0 16px;border:1px solid transparent;border-radius:0;font:400 14px/18px 'IBM Plex Sans',sans-serif;letter-spacing:.16px;white-space:nowrap;cursor:pointer;text-decoration:none;transition:background-color 70ms cubic-bezier(.2,0,.38,.9)}
+.btn:hover{text-decoration:none}
+.btn-p{background:#0f62fe;color:#fff}.btn-p:hover{background:#0050e6;color:#fff}
+.btn-t{background:transparent;color:#0f62fe;border-color:#0f62fe}.btn-t:hover{background:#0050e6;border-color:#0050e6;color:#fff}
+.tag{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:24px;font-size:12px;line-height:16px;letter-spacing:.32px;background:#e0e0e0;color:#161616;white-space:nowrap}
+.tag-green{background:#a7f0ba;color:#0e6027}
+.sn{position:relative;width:256px;flex-shrink:0;background:#fff;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;padding:0 0 12px}
+.brand{display:flex;align-items:center;gap:10px;height:48px;padding:0 16px;color:#161616;font-size:14px;font-weight:600;flex-shrink:0}
+.brand:hover{color:#161616;text-decoration:none;background:#e8e8e8}
+.logo{width:24px;height:24px;background:#0f62fe;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.lp{fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:square}
+.org{display:flex;align-items:center;gap:10px;margin:0 8px 4px;padding:8px;background:#f4f4f4;color:#161616}
+a.org:hover{background:#e8e8e8;color:#161616;text-decoration:none}
+.org-av{width:32px;height:32px;background:#161616;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.acct{position:relative;margin-top:8px}
+.acct summary{list-style:none;display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer}
+.acct summary::-webkit-details-marker{display:none}
+.acct summary:hover{background:#e8e8e8}
+.acct[open] summary{background:#e0e0e0}
+.menu{position:absolute;left:8px;right:8px;bottom:calc(100% + 4px);background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3);z-index:50;display:flex;flex-direction:column;padding-bottom:4px}
+.mi{display:flex;align-items:center;gap:12px;height:40px;padding:0 16px;color:#161616;font-size:14px}
+.mi:hover{background:#e8e8e8;color:#161616;text-decoration:none}
+.mi-off,.mi-off:hover{color:#8d8d8d;background:transparent;cursor:not-allowed}
+.msep{height:1px;background:#e0e0e0;margin:4px 0}
+.sn{transition:width 150ms cubic-bezier(.2,0,.38,.9)}
+.sn-drag{transition:none;user-select:none}
+.sn-a,.brand{white-space:nowrap;overflow:hidden}
+.sn-tg{display:flex;align-items:center;gap:12px;width:100%;height:32px;margin-top:8px;padding:0 16px;border:0;background:transparent;color:#525252;font:600 14px 'IBM Plex Sans',sans-serif;letter-spacing:.16px;cursor:pointer;white-space:nowrap;overflow:hidden;text-align:left}
+.sn-tg:hover{background:#e8e8e8;color:#161616}
+.sn-rs{position:absolute;top:0;bottom:0;right:-3px;width:6px;cursor:col-resize;z-index:5}
+.sn-rs::after{content:'';position:absolute;top:0;bottom:0;left:2px;width:2px;background:transparent;transition:background-color 110ms}
+.sn-rs:hover::after,.sn-rs:focus-visible::after,.sn-drag .sn-rs::after{background:#0f62fe}
+.sn-col .sn-t,.sn-col .sn-x{display:none}
+.sn-col .sn-h{height:1px;padding:0;margin:12px 8px;background:#e0e0e0;font-size:0;overflow:hidden}
+.sn-col .brand{padding:0 12px}
+.sn-col .org{margin:0 8px 4px;padding:0;background:transparent}
+.sn-col .sn-tg{margin-top:auto}
+.sn-col .acct summary{padding:8px}
+.sn-col .menu{right:auto;width:260px}
+.sn-a{position:relative;display:flex;align-items:center;gap:12px;height:32px;padding:0 16px;color:#525252;font-size:14px;font-weight:600}
+.sn-a:hover{background:#e8e8e8;color:#161616;text-decoration:none}
+.sn-on,.sn-on:hover{background:#e0e0e0;color:#161616}
+.sn-on::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#0f62fe}
+.toast{position:absolute;top:16px;right:16px;width:320px;background:#393939;color:#f4f4f4;border-left:3px solid #42be65;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;z-index:40;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.dsec{display:grid;grid-template-columns:220px minmax(0,1fr);gap:32px;padding:20px 0;border-top:1px solid #e0e0e0}
+.dh{font-size:16px;line-height:22px;font-weight:600}
+.sig{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:#e0e0e0}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1060px; position: relative; display: flex; flex-direction: column; background: #fff; overflow: hidden">
+
+  <div style="flex-grow: 1; display: flex; min-height: 0">
+    <nav class="{{ snCls }}" aria-label="Main" style="width: {{ snW }}px"><div class="sn-rs" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" aria-valuenow="{{ snW }}" aria-valuemin="48" aria-valuemax="400" tabindex="0" title="Drag to resize. Double-click to collapse." onPointerDown="{{ snDown }}" onKeyDown="{{ snKey }}" onDoubleClick="{{ snToggle }}"></div>
+      <a class="brand" href="11-Employee-Dashboard.dc.html"><span class="logo"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path class="lp" d="M5 18h4.5v-4.5H14V9h5"></path></svg></span><span class="sn-t">Lead the Way</span></a>
+      <div class="org"><span class="org-av">CL</span><span class="sn-x" style="display: flex; flex-direction: column; flex-grow: 1; min-width: 0; line-height: 18px"><span style="font-weight: 600">Calder Lane</span><span class="cap t2">Client Services team</span></span></div>
+      <a class="sn-a" href="11-Employee-Dashboard.dc.html" style="margin-top: 8px" title="This week"><svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M24 21H26V26H24z"></path><path d="M20 16H22V26H20z"></path><path d="M11,26a5.0059,5.0059,0,0,1-5-5H8a3,3,0,1,0,3-3V16a5,5,0,0,1,0,10Z"></path><path d="M28,2H4A2.002,2.002,0,0,0,2,4V28a2.0023,2.0023,0,0,0,2,2H28a2.0027,2.0027,0,0,0,2-2V4A2.0023,2.0023,0,0,0,28,2Zm0,9H14V4H28ZM12,4v7H4V4ZM4,28V13H28.0007l.0013,15Z"></path></svg><span class="sn-t">This week</span></a>
+      <a class="sn-a" href="13-Sprint-Progress.dc.html" title="My sprint"><svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M26,4h-4V2h-2v2h-8V2h-2v2H6C4.9,4,4,4.9,4,6v20c0,1.1,0.9,2,2,2h20c1.1,0,2-0.9,2-2V6C28,4.9,27.1,4,26,4z M26,26H6V12h20V26z M26,10H6V6h4v2h2V6h8v2h2V6h4V10z"></path></svg><span class="sn-t">My sprint</span></a>
+      <a class="sn-a" href="12-Work-Project.dc.html" title="Work project"><svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M28,10H22V6a2,2,0,0,0-2-2H12a2,2,0,0,0-2,2v4H4a2,2,0,0,0-2,2V26a2,2,0,0,0,2,2H28a2,2,0,0,0,2-2V12A2,2,0,0,0,28,10ZM12,6h8v4H12ZM4,26V12H28V26Z"></path></svg><span class="sn-t">Work project</span></a>
+      <a class="sn-a" href="14-Show-and-Tell.dc.html" title="Show and tell"><svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M15 10H17V18H15z"></path><path d="M20 14H22V18H20z"></path><path d="M10 12H12V18H10z"></path><path d="M25,4H17V2H15V4H7A2,2,0,0,0,5,6V20a2,2,0,0,0,2,2h8v6H11v2H21V28H17V22h8a2,2,0,0,0,2-2V6A2,2,0,0,0,25,4Zm0,16H7V6H25Z"></path></svg><span class="sn-t">Show and tell</span></a>
+      <a class="sn-a" href="15-Badge-Reflection.dc.html" title="Credential"><svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M24 17 25.912 20.703 30 21.297 27 24 27.771 28 24 25.75 20.229 28 21 24 18 21.297 22.2 20.703 24 17z"></path><path d="M6 16H12V18H6z"></path><path d="M6 12H16V14H6z"></path><path d="M6 8H16V10H6z"></path><path d="M16,26H4V6H28V16h2V6a2,2,0,0,0-2-2H4A2,2,0,0,0,2,6V26a2,2,0,0,0,2,2H16Z"></path></svg><span class="sn-t">Credential</span></a>
+      <a class="sn-a sn-on" href="10-Employee-Agreement.dc.html" aria-current="page" title="Team agreement"><svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M22 27.18 19.41 24.59 18 26 22 30 30 22 28.59 20.59 22 27.18z"></path><path d="M15,28H8V4h8v6a2.0058,2.0058,0,0,0,2,2h6v6h2V10a.9092.9092,0,0,0-.3-.7l-7-7A.9087.9087,0,0,0,18,2H8A2.0058,2.0058,0,0,0,6,4V28a2.0058,2.0058,0,0,0,2,2h7ZM18,4.4,23.6,10H18Z"></path></svg><span class="sn-t">Team agreement</span></a>
+      <div class="sn-x" style="margin: auto 16px 0; padding-top: 16px; border-top: 1px solid #e0e0e0; display: flex; flex-direction: column; gap: 4px">
+        <span class="cap t2">Next protected hour</span><span style="font-weight: 600">Wed 16 Sep, 2:00 PM</span>
+        <span class="cap t2" style="margin-top: 8px; display: flex; gap: 6px; align-items: center"><svg class="i" style="width: 12px; height: 12px" viewBox="0 0 32 32" aria-hidden="true"><path d="M24,14H22V8A6,6,0,0,0,10,8v6H8a2,2,0,0,0-2,2V28a2,2,0,0,0,2,2H24a2,2,0,0,0,2-2V16A2,2,0,0,0,24,14ZM12,8a4,4,0,0,1,8,0v6H12ZM24,28H8V16H24Z"></path></svg>Your learning activity is private</span>
+      </div>
+      <button class="sn-tg" onClick="{{ snToggle }}" aria-label="{{ snTgLabel }}" aria-expanded="{{ snOpen }}"><svg class="i" style="transform: rotate({{ snTgRot }}deg)" viewBox="0 0 32 32" aria-hidden="true"><path d="M10 16 20 6 21.4 7.4 12.8 16 21.4 24.6 20 26 10 16z"></path></svg><span class="sn-t">Collapse</span></button>
+      <details class="acct">
+        <summary aria-label="Account menu"><span style="width: 32px; height: 32px; background: #e0e0e0; color: #161616; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0">DO</span><span class="sn-x" style="display: flex; flex-direction: column; flex-grow: 1; line-height: 18px"><span style="font-weight: 600">Dan Okafor</span><span class="cap t2">Senior Account Executive</span></span><svg class="i t2 sn-x" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 28 9 21 10.41 19.59 16 25.17 21.59 19.59 23 21 16 28z"></path><path d="M16 4 23 11 21.59 12.41 16 6.83 10.41 12.41 9 11 16 4z"></path></svg></summary>
+        <div class="menu" role="menu"><div style="padding: 12px 16px; border-bottom: 1px solid #e0e0e0; margin-bottom: 4px"><span style="font-weight: 600">Dan Okafor</span><br><span class="cap t2">dan.okafor@calderlane.com.au</span></div><a class="mi" role="menuitem" href="19-Employee-Settings.dc.html"><svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M27,16.76c0-.25,0-.5,0-.76s0-.51,0-.77l1.92-1.68A2,2,0,0,0,29.3,11L26.94,7a2,2,0,0,0-1.73-1,2,2,0,0,0-.64.1l-2.43.82a11.35,11.35,0,0,0-1.31-.75l-.51-2.52a2,2,0,0,0-2-1.61H13.64a2,2,0,0,0-2,1.61l-.51,2.52a11.48,11.48,0,0,0-1.32.75L7.43,6.06A2,2,0,0,0,6.79,6,2,2,0,0,0,5.06,7L2.7,11a2,2,0,0,0,.41,2.51L5,15.24c0,.25,0,.5,0,.76s0,.51,0,.77L3.11,18.45A2,2,0,0,0,2.7,21L5.06,25a2,2,0,0,0,1.73,1,2,2,0,0,0,.64-.1l2.43-.82a11.35,11.35,0,0,0,1.31.75l.51,2.52a2,2,0,0,0,2,1.61h4.72a2,2,0,0,0,2-1.61l.51-2.52a11.48,11.48,0,0,0,1.32-.75l2.42.82a2,2,0,0,0,.64.1,2,2,0,0,0,1.73-1L29.3,21a2,2,0,0,0-.41-2.51ZM25.21,24l-3.43-1.16a8.86,8.86,0,0,1-2.71,1.57L18.36,28H13.640l-.71-3.55a9.36,9.36,0,0,1-2.7-1.57L6.79,24,4.43,20l2.72-2.4a8.9,8.9,0,0,1,0-3.13L4.43,12,6.79,8l3.43,1.16a8.86,8.86,0,0,1,2.71-1.57L13.64,4h4.72l.71,3.55a9.36,9.36,0,0,1,2.7,1.57L25.21,8,27.57,12l-2.72,2.4a8.9,8.9,0,0,1,0,3.13L27.57,20Z"></path><path d="M16,22a6,6,0,1,1,6-6A5.94,5.94,0,0,1,16,22Zm0-10a3.91,3.91,0,0,0-4,4,3.91,3.91,0,0,0,4,4,3.91,3.91,0,0,0,4-4A3.91,3.91,0,0,0,16,12Z"></path></svg>Settings</a><span class="mi mi-off" role="menuitem" aria-disabled="true"><svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M8 8H10V12H8z"></path><path d="M8 14H10V18H8z"></path><path d="M14 8H16V12H14z"></path><path d="M14 14H16V18H14z"></path><path d="M8 20H10V24H8z"></path><path d="M14 20H16V24H14z"></path><path d="M30,14a2,2,0,0,0-2-2H22V4a2,2,0,0,0-2-2H4A2,2,0,0,0,2,4V30H30ZM4,4H20V28H4ZM22,28V14h6V28Z"></path></svg><span style="display: flex; flex-direction: column; line-height: 16px">Workspace settings<span class="cap">Managed by Priya Raman</span></span></span><a class="mi" role="menuitem" href="10-Employee-Agreement.dc.html"><svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M16,2A14,14,0,1,0,30,16,14,14,0,0,0,16,2Zm0,26A12,12,0,1,1,28,16,12,12,0,0,1,16,28Z"></path><circle cx="16" cy="23.5" r="1.5"></circle><path d="M17,8H15.5A4.49,4.49,0,0,0,11,12.5V13h2v-.5A2.5,2.5,0,0,1,15.5,10H17a2.5,2.5,0,0,1,0,5H15v4.5h2V17a4.5,4.5,0,0,0,0-9Z"></path></svg>Team AI Agreement</a><div class="msep"></div><a class="mi" role="menuitem" href="08-Manager-Dashboard.dc.html"><svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M11.41 26.59 7.83 23 28 23 28 21 7.83 21 11.41 17.410 10 16 4 22 10 28 11.41 26.59z"></path><path d="M28 10 22 4 20.59 5.41 24.17 9 4 9 4 11 24.17 11 20.59 14.59 22 16 28 10z"></path></svg>Switch to Priya’s view</a><a class="mi" role="menuitem" href="02-Landing.dc.html"><svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M6,30H18a2.0023,2.0023,0,0,0,2-2V25H18v3H6V4H18V7h2V4a2.0023,2.0023,0,0,0-2-2H6A2.0023,2.0023,0,0,0,4,4V28A2.0023,2.0023,0,0,0,6,30Z"></path><path d="M20.586 20.586 24.172 17 10 17 10 15 24.172 15 20.586 11.414 22 10 28 16 22 22 20.586 20.586z"></path></svg>Sign out</a></div>
+      </details>
+      <p class="cap t3 sn-x" style="padding: 8px 16px 0; color: #6f6f6f">Concept prototype. Not an official IBM product.</p>
+    </nav>
+
+    <main style="flex-grow: 1; min-width: 0; padding: 24px 32px 32px; display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 48px; align-items: start">
+      <article style="display: flex; flex-direction: column; gap: 24px">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span class="cap t2">Client Services, agreed 7 September 2026</span>
+          <h1 class="title">Our Team AI Agreement</h1>
+        </div>
+        <div>
+          <div class="dsec"><h2 class="dh">Tools we use</h2><p>Microsoft Copilot, ChatGPT Enterprise. Anything else, ask first.</p></div>
+          <div class="dsec"><h2 class="dh">What never goes in</h2><div style="display: flex; flex-direction: column; gap: 4px"><p>Client names, personal information, passwords, confidential commercial information, unapproved customer data.</p><p class="t2">Practise with de-identified or sample data.</p></div></div>
+          <div class="dsec"><h2 class="dh">How we check outputs</h2><ul style="padding-left: 16px; list-style: square; display: flex; flex-direction: column; gap: 2px"><li>Verify factual claims</li><li>Check sources or citations</li><li>Human review before client delivery</li><li>Review tone and context</li></ul></div>
+          <div class="dsec" style="border-bottom: 1px solid #e0e0e0"><h2 class="dh">When and who to ask</h2><div style="display: flex; flex-direction: column; gap: 4px"><p>Escalate uncertainty when AI output may affect a client decision, sensitive data may be involved, or an approved-tool boundary is unclear.</p><p>Ask <strong style="font-weight: 600">Priya Raman</strong>.</p></div></div>
+        </div>
+        <p style="padding: 24px; background: #edf5ff; font-size: 20px; line-height: 28px; font-weight: 300">Using AI here is normal. Tell us what works, what fails and what you learn.</p>
+      </article>
+
+      <aside style="background: #f4f4f4; display: flex; flex-direction: column; margin-top: 72px">
+        <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; justify-content: space-between; align-items: center"><span style="font-size: 16px; font-weight: 600">Signatures</span><span class="tag tn">{{ count }} of 9</span></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 2px">
+            <span class="sig" style="background: #a6c8ff; color: #001141">PR</span><span class="sig">SW</span><span class="sig">MT</span><span class="sig">TR</span><span class="sig">AK</span><span class="sig">LB</span><span class="sig">GO</span>
+            <sc-if value="{{ signed }}" hint-placeholder-val="{{ false }}"><span class="sig" style="background: #161616; color: #fff">DO</span></sc-if>
+            <sc-if value="{{ notSigned }}" hint-placeholder-val="{{ true }}"><span class="sig" style="background: #fff; border: 1px dashed #8d8d8d; color: #525252">DO</span></sc-if>
+          </div>
+          <p class="t2">Signing means you’ve read it and will follow it. You can raise changes at the week 4 review.</p>
+        </div>
+        <sc-if value="{{ notSigned }}" hint-placeholder-val="{{ true }}"><button class="btn btn-p" onClick="{{ sign }}">Sign the agreement<svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 26H30V28H2z"></path><path d="M25.4,9c0.8-0.8,0.8-2,0-2.8c0,0,0,0,0,0l-3.6-3.6c-0.8-0.8-2-0.8-2.8,0c0,0,0,0,0,0l-15,15V24h6.4L25.4,9z M20.4,4L24,7.6l-3,3L17.4,7L20.4,4z M6,22v-3.6l10-10l3.6,3.6l-10,10H6z"></path></svg></button></sc-if>
+        <sc-if value="{{ signed }}" hint-placeholder-val="{{ false }}"><a class="btn btn-p" href="11-Employee-Dashboard.dc.html">Go to this week<svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M18 6 16.57 7.393 24.15 15 4 15 4 17 24.15 17 16.57 24.573 18 26 28 16 18 6z"></path></svg></a></sc-if>
+      </aside>
+    </main>
+  </div>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div class="toast" role="status"><svg class="i" style="width: 20px; height: 20px; color: #42be65" viewBox="0 0 32 32" aria-hidden="true"><path d="M16,2A14,14,0,1,0,30,16,14,14,0,0,0,16,2ZM14,21.5908l-5-5L10.5906,15,14,18.4092,21.41,11l1.5957,1.5859Z"></path></svg><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">{{ toast }}</span><span class="cap" style="color: #c6c6c6">{{ toastSub }}</span></div></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1060}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { signed: false, toast: null, toastSub: "" };
+  }
+  componentWillUnmount() { clearTimeout(this._t); }
+  snVals() {
+    const w = this.state.snW || 256;
+    const col = !!this.state.snCol;
+    const drag = !!this.state.snDrag;
+    return {
+      snCls: "sn" + (col ? " sn-col" : "") + (drag ? " sn-drag" : ""),
+      snW: col ? 48 : w,
+      snOpen: !col,
+      snTgLabel: col ? "Expand sidebar" : "Collapse sidebar",
+      snTgRot: col ? 180 : 0,
+      snToggle: () => this.setState({ snCol: !col }),
+      snKey: (e) => {
+        if (e.key === "ArrowLeft") { e.preventDefault(); if (!col) { if (w - 16 < 200) this.setState({ snCol: true }); else this.setState({ snW: w - 16 }); } }
+        else if (e.key === "ArrowRight") { e.preventDefault(); if (col) this.setState({ snCol: false }); else this.setState({ snW: Math.min(400, w + 16) }); }
+        else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); this.setState({ snCol: !col }); }
+      },
+      snDown: (e) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startW = col ? 48 : w;
+        const move = (ev) => {
+          const n = startW + (ev.clientX - startX);
+          if (n < 140) this.setState({ snCol: true });
+          else this.setState({ snCol: false, snW: Math.max(200, Math.min(400, Math.round(n))) });
+        };
+        const up = () => {
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", up);
+          this.setState({ snDrag: false });
+        };
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", up);
+        this.setState({ snDrag: true });
+      }
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    return {
+      ...this.snVals(),
+      signed: s.signed,
+      notSigned: !s.signed,
+      count: s.signed ? 8 : 7,
+      sign: () => {
+        this.setState({ signed: true, toast: "You signed the Team AI Agreement", toastSub: "8 of 9 people have signed" });
+        clearTimeout(this._t);
+        this._t = setTimeout(() => this.setState({ toast: null }), 3000);
+      },
+      toast: s.toast,
+      toastSub: s.toastSub
+    };
+  }
+}
+</script>
+</body>
+</html>

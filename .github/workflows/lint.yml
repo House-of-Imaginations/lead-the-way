@@ -1,0 +1,67 @@
+name: Lint
+
+# Every push to main, and every pull request aimed at it. A PR check that does
+# not also run on main lets a bad merge-commit land unchecked.
+on:
+  push:
+    branches: [main]
+    paths:
+      # The application and everything the checks read. A change outside this
+      # list -- documentation, issue templates, agent skills, the architecture
+      # diagram -- cannot change what any of these commands answer.
+      - "convex/**"
+      - "src/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "tsconfig.json"
+      - "*.ts"
+      - "*.mjs"
+      # Editing this pipeline re-runs it. Otherwise a broken workflow file
+      # stays green until unrelated application code happens to land.
+      - ".github/workflows/lint.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      # The application and everything the checks read. A change outside this
+      # list -- documentation, issue templates, agent skills, the architecture
+      # diagram -- cannot change what any of these commands answer.
+      - "convex/**"
+      - "src/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "tsconfig.json"
+      - "*.ts"
+      - "*.mjs"
+      # Editing this pipeline re-runs it. Otherwise a broken workflow file
+      # stays green until unrelated application code happens to land.
+      - ".github/workflows/lint.yml"
+
+# Scoped per workflow so a second push cancels only this pipeline's stale run,
+# never a sibling pipeline that is still answering a different question.
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # `ci`, never `install`: it installs the lockfile exactly and fails if
+      # package.json and the lockfile disagree, which is the whole point of
+      # having one.
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint

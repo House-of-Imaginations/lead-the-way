@@ -1,0 +1,71 @@
+import { expect, test } from "vitest";
+import { escapeHtml, renderEmail } from "../../convex/lib/email/template";
+
+/**
+ * The email template, tested where being quietly wrong costs something.
+ *
+ * Not the markup -- nobody should be pinning a `<td>` in a test. What earns its
+ * place is the escaping, because a workspace name is one signup away from
+ * anybody and the output lands as HTML in somebody else's inbox; and the fact
+ * that the plain-text part says the same thing as the rich one, because those
+ * are written separately and drift silently.
+ */
+
+test("a name cannot carry markup into the message", () => {
+  const { html } = renderEmail({
+    heading: "Join <script>alert(1)</script>",
+    paragraphs: ['A "quoted" & ampersanded name'],
+    footer: "<b>bold</b>",
+  });
+
+  expect(html).not.toContain("<script>");
+  expect(html).toContain("&lt;script&gt;");
+  expect(html).toContain("&quot;quoted&quot;");
+  expect(html).toContain("&amp; ampersanded");
+  expect(html).not.toContain("<b>bold</b>");
+});
+
+test("ampersands are escaped once, not twice", () => {
+  // `&` has to go first or every entity the other four produce is mangled into
+  // `&amp;lt;` and the reader sees the markup rather than the character.
+  expect(escapeHtml("<a & b>")).toBe("&lt;a &amp; b&gt;");
+});
+
+test("a link that is not http is not linked", () => {
+  const { html } = renderEmail({
+    heading: "Hello",
+    paragraphs: [],
+    action: { label: "Tap", url: "javascript:alert(1)" },
+  });
+
+  expect(html).not.toContain("javascript:alert");
+  expect(html).toContain('href="#"');
+});
+
+test("the plain-text part carries the words and the link", () => {
+  const { text } = renderEmail({
+    heading: "Join Acme",
+    paragraphs: ["You have been invited."],
+    action: { label: "Accept", url: "https://example.test/join/abc" },
+    footer: "Expires in seven days.",
+  });
+
+  expect(text).toContain("Join Acme");
+  expect(text).toContain("You have been invited.");
+  // The URL spelled out, because a text part with no reachable link is a text
+  // part nobody can act on.
+  expect(text).toContain("https://example.test/join/abc");
+  expect(text).toContain("Expires in seven days.");
+  // Entities belong to the HTML half only. A reader of the text part should
+  // never see `&amp;`.
+  expect(text).not.toContain("&lt;");
+});
+
+test("the text part is not escaped, and the html part is", () => {
+  const { html, text } = renderEmail({
+    heading: "Bob & Co",
+    paragraphs: [],
+  });
+  expect(text).toContain("Bob & Co");
+  expect(html).toContain("Bob &amp; Co");
+});

@@ -1,0 +1,891 @@
+/// <reference types="vite/client" />
+import { convexTest } from "convex-test";
+import { ConvexError } from "convex/values";
+import { expect, test } from "vitest";
+import { api } from "../../convex/_generated/api";
+import schema from "../../convex/schema";
+import { registerComponents, seedAuthUser } from "./testHelpers";
+
+/**
+ * Organizations, and the four ways this feature can go badly wrong.
+ *
+ * The happy path is the cheapest thing to test here and the least likely to
+ * break. What earns its place instead:
+ *
+ *  - the AUTHORISATION boundary: a non-member, and a member without the
+ *    permission the function names;
+ *  - ESCALATION: the reason custom roles are not just decoration. Without the
+ *    subset rules, `roles:manage` is owner and `members:manage` can seize the
+ *    workspace;
+ *  - LOCKOUT: an org left with nobody who can administer it. Unrecoverable, so
+ *    every path into it is pinned here;
+ *  - the INVITE as a credential: single use, expiry, and the fact that
+ *    accepting is insert-only.
+ */
+const modules = import.meta.glob("../../convex/**/*.ts");
+
+const ALICE = { subject: "user_alice" };
+const BOB = { subject: "user_bob" };
+const CAROL = { subject: "user_carol" };
+
+function harness() {
+  const t = convexTest(schema, modules);
+  registerComponents(t);
+  return t;
+}
+
+/** Alice makes a workspace and owns it. The starting point for most tests. */
+async function workspace(t: ReturnType<typeof harness>) {
+  const { orgId, slug } = await t
+    .withIdentity(ALICE)
+    .mutation(api.orgs.create, { name: "Acme" });
+  return { orgId, slug };
+}
+
+test("creating a workspace makes an owner, two starter roles and one seat", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+
+  const rows = await t.run(async (ctx) => ({
+    roles: await ctx.db.query("orgRoles").collect(),
+    members: await ctx.db.query("memberships").collect(),
+  }));
+
+  // An owner, plus something to invite people as.
+  expect(rows.roles.map((role) => [role.kind, role.name])).toEqual([
+    ["owner", "Owner"],
+    ["custom", "Admin"],
+    ["custom", "Member"],
+  ]);
+  expect(rows.members).toHaveLength(1);
+  expect(rows.members[0].userId).toBe(ALICE.subject);
+  expect(rows.members[0].orgId).toBe(orgId);
+});
+
+test("the owner role has every permission without storing any", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+
+  const permissions = await t
+    .withIdentity(ALICE)
+    .query(api.orgs.myPermissions, { orgId });
+
+  // Resolved from the code constant, so a permission added later reaches every
+  // existing owner on deploy rather than needing a migration.
+  expect(permissions).toContain("org:manage");
+  expect(permissions).toContain("roles:manage");
+  expect(permissions).toContain("members:manage");
+
+  const stored = await t.run(
+    async (ctx) => (await ctx.db.query("orgRoles").collect())[0],
+  );
+  expect(stored).not.toHaveProperty("permissions");
+});
+
+test("a signed-out caller reaches nothing", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+
+  await expect(t.query(api.orgs.mine, {})).rejects.toThrow(ConvexError);
+  await expect(t.query(api.members.list, { orgId })).rejects.toThrow(
+    ConvexError,
+  );
+});
+
+test("a stranger is not told whether the workspace exists", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+
+  // Same code for "no such org" and "not yours", so probing ids learns nothing.
+  await expect(
+    t.withIdentity(BOB).query(api.members.list, { orgId }),
+  ).rejects.toMatchObject({ data: { code: "NOT_A_MEMBER" } });
+
+  await expect(
+    t.withIdentity(BOB).query(api.orgs.bySlug, { slug: "acme" }),
+  ).resolves.toBeNull();
+});
+
+test("a slug that would shadow a route is refused", async () => {
+  const t = harness();
+  // `/orgs/new` is a screen. An org slugged `new` would make every link to the
+  // create page open the org instead.
+  await expect(
+    t.withIdentity(ALICE).mutation(api.orgs.create, { name: "New" }),
+  ).rejects.toMatchObject({ data: { code: "SLUG_TAKEN" } });
+});
+
+test("two spellings of one name cannot become two workspaces", async () => {
+  const t = harness();
+  await t.withIdentity(ALICE).mutation(api.orgs.create, { name: "Acme" });
+
+  await expect(
+    t.withIdentity(BOB).mutation(api.orgs.create, { name: "  ACME  " }),
+  ).rejects.toMatchObject({ data: { code: "SLUG_TAKEN" } });
+});
+
+/**
+ * THE ESCALATION SET. Without the subset rules in `lib/orgs/permissions.ts`,
+ * every one of these passes and custom roles mean nothing: `roles:manage` can
+ * write itself a bigger role, and `members:manage` can move itself into one.
+ */
+test("a role cannot be created with more than the caller holds", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  // Alice gives Bob a role that can manage roles, and nothing else.
+  const editorId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Editor",
+    permissions: ["roles:manage"],
+  });
+  const token = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: editorId,
+  });
+  await t
+    .withIdentity(BOB)
+    .mutation(api.invites.accept, { token: token.token });
+
+  // Bob may make roles, but not ones that reach further than his own.
+  await expect(
+    t.withIdentity(BOB).mutation(api.orgRoles.create, {
+      orgId,
+      name: "Sneaky",
+      permissions: ["org:manage"],
+    }),
+  ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
+});
+
+test("a role cannot be widened past the caller's own reach", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const editorId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Editor",
+    permissions: ["roles:manage"],
+  });
+  const token = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: editorId,
+  });
+  await t
+    .withIdentity(BOB)
+    .mutation(api.invites.accept, { token: token.token });
+
+  // Bob editing his own role to add everything is the whole attack.
+  await expect(
+    t.withIdentity(BOB).mutation(api.orgRoles.update, {
+      orgId,
+      roleId: editorId,
+      name: "Editor",
+      permissions: ["roles:manage", "org:manage", "members:manage"],
+    }),
+  ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
+});
+
+test("an admin cannot promote somebody past themselves, or evict an owner", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const adminId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Admin",
+    permissions: ["members:read", "members:manage"],
+  });
+  const token = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: adminId,
+  });
+  await t
+    .withIdentity(BOB)
+    .mutation(api.invites.accept, { token: token.token });
+
+  const members = await t.withIdentity(BOB).query(api.members.list, { orgId });
+  const aliceSeat = members.find((m) => m.userId === ALICE.subject)!;
+
+  // Bob manages members, but Alice reaches further than he does.
+  await expect(
+    t.withIdentity(BOB).mutation(api.members.remove, {
+      orgId,
+      membershipId: aliceSeat.membershipId,
+    }),
+  ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
+
+  const bobSeat = members.find((m) => m.userId === BOB.subject)!;
+  await expect(
+    t.withIdentity(BOB).mutation(api.members.changeRole, {
+      orgId,
+      membershipId: bobSeat.membershipId,
+      roleId: aliceSeat.roleId,
+    }),
+  ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
+});
+
+/**
+ * THE LOCKOUT SET. An org with nobody able to administer it cannot be repaired
+ * from inside the product, so each of these is pinned separately.
+ */
+test("the owner role cannot be deleted or edited", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const roles = await alice.query(api.orgRoles.list, { orgId });
+  const owner = roles.find((r) => r.isOwner)!;
+
+  await expect(
+    alice.mutation(api.orgRoles.remove, { orgId, roleId: owner._id }),
+  ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+
+  await expect(
+    alice.mutation(api.orgRoles.update, {
+      orgId,
+      roleId: owner._id,
+      name: "Owner",
+      permissions: [],
+    }),
+  ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+});
+
+test("the last owner cannot leave, be removed, or be demoted", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const memberId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Member",
+    permissions: ["members:read"],
+  });
+  const members = await alice.query(api.members.list, { orgId });
+  const seat = members[0];
+
+  await expect(
+    alice.mutation(api.members.leave, { orgId }),
+  ).rejects.toMatchObject({ data: { code: "LAST_OWNER" } });
+  await expect(
+    alice.mutation(api.members.remove, {
+      orgId,
+      membershipId: seat.membershipId,
+    }),
+  ).rejects.toMatchObject({ data: { code: "LAST_OWNER" } });
+  await expect(
+    alice.mutation(api.members.changeRole, {
+      orgId,
+      membershipId: seat.membershipId,
+      roleId: memberId,
+    }),
+  ).rejects.toMatchObject({ data: { code: "LAST_OWNER" } });
+});
+
+test("a role somebody still holds cannot be deleted", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const memberId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Member",
+    permissions: ["members:read"],
+  });
+  const token = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: memberId,
+  });
+  await t
+    .withIdentity(BOB)
+    .mutation(api.invites.accept, { token: token.token });
+
+  // Cascading would evict Bob as a side effect of tidying roles; reassigning
+  // would silently change what he can do. Refusing is the only one that isn't
+  // a surprise.
+  await expect(
+    alice.mutation(api.orgRoles.remove, { orgId, roleId: memberId }),
+  ).rejects.toMatchObject({ data: { code: "ROLE_IN_USE" } });
+});
+
+/**
+ * THE PERMANENT BRICK. A sole owner's seat used to outlive their account: for
+ * the deletion window they were an owner refused every write, and after the
+ * purge the row stayed behind counting as a live owner forever.
+ */
+test("deleting an account is refused while it solely owns a shared workspace", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const memberId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Member",
+    permissions: ["members:read"],
+  });
+  const token = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: memberId,
+  });
+  await t
+    .withIdentity(BOB)
+    .mutation(api.invites.accept, { token: token.token });
+
+  await alice.mutation(api.profiles.saveProfile, { displayName: "Alice" });
+  await expect(
+    alice.mutation(api.account.deleteAccount, {}),
+  ).rejects.toMatchObject({ data: { code: "ORG_OWNERSHIP_HELD" } });
+
+  // The throw rolled the tombstone back too: not half-deleted, not deleted.
+  await expect(alice.query(api.profiles.me, {})).resolves.toMatchObject({
+    displayName: "Alice",
+  });
+});
+
+test("deleting an account takes a workspace nobody else is in", async () => {
+  const t = harness();
+  await workspace(t);
+  const alice = t.withIdentity(ALICE);
+  await alice.mutation(api.profiles.saveProfile, { displayName: "Alice" });
+
+  await alice.mutation(api.account.deleteAccount, {});
+
+  const left = await t.run(async (ctx) => ({
+    orgs: (await ctx.db.query("orgs").collect()).length,
+    roles: (await ctx.db.query("orgRoles").collect()).length,
+    members: (await ctx.db.query("memberships").collect()).length,
+  }));
+  expect(left).toEqual({ orgs: 0, roles: 0, members: 0 });
+});
+
+test("a seat is given up at the tap, not left for the purge", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const memberId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Member",
+    permissions: ["members:read"],
+  });
+  const token = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: memberId,
+  });
+  await t
+    .withIdentity(BOB)
+    .mutation(api.invites.accept, { token: token.token });
+
+  await t.withIdentity(BOB).mutation(api.profiles.saveProfile, {
+    displayName: "Bob",
+  });
+  await t.withIdentity(BOB).mutation(api.account.deleteAccount, {});
+
+  const members = await alice.query(api.members.list, { orgId });
+  expect(members.map((m) => m.userId)).toEqual([ALICE.subject]);
+});
+
+/** THE INVITE AS A CREDENTIAL. */
+test("an invitation is single use and cannot be replayed", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const memberId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Member",
+    permissions: ["members:read"],
+  });
+  const { token } = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: memberId,
+  });
+
+  await t.withIdentity(BOB).mutation(api.invites.accept, { token });
+  await expect(
+    t.withIdentity(CAROL).mutation(api.invites.accept, { token }),
+  ).rejects.toMatchObject({ data: { code: "INVITE_INVALID" } });
+});
+
+test("an invitation cannot hand over ownership", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+  const roles = await alice.query(api.orgRoles.list, { orgId });
+  const owner = roles.find((r) => r.isOwner)!;
+
+  await expect(
+    alice.mutation(api.invites.create, { orgId, roleId: owner._id }),
+  ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+});
+
+/**
+ * THE SELF-DEMOTION PRIMITIVE. If accepting patched an existing membership,
+ * any invitation link would demote whoever opened it -- including an owner
+ * opening a "member" link somebody sent them.
+ */
+test("accepting an invitation never changes a role you already have", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const memberId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Member",
+    permissions: ["members:read"],
+  });
+  const { token } = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: memberId,
+  });
+
+  // The owner opens a member-level link for her own workspace.
+  await alice.mutation(api.invites.accept, { token });
+
+  const permissions = await alice.query(api.orgs.myPermissions, { orgId });
+  expect(permissions).toContain("org:manage");
+});
+
+test("an expired invitation is refused", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const memberId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Member",
+    permissions: ["members:read"],
+  });
+  const { token } = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: memberId,
+  });
+
+  await t.run(async (ctx) => {
+    const invite = await ctx.db.query("orgInvites").first();
+    await ctx.db.patch(invite!._id, { expiresAt: Date.now() - 1 });
+  });
+
+  await expect(
+    t.withIdentity(BOB).mutation(api.invites.accept, { token }),
+  ).rejects.toMatchObject({ data: { code: "INVITE_EXPIRED" } });
+});
+
+test("widening a role revokes the invitations written for what it was", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const memberId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Member",
+    permissions: ["members:read"],
+  });
+  const { token } = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: memberId,
+  });
+
+  await alice.mutation(api.orgRoles.update, {
+    orgId,
+    roleId: memberId,
+    name: "Member",
+    permissions: ["members:read", "members:manage"],
+  });
+
+  // The link promised a reader's seat. It does not silently become an admin's.
+  await expect(
+    t.withIdentity(BOB).mutation(api.invites.accept, { token }),
+  ).rejects.toMatchObject({ data: { code: "INVITE_INVALID" } });
+});
+
+test("a pinned invitation is refused for anybody but its verified address", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  // Real auth rows, not claims: the check under test reads the component's
+  // own document, because a JWT says whatever it was minted with.
+  const bob = await seedAuthUser(t, {
+    name: "Bob",
+    email: "bob@example.com",
+    emailVerified: true,
+  });
+  const carol = await seedAuthUser(t, {
+    name: "Carol",
+    email: "carol@example.com",
+    emailVerified: true,
+  });
+  const dan = await seedAuthUser(t, {
+    name: "Dan",
+    email: "dan@example.com",
+    emailVerified: false,
+  });
+
+  const memberId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Member",
+    permissions: ["members:read"],
+  });
+  const { token, emailed } = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: memberId,
+    email: "Bob@Example.com ",
+  });
+
+  // No sending domain in the test environment, so nothing goes out and the
+  // link still works. The feature detects its own absence.
+  expect(emailed).toBe(false);
+
+  // The wrong address.
+  await expect(
+    t.withIdentity(carol).mutation(api.invites.accept, { token }),
+  ).rejects.toMatchObject({ data: { code: "INVITE_INVALID" } });
+
+  // His own address, but unverified: a claim, not a fact.
+  const pinnedToDan = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: memberId,
+    email: "dan@example.com",
+  });
+  await expect(
+    t
+      .withIdentity(dan)
+      .mutation(api.invites.accept, { token: pinnedToDan.token }),
+  ).rejects.toMatchObject({ data: { code: "EMAIL_UNVERIFIED" } });
+
+  // The page knows each outcome before anybody presses Join, without being
+  // told the pinned address.
+  const accessFor = async (who: typeof bob, invite: string) =>
+    (await t.withIdentity(who).query(api.invites.preview, { token: invite }))
+      ?.access;
+  expect(await accessFor(bob, token)).toBe("ready");
+  expect(await accessFor(carol, token)).toBe("wrongAccount");
+  expect(await accessFor(dan, pinnedToDan.token)).toBe("confirmEmail");
+
+  // Normalised on both sides, so the casing and the stray space do not matter.
+  await expect(
+    t.withIdentity(bob).mutation(api.invites.accept, { token }),
+  ).resolves.toMatchObject({ slug: "acme" });
+});
+
+test("resending a pinned invitation keeps its link and restarts its week", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+  const roles = await alice.query(api.orgRoles.list, { orgId });
+  const member = roles.find((role) => role.name === "Member")!;
+
+  const pinned = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: member._id,
+    email: "bob@example.com",
+  });
+  const [before] = await alice.query(api.invites.list, { orgId });
+  await t.run(async (ctx) => {
+    await ctx.db.patch(before._id, { expiresAt: Date.now() + 1000 });
+  });
+
+  const { emailed } = await alice.mutation(api.invites.resend, {
+    orgId,
+    inviteId: before._id,
+  });
+  // No sending domain in tests, and the resend says so rather than pretending.
+  expect(emailed).toBe(false);
+
+  const [after] = await alice.query(api.invites.list, { orgId });
+  expect(after.token).toBe(pinned.token);
+  expect(after.expiresAt).toBeGreaterThan(Date.now() + 6 * 24 * 60 * 60 * 1000);
+
+  // A plain link has no address to resend to.
+  await alice.mutation(api.invites.create, { orgId, roleId: member._id });
+  const link = (await alice.query(api.invites.list, { orgId })).find(
+    (invite) => invite.email === null,
+  )!;
+  await expect(
+    alice.mutation(api.invites.resend, { orgId, inviteId: link._id }),
+  ).rejects.toMatchObject({ data: { code: "FIELD_REQUIRED" } });
+});
+
+test("only somebody who may manage members can read the tokens", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const memberId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Member",
+    permissions: ["members:read"],
+  });
+  const { token } = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: memberId,
+  });
+  await t.withIdentity(BOB).mutation(api.invites.accept, { token });
+
+  await expect(
+    t.withIdentity(BOB).query(api.invites.list, { orgId }),
+  ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+});
+
+/**
+ * The guards added after review, each of which was a real hole.
+ *
+ * They share a shape: something that looked like it only narrowed, or only
+ * counted, and turned out to be a way around a rule stated elsewhere.
+ */
+test("narrowing a stronger role is escalation, not housekeeping", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  // Bob may edit roles and nothing else.
+  const editorId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Editor",
+    permissions: ["roles:manage"],
+  });
+  const adminId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Admin",
+    permissions: ["org:manage", "members:manage"],
+  });
+  const { token } = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: editorId,
+  });
+  await t.withIdentity(BOB).mutation(api.invites.accept, { token });
+  const bob = t.withIdentity(BOB);
+
+  // Adding is refused, which `requireWithin` already covered.
+  await expect(
+    bob.mutation(api.orgRoles.update, {
+      orgId,
+      roleId: editorId,
+      name: "Editor",
+      permissions: ["roles:manage", "org:manage"],
+    }),
+  ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
+
+  // STRIPPING is refused too, and that is the one that was missing: nothing is
+  // added, so the subset check passes vacuously and a role editor could quietly
+  // disarm every administrator in the workspace.
+  await expect(
+    bob.mutation(api.orgRoles.update, {
+      orgId,
+      roleId: adminId,
+      name: "Admin",
+      permissions: [],
+    }),
+  ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
+
+  // And so is deleting it outright, which is the same act with fewer steps.
+  await expect(
+    bob.mutation(api.orgRoles.remove, { orgId, roleId: adminId }),
+  ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
+});
+
+test("a lapsed invitation does not hold a slot forever", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const memberId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Member",
+    permissions: ["members:read"],
+  });
+  const { token } = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: memberId,
+  });
+
+  // Age it past its window. Nothing sweeps on a timer, so a lapsed row sits in
+  // the table counting against the ceiling while `list` hides it -- which is
+  // how the invite cap used to brick itself with nothing visible to revoke.
+  await t.run(async (ctx) => {
+    const invite = await ctx.db
+      .query("orgInvites")
+      .withIndex("by_token", (q) => q.eq("token", token))
+      .unique();
+    await ctx.db.patch(invite!._id, { expiresAt: Date.now() - 1 });
+  });
+
+  await expect(
+    t.withIdentity(BOB).mutation(api.invites.accept, { token }),
+  ).rejects.toMatchObject({ data: { code: "INVITE_EXPIRED" } });
+
+  // Creating the next one clears whatever has lapsed, so the count that the
+  // ceiling is checked against is of live invitations only.
+  await alice.mutation(api.invites.create, { orgId, roleId: memberId });
+  const rows = await t.run(async (ctx) => ctx.db.query("orgInvites").collect());
+  expect(rows).toHaveLength(1);
+});
+
+test("a workspace name cannot carry an email header into a subject line", async () => {
+  const t = harness();
+  const { orgId } = await t
+    .withIdentity(ALICE)
+    .mutation(api.orgs.create, { name: "Acme\r\nBcc: someone@example.com" });
+
+  const seated = await t
+    .withIdentity(ALICE)
+    .query(api.orgs.bySlug, { slug: "acme-bcc-someone-example-com" });
+  expect(seated?.org.name).toBe("Acme  Bcc: someone@example.com");
+  expect(seated?.org.name).not.toContain("\r");
+  expect(orgId).toBeDefined();
+});
+
+test("accepting an invite gives the new member a display name", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+
+  const memberId = await alice.mutation(api.orgRoles.create, {
+    orgId,
+    name: "Member",
+    permissions: ["members:read"],
+  });
+  const { token } = await alice.mutation(api.invites.create, {
+    orgId,
+    roleId: memberId,
+  });
+
+  const bob = await seedAuthUser(t, {
+    name: "Bob",
+    email: "bob@example.com",
+    emailVerified: true,
+  });
+  await t.withIdentity(bob).mutation(api.invites.accept, { token });
+
+  const members = await alice.query(api.members.list, { orgId });
+  const seat = members.find((member) => member.userId === bob.subject);
+  // `accept` calls `setActiveOrgOf`, which ensures a profile from his auth
+  // account, so he is listed by name rather than by his raw address.
+  expect(seat?.displayName).toBe("Bob");
+
+  // Alice has no auth row seeded and no profile either, which is the only case
+  // the placeholder is left for.
+  const owner = members.find((member) => member.isOwner);
+  expect(owner?.displayName).toBe("Someone");
+});
+
+test("there is a ceiling on how many workspaces one account can hold", async () => {
+  const t = harness();
+  const alice = t.withIdentity(ALICE);
+
+  // The ceiling is 50, and it is enforced rather than decorative: `seatsOfUser`
+  // reads exactly that many, so a seat past it is one account deletion cannot
+  // release. See `convex/lib/orgs/membership.ts`.
+  for (let n = 0; n < 50; n += 1) {
+    await alice.mutation(api.orgs.create, { name: `Workspace ${n}` });
+  }
+  await expect(
+    alice.mutation(api.orgs.create, { name: "One too many" }),
+  ).rejects.toMatchObject({ data: { code: "FIELD_REQUIRED" } });
+});
+
+/**
+ * The workspace picture.
+ *
+ * WHAT CANNOT BE TESTED HERE, stated so nobody spends an afternoon on it again:
+ * `convex-test`'s `ctx.storage.store()` DROPS the blob's type. `ctx.db.system`
+ * comes back with `sha256` and `size` and no `contentType` at all, so
+ * `setImage`'s type gate refuses every file a test can produce. The gate itself
+ * is the one thing standing between this product and a stored SVG -- an image
+ * by MIME and a script-execution surface -- so it is not going anywhere; it is
+ * simply unreachable from here until the harness records the type.
+ *
+ * That leaves the parts that are real in a test, and they are the ones with
+ * teeth anyway: the AUTHORISATION boundary, and the CASCADE. A picture left in
+ * storage after its workspace is gone is a leak nobody ever notices, which is
+ * exactly the class of defect `profiles.test.ts` already pins for accounts.
+ */
+test("a member without org:manage cannot touch the workspace picture", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+
+  // Bob joins with a role that can read members and nothing else.
+  const roleId = await t.withIdentity(ALICE).mutation(api.orgRoles.create, {
+    orgId,
+    name: "Reader",
+    permissions: ["members:read"],
+  });
+  await t.run(async (ctx) => {
+    await ctx.db.insert("memberships", {
+      userId: BOB.subject,
+      orgId,
+      roleId,
+      createdAt: Date.now(),
+    });
+  });
+
+  const file = await t.run(async (ctx) =>
+    ctx.storage.store(new Blob(["pretend png"], { type: "image/png" })),
+  );
+
+  await expect(
+    t.withIdentity(BOB).mutation(api.orgs.setImage, { orgId, storageId: file }),
+  ).rejects.toThrow(ConvexError);
+  await expect(
+    t.withIdentity(BOB).mutation(api.orgs.clearImage, { orgId }),
+  ).rejects.toThrow(ConvexError);
+  // Minting an upload URL is write access to this deployment's storage, so it
+  // is gated on `org:manage` rather than on membership alone -- otherwise every
+  // member of every workspace could fill the deployment with files.
+  await expect(
+    t.withIdentity(BOB).mutation(api.orgs.generateImageUploadUrl, { orgId }),
+  ).rejects.toThrow(ConvexError);
+});
+
+test("clearing a workspace picture deletes the bytes", async () => {
+  const t = harness();
+  const { orgId, slug } = await workspace(t);
+
+  // Set directly, for the harness reason above.
+  const file = await t.run(async (ctx) => {
+    const stored = await ctx.storage.store(
+      new Blob(["pretend png"], { type: "image/png" }),
+    );
+    await ctx.db.patch(orgId, { imageId: stored });
+    return stored;
+  });
+
+  const before = await t.withIdentity(ALICE).query(api.orgs.bySlug, { slug });
+  expect(before?.org.imageUrl).toEqual(expect.any(String));
+  // The handle itself is never on the wire -- only a URL minted per read, since
+  // a stored Convex storage URL is signed and expiring.
+  expect(before?.org).not.toHaveProperty("imageId");
+
+  await t.withIdentity(ALICE).mutation(api.orgs.clearImage, { orgId });
+
+  const after = await t.run(async (ctx) => ({
+    file: await ctx.db.system.get(file),
+    org: await ctx.db.get(orgId),
+  }));
+  expect(after.file).toBeNull();
+  expect(after.org?.imageId).toBeUndefined();
+});
+
+test("deleting a workspace takes its picture with it", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+
+  const file = await t.run(async (ctx) => {
+    const stored = await ctx.storage.store(
+      new Blob(["pretend png"], { type: "image/png" }),
+    );
+    await ctx.db.patch(orgId, { imageId: stored });
+    return stored;
+  });
+
+  await t.withIdentity(ALICE).mutation(api.orgs.remove, { orgId });
+
+  const after = await t.run(async (ctx) => ({
+    file: await ctx.db.system.get(file),
+    org: await ctx.db.get(orgId),
+  }));
+  expect(after.file).toBeNull();
+  expect(after.org).toBeNull();
+});

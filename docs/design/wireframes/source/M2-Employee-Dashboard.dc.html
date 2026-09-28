@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>This week (mobile) - Lead the Way</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans','Helvetica Neue',Arial,sans-serif;color:#161616;background:#fff;-webkit-font-smoothing:antialiased;font-size:14px;line-height:20px;letter-spacing:.16px}
+*{box-sizing:border-box}
+h1,h2,h3,p,ol,ul{margin:0}
+ol,ul{padding:0;list-style:none}
+a{color:#0f62fe;text-decoration:none}
+button{font-family:inherit;letter-spacing:inherit}
+:focus-visible{outline:2px solid #0f62fe;outline-offset:-2px}
+.i{width:16px;height:16px;flex-shrink:0;fill:currentColor}
+.t2{color:#525252}
+.cap{font-size:12px;line-height:16px;letter-spacing:.32px}
+.btn{display:flex;align-items:center;justify-content:space-between;height:48px;padding:0 16px;border:1px solid transparent;border-radius:0;font:400 14px/18px 'IBM Plex Sans',sans-serif;letter-spacing:.16px;white-space:nowrap;text-decoration:none;width:100%;cursor:pointer}
+.btn-p{background:#0f62fe;color:#fff}
+.btn-s{background:#393939;color:#fff}
+.btn-t{background:transparent;color:#0f62fe;border-color:#0f62fe}
+.tag{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:24px;font-size:12px;letter-spacing:.32px;background:#e0e0e0;color:#161616;text-decoration:none}
+.tag-blue{background:#d0e2ff;color:#002d9c;height:24px;padding:0 8px}
+.bar{height:4px;background:#e0e0e0}.bar>i{display:block;height:100%;background:#0f62fe}
+.hd{height:48px;background:#161616;color:#f4f4f4;display:flex;align-items:center;justify-content:space-between}
+.tile{background:#f4f4f4;display:flex;flex-direction:column}
+.tile-b{padding:16px;display:flex;flex-direction:column;gap:10px}
+.toast{position:absolute;top:56px;left:8px;right:8px;background:#393939;color:#f4f4f4;border-left:3px solid #42be65;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;z-index:40}
+</style>
+</helmet>
+<div style="width: 390px; height: 1260px; position: relative; display: flex; flex-direction: column; background: #fff; overflow: hidden">
+  <header class="hd">
+    <span style="display: flex; align-items: center"><button aria-label="Open menu" style="width: 48px; height: 48px; border: 0; background: transparent; color: #f4f4f4; display: inline-flex; align-items: center; justify-content: center"><svg class="i" style="width: 20px; height: 20px" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 6H28V8H4z"></path><path d="M4 24H28V26H4z"></path><path d="M4 12H28V14H4z"></path><path d="M4 18H28V20H4z"></path></svg></button><span style="font-weight: 600; font-size: 14px">Lead the Way</span></span>
+    <span style="width: 48px; height: 48px; display: inline-flex; align-items: center; justify-content: center"><span style="width: 24px; height: 24px; background: #e0e0e0; color: #161616; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600">DO</span></span>
+  </header>
+
+  <main style="padding: 24px 16px 32px; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <h1 style="font-size: 32px; line-height: 40px; font-weight: 300">Good afternoon, Dan</h1>
+      <p class="t2" style="font-size: 16px; line-height: 24px">Week 2 of 4. Your protected hour starts today at 2:00 PM.</p>
+      <span class="tag tag-blue" style="align-self: flex-start">Protected time, Wed 2:00-3:00 PM</span>
+    </div>
+
+    <section class="tile" aria-labelledby="l-h">
+      <div class="tile-b">
+        <div style="display: flex; justify-content: space-between"><span class="cap t2">Learn</span><span class="cap t2">15 min</span></div>
+        <h2 id="l-h" style="font-size: 20px; line-height: 28px; font-weight: 400">AI Productivity Fundamentals</h2>
+        <p class="t2">Session 2: writing reusable prompts for recurring work.</p>
+        <div style="display: flex; justify-content: space-between"><span class="cap t2">Course progress</span><span class="cap">60%</span></div>
+        <div class="bar"><i style="width: 60%"></i></div>
+      </div>
+      <button class="btn btn-p" onClick="{{ learn }}">Continue learning<svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M18 6 16.57 7.393 24.15 15 4 15 4 17 24.15 17 16.57 24.573 18 26 28 16 18 6z"></path></svg></button>
+    </section>
+
+    <section class="tile" aria-labelledby="a-h">
+      <div class="tile-b">
+        <span class="cap t2">Apply</span>
+        <h2 id="a-h" style="font-size: 20px; line-height: 28px; font-weight: 400">Use one idea in a real work task</h2>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <a class="tag" href="M3-Work-Project.dc.html">Improve a client report</a>
+          <a class="tag" href="M3-Work-Project.dc.html">Reusable prompt template</a>
+          <a class="tag" href="M3-Work-Project.dc.html">Email workflow</a>
+          <a class="tag" href="M3-Work-Project.dc.html">Meeting notes</a>
+        </div>
+      </div>
+      <a class="btn btn-s" href="M3-Work-Project.dc.html">Start work project<svg class="i" viewBox="0 0 32 32" aria-hidden="true"><path d="M17 15 17 8 15 8 15 15 8 15 8 17 15 17 15 24 17 24 17 17 24 17 24 15z"></path></svg></a>
+    </section>
+
+    <section class="tile" aria-labelledby="r-h">
+      <div class="tile-b">
+        <div style="display: flex; justify-content: space-between; align-items: center"><span class="cap t2">Reflect</span><span class="cap t2">Not started</span></div>
+        <h2 id="r-h" style="font-size: 20px; line-height: 28px; font-weight: 400">What changed, and how you checked it</h2>
+      </div>
+      <a class="btn btn-t" href="M3-Work-Project.dc.html">Add reflection</a>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline"><h2 style="font-size: 20px; line-height: 28px; font-weight: 400">Your sprint</h2><a href="13-Sprint-Progress.dc.html">View</a></div>
+      <ol style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px">
+        <li style="padding: 10px 8px; border-top: 4px solid #0f62fe; background: #f4f4f4"><span class="cap t2">Wk 1</span><br>Done</li>
+        <li style="padding: 10px 8px; border-top: 4px solid #0f62fe; background: #edf5ff"><span class="cap" style="color: #0043ce">Wk 2</span><br><strong style="font-weight: 600">Now</strong></li>
+        <li style="padding: 10px 8px; border-top: 4px solid #e0e0e0; background: #f4f4f4"><span class="cap t2">Wk 3</span><br><span class="t2">23 Sep</span></li>
+        <li style="padding: 10px 8px; border-top: 4px solid #e0e0e0; background: #f4f4f4"><span class="cap t2">Wk 4</span><br><span class="t2">30 Sep</span></li>
+      </ol>
+      <p class="t2" style="padding: 12px; background: #edf5ff; border-left: 3px solid #0043ce; color: #161616">You are not expected to learn after hours. This session is part of your working week.</p>
+    </section>
+  </main>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div class="toast" role="status"><svg class="i" style="width: 20px; height: 20px; color: #42be65" viewBox="0 0 32 32" aria-hidden="true"><path d="M16,2A14,14,0,1,0,30,16,14,14,0,0,0,16,2ZM14,21.5908l-5-5L10.5906,15,14,18.4092,21.41,11l1.5957,1.5859Z"></path></svg><span>{{ toast }}</span></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1260}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { toast: null };
+  }
+  componentWillUnmount() { clearTimeout(this._t); }
+  renderVals() {
+    return {
+      learn: () => {
+        this.setState({ toast: "Opening SkillsBuild, session 2" });
+        clearTimeout(this._t);
+        this._t = setTimeout(() => this.setState({ toast: null }), 2600);
+      },
+      toast: this.state.toast
+    };
+  }
+}
+</script>
+</body>
+</html>
