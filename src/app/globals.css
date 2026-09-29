@@ -1,4 +1,6 @@
 @import "../styles/tailwind-theme.css";
+/* Component classes sit in the components layer, so layout utilities can still override them. */
+@import "../styles/components.css" layer(components);
 
 /* `dark:` follows the same rules as the tokens: a forced data-theme wins,
    otherwise the OS preference applies unless light was forced. */

@@ -3,14 +3,20 @@ import { test as base, expect, type Page } from "@playwright/test";
 
 export { expect };
 
-export const test = base.extend<{
-  expectAxeClean: (page: Page) => Promise<void>;
-}>({
+type AxeCheck = (page: Page, include?: string) => Promise<void>;
+
+export const test = base.extend<{ expectAxeClean: AxeCheck }>({
   expectAxeClean: async ({}, provide) => {
-    await provide(async (page) => {
-      const { violations } = await new AxeBuilder({ page })
-        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-        .analyze();
+    await provide(async (page, include) => {
+      let axe = new AxeBuilder({ page }).withTags([
+        "wcag2a",
+        "wcag2aa",
+        "wcag21a",
+        "wcag21aa",
+        "wcag22aa",
+      ]);
+      if (include) axe = axe.include(include);
+      const { violations } = await axe.analyze();
       expect(
         violations.map(
           (v) =>
