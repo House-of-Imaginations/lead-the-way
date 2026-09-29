@@ -903,3 +903,56 @@ textarea.ltw-field {
   letter-spacing: 0.32px;
   color: var(--text-secondary);
 }
+
+/* Tabs: panel spacing (Radix makes panels focusable) */
+.ltw-tabpanel {
+  padding-top: 24px;
+}
+
+/* ProgressBar value and ProgressSteps icons and helpers (03, 08) */
+.ltw-pb-head {
+  font-variant-numeric: tabular-nums;
+}
+.ltw-pb-v {
+  color: var(--text-secondary);
+}
+.ltw-step-done .ltw-i,
+.ltw-step-current .ltw-i {
+  color: var(--interactive);
+}
+.ltw-step-h {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.32px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+/* Disclosure: a link-coloured summary with a chevron, as on the overview (08) */
+.ltw-dsc > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  color: var(--link);
+  cursor: pointer;
+  list-style: none;
+}
+.ltw-dsc > summary::-webkit-details-marker {
+  display: none;
+}
+.ltw-dsc > summary:hover {
+  color: var(--link-hover);
+}
+.ltw-dsc > summary .ltw-i {
+  transition: transform 70ms cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+.ltw-dsc[open] > summary .ltw-i {
+  transform: rotate(180deg);
+}
+.ltw-dsc-b {
+  max-width: 65ch;
+  padding-top: 8px;
+  color: var(--text-secondary);
+}

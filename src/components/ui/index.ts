@@ -34,3 +34,11 @@ export { Toggle, type ToggleProps } from "./Toggle";
 export { ContentSwitcher, type ContentSwitcherProps } from "./ContentSwitcher";
 export { SelectableTile, type SelectableTileProps } from "./SelectableTile";
 export { LikertScale, type LikertScaleProps } from "./LikertScale";
+export { Tabs, type TabItem, type TabsProps } from "./Tabs";
+export { Disclosure, type DisclosureProps } from "./Disclosure";
+export { ProgressBar, type ProgressBarProps } from "./ProgressBar";
+export {
+  ProgressSteps,
+  type ProgressStepsProps,
+  type Step,
+} from "./ProgressSteps";
