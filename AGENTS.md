@@ -35,3 +35,17 @@ This applies to the main session and to every subagent it dispatches. Put it in 
 - All identity goes through `convex/lib/viewer.ts#getViewer` (from P2). Every public Convex function has argument and return validators.
 - Match the wireframe PNG for any screen you touch (`docs/design/wireframes/png/`), and check both light and dark tokens.
 - Before saying something is done: typecheck, lint, copy lint, unit and e2e tests, and a screenshot compared with its wireframe.
+
+<!-- convex-ai-start -->
+
+This project uses [Convex](https://convex.dev) as its backend.
+
+When working on Convex code, **always read
+`convex/_generated/ai/guidelines.md` first** for important guidelines on
+how to correctly use Convex APIs and patterns. The file contains rules that
+override what you may have learned about Convex from training data.
+
+Convex agent skills for common tasks can be installed by running
+`npx convex ai-files install`.
+
+<!-- convex-ai-end -->
