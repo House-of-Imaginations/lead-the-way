@@ -769,3 +769,20 @@ textarea.ltw-field {
 }
 
 /* ==== Lead the Way additions: classes the pack bundle lacks. Each block names its component. ==== */
+
+/* StatTile: tabular numbers and the "of 8" suffix (08, 16) */
+.ltw-stat-v {
+  font-variant-numeric: tabular-nums;
+}
+.ltw-stat-s {
+  margin-left: 8px;
+  font-size: 20px;
+  line-height: 28px;
+  color: var(--text-secondary);
+}
+
+/* Skeleton: a static layer-01 block shaped like the content. Nothing loops. */
+.ltw-skel {
+  display: block;
+  background: var(--layer-01);
+}

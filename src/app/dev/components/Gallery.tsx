@@ -2,6 +2,7 @@
 
 import { ButtonsSection } from "./sections/ButtonsSection";
 import { LogoSection } from "./sections/LogoSection";
+import { StatusSection } from "./sections/StatusSection";
 
 export function Gallery() {
   return (
@@ -23,6 +24,7 @@ export function Gallery() {
         </header>
         <LogoSection />
         <ButtonsSection />
+        <StatusSection />
       </main>
       <footer className="px-07 pb-07 text-label-01 text-text-helper">
         Concept prototype. Not an official IBM product.
