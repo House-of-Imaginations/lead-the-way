@@ -1030,3 +1030,69 @@ textarea.ltw-field {
   color: var(--text-disabled);
   cursor: not-allowed;
 }
+
+/* SideNav: org and account blocks are buttons that open menus; the status block (08) sits above Collapse */
+button.ltw-sn-org,
+button.ltw-sn-acct {
+  align-self: stretch;
+  border: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.ltw-sn-acct {
+  background: transparent;
+}
+button.ltw-sn-org:hover,
+button.ltw-sn-acct:hover {
+  background: var(--layer-hover);
+}
+.ltw-sn-who {
+  min-width: 0;
+  flex: 1;
+}
+.ltw-sn-name,
+.ltw-sn-sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ltw-sn-name {
+  font-weight: 600;
+}
+.ltw-sn-sub {
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.32px;
+  color: var(--text-secondary);
+}
+.ltw-sn-st {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: auto 16px 0;
+  padding: 16px 0 12px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.32px;
+  color: var(--text-secondary);
+}
+.ltw-sn-st + .ltw-sn-tg {
+  margin-top: 0;
+}
+.ltw-sn-col .ltw-sn-st + .ltw-sn-tg {
+  margin-top: auto;
+}
+.ltw-sn-cap {
+  margin: 0;
+}
+.ltw-sn-rs {
+  touch-action: none;
+}
+.ltw-sn-rs:focus-visible::after {
+  background: var(--interactive);
+}
