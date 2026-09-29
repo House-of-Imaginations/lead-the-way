@@ -24,6 +24,8 @@ test("no new callers of orgQuery or orgMutation", () => {
     const calls = source.match(/=\s*org(?:Query|Mutation)\(/g)?.length ?? 0;
     if (calls > 0) found[file] = calls;
   }
+  // Nothing found would pass a per-file bound vacuously; pin the whole set.
+  expect(Object.keys(found).sort()).toEqual(Object.keys(FROZEN).sort());
   for (const [file, calls] of Object.entries(found)) {
     expect(calls, file).toBeLessThanOrEqual(FROZEN[file] ?? 0);
   }

@@ -141,13 +141,16 @@ export const viewerMutation = (...need: Permission[]) =>
     args: { expectOrgId: v.id("orgs") },
     input: async (ctx: MutationCtx, { expectOrgId }) => {
       assertAppOpen();
-      const viewer = await requireViewer(ctx, need);
+      // Compare before checking permissions: a switched workspace may grant
+      // fewer, and WORKSPACE_CHANGED is the answer that tells the person why.
+      const viewer = await requireViewer(ctx, []);
       if (viewer.org._id !== expectOrgId) {
         throwUserError(
           "WORKSPACE_CHANGED",
           "You switched workspace in another tab. Reload the page to continue.",
         );
       }
+      requirePermissions(viewer, need);
       return { ctx: { viewer }, args: {} };
     },
   });

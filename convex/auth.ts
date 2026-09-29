@@ -98,7 +98,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
       requireEmailVerification: false,
       sendResetPassword: async ({ user, url }) => {
         const sender = emailCtx(ctx);
-        if (sender) {
+        if (sender && !isDemoAddress(user.email)) {
           await sendPasswordResetEmail(sender, { to: user.email, link: url });
         }
       },
@@ -110,7 +110,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
       sendOnSignUp: true,
       sendVerificationEmail: async ({ user, url }) => {
         const sender = emailCtx(ctx);
-        if (sender) {
+        if (sender && !isDemoAddress(user.email)) {
           await sendVerificationEmail(sender, { to: user.email, link: url });
         }
       },

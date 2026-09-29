@@ -1,9 +1,13 @@
+import { convexTest } from "convex-test";
+import { makeFunctionReference } from "convex/server";
 import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { viewerMutation } from "../../convex/lib/customFunctions";
 import { getViewer, requireViewer } from "../../convex/lib/viewer";
-import { personFields } from "./testHelpers";
-import { OWNER, harness, seat, workspace } from "./workspace/helpers";
+import schema from "../../convex/schema";
+import { personFields, registerComponents } from "./testHelpers";
+import { OWNER, harness, modules, seat, workspace } from "./workspace/helpers";
 
 test("getViewer refuses a signed-out caller", async () => {
   const t = harness();
@@ -106,4 +110,39 @@ test("a seat whose role is gone is skipped for the next one, or none", async () 
   expect(await viewerOrg()).toBe(first);
   await dropRole(first);
   expect(await viewerOrg()).toBeNull();
+});
+
+test("viewerMutation says WORKSPACE_CHANGED before FORBIDDEN", async () => {
+  // A product mutation that needs a permission, mounted beside the real modules.
+  const probe = viewerMutation("members:manage")({
+    args: {},
+    handler: async () => null,
+  });
+  const t = convexTest(schema, {
+    ...modules,
+    "../../../convex/probe.ts": async () => ({ probe }),
+  });
+  registerComponents(t);
+  const { orgId: a } = await workspace(t, "Aster A");
+  const { orgId: b } = await workspace(t, "Aster B");
+  // Carol may manage members in A, holds nothing in B, and B is her open one.
+  const { as } = await seat(t, a, "user_carol", ["members:manage"]);
+  await seat(t, b, "user_carol", []);
+  await t.run(async (ctx) => {
+    await ctx.db.insert("profiles", {
+      userId: "user_carol",
+      displayName: "Carol",
+      createdAt: Date.now(),
+      activeOrgId: b,
+    });
+  });
+  const call = (expectOrgId: Id<"orgs">) =>
+    as.mutation(makeFunctionReference<"mutation">("probe:probe"), {
+      expectOrgId,
+    });
+  await expect(call(a)).rejects.toMatchObject({
+    data: { code: "WORKSPACE_CHANGED" },
+  });
+  // In the workspace she is looking at, the permission check still applies.
+  await expect(call(b)).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
 });

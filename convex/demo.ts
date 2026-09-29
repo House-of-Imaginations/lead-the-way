@@ -8,9 +8,11 @@ import { throwUserError } from "./lib/errors";
 import type { Viewer } from "./lib/viewer";
 
 /**
- * The demo controls on /guide. Both need DEMO_MODE on and act only on the
- * viewer's own workspace, and only when that workspace is the demo: no
- * argument names a workspace, so no caller can aim these at a real one.
+ * The demo controls on /guide: reset, setClock and personaPassword. The two
+ * mutations need DEMO_MODE on and act only on the viewer's own workspace, and
+ * only when that workspace is the demo. `expectOrgId` only guards (it refuses
+ * if the open workspace changed) and never selects one, so no caller can aim
+ * these at a real workspace.
  */
 
 function demoOrgOf(viewer: Viewer) {
