@@ -11,6 +11,7 @@ import resend from "@convex-dev/resend/test";
 import type { GenericSchema, SchemaDefinition } from "convex/server";
 import type { TestConvex } from "convex-test";
 import { components } from "../../convex/_generated/api";
+import { ACCOUNT_HOLDERS } from "../../convex/lib/demo/cast";
 import schema from "../../convex/schema";
 
 const componentTest = (t: TestConvex<typeof schema>) =>
@@ -62,4 +63,25 @@ export async function seedAuthUser(
     }),
   );
   return { subject: created._id };
+}
+
+/**
+ * The demo accounts, as auth rows, without the cost of hashing eight
+ * passwords. Returns key to user id, the same shape as `internal.seed.accounts`.
+ */
+export async function seedDemoAccounts(
+  t: TestConvex<typeof schema>,
+  skip: string[] = [],
+): Promise<Record<string, string>> {
+  const ids: Record<string, string> = {};
+  for (const person of ACCOUNT_HOLDERS) {
+    if (skip.includes(person.key)) continue;
+    const { subject } = await seedAuthUser(t, {
+      name: person.name,
+      email: person.email,
+      emailVerified: false,
+    });
+    ids[person.key] = subject;
+  }
+  return ids;
 }

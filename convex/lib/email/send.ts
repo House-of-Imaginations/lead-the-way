@@ -1,5 +1,6 @@
 import { Resend } from "@convex-dev/resend";
 import { components } from "../../_generated/api";
+import { isDemoAddress } from "../demo/cast";
 import { renderEmail, type EmailContent } from "./template";
 
 /**
@@ -56,6 +57,9 @@ export async function sendEmail(
   subject: string,
   content: EmailContent,
 ): Promise<boolean> {
+  // The demo cast's addresses are made up; a send would bounce and cost the
+  // sending domain its reputation.
+  if (isDemoAddress(to)) return false;
   const from = process.env.RESEND_FROM;
   if (!from || !process.env.RESEND_API_KEY) return false;
 
