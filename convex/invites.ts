@@ -444,6 +444,7 @@ export const preview = authenticatedQuery({
         "REVOKED",
         "DECLINED",
         "USED",
+        "DEMO_ACCOUNT",
       ),
       emailConfigured: v.boolean(),
     }),
@@ -461,15 +462,19 @@ export const preview = authenticatedQuery({
     if (!org || !role) return null;
 
     const seated = await findSeat(ctx, ctx.userId, invite.orgId);
+    // Answered up front, so the page says it before anybody presses Join (R7).
+    const demoRefused = !org.isDemo && (await isDemoAccount(ctx, ctx.userId));
     return {
       orgName: org.name,
       roleName: role.name,
       invitedBy: await nameOf(ctx, invite.invitedBy),
       acceptState: refusal
         ? STATE_OF_REFUSAL[refusal]
-        : seated
-          ? ("ALREADY_MEMBER" as const)
-          : ("READY" as const),
+        : demoRefused
+          ? ("DEMO_ACCOUNT" as const)
+          : seated
+            ? ("ALREADY_MEMBER" as const)
+            : ("READY" as const),
       emailConfigured: emailConfigured(),
     };
   },
@@ -531,6 +536,13 @@ export const decline = authenticatedMutation({
   returns: v.null(),
   handler: async (ctx, { token }): Promise<null> => {
     const { invite, org } = await usableInvite(ctx, token, ctx.userId);
+    // Held like `accept`: a shared persona can't spend a real workspace's link.
+    if (!org.isDemo && (await isDemoAccount(ctx, ctx.userId))) {
+      throwUserError(
+        "DEMO_ACCOUNT_JOIN",
+        "Demo accounts can't answer invitations to other workspaces. Log in with your own account instead.",
+      );
+    }
     await ctx.db.patch(invite._id, {
       status: "declined",
       respondedAt: nowFor(org),

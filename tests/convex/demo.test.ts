@@ -1026,3 +1026,36 @@ test("seed:clock says to seed first when there is no demo", async () => {
     t.mutation(internal.seed.clock, { target: "week1" }),
   ).rejects.toMatchObject({ data: { code: "DEMO_NOT_SEEDED" } });
 });
+
+test("a demo persona is refused a real workspace's invitation up front", async () => {
+  const { t, as } = await calderLane();
+  const { owner, orgId } = await workspace(t);
+  const roles = await owner.query(api.orgRoles.list, { orgId });
+  const roleId = roles.find((r) => r.name === "Employee")!._id;
+  const { inviteId, token } = await owner.mutation(api.invites.create, {
+    orgId,
+    roleId,
+  });
+  const dan = as("dan");
+
+  expect((await dan.query(api.invites.preview, { token }))?.acceptState).toBe(
+    "DEMO_ACCOUNT",
+  );
+  await expect(
+    dan.mutation(api.invites.decline, { token }),
+  ).rejects.toMatchObject({
+    data: {
+      code: "DEMO_ACCOUNT_JOIN",
+      message:
+        "Demo accounts can't answer invitations to other workspaces. Log in with your own account instead.",
+    },
+  });
+  // The link is still there for the person it was meant for.
+  expect((await t.run((ctx) => ctx.db.get(inviteId)))?.status).toBe("pending");
+
+  // With the demo off, Dan's account is an ordinary account.
+  vi.stubEnv("DEMO_MODE", "");
+  expect((await dan.query(api.invites.preview, { token }))?.acceptState).toBe(
+    "READY",
+  );
+});
