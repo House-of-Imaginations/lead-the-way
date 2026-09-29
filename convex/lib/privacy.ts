@@ -11,7 +11,9 @@ import { MAX_MEMBERS_PER_ORG, permissionsOf } from "./orgs/membership";
  * n is always distinct people, and nobody can hand in a list that holds the
  * asker, a manager or an opted-out person. Events never feed a count of
  * private activity (sessions done, tasks underway, completed, presented):
- * read the person's own rows through `valueOf` or `did` instead.
+ * read the person's own rows through `valueOf` or `did` instead. `valueOf`
+ * answers with that person's own value or undefined, never as a filter that
+ * narrows the team to a chosen few.
  *
  * Below the threshold the answer carries no value at all, so a hidden number
  * can't leak through a return validator. The threshold is never below 5,

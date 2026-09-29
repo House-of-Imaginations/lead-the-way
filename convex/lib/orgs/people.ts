@@ -1,5 +1,5 @@
 import type { Doc, Id } from "../../_generated/dataModel";
-import type { MutationCtx } from "../../_generated/server";
+import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { flagOn } from "../../app";
 import { authComponent } from "../../auth";
 import { ensureProfile } from "../account/ensureProfile";
@@ -60,7 +60,7 @@ export async function insertPerson(
  * the auth component's own row, as `invites.ts` reads a pinned address.
  */
 export async function isDemoAccount(
-  ctx: MutationCtx,
+  ctx: QueryCtx | MutationCtx,
   userId: string,
 ): Promise<boolean> {
   if (!flagOn("demo")) return false;

@@ -11,7 +11,12 @@ const sources = import.meta.glob(
  * stamps what somebody did in a workspace reads the workspace's clock instead
  * (`nowFor(org)`, or `ctx.viewer.now`), so the demo stamps demo time.
  */
-const ALLOWED: { file: string; line: string; reason: string }[] = [
+const ALLOWED: {
+  file: string;
+  line: string;
+  reason: string;
+  uses?: number;
+}[] = [
   { file: "lib/clock.ts", line: ": Date.now()", reason: "the clock itself" },
   {
     file: "invites.ts",
@@ -22,6 +27,7 @@ const ALLOWED: { file: string; line: string; reason: string }[] = [
     file: "invites.ts",
     line: "const expiresAt = Date.now() + INVITE_WINDOW_MS",
     reason: "a link lapses in real time, judged by the org's clock",
+    uses: 2, // create and resend
   },
   {
     file: "lib/demo/script.ts",
@@ -46,7 +52,7 @@ const ALLOWED: { file: string; line: string; reason: string }[] = [
   {
     file: "orgRoles.ts",
     line: "createdAt: Date.now()",
-    reason: "a role's createdAt, as `orgs.create` stamps them",
+    reason: "a role's createdAt is shown nowhere, so real time will do",
   },
   {
     file: "lib/account/profile.ts",
@@ -56,7 +62,7 @@ const ALLOWED: { file: string; line: string; reason: string }[] = [
 ];
 
 test("Date.now() only where real time is meant", () => {
-  const used = new Set<(typeof ALLOWED)[number]>();
+  const used = new Map<(typeof ALLOWED)[number], number>();
   const stray: string[] = [];
   for (const [path, source] of Object.entries(sources)) {
     const file = path.replace("../../convex/", "");
@@ -67,11 +73,14 @@ test("Date.now() only where real time is meant", () => {
       const entry = ALLOWED.find(
         (a) => a.file === file && code.includes(a.line),
       );
-      if (entry) used.add(entry);
+      if (entry) used.set(entry, (used.get(entry) ?? 0) + 1);
       else stray.push(`${file}:${i + 1}: ${code}`);
     });
   }
   expect(stray).toEqual([]);
-  // A stale entry would allow the next stray call on that line for free.
-  expect(ALLOWED.filter((a) => !used.has(a))).toEqual([]);
+  // Each entry covers exactly its own uses: a stale entry, or a second line
+  // that happens to match one, would let the next stray call in for free.
+  expect(ALLOWED.filter((a) => (used.get(a) ?? 0) !== (a.uses ?? 1))).toEqual(
+    [],
+  );
 });

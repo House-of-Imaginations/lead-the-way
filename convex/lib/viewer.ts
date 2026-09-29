@@ -52,7 +52,10 @@ export async function getViewer(
       permissions: permissionsOf(role),
       userId,
       org,
-      now: nowFor(org),
+      // A getter: a query that never asks the time never reads the wall clock.
+      get now() {
+        return nowFor(org);
+      },
     };
   }
   return null;
