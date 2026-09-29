@@ -62,7 +62,7 @@ const SIGNED_OUT: Record<
   // Null when signed out.
   "auth:getCurrentUser": { args: {}, answer: null },
   // The log-in page lists its buttons.
-  "auth:enabledSocialProviders": { args: {}, answer: ["google"] },
+  "authMethods:enabled": { args: {}, answer: ["google"] },
   // Null when signed out.
   "profiles:me": { args: {}, answer: null },
   // The invitation page, before sign-up: what the link invites to, no address.
@@ -210,6 +210,8 @@ test("the signed-out allowlist answers without an account", async () => {
   vi.stubEnv("DEMO_MODE", "");
   vi.stubEnv("GOOGLE_CLIENT_ID", "google-id");
   vi.stubEnv("GOOGLE_CLIENT_SECRET", "google-secret");
+  vi.stubEnv("GITHUB_CLIENT_ID", "");
+  vi.stubEnv("GITHUB_CLIENT_SECRET", "");
   vi.stubEnv("DISCORD_CLIENT_ID", "");
   vi.stubEnv("DISCORD_CLIENT_SECRET", "");
   const t = harness();

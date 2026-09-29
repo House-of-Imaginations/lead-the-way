@@ -10,6 +10,7 @@
 
 import type * as app from "../app.js";
 import type * as auth from "../auth.js";
+import type * as authMethods from "../authMethods.js";
 import type * as demo from "../demo.js";
 import type * as http from "../http.js";
 import type * as invites from "../invites.js";
@@ -17,6 +18,7 @@ import type * as lib_account_avatar from "../lib/account/avatar.js";
 import type * as lib_account_ensureProfile from "../lib/account/ensureProfile.js";
 import type * as lib_account_profile from "../lib/account/profile.js";
 import type * as lib_auth_identity from "../lib/auth/identity.js";
+import type * as lib_auth_providers from "../lib/auth/providers.js";
 import type * as lib_clock from "../lib/clock.js";
 import type * as lib_customFunctions from "../lib/customFunctions.js";
 import type * as lib_demo_calderLane from "../lib/demo/calderLane.js";
@@ -57,6 +59,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   app: typeof app;
   auth: typeof auth;
+  authMethods: typeof authMethods;
   demo: typeof demo;
   http: typeof http;
   invites: typeof invites;
@@ -64,6 +67,7 @@ declare const fullApi: ApiFromModules<{
   "lib/account/ensureProfile": typeof lib_account_ensureProfile;
   "lib/account/profile": typeof lib_account_profile;
   "lib/auth/identity": typeof lib_auth_identity;
+  "lib/auth/providers": typeof lib_auth_providers;
   "lib/clock": typeof lib_clock;
   "lib/customFunctions": typeof lib_customFunctions;
   "lib/demo/calderLane": typeof lib_demo_calderLane;

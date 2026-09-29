@@ -243,6 +243,30 @@ test("a demo persona can't change the shared account", async () => {
   ).toBe(200);
 });
 
+test("a demo persona may use only the allowed auth paths", async () => {
+  const t = harness();
+  await seedDemoAccounts(t, ["dan"]);
+  await t.action(internal.seed.accounts, {});
+  const email = "dan.okafor@calderlane.com.au";
+  const signIn = await post(t, "/sign-in/email", { email, password: PASSWORD });
+  expect(signIn.status).toBe(200);
+  const cookie = cookieOf(signIn);
+
+  // Not on the allowlist: one tester can't end every other tester's session.
+  for (const path of ["/revoke-other-sessions", "/revoke-sessions"]) {
+    const res = await post(t, path, {}, cookie);
+    expect(res.status, path).toBe(403);
+    expect(await res.json(), path).toMatchObject({ message: LOCKED });
+  }
+  // On it: reading the session and signing out.
+  const session = await t.fetch("/api/auth/get-session", {
+    headers: { origin: SITE, cookie },
+  });
+  expect(session.status).toBe(200);
+  expect(await session.json()).toMatchObject({ user: { email } });
+  expect((await post(t, "/sign-out", {}, cookie)).status).toBe(200);
+});
+
 test("only the seed signs up a demo address; real accounts are unaffected", async () => {
   const t = harness();
   const omar = "omar.haddad@calderlane.com.au";

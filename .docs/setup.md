@@ -34,10 +34,11 @@ Set these on the **selected development deployment**, never in `.env.local`, wit
 | `DEMO_MODE`                                   | From P2; `on` enables the seeded Calder Lane workspace, persona switch and demo clock                      |
 | `DEMO_PASSWORD`                               | From P2; shared password for the demo accounts, at least 12 characters                                     |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`   | Optional pair enabling Google sign-in                                                                      |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`   | Optional pair enabling GitHub sign-in                                                                      |
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | Optional pair enabling Discord sign-in                                                                     |
 | `RESEND_API_KEY` / `RESEND_FROM`              | Optional pair enabling outgoing email; without them nothing is emailed and invitations show copyable links |
 
-A social provider is registered only when both halves of its pair are set, so email and username sign-in work before any OAuth app exists.
+A social provider is registered only when both halves of its pair are set, so email sign-in works before any OAuth app exists.
 
 ## Run it
 
