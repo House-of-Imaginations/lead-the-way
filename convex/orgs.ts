@@ -9,6 +9,7 @@ import {
 import { throwUserError } from "./lib/errors";
 import { permissionValidator, type Permission } from "./lib/orgs/permissions";
 import { deleteOrg } from "./lib/orgs/cascade";
+import { MIN_THRESHOLD } from "./lib/privacy";
 import { assertCanCreate, findSeat, seatsOfUser } from "./lib/orgs/membership";
 import { insertPerson } from "./lib/orgs/people";
 import { cleanOrgName, slugIsAvailableShape, slugify } from "./lib/orgs/slug";
@@ -214,7 +215,7 @@ export const create = authenticatedMutation({
     const orgId = await ctx.db.insert("orgs", {
       name: trimmed,
       slug,
-      privacyThreshold: 5, // Task 6 replaces the literal with MIN_THRESHOLD.
+      privacyThreshold: MIN_THRESHOLD,
       isDemo: false,
       createdAt: now,
     });
