@@ -130,6 +130,7 @@ const callsFor = ({
   storageId,
 }: Ids): Record<string, Record<string, unknown>> => ({
   "demo:reset": {},
+  "demo:setClock": { target: "week1" },
   "orgs:active": {},
   "orgs:bySlug": { slug: "aster-network" },
   "orgs:create": { name: "Aster Network" },

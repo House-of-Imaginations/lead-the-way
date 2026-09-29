@@ -2,6 +2,8 @@ import { v } from "convex/values";
 import { assertFlag } from "./app";
 import { viewerMutation } from "./lib/customFunctions";
 import { demoAccounts, writeCalderLane } from "./lib/demo/calderLane";
+import { DEMO_TARGETS, demoTargetValidator } from "./lib/demo/schedule";
+import { STEPS, isStepKey } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
 import type { Viewer } from "./lib/viewer";
 
@@ -34,5 +36,47 @@ export const reset = viewerMutation()({
     demoOrgOf(ctx.viewer);
     await writeCalderLane(ctx, await demoAccounts(ctx));
     return null;
+  },
+});
+
+/**
+ * Jump the demo clock forward and play every step it passes, in order, once.
+ *
+ * NO PERMISSION CHECK, ON PURPOSE, as with `reset`: the tester switches
+ * personas, so Dan (an Employee) may move the clock as much as Priya. The only
+ * gates are DEMO_MODE and `org.isDemo`. The clock never moves backwards; only
+ * a reset goes back.
+ *
+ * One mutation: a step that throws undoes the whole jump, and the `appliedAt`
+ * stamp is committed with the step's writes, so no step runs twice. A row
+ * whose key no longer exists in `STEPS` (an older deploy) is left unapplied.
+ */
+export const setClock = viewerMutation()({
+  args: { target: demoTargetValidator },
+  returns: v.object({ demoNow: v.number(), applied: v.array(v.string()) }),
+  handler: async (ctx, { target }) => {
+    const org = demoOrgOf(ctx.viewer);
+    const to = DEMO_TARGETS[target];
+    if (to < (org.demoNow ?? 0)) {
+      throwUserError(
+        "DEMO_CLOCK_BACKWARDS",
+        "The demo clock only moves forward. Reset the demo to start again.",
+      );
+    }
+    await ctx.db.patch(org._id, { demoNow: to });
+
+    // One row per scripted step (22), so the due range fits in one read.
+    const due = await ctx.db
+      .query("demoScript")
+      .withIndex("by_org_and_at", (q) => q.eq("orgId", org._id).lte("at", to))
+      .collect();
+    const applied: string[] = [];
+    for (const row of due) {
+      if (row.appliedAt !== undefined || !isStepKey(row.key)) continue;
+      await STEPS[row.key]({ ctx, orgId: org._id, at: row.at });
+      await ctx.db.patch(row._id, { appliedAt: Date.now() });
+      applied.push(row.key);
+    }
+    return { demoNow: to, applied };
   },
 });

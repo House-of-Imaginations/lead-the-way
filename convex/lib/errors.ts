@@ -49,7 +49,8 @@ export type ErrorCode =
   | "INVITE_USED"
   | "INVITE_WRONG_ACCOUNT"
   | "ALREADY_A_MEMBER"
-  | "DEMO_NOT_SEEDED";
+  | "DEMO_NOT_SEEDED"
+  | "DEMO_CLOCK_BACKWARDS";
 
 export function isRateLimitedError(error: unknown): error is ConvexError<{
   code: "RATE_LIMITED";
