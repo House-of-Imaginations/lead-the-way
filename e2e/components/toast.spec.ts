@@ -55,6 +55,9 @@ for (const theme of THEMES) {
     test("a toast dismisses itself after five seconds", async ({ page }) => {
       await page.clock.install();
       await page.goto(gallery(theme));
+      // An installed clock keeps flowing at real speed; pause it so only runFor moves time.
+      const now = await page.evaluate(() => Date.now());
+      await page.clock.pauseAt(now + 1000);
       await page
         .locator("#toast")
         .getByRole("button", { name: "Send invitations" })
@@ -65,6 +68,29 @@ for (const theme of THEMES) {
       await expect(toast).toBeVisible();
       await page.clock.runFor(200);
       await expect(toast).toHaveCount(0);
+    });
+
+    test("the toast close button has a 48px hit area on phones @mobile", async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page
+        .locator("#toast")
+        .getByRole("button", { name: "Send invitations" })
+        .click();
+      const close = page
+        .locator(".ltw-toast")
+        .getByRole("button", { name: "Close" });
+      const box = (await close.boundingBox())!;
+      // 20px left of and below the icon's centre: outside the 16px icon, inside a 48px target.
+      const x = box.x + box.width / 2 - 20;
+      const y = box.y + box.height / 2 + 20;
+      expect(
+        await close.evaluate(
+          (el, [px, py]) => el.contains(document.elementFromPoint(px, py)),
+          [x, y],
+        ),
+      ).toBe(true);
     });
 
     test("a toast can carry a body line", async ({ page, expectAxeClean }) => {

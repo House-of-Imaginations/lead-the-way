@@ -1,7 +1,11 @@
+"use client";
+
+import { useState } from "react";
 import { Disclosure, ProgressBar, ProgressSteps, Tabs } from "@/components/ui";
 import { Section } from "./Section";
 
 export function TabsProgressSection() {
+  const [week, setWeek] = useState("week-2");
   return (
     <Section id="tabs-progress" title="Tabs, disclosure and progress">
       <div className="max-w-[720px]">
@@ -31,10 +35,35 @@ export function TabsProgressSection() {
           ]}
         />
       </div>
+      <div className="max-w-[720px]">
+        <Tabs
+          label="Sprint weeks"
+          value={week}
+          onValueChange={setWeek}
+          items={[
+            {
+              value: "week-1",
+              label: "Week 1",
+              content: <p>Find one task worth an hour.</p>,
+            },
+            {
+              value: "week-2",
+              label: "Week 2",
+              content: <p>Try it on real work in the protected hour.</p>,
+            },
+          ]}
+        />
+        <p className="text-body-02 text-text-secondary">
+          Selected week: {week === "week-1" ? "Week 1" : "Week 2"}
+        </p>
+      </div>
       <Disclosure summary="Why can't I see individual progress?">
         Lead the Way shows you team totals only. Individual course activity,
         time spent and scores stay private to each person, so learning feels
         safe. Projects appear only when their owner chooses to present them.
+      </Disclosure>
+      <Disclosure summary="What happens in the protected hour?" defaultOpen>
+        Your team works on one real task with AI, then notes what it saved.
       </Disclosure>
       <div className="max-w-[480px]">
         <ProgressBar

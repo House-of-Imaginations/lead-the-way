@@ -83,6 +83,42 @@ for (const theme of THEMES) {
       );
     });
 
+    test("the content switcher hugs its buttons", async ({ page }) => {
+      const cs = page.locator("#choices .ltw-cs");
+      const widths = await cs.evaluate((el) => ({
+        own: el.getBoundingClientRect().width,
+        buttons: [...el.querySelectorAll("button")].reduce(
+          (sum, b) => sum + b.getBoundingClientRect().width,
+          0,
+        ),
+        border: parseFloat(getComputedStyle(el).borderLeftWidth) * 2,
+      }));
+      expect(
+        Math.abs(widths.own - widths.border - widths.buttons),
+      ).toBeLessThanOrEqual(1);
+    });
+
+    test("the content switcher spans its parent on phones @mobile", async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      const cs = page.locator("#choices .ltw-cs");
+      const m = await cs.evaluate((el) => {
+        const parent = el.parentElement!;
+        const ps = getComputedStyle(parent);
+        return {
+          own: el.getBoundingClientRect().width,
+          content:
+            parent.clientWidth -
+            parseFloat(ps.paddingLeft) -
+            parseFloat(ps.paddingRight),
+          fits: el.scrollWidth <= el.clientWidth,
+        };
+      });
+      expect(Math.abs(m.own - m.content)).toBeLessThanOrEqual(1);
+      expect(m.fits).toBe(true);
+    });
+
     test("a selectable tile toggles and shows a check @mobile", async ({
       page,
     }) => {

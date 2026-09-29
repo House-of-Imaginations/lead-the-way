@@ -41,6 +41,12 @@ test.describe("side nav", () => {
     );
     await expect(n.getByText("Week 2 of 4")).toBeVisible();
     await expect(
+      n.getByRole("button", { name: "Priya Raman", exact: true }),
+    ).toBeVisible();
+    await expect(
+      n.getByRole("button", { name: "Calder Lane", exact: true }),
+    ).toBeVisible();
+    await expect(
       n.getByText("Concept prototype. Not an official IBM product."),
     ).toBeVisible();
   });
@@ -84,6 +90,46 @@ test.describe("side nav", () => {
     await expect(nav(page)).toHaveCSS("width", "48px");
   });
 
+  test("only the primary button drags", async ({ page }) => {
+    await handle(page).scrollIntoViewIfNeeded();
+    const box = (await handle(page).boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down({ button: "right" });
+    await page.mouse.move(x + 60, y, { steps: 5 });
+    await page.mouse.up({ button: "right" });
+    await page.keyboard.press("Escape"); // the context menu, if any
+    await expect(handle(page)).toHaveAttribute("aria-valuenow", "256");
+    await expect(nav(page)).toHaveCSS("width", "256px");
+  });
+
+  test("the resize handle is the last Tab stop", async ({ page }) => {
+    await nav(page).getByRole("button", { name: "Priya Raman" }).focus();
+    await page.keyboard.press("Tab");
+    await expect(handle(page)).toBeFocused();
+  });
+
+  test("the column scrolls when the screen is short", async ({ page }) => {
+    await nav(page).evaluate((el) => {
+      el.parentElement!.style.height = "300px";
+    });
+    // Rows keep their 32px height instead of squashing to fit.
+    await expect(nav(page).getByRole("link", { name: "Overview" })).toHaveCSS(
+      "height",
+      "32px",
+    );
+    const disclaimer = nav(page).getByText(
+      "Concept prototype. Not an official IBM product.",
+    );
+    await disclaimer.scrollIntoViewIfNeeded();
+    const n = (await nav(page).boundingBox())!;
+    const d = (await disclaimer.boundingBox())!;
+    expect(d.y + d.height).toBeLessThanOrEqual(n.y + n.height);
+    // The handle still spans the whole column.
+    expect((await handle(page).boundingBox())!.height).toBeCloseTo(n.height, 0);
+  });
+
   test("rail hides every label", async ({ page }) => {
     await nav(page).getByRole("button", { name: "Collapse" }).click();
     await expect(nav(page)).toHaveCSS("width", "48px");
@@ -92,6 +138,13 @@ test.describe("side nav", () => {
       (el as HTMLElement).innerText.replace(/\s+/g, " ").trim(),
     );
     expect(text).toBe("CL PR");
+    // Named by the person and the organisation, not by their initials.
+    await expect(
+      nav(page).getByRole("button", { name: "Priya Raman", exact: true }),
+    ).toBeVisible();
+    await expect(
+      nav(page).getByRole("button", { name: "Calder Lane", exact: true }),
+    ).toBeVisible();
     await expect(
       nav(page).getByRole("link", { name: "Overview" }),
     ).toBeVisible();
@@ -157,8 +210,13 @@ test.describe("side nav", () => {
     const accountBox = (await account.boundingBox())!;
     await account.click();
     const menu = page.getByRole("menu");
-    const menuBox = (await menu.boundingBox())!;
-    expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(accountBox.y);
+    // Radix positions the menu a frame after it mounts, so poll the geometry.
+    await expect
+      .poll(async () => {
+        const m = await menu.boundingBox();
+        return m ? m.y + m.height : Infinity;
+      })
+      .toBeLessThanOrEqual(accountBox.y);
     await menu.getByRole("menuitem", { name: "Sign out" }).click();
     await expect(page.getByText("Last account action: Sign out")).toBeVisible();
     await nav(page)

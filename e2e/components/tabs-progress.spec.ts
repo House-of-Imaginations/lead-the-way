@@ -18,15 +18,17 @@ for (const theme of THEMES) {
       const notifications = list.getByRole("tab", { name: "Notifications" });
       await expect(notifications).toBeFocused();
       await expect(notifications).toHaveAttribute("aria-selected", "true");
-      await expect(section.getByRole("tabpanel")).toHaveText(
-        "Reminders before the protected hour.",
-      );
+      await expect(
+        section.getByRole("tabpanel", { name: "Notifications" }),
+      ).toHaveText("Reminders before the protected hour.");
     });
 
     test("the disclosure opens and closes from the keyboard", async ({
       page,
     }) => {
-      const details = page.locator("#tabs-progress details");
+      const details = page.locator("#tabs-progress details", {
+        hasText: "Why can't I see individual progress?",
+      });
       const summary = details.locator("summary");
       await expect(summary).toHaveText("Why can't I see individual progress?");
       await expect(details).not.toHaveAttribute("open", "");

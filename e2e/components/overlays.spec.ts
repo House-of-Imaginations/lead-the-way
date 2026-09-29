@@ -1,5 +1,23 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures";
 import { THEMES, TOKENS, expectedRing, focusRing, gallery } from "./helpers";
+
+/**
+ * Opens a menu from the keyboard and waits for its first item to take focus. An Enter pressed before
+ * hydration does nothing, so retry the whole sequence rather than assert once.
+ */
+async function openMenu(page: Page, name: string) {
+  const trigger = page.locator("#overlays").getByRole("button", { name });
+  await expect(async () => {
+    await page.keyboard.press("Escape");
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("menuitem").first()).toBeFocused({
+      timeout: 1000,
+    });
+  }).toPass();
+  return trigger;
+}
 
 for (const theme of THEMES) {
   test.describe(`overlays, ${theme}`, () => {
@@ -50,6 +68,8 @@ for (const theme of THEMES) {
         "background-color",
         "rgba(22, 22, 22, 0.5)",
       );
+      // Above the drawer (z-index 101), so a modal opened from the drawer is on top.
+      await expect(page.locator(".ltw-scrim")).toHaveCSS("z-index", "105");
       await expect(dialog).toHaveCSS("max-width", "560px");
       await expect(dialog).toHaveCSS("background-color", TOKENS[theme].layer01);
       await expect(dialog).toHaveCSS(
@@ -82,6 +102,11 @@ for (const theme of THEMES) {
       const box = (await dialog.boundingBox())!;
       expect(box.y).toBeGreaterThanOrEqual(0);
       expect(box.y + box.height).toBeLessThanOrEqual(200);
+      expect(
+        await dialog
+          .locator(".ltw-modal-b")
+          .evaluate((el) => el.scrollHeight > el.clientHeight),
+      ).toBe(true);
     });
 
     test("Escape closes the modal and returns focus", async ({ page }) => {
@@ -126,11 +151,7 @@ for (const theme of THEMES) {
     });
 
     test("a menu link navigates on Enter", async ({ page }) => {
-      const trigger = page
-        .locator("#overlays")
-        .getByRole("button", { name: "Show actions" });
-      await trigger.focus();
-      await page.keyboard.press("Enter");
+      await openMenu(page, "Show actions");
       await expect(
         page.getByRole("menuitem", { name: "Settings", exact: true }),
       ).toBeFocused();
@@ -143,12 +164,40 @@ for (const theme of THEMES) {
         .locator("#overlays")
         .getByRole("button", { name: "Open account" });
       const t = (await trigger.boundingBox())!;
-      await trigger.focus();
-      await page.keyboard.press("Enter");
+      await openMenu(page, "Open account");
       const menu = page.getByRole("menu");
       await expect(menu).toBeVisible();
-      const m = (await menu.boundingBox())!;
-      expect(m.y + m.height).toBeLessThanOrEqual(t.y);
+      // Radix positions the menu a frame after it mounts, so poll the geometry.
+      await expect
+        .poll(async () => {
+          const m = await menu.boundingBox();
+          return m ? m.y + m.height : Infinity;
+        })
+        .toBeLessThanOrEqual(t.y);
+    });
+
+    test("a menu aligned to the end lines up with its trigger's right edge", async ({
+      page,
+    }) => {
+      const trigger = page
+        .locator("#overlays")
+        .getByRole("button", { name: "Manage member" });
+      const t = (await trigger.boundingBox())!;
+      await openMenu(page, "Manage member");
+      const menu = page.getByRole("menu");
+      await expect
+        .poll(async () => {
+          const m = await menu.boundingBox();
+          return m ? Math.round(m.x + m.width) : 0;
+        })
+        .toBe(Math.round(t.x + t.width));
+    });
+
+    test("menu items are 48px tall on phones @mobile", async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await openMenu(page, "Show actions");
+      const item = page.getByRole("menuitem", { name: "Sign out" });
+      expect((await item.boundingBox())!.height).toBe(48);
     });
 
     test("menu is keyboard operable and returns focus", async ({
@@ -156,9 +205,7 @@ for (const theme of THEMES) {
       expectAxeClean,
     }) => {
       const overlays = page.locator("#overlays");
-      const trigger = overlays.getByRole("button", { name: "Show actions" });
-      await trigger.focus();
-      await page.keyboard.press("Enter");
+      const trigger = await openMenu(page, "Show actions");
       const menu = page.getByRole("menu");
       await expect(menu).toBeVisible();
       await expect(menu).toHaveCSS(
@@ -190,6 +237,7 @@ for (const theme of THEMES) {
       await expect(overlays.getByText("Last action: Sign out")).toBeVisible();
       await expect(trigger).toBeFocused();
       await page.keyboard.press("Enter");
+      await expect(page.getByRole("menu")).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(page.getByRole("menu")).toHaveCount(0);
       await expect(trigger).toBeFocused();

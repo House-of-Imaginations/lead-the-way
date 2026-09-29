@@ -97,6 +97,26 @@ for (const theme of THEMES) {
       await expect(skeleton).toHaveCSS("animation-name", "none");
     });
 
+    test("the tag dismiss button has a 48px hit area on phones @mobile", async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      const remove = page
+        .locator("#status")
+        .getByRole("button", { name: "Remove Copilot" });
+      await remove.scrollIntoViewIfNeeded();
+      const box = (await remove.boundingBox())!;
+      // 16px above the 16px button's centre: outside the button, inside a 48px target.
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height / 2 - 16;
+      expect(
+        await remove.evaluate(
+          (el, [px, py]) => el.contains(document.elementFromPoint(px, py)),
+          [x, y],
+        ),
+      ).toBe(true);
+    });
+
     test("status components pass axe", async ({ page, expectAxeClean }) => {
       await expectAxeClean(page, "#status");
     });

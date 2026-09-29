@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures";
-import { THEMES, TOKENS, gallery } from "./helpers";
+import { THEMES, TOKENS, expectedRing, focusRing, gallery } from "./helpers";
 
 for (const theme of THEMES) {
   test(`gallery renders on the tokens with the disclaimer, ${theme}`, async ({
@@ -16,6 +16,16 @@ for (const theme of THEMES) {
         .getByText("Concept prototype. Not an official IBM product."),
     ).toBeVisible();
     await expectAxeClean(page);
+  });
+
+  test(`a link styled only with utilities gets the double ring, ${theme}`, async ({
+    page,
+  }) => {
+    await page.goto(gallery(theme));
+    const link = page
+      .getByRole("main")
+      .getByRole("link", { name: theme, exact: true });
+    expect(await focusRing(link)).toEqual(expectedRing(theme));
   });
 
   test(`logo is the held hour, ${theme}`, async ({ page }) => {

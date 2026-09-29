@@ -62,9 +62,38 @@ export function OverlaysSection() {
           }
           items={[
             { label: "Your profile", onSelect: () => setLast("Your profile") },
-            { label: "Log out", onSelect: () => setLast("Log out") },
+            { label: "Sign out", onSelect: () => setLast("Sign out") },
           ]}
         />
+        <Modal
+          trigger={<Button kind="ghost">Review project</Button>}
+          label="Work project"
+          title="Save your project"
+          primaryText="Save project"
+          primaryDisabled
+        >
+          <p>Tick both safety checks to save your project.</p>
+        </Modal>
+        <div className="ml-auto">
+          <Menu
+            align="end"
+            trigger={
+              <Button kind="ghost" size="md">
+                Manage member
+              </Button>
+            }
+            items={[
+              {
+                label: "Resend invitation",
+                onSelect: () => setLast("Resend invitation"),
+              },
+              {
+                label: "Remove from team",
+                onSelect: () => setLast("Remove from team"),
+              },
+            ]}
+          />
+        </div>
       </div>
       <p className="text-body-02">Last action: {last}</p>
     </Section>
