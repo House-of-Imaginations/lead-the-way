@@ -10,7 +10,8 @@ import {
 } from "../../convex/lib/demo/schedule";
 import { INVITE_WINDOW_MS } from "../../convex/lib/orgs/invites";
 import { ORG_TABLES } from "../../convex/lib/orgs/cascade";
-import { aggregate } from "../../convex/lib/privacy";
+import { castOf } from "../../convex/lib/demo/cast";
+import { aggregate, loadCountable } from "../../convex/lib/privacy";
 import { getViewer } from "../../convex/lib/viewer";
 import { seedDemoAccounts } from "./testHelpers";
 import { harness, workspace, type T } from "./workspace/helpers";
@@ -102,6 +103,7 @@ async function read(t: T, orgId: Id<"orgs">) {
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .collect();
     const nameOf = new Map(people.map((p) => [p._id, p.name]));
+    const priya = people.find((p) => p.email === castOf("priya").email);
     const invites = await ctx.db
       .query("orgInvites")
       .withIndex("by_org_and_status", (q) => q.eq("orgId", orgId))
@@ -135,8 +137,10 @@ async function read(t: T, orgId: Id<"orgs">) {
             .eq("question", question),
         )
         .collect();
+      // Priya is the one asking, on the outcomes screen.
       const result = aggregate(
-        rows.map((r) => r.score),
+        await loadCountable(ctx, org, priya?._id ?? null),
+        (p) => rows.find((r) => r.personId === p._id)?.score,
         org,
       );
       return result.hidden ? null : result.value;

@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { MutationCtx } from "../../convex/_generated/server";
+import type { Permission } from "../../convex/lib/orgs/permissions";
 import { aggregate, count, loadCountable } from "../../convex/lib/privacy";
 import { personFields } from "./testHelpers";
 import { harness, seat, workspace } from "./workspace/helpers";
@@ -19,17 +20,18 @@ async function addOrg(ctx: MutationCtx) {
   return { orgId, org: (await ctx.db.get(orgId))! };
 }
 
+/** `n` people on one new role: the owner role, or a custom one holding `permissions`. */
 async function addPeople(
   ctx: MutationCtx,
   orgId: Id<"orgs">,
   n: number,
-  kind: "owner" | "custom" = "custom",
+  permissions: "owner" | Permission[] = [],
 ) {
   const roleId = await ctx.db.insert(
     "orgRoles",
-    kind === "owner"
-      ? { orgId, kind, name: "Owner", createdAt: 0 }
-      : { orgId, kind, name: "Employee", permissions: [], createdAt: 0 },
+    permissions === "owner"
+      ? { orgId, kind: "owner", name: "Owner", createdAt: 0 }
+      : { orgId, kind: "custom", name: "Employee", permissions, createdAt: 0 },
   );
   const ids: Id<"people">[] = [];
   for (let i = 0; i < n; i++) {
@@ -42,6 +44,13 @@ async function addPeople(
     );
   }
   return ids;
+}
+
+/** A new workspace of `n` employees, as `loadCountable` returns them. */
+async function countableOf(ctx: MutationCtx, n: number) {
+  const { orgId, org } = await addOrg(ctx);
+  await addPeople(ctx, orgId, n);
+  return await loadCountable(ctx, org, null);
 }
 
 async function setTotals(
@@ -74,29 +83,19 @@ test("aggregate and count only countable people", async () => {
     await optOut(ctx, orgId, people[0]);
     // The opted-out person answers 1 and everybody else 4, so the mean is 4
     // only if their answer is left out (3.5 if it is not).
-    const answers = people.map((personId, i) => ({
-      personId,
-      score: i === 0 ? 1 : 4,
-    }));
-    const scoresOf = async () => {
-      const counted = new Set(
-        (await loadCountable(ctx, orgId, null)).map((p) => p._id),
-      );
-      return answers
-        .filter((row) => counted.has(row.personId))
-        .map((row) => row.score);
-    };
-    const six = aggregate(await scoresOf(), org);
+    const scoreOf = (p: { _id: Id<"people"> }) => (p._id === people[0] ? 1 : 4);
+    const six = aggregate(await loadCountable(ctx, org, null), scoreOf, org);
     // Only the opted-out person finished: counted, that would be 1 of 6.
     const finished = count(
-      (await loadCountable(ctx, orgId, null)).map((p) => p._id === people[0]),
+      await loadCountable(ctx, org, null),
+      (p) => p._id === people[0],
       org,
     );
 
     const more = await addPeople(ctx, orgId, 1);
     await optOut(ctx, orgId, people[1]);
     await optOut(ctx, orgId, more[0]);
-    const seven = aggregate(await scoresOf(), org);
+    const seven = aggregate(await loadCountable(ctx, org, null), scoreOf, org);
     return { six, finished, seven };
   });
 
@@ -113,15 +112,12 @@ test("neither the manager nor the asker counts toward the threshold", async () =
     const { orgId, org } = await addOrg(ctx);
     const [manager] = await addPeople(ctx, orgId, 1, "owner");
     const employees = await addPeople(ctx, orgId, 4);
-    const four = count(
-      (await loadCountable(ctx, orgId, manager)).map(() => true),
-      org,
-    );
+    const four = count(await loadCountable(ctx, org, manager), () => true, org);
 
     const [fifth] = await addPeople(ctx, orgId, 1);
-    const five = await loadCountable(ctx, orgId, null);
+    const five = await loadCountable(ctx, org, null);
     // An employee asking never counts toward their own threshold either.
-    const asked = await loadCountable(ctx, orgId, fifth);
+    const asked = await loadCountable(ctx, org, fifth);
     return {
       four,
       five: five.map((p) => p._id),
@@ -137,6 +133,43 @@ test("neither the manager nor the asker counts toward the threshold", async () =
   expect(result.asked).toEqual(result.employees.slice(0, 4));
 });
 
+test("nobody who can read team totals counts toward them", async () => {
+  const t = harness();
+  const result = await t.run(async (ctx) => {
+    const { orgId, org } = await addOrg(ctx);
+    const employees = await addPeople(ctx, orgId, 4);
+    // A custom role, not the owner one, that can read the overview.
+    const [lead] = await addPeople(ctx, orgId, 1, ["team:insights"]);
+    const counted = await loadCountable(ctx, org, null);
+    return {
+      counted: counted.map((p) => p._id),
+      lead,
+      employees,
+      total: count(counted, () => true, org),
+    };
+  });
+  expect(result.counted).toEqual(result.employees);
+  expect(result.total).toEqual({ hidden: true, n: 4 });
+});
+
+test("one person with several answers is one response", async () => {
+  const t = harness();
+  const result = await t.run(async (ctx) => {
+    const { orgId, org } = await addOrg(ctx);
+    const people = await addPeople(ctx, orgId, 5);
+    // Four people answer, one of them twice: five rows, four respondents.
+    const rows = [people[0], people[0], people[1], people[2], people[3]].map(
+      (personId) => ({ personId, score: 4 }),
+    );
+    return aggregate(
+      await loadCountable(ctx, org, null),
+      (p) => rows.find((r) => r.personId === p._id)?.score,
+      org,
+    );
+  });
+  expect(result).toEqual({ hidden: true, n: 4 });
+});
+
 test("an opt-out is read per person, however many settings rows the workspace has", async () => {
   const t = harness();
   const result = await t.run(async (ctx) => {
@@ -148,10 +181,7 @@ test("an opt-out is read per person, however many settings rows the workspace ha
     }
     const people = await addPeople(ctx, orgId, 5);
     await optOut(ctx, orgId, people[4]);
-    return aggregate(
-      (await loadCountable(ctx, orgId, null)).map(() => 4),
-      org,
-    );
+    return aggregate(await loadCountable(ctx, org, null), () => 4, org);
   });
   expect(result).toEqual({ hidden: true, n: 4 });
 });
@@ -171,27 +201,32 @@ test("leaving a workspace takes the person's settings with them", async () => {
   expect(left).toBeNull();
 });
 
-test("the threshold can't go below 5", () => {
+test("the threshold can't go below 5", async () => {
+  const t = harness();
   const lax = { privacyThreshold: 3 };
-  expect(aggregate([4, 4, 4, 3, 3], lax)).toEqual({
-    hidden: false,
-    n: 5,
-    value: 3.6,
-  });
-  expect(aggregate([4, 4, 4, 3], lax)).toEqual({ hidden: true, n: 4 });
-  expect(count([true, true, false, true], lax)).toEqual({ hidden: true, n: 4 });
-  // A stored NaN is no threshold at all, so the floor applies.
-  expect(aggregate([4], { privacyThreshold: NaN })).toEqual({
-    hidden: true,
-    n: 1,
-  });
-
-  // A stricter workspace is honoured.
   const strict = { privacyThreshold: 7 };
-  expect(aggregate([4, 4, 4, 4, 4, 4], strict)).toEqual({ hidden: true, n: 6 });
-  expect(count([true, true, true, true, true, true, false], strict)).toEqual({
-    hidden: false,
-    n: 7,
-    value: 6,
+  const scores = [4, 4, 4, 3, 3];
+  const result = await t.run(async (ctx) => {
+    const five = await countableOf(ctx, 5);
+    const four = await countableOf(ctx, 4);
+    const one = await countableOf(ctx, 1);
+    const six = await countableOf(ctx, 6);
+    const seven = await countableOf(ctx, 7);
+    return {
+      five: aggregate(five, (p) => scores[five.indexOf(p)], lax),
+      four: aggregate(four, (p) => scores[four.indexOf(p)], lax),
+      fourDid: count(four, (p) => four.indexOf(p) !== 2, lax),
+      // A stored NaN is no threshold at all, so the floor applies.
+      nan: aggregate(one, () => 4, { privacyThreshold: NaN }),
+      // A stricter workspace is honoured.
+      six: aggregate(six, () => 4, strict),
+      seven: count(seven, (p) => seven.indexOf(p) !== 6, strict),
+    };
   });
+  expect(result.five).toEqual({ hidden: false, n: 5, value: 3.6 });
+  expect(result.four).toEqual({ hidden: true, n: 4 });
+  expect(result.fourDid).toEqual({ hidden: true, n: 4 });
+  expect(result.nan).toEqual({ hidden: true, n: 1 });
+  expect(result.six).toEqual({ hidden: true, n: 6 });
+  expect(result.seven).toEqual({ hidden: false, n: 7, value: 6 });
 });
