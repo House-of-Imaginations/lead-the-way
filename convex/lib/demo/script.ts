@@ -20,6 +20,24 @@ import type { StepKey } from "./schedule";
  *
  * `setClock` runs these for the demo workspace only, and each step writes
  * only rows with that `orgId`.
+ *
+ * THE CONTRACT WITH THE PRODUCT'S WRITERS. The script and the product write
+ * the same rows, so each reads what the other wrote. Every later writer (P3
+ * onwards) keeps these eight rules, or the script and the screens disagree:
+ *  1. One `teams` row per org, and one current sprint.
+ *  2. The team is done when `teams.savedAt` is set.
+ *  3. The hour is decided when `sprints.committedAt` or `sprints.notReady`
+ *     is set.
+ *  4. The sprint is launched when `sprints.launchedAt` is set.
+ *  5. One row per (person, module) in `pathwayProgress`, per (person, sprint)
+ *     in `learningProgress` and `projects`, per (agreement, version, person)
+ *     in `agreementSignatures`, and per (person, sprint, phase, question) in
+ *     `surveyResponses`. Writers upsert; they never add a second row.
+ *  6. `orgInvites.email` and `people.email` are lowercased.
+ *  7. An agreement counts as saved at `status: "saved"`, and versions only
+ *     go up.
+ *  8. Both paths log every event type with the same meta keys, at
+ *     `now = nowFor(org)`.
  */
 
 type StepCtx = { ctx: MutationCtx; orgId: Id<"orgs">; at: number };
@@ -41,11 +59,12 @@ const TEAM = {
   sizeBand: "6 to 10",
   industry: "Professional services",
   teamFunction: "Client service",
-  aiUse: "Exploring occasionally",
+  // The option wireframe 03 selects.
+  aiUse: "Advanced users, inconsistent practices",
   challenges: ["Staff are using AI differently", "Lack of time to learn"],
 };
 
-// ponytail: the demo holds a handful of invitations (9 by script). Past 500 a
+// ponytail: the demo holds a handful of invitations (8 by script). Past 500 a
 // step could miss one and invite a cast member twice; page it if that matters.
 const DEMO_INVITES_READ = 500;
 
@@ -203,7 +222,12 @@ async function teamOf(ctx: MutationCtx, orgId: Id<"orgs">) {
     .query("teams")
     .withIndex("by_org", (q) => q.eq("orgId", orgId))
     .first();
-  if (!team) throw new Error("The demo workspace has no team. Reset the demo.");
+  if (!team) {
+    throwUserError(
+      "DEMO_BROKEN",
+      "The demo workspace has no team. Reset the demo.",
+    );
+  }
   return team;
 }
 
@@ -213,7 +237,10 @@ async function sprintOf(ctx: MutationCtx, orgId: Id<"orgs">) {
     .withIndex("by_org", (q) => q.eq("orgId", orgId))
     .first();
   if (!sprint) {
-    throw new Error("The demo workspace has no sprint. Reset the demo.");
+    throwUserError(
+      "DEMO_BROKEN",
+      "The demo workspace has no sprint. Reset the demo.",
+    );
   }
   return sprint;
 }
@@ -510,7 +537,10 @@ async function employeeRoleOf(ctx: MutationCtx, orgId: Id<"orgs">) {
     custom.find((r) => r.name === "Employee") ??
     custom.sort((a, b) => a.permissions.length - b.permissions.length)[0];
   if (!role) {
-    throw new Error("The demo workspace has no Employee role. Reset the demo.");
+    throwUserError(
+      "DEMO_BROKEN",
+      "The demo workspace has no Employee role. Reset the demo.",
+    );
   }
   return role;
 }
@@ -608,7 +638,7 @@ export const STEPS: Record<StepKey, Step> = {
       (
         await ctx.db
           .query("orgInvites")
-          .withIndex("by_org_and_status", (q) => q.eq("orgId", orgId))
+          .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
           .take(DEMO_INVITES_READ)
       ).map((invite) => invite.email),
     );
@@ -637,7 +667,7 @@ export const STEPS: Record<StepKey, Step> = {
     const { ctx, orgId, at } = step;
     const invites = await ctx.db
       .query("orgInvites")
-      .withIndex("by_org_and_status", (q) =>
+      .withIndex("by_org_status_and_expiresAt", (q) =>
         q.eq("orgId", orgId).eq("status", "pending"),
       )
       .take(DEMO_INVITES_READ);

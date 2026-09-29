@@ -26,7 +26,12 @@ export async function writeCalderLane(
   assertFlag("demo", true);
   const idOf = (key: CastKey) => {
     const id = accounts[key];
-    if (!id) throw new Error(`The demo account for ${key} is missing.`);
+    if (!id) {
+      throwUserError(
+        "DEMO_NOT_SEEDED",
+        `The demo account for ${key} is missing. Run seed:reset from the terminal first.`,
+      );
+    }
     return id;
   };
 
@@ -35,7 +40,8 @@ export async function writeCalderLane(
     .withIndex("by_slug", (q) => q.eq("slug", DEMO_SLUG))
     .unique();
   if (old && !old.isDemo) {
-    throw new Error(
+    throwUserError(
+      "DEMO_BROKEN",
       `${DEMO_SLUG} belongs to a real workspace. Refusing to reset it.`,
     );
   }

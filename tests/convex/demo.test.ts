@@ -106,7 +106,7 @@ async function read(t: T, orgId: Id<"orgs">) {
     const priya = people.find((p) => p.email === castOf("priya").email);
     const invites = await ctx.db
       .query("orgInvites")
-      .withIndex("by_org_and_status", (q) => q.eq("orgId", orgId))
+      .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
       .collect();
     const progress = await ctx.db
       .query("learningProgress")
@@ -356,6 +356,8 @@ test("setClock keeps the tester's own choices", async () => {
   expect(setup.team).toMatchObject({
     sizeBand: "11 to 20",
     industry: "Professional services",
+    // The option wireframe 03 selects.
+    aiUse: "Advanced users, inconsistent practices",
   });
 
   // As Dan, after he joins: 90% through the course, and his own project,
@@ -659,7 +661,7 @@ test("without Employee, the script invites into the custom role with the fewest 
   const invites = await t.run((ctx) =>
     ctx.db
       .query("orgInvites")
-      .withIndex("by_org_and_status", (q) => q.eq("orgId", orgId))
+      .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
       .collect(),
   );
   expect(invites).toHaveLength(8);
@@ -762,6 +764,25 @@ test("a missing demo account says to reseed", async () => {
   ).rejects.toMatchObject({ data: { code: "DEMO_NOT_SEEDED" } });
   await expect(priya.mutation(api.demo.reset, {})).rejects.toMatchObject({
     data: { code: "DEMO_NOT_SEEDED" },
+  });
+});
+
+test("a broken demo workspace says to reset, in words the client gets", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.run(async (ctx) => {
+    const team = await ctx.db
+      .query("teams")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .unique();
+    await ctx.db.delete(team!._id);
+  });
+  await expect(
+    as("priya").mutation(api.demo.setClock, { target: "week1" }),
+  ).rejects.toMatchObject({
+    data: {
+      code: "DEMO_BROKEN",
+      message: "The demo workspace has no team. Reset the demo.",
+    },
   });
 });
 

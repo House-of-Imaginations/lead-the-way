@@ -50,6 +50,8 @@ export type ErrorCode =
   | "INVITE_WRONG_ACCOUNT"
   | "ALREADY_A_MEMBER"
   | "DEMO_NOT_SEEDED"
+  // The demo workspace lacks a row the script needs: the fix is a reset.
+  | "DEMO_BROKEN"
   | "DEMO_CLOCK_BACKWARDS"
   // A shared demo persona, while the demo is on, stays in the demo workspace.
   | "DEMO_ACCOUNT_CREATE"

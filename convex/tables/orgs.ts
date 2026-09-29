@@ -141,10 +141,9 @@ export const orgTables = {
     createdAt: v.number(),
   })
     .index("by_token", ["token"])
-    // One answered status at a time for the list; the prefix serves "all of them".
-    .index("by_org_and_status", ["orgId", "status"])
     // Live pending only, exactly: the cap and the list read past `now`, so a
-    // lapsed row never takes a place in the range.
+    // lapsed row never takes a place in the range. Its prefixes serve one
+    // answered status at a time, and "all of them" for a workspace.
     .index("by_org_status_and_expiresAt", ["orgId", "status", "expiresAt"])
     // Revoking what a role change would otherwise silently widen.
     .index("by_role", ["roleId"]),

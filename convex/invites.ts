@@ -181,13 +181,14 @@ export const list = orgQuery("members:manage")({
     // one out of a shared window. Revoked is never read. Every live pending row
     // is read, since the cap bounds them; lapsed ones are outside the range.
     // Display only: `accept` checks the clock again.
-    // ponytail: each answered status shows its newest N. Page it if a
-    // workspace ever needs to see further back.
+    // ponytail: each answered status shows the N that expire last, which is
+    // the newest N but for a resent link. Page it if a workspace ever needs to
+    // see further back.
     const newest = async (status: "accepted" | "declined", limit: number) =>
       (
         await ctx.db
           .query("orgInvites")
-          .withIndex("by_org_and_status", (q) =>
+          .withIndex("by_org_status_and_expiresAt", (q) =>
             q.eq("orgId", ctx.orgId).eq("status", status),
           )
           .order("desc")
