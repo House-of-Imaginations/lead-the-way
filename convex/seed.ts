@@ -1,12 +1,19 @@
 import { v } from "convex/values";
-import { internalAction, type ActionCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import {
+  internalAction,
+  internalMutation,
+  type ActionCtx,
+} from "./_generated/server";
 import { assertFlag } from "./app";
 import { createAuth } from "./auth";
+import { writeCalderLane as write } from "./lib/demo/calderLane";
 import { ACCOUNT_HOLDERS, demoUserId } from "./lib/demo/cast";
 
 /**
- * Seeding the Calder Lane demo. `npx convex run seed:reset` does all of it
- * (Task 8); `seed:accounts` is the first half on its own.
+ * Seeding the Calder Lane demo. `npx convex run seed:reset` does all of it;
+ * `seed:accounts` is the first half on its own.
  */
 
 const MIN_PASSWORD = 12;
@@ -53,4 +60,20 @@ export const accounts = internalAction({
   args: {},
   returns: v.record(v.string(), v.string()),
   handler: ensureDemoAccounts,
+});
+
+export const writeCalderLane = internalMutation({
+  args: { accounts: v.record(v.string(), v.string()) },
+  returns: v.id("orgs"),
+  handler: (ctx, { accounts }) => write(ctx, accounts),
+});
+
+/** `npx convex run seed:reset`: the accounts, then a fresh Calder Lane. */
+export const reset = internalAction({
+  args: {},
+  returns: v.id("orgs"),
+  handler: async (ctx): Promise<Id<"orgs">> => {
+    const accounts = await ensureDemoAccounts(ctx);
+    return await ctx.runMutation(internal.seed.writeCalderLane, { accounts });
+  },
 });

@@ -19,7 +19,15 @@ export const MAX_SLUG_LENGTH = 48;
  * list is the route segments that live under `/orgs/`, plus the handful of
  * words a router is likely to grow.
  */
-const RESERVED = new Set(["new", "api", "settings", "join", "admin", "orgs"]);
+const RESERVED = new Set([
+  "new",
+  "api",
+  "settings",
+  "join",
+  "admin",
+  "orgs",
+  "calder-lane", // the seeded demo workspace
+]);
 
 /**
  * One spelling per name, decided before both the uniqueness read and the write.

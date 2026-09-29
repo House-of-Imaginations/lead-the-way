@@ -129,6 +129,7 @@ const callsFor = ({
   inviteId,
   storageId,
 }: Ids): Record<string, Record<string, unknown>> => ({
+  "demo:reset": {},
   "orgs:active": {},
   "orgs:bySlug": { slug: "aster-network" },
   "orgs:create": { name: "Aster Network" },

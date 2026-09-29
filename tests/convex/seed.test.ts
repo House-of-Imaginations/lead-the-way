@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { components, internal } from "../../convex/_generated/api";
+import { api, components, internal } from "../../convex/_generated/api";
 import { isDemoAddress } from "../../convex/lib/demo/cast";
+import { DEMO_NOW, SCHEDULE } from "../../convex/lib/demo/schedule";
 import { sendEmail, type EmailCtx } from "../../convex/lib/email/send";
-import { seedDemoAccounts } from "./testHelpers";
-import { harness } from "./workspace/helpers";
+import { personFields, seedDemoAccounts } from "./testHelpers";
+import { harness, workspace } from "./workspace/helpers";
 
 // convex/auth.ts reads SITE_URL when the module loads, and convex-test loads
 // it lazily on the first action that reaches it. Nothing here imports it
@@ -69,4 +70,176 @@ test("demo addresses never get email", async () => {
       paragraphs: [],
     }),
   ).resolves.toBe(false);
+});
+
+test("writeCalderLane seeds Calder Lane on Tuesday 1 September", async () => {
+  const t = harness();
+  const accounts = await seedDemoAccounts(t);
+  const orgId = await t.mutation(internal.seed.writeCalderLane, { accounts });
+
+  const state = await t.run(async (ctx) => {
+    return {
+      org: await ctx.db.get(orgId),
+      people: await ctx.db
+        .query("people")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect(),
+      roles: await ctx.db
+        .query("orgRoles")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect(),
+      team: await ctx.db
+        .query("teams")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .unique(),
+      sprint: await ctx.db
+        .query("sprints")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .unique(),
+      script: await ctx.db
+        .query("demoScript")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect(),
+    };
+  });
+
+  // 1 Sep 9:30 AM Melbourne (AEST, +10:00).
+  expect(DEMO_NOW).toBe(Date.parse("2026-08-31T23:30:00Z"));
+  expect(state.org).toMatchObject({
+    name: "Calder Lane",
+    slug: "calder-lane",
+    domain: "calderlane.com.au",
+    partnerName: "Southbank Business Collective",
+    privacyThreshold: 5,
+    isDemo: true,
+    demoNow: DEMO_NOW,
+  });
+  expect(
+    state.people.map((p) => [p.name, p.initials, p.jobTitle, p.email]),
+  ).toEqual([
+    ["Priya Raman", "PR", "Team manager", "priya.raman@calderlane.com.au"],
+  ]);
+  expect(state.roles.map((r) => [r.kind, r.name])).toEqual([
+    ["owner", "Manager"],
+    ["custom", "Employee"],
+  ]);
+  expect(state.team).toMatchObject({
+    name: "Client Services team",
+    challenges: [],
+  });
+  expect(state.team?.savedAt).toBeUndefined();
+  expect(state.sprint).toMatchObject({
+    status: "draft",
+    startDate: "2026-09-09",
+    timeZone: "Australia/Melbourne",
+    weeks: 4,
+    protectedHour: { weekday: 3, start: "14:00", durationMinutes: 60 },
+    courseTitle: "AI Productivity Fundamentals",
+  });
+  expect(state.sprint?.committedAt).toBeUndefined();
+  expect(state.script.map((row) => row.key)).toEqual(Object.keys(SCHEDULE));
+  expect(state.script.every((row) => row.appliedAt === undefined)).toBe(true);
+
+  // Priya opens the demo. Dan isn't in it yet, so he has no workspace.
+  const priya = t.withIdentity({ subject: accounts.priya });
+  const dan = t.withIdentity({ subject: accounts.dan });
+  expect((await priya.query(api.orgs.active, {}))?.org.slug).toBe(
+    "calder-lane",
+  );
+  expect(await dan.query(api.orgs.active, {})).toBeNull();
+});
+
+test("reset replaces the demo workspace and nothing else", async () => {
+  const t = harness();
+  const { orgId: realId } = await workspace(t);
+  await seedDemoAccounts(t);
+  const first = await t.action(internal.seed.reset, {});
+  const second = await t.action(internal.seed.reset, {});
+
+  expect(second).not.toBe(first);
+  const state = await t.run(async (ctx) => ({
+    first: await ctx.db.get(first),
+    names: (await ctx.db.query("orgs").collect()).map((o) => o.name).sort(),
+    realPeople: (
+      await ctx.db
+        .query("people")
+        .withIndex("by_org", (q) => q.eq("orgId", realId))
+        .collect()
+    ).length,
+  }));
+  expect(state.first).toBeNull();
+  expect(state.names).toEqual(["Aster Network", "Calder Lane"]);
+  expect(state.realPeople).toBe(1);
+
+  // A real workspace can't take the demo's slug, and the reset won't touch
+  // one that somehow has it.
+  const other = harness();
+  const accounts = await seedDemoAccounts(other);
+  await other.run((ctx) =>
+    ctx.db.insert("orgs", {
+      name: "Not a demo",
+      slug: "calder-lane",
+      privacyThreshold: 5,
+      isDemo: false,
+      createdAt: 0,
+    }),
+  );
+  await expect(
+    other.mutation(internal.seed.writeCalderLane, { accounts }),
+  ).rejects.toThrow(/real workspace/);
+});
+
+test("demo.reset is refused outside the demo, and without demo mode", async () => {
+  const t = harness();
+  const { owner } = await workspace(t);
+  const accounts = await seedDemoAccounts(t);
+  const demoId = await t.mutation(internal.seed.writeCalderLane, { accounts });
+  const priya = t.withIdentity({ subject: accounts.priya });
+
+  await expect(owner.mutation(api.demo.reset, {})).rejects.toMatchObject({
+    data: { code: "FORBIDDEN" },
+  });
+  await expect(
+    t.withIdentity({ subject: "user_loner" }).mutation(api.demo.reset, {}),
+  ).rejects.toMatchObject({ data: { code: "NO_WORKSPACE" } });
+
+  await priya.mutation(api.demo.reset, {});
+  const active = await priya.query(api.orgs.active, {});
+  expect(active?.org.slug).toBe("calder-lane");
+  expect(active?.org._id).not.toBe(demoId);
+
+  vi.stubEnv("DEMO_MODE", "");
+  await expect(priya.mutation(api.demo.reset, {})).rejects.toMatchObject({
+    data: { code: "FEATURE_UNAVAILABLE" },
+  });
+  await expect(t.action(internal.seed.reset, {})).rejects.toMatchObject({
+    data: { code: "FEATURE_UNAVAILABLE" },
+  });
+});
+
+test("any persona in the demo can reset it, Dan included", async () => {
+  const t = harness();
+  const accounts = await seedDemoAccounts(t);
+  const demoId = await t.mutation(internal.seed.writeCalderLane, { accounts });
+  // The script seats Dan on 8 September; seat him as an Employee by hand.
+  await t.run(async (ctx) => {
+    const roles = await ctx.db
+      .query("orgRoles")
+      .withIndex("by_org", (q) => q.eq("orgId", demoId))
+      .collect();
+    const employee = roles.find((r) => r.name === "Employee");
+    if (!employee) throw new Error("no Employee role");
+    await ctx.db.insert("people", {
+      orgId: demoId,
+      roleId: employee._id,
+      ...personFields(accounts.dan!, "Dan Okafor"),
+    });
+  });
+  const dan = t.withIdentity({ subject: accounts.dan });
+  expect((await dan.query(api.orgs.active, {}))?.org._id).toBe(demoId);
+
+  await dan.mutation(api.demo.reset, {});
+  expect(await dan.query(api.orgs.active, {})).toBeNull();
+  const priya = t.withIdentity({ subject: accounts.priya });
+  expect((await priya.query(api.orgs.active, {}))?.org._id).not.toBe(demoId);
 });

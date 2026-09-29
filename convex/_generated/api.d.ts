@@ -10,6 +10,7 @@
 
 import type * as app from "../app.js";
 import type * as auth from "../auth.js";
+import type * as demo from "../demo.js";
 import type * as http from "../http.js";
 import type * as invites from "../invites.js";
 import type * as lib_account_avatar from "../lib/account/avatar.js";
@@ -17,7 +18,9 @@ import type * as lib_account_ensureProfile from "../lib/account/ensureProfile.js
 import type * as lib_account_profile from "../lib/account/profile.js";
 import type * as lib_auth_identity from "../lib/auth/identity.js";
 import type * as lib_customFunctions from "../lib/customFunctions.js";
+import type * as lib_demo_calderLane from "../lib/demo/calderLane.js";
 import type * as lib_demo_cast from "../lib/demo/cast.js";
+import type * as lib_demo_schedule from "../lib/demo/schedule.js";
 import type * as lib_email_messages from "../lib/email/messages.js";
 import type * as lib_email_send from "../lib/email/send.js";
 import type * as lib_email_template from "../lib/email/template.js";
@@ -52,6 +55,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   app: typeof app;
   auth: typeof auth;
+  demo: typeof demo;
   http: typeof http;
   invites: typeof invites;
   "lib/account/avatar": typeof lib_account_avatar;
@@ -59,7 +63,9 @@ declare const fullApi: ApiFromModules<{
   "lib/account/profile": typeof lib_account_profile;
   "lib/auth/identity": typeof lib_auth_identity;
   "lib/customFunctions": typeof lib_customFunctions;
+  "lib/demo/calderLane": typeof lib_demo_calderLane;
   "lib/demo/cast": typeof lib_demo_cast;
+  "lib/demo/schedule": typeof lib_demo_schedule;
   "lib/email/messages": typeof lib_email_messages;
   "lib/email/send": typeof lib_email_send;
   "lib/email/template": typeof lib_email_template;
