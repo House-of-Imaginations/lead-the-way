@@ -659,6 +659,7 @@ export const STEPS: Record<StepKey, Step> = {
         userId,
         orgId,
         invite.roleId,
+        at,
         cast.jobTitle,
       );
       await ctx.db.patch(invite._id, {

@@ -19,7 +19,8 @@ export function initialsOf(name: string): string {
  *
  * Callers have done their own checks (`assertCanJoin`, the invitation rules).
  * The name is the account's display name; the email is the auth account's own
- * address, lowercased, or "" when the account has none.
+ * address, lowercased, or "" when the account has none. `at` is the
+ * workspace's clock (`nowFor(org)`), so a demo seat joins in demo time.
  *
  * NOT IN `membership.ts`, ON PURPOSE. This reads the auth component, and
  * `membership.ts` is imported by `customFunctions.ts`, which `auth.ts` imports.
@@ -30,6 +31,7 @@ export async function insertPerson(
   userId: string,
   orgId: Id<"orgs">,
   roleId: Id<"orgRoles">,
+  at: number,
   jobTitle = "",
 ): Promise<Doc<"people">> {
   const profile = await ensureProfile(ctx, userId);
@@ -43,7 +45,7 @@ export async function insertPerson(
     email: user?.email?.trim().toLowerCase() ?? "",
     jobTitle,
     timeZone: DEFAULT_TIME_ZONE,
-    createdAt: Date.now(),
+    createdAt: at,
   });
   const person = await ctx.db.get(id);
   if (!person) throw new Error("just-inserted person is missing");

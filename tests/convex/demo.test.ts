@@ -11,6 +11,7 @@ import {
 import { INVITE_WINDOW_MS } from "../../convex/lib/orgs/invites";
 import { ORG_TABLES } from "../../convex/lib/orgs/cascade";
 import { aggregate } from "../../convex/lib/privacy";
+import { getViewer } from "../../convex/lib/viewer";
 import { seedDemoAccounts } from "./testHelpers";
 import { harness, workspace, type T } from "./workspace/helpers";
 
@@ -785,4 +786,36 @@ test("demo invitations expire by the demo clock, not real time", async () => {
   // is still 9 September.
   vi.setSystemTime(Date.now() + INVITE_WINDOW_MS + 60_000);
   expect(await pending()).toEqual(["Omar Haddad"]);
+});
+
+test("what a tester does in the demo is stamped with demo time", async () => {
+  const { t, orgId, as } = await calderLane();
+  const employee = await t.run(async (ctx) => {
+    const roles = await ctx.db
+      .query("orgRoles")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    return roles.find((r) => r.name === "Employee")!._id;
+  });
+  // A shareable link, made and taken up on Tuesday 1 September.
+  const { inviteId, token } = await as("priya").mutation(api.invites.create, {
+    orgId,
+    roleId: employee,
+  });
+  await as("dan").mutation(api.invites.accept, { token });
+
+  const dan = await personId(t, orgId, DAN);
+  const stamps = await t.run(async (ctx) => ({
+    invite: await ctx.db.get(inviteId),
+    dan: await ctx.db.get(dan),
+  }));
+  expect(stamps.invite).toMatchObject({
+    createdAt: DEMO_NOW,
+    respondedAt: DEMO_NOW,
+  });
+  expect(stamps.dan?.createdAt).toBe(DEMO_NOW);
+  // Product functions read the same clock from the viewer.
+  expect(await as("dan").run(async (ctx) => (await getViewer(ctx))?.now)).toBe(
+    DEMO_NOW,
+  );
 });

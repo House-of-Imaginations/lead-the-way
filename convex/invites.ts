@@ -72,9 +72,10 @@ async function nameOf(ctx: QueryCtx | MutationCtx, userId: string) {
 }
 
 /**
- * "Now" for judging a link's expiry: the demo clock in the demo (`nowFor`),
- * so a scripted invitation stays open however much real time passes. Real
- * workspaces get `Date.now()`.
+ * "Now" in a workspace (`nowFor`): the demo clock in the demo, real time
+ * elsewhere. It judges a link's expiry, so a scripted invitation stays open
+ * however much real time passes, and it stamps `createdAt`, `sentAt` and
+ * `respondedAt`. `expiresAt` itself is real time, as the script's are.
  */
 async function nowIn(ctx: QueryCtx | MutationCtx, orgId: Id<"orgs">) {
   const org = await ctx.db.get(orgId);
@@ -115,11 +116,9 @@ async function refusalOf(
   if (invite.status === "revoked") return no("INVITE_REVOKED");
   if (invite.status === "declined") return no("INVITE_DECLINED");
   if (invite.status === "accepted") return no("INVITE_USED");
-  if (invite.expiresAt <= (await nowIn(ctx, invite.orgId))) {
-    return no("INVITE_EXPIRED");
-  }
-
   const org = await ctx.db.get(invite.orgId);
+  if (org && invite.expiresAt <= nowFor(org)) return no("INVITE_EXPIRED");
+
   const role = await ctx.db.get(invite.roleId);
   // Fails closed: a link pinned to a role that has since gone grants nothing.
   if (!org || !role || role.orgId !== invite.orgId) {
@@ -273,7 +272,8 @@ export const create = orgMutation("members:manage")({
       }
     }
 
-    const now = Date.now();
+    const now = await nowIn(ctx, ctx.orgId);
+    const expiresAt = Date.now() + INVITE_WINDOW_MS;
 
     // The cap counts live pending invitations only. Lapsed ones stay in the
     // table (spec 5) but `list` hides them, so counting them would brick
@@ -297,7 +297,7 @@ export const create = orgMutation("members:manage")({
       message: note,
       status: "pending",
       invitedBy: ctx.userId,
-      expiresAt: now + INVITE_WINDOW_MS,
+      expiresAt,
       createdAt: now,
     });
 
@@ -315,7 +315,7 @@ export const create = orgMutation("members:manage")({
       if (emailed) await ctx.db.patch(inviteId, { sentAt: now });
     }
 
-    return { inviteId, token, expiresAt: now + INVITE_WINDOW_MS, emailed };
+    return { inviteId, token, expiresAt, emailed };
   },
 });
 
@@ -333,8 +333,8 @@ export const resend = orgMutation("members:manage")({
       throwUserError("NOT_FOUND", "That invitation is no longer open.");
     }
     // A lapsed link is not revived: it is hidden from `list` and uncounted.
-    const now = Date.now();
-    if (invite.expiresAt <= (await nowIn(ctx, ctx.orgId))) {
+    const now = await nowIn(ctx, ctx.orgId);
+    if (invite.expiresAt <= now) {
       throwUserError(
         "INVITE_EXPIRED",
         "That invitation has expired. Send a new one.",
@@ -354,7 +354,8 @@ export const resend = orgMutation("members:manage")({
     requireWithin(permissionsOf(role), ctx);
     await reserveRateLimit(ctx, "orgInvite", ctx.userId);
 
-    await ctx.db.patch(invite._id, { expiresAt: now + INVITE_WINDOW_MS });
+    const expiresAt = Date.now() + INVITE_WINDOW_MS;
+    await ctx.db.patch(invite._id, { expiresAt });
     const org = await ctx.db.get(ctx.orgId);
     const emailed = await sendInvite(ctx, {
       to: invite.email,
@@ -495,16 +496,18 @@ export const accept = authenticatedMutation({
     // The only door into a workspace, so the only place the ceilings are held.
     await assertCanJoin(ctx, ctx.userId, invite.orgId);
 
+    const now = nowFor(org);
     const person = await insertPerson(
       ctx,
       ctx.userId,
       invite.orgId,
       invite.roleId,
+      now,
     );
     await ctx.db.patch(invite._id, {
       status: "accepted",
       personId: person._id,
-      respondedAt: Date.now(),
+      respondedAt: now,
     });
     await setActiveOrgOf(ctx, ctx.userId, invite.orgId);
     return { slug: org.slug, orgId: invite.orgId };
@@ -520,10 +523,10 @@ export const decline = authenticatedMutation({
   args: { token: v.string() },
   returns: v.null(),
   handler: async (ctx, { token }): Promise<null> => {
-    const { invite } = await usableInvite(ctx, token, ctx.userId);
+    const { invite, org } = await usableInvite(ctx, token, ctx.userId);
     await ctx.db.patch(invite._id, {
       status: "declined",
-      respondedAt: Date.now(),
+      respondedAt: nowFor(org),
     });
     return null;
   },

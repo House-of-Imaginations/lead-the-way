@@ -225,7 +225,7 @@ export const create = authenticatedMutation({
       name: "Manager",
       createdAt: now,
     });
-    await insertPerson(ctx, ctx.userId, orgId, ownerRoleId);
+    await insertPerson(ctx, ctx.userId, orgId, ownerRoleId, now);
 
     // The new workspace is where this person is working now.
     await setActiveOrgOf(ctx, ctx.userId, orgId);

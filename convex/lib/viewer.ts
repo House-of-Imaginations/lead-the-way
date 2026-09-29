@@ -2,6 +2,7 @@ import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { profileOf } from "./account/profile";
 import { requireUserId } from "./auth/identity";
+import { nowFor } from "./clock";
 import { throwUserError } from "./errors";
 import {
   permissionsOf,
@@ -19,7 +20,7 @@ import type { Permission } from "./orgs/permissions";
  * Must not import `convex/auth.ts`: `customFunctions.ts` imports this file,
  * and `auth.ts` imports `customFunctions.ts`.
  */
-export type Viewer = Seat & { userId: string; org: Doc<"orgs"> };
+export type Viewer = Seat & { userId: string; org: Doc<"orgs">; now: number };
 
 /**
  * The signed-in account's workspace: the one it last opened, or else any seat
@@ -27,7 +28,8 @@ export type Viewer = Seat & { userId: string; org: Doc<"orgs"> };
  * is a normal state (signed up, not yet set up or invited), not an error.
  *
  * Spec 4.2's `{person, workspace, permissions}`: the workspace is `org`, plus
- * `role` and `userId`.
+ * `role` and `userId`. `now` is the workspace's clock (`nowFor`): stamp what
+ * the viewer does with it, never with `Date.now()`.
  */
 export async function getViewer(
   ctx: QueryCtx | MutationCtx,
@@ -44,7 +46,14 @@ export async function getViewer(
     const role = await ctx.db.get(person.roleId);
     // A seat whose workspace or role is gone is skipped, never trusted.
     if (!org || !role || role.orgId !== org._id) continue;
-    return { person, role, permissions: permissionsOf(role), userId, org };
+    return {
+      person,
+      role,
+      permissions: permissionsOf(role),
+      userId,
+      org,
+      now: nowFor(org),
+    };
   }
   return null;
 }
