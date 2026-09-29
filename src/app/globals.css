@@ -42,6 +42,21 @@
   ::after {
     border-radius: 0;
   }
+  /* Carbon's double ring for anything styled only with utilities. The same values as the ring list at the top
+     of components.css, which covers the component classes. */
+  :where(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [tabindex]
+  ):focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+    box-shadow: inset 0 0 0 3px var(--background);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

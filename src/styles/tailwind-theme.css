@@ -68,10 +68,18 @@
   --ease-productive: cubic-bezier(0.2, 0, 0.38, 0.9);
   --ease-expressive: cubic-bezier(0.16, 1, 0.3, 1);
 
+  /* Clear Tailwind's default radius, shadow and breakpoint scales: DESIGN.md allows only these. */
+  --radius-*: initial;
   --radius-none: 0px;
   --radius-tag: 24px;
   --radius-round: 50%;
+  --shadow-*: initial;
   --shadow-float: 0 2px 6px rgba(0, 0, 0, 0.3);
+  /* DESIGN.md breakpoints: md 672px (phones below), lg 1056px (side nav rail below), xl 1312px (content max). */
+  --breakpoint-*: initial;
+  --breakpoint-md: 672px;
+  --breakpoint-lg: 1056px;
+  --breakpoint-xl: 1312px;
   --font-sans:
     var(--font-plex-sans), "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
   --font-mono:

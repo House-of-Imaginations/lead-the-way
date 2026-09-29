@@ -1,6 +1,6 @@
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col justify-between bg-background p-05 text-text-primary min-[672px]:p-07">
+    <main className="flex min-h-screen flex-col justify-between bg-background p-05 text-text-primary md:p-07">
       <div className="flex flex-col gap-05">
         <h1 className="text-heading-01">Lead the Way</h1>
         <p className="max-w-[65ch] text-body-01 text-text-secondary">
