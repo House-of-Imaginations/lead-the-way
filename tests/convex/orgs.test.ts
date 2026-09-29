@@ -42,7 +42,7 @@ async function workspace(t: ReturnType<typeof harness>) {
   return { orgId, slug };
 }
 
-test("creating a workspace makes an owner, two starter roles and one seat", async () => {
+test("creating a workspace makes a Manager, an Employee role and one seat", async () => {
   const t = harness();
   const { orgId } = await workspace(t);
 
@@ -51,11 +51,17 @@ test("creating a workspace makes an owner, two starter roles and one seat", asyn
     members: await ctx.db.query("people").collect(),
   }));
 
-  // An owner, plus something to invite people as.
-  expect(rows.roles.map((role) => [role.kind, role.name])).toEqual([
-    ["owner", "Owner"],
-    ["custom", "Admin"],
-    ["custom", "Member"],
+  // The owner, plus a role to invite people as. Employee holds nothing: every
+  // manager screen needs a permission the owner has and it doesn't.
+  expect(
+    rows.roles.map((role) => [
+      role.kind,
+      role.name,
+      role.kind === "custom" ? role.permissions : "all",
+    ]),
+  ).toEqual([
+    ["owner", "Manager", "all"],
+    ["custom", "Employee", []],
   ]);
   expect(rows.members).toHaveLength(1);
   expect(rows.members[0].userId).toBe(ALICE.subject);
@@ -498,11 +504,11 @@ test("resending a pinned invitation keeps its link and restarts its week", async
   const { orgId } = await workspace(t);
   const alice = t.withIdentity(ALICE);
   const roles = await alice.query(api.orgRoles.list, { orgId });
-  const member = roles.find((role) => role.name === "Member")!;
+  const employee = roles.find((role) => role.name === "Employee")!;
 
   const pinned = await alice.mutation(api.invites.create, {
     orgId,
-    roleId: member._id,
+    roleId: employee._id,
     email: "bob@example.com",
   });
   const [before] = await alice.query(api.invites.list, { orgId });
@@ -522,7 +528,7 @@ test("resending a pinned invitation keeps its link and restarts its week", async
   expect(after.expiresAt).toBeGreaterThan(Date.now() + 6 * 24 * 60 * 60 * 1000);
 
   // A plain link has no address to resend to.
-  await alice.mutation(api.invites.create, { orgId, roleId: member._id });
+  await alice.mutation(api.invites.create, { orgId, roleId: employee._id });
   const link = (await alice.query(api.invites.list, { orgId })).find(
     (invite) => invite.email === null,
   )!;

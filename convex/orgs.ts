@@ -164,13 +164,13 @@ export const active = authenticatedQuery({
   },
 });
 
-/** The roles a new workspace starts with, besides its owner. */
+/**
+ * The one starter role besides the owner. Employee holds nothing: everything
+ * an employee does is their own rows, which need a seat and no permission.
+ * An ordinary custom row, renamed or deleted like any other.
+ */
 const DEFAULT_ROLES: readonly { name: string; permissions: Permission[] }[] = [
-  {
-    name: "Admin",
-    permissions: ["members:read", "members:manage", "roles:manage"],
-  },
-  { name: "Member", permissions: ["members:read"] },
+  { name: "Employee", permissions: [] },
 ];
 
 /**
@@ -235,7 +235,7 @@ export const create = authenticatedMutation({
     const ownerRoleId = await ctx.db.insert("orgRoles", {
       orgId,
       kind: "owner",
-      name: "Owner",
+      name: "Manager",
       createdAt: now,
     });
     await insertPerson(ctx, ctx.userId, orgId, ownerRoleId);

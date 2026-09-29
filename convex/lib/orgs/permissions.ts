@@ -22,6 +22,8 @@ export const PERMISSIONS = [
   "members:read",
   "members:manage", // invite, remove, change somebody's role
   "roles:manage", // create, edit and delete roles
+  "sprint:manage", // set up the team, the hour and the agreement; launch and run the sprint
+  "team:insights", // read team aggregates (overview, outcomes); never one person's numbers
 ] as const;
 
 export const permissionValidator = literals(...PERMISSIONS);

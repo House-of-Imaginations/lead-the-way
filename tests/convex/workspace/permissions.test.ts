@@ -22,3 +22,53 @@ test("a role cannot grant what its creator does not hold", async () => {
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 });
+
+test("a custom role with team:insights has it and cannot escalate", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const { as: lead, roleId } = await seat(t, orgId, "user_lead", [
+    "team:insights",
+    "roles:manage",
+  ]);
+
+  expect(await lead.query(api.orgs.myPermissions, { orgId })).toEqual([
+    "team:insights",
+    "roles:manage",
+  ]);
+  // The owner holds both new permissions without a migration.
+  expect(await owner.query(api.orgs.myPermissions, { orgId })).toEqual(
+    expect.arrayContaining(["sprint:manage", "team:insights"]),
+  );
+
+  // roles:manage is not a way to reach what the role doesn't hold, whether by
+  // a new role or by widening its own.
+  await expect(
+    lead.mutation(api.orgRoles.create, {
+      orgId,
+      name: "Planner",
+      permissions: ["sprint:manage"],
+    }),
+  ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
+  await expect(
+    lead.mutation(api.orgRoles.update, {
+      orgId,
+      roleId,
+      name: "Lead",
+      permissions: ["team:insights", "roles:manage", "members:manage"],
+    }),
+  ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
+
+  // team:insights is aggregates, not the member list.
+  await expect(lead.query(api.members.list, { orgId })).rejects.toMatchObject({
+    data: { code: "FORBIDDEN" },
+  });
+
+  // It may hand out exactly what it holds.
+  await expect(
+    lead.mutation(api.orgRoles.create, {
+      orgId,
+      name: "Insights",
+      permissions: ["team:insights"],
+    }),
+  ).resolves.toBeDefined();
+});
