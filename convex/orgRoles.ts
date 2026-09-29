@@ -187,7 +187,7 @@ export const remove = orgMutation("roles:manage")({
     // up roles; a reassignment silently changes what they can do, possibly
     // upward. Both are surprises. Refusing is the only one that is not.
     const holder = await ctx.db
-      .query("memberships")
+      .query("people")
       .withIndex("by_role", (q) => q.eq("roleId", roleId))
       .first();
     if (holder) {

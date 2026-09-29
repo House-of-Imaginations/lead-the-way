@@ -11,9 +11,11 @@ import { permissionValidator, type Permission } from "./lib/orgs/permissions";
 import { deleteOrg } from "./lib/orgs/cascade";
 import {
   assertCanCreate,
+  findSeat,
   permissionsOf,
   seatsOfUser,
 } from "./lib/orgs/membership";
+import { insertPerson } from "./lib/orgs/people";
 import { cleanOrgName, slugIsAvailableShape, slugify } from "./lib/orgs/slug";
 import { profileOf } from "./lib/account/profile";
 import { setActiveOrgOf } from "./lib/account/ensureProfile";
@@ -100,7 +102,7 @@ export const mine = authenticatedQuery({
     const orgs = [];
     for (const seat of seats) {
       const org = await ctx.db.get(seat.orgId);
-      // A membership pointing at an org that is gone is a broken row, not
+      // A seat pointing at an org that is gone is a broken row, not
       // something to render. Skipped rather than thrown: the switcher staying
       // usable matters more than announcing a repair job here.
       if (org) orgs.push(await publicOrg(ctx, org));
@@ -126,22 +128,13 @@ export const bySlug = authenticatedQuery({
       .unique();
     if (!org) return null;
 
-    const membership = await ctx.db
-      .query("memberships")
-      .withIndex("by_user_and_org", (q) =>
-        q.eq("userId", ctx.userId).eq("orgId", org._id),
-      )
-      .unique();
-    if (!membership) return null;
-
-    const role = await ctx.db.get(membership.roleId);
-    if (!role) return null;
-
+    const seat = await findSeat(ctx, ctx.userId, org._id);
+    if (!seat) return null;
     return {
       org: await publicOrg(ctx, org),
-      roleName: role.name,
-      isOwner: role.kind === "owner",
-      permissions: [...permissionsOf(role)],
+      roleName: seat.role.name,
+      isOwner: seat.role.kind === "owner",
+      permissions: [...seat.permissions],
     };
   },
 });
@@ -245,12 +238,7 @@ export const create = authenticatedMutation({
       name: "Owner",
       createdAt: now,
     });
-    await ctx.db.insert("memberships", {
-      userId: ctx.userId,
-      orgId,
-      roleId: ownerRoleId,
-      createdAt: now,
-    });
+    await insertPerson(ctx, ctx.userId, orgId, ownerRoleId);
 
     // The new workspace is where this person is working now.
     await setActiveOrgOf(ctx, ctx.userId, orgId);

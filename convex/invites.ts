@@ -20,6 +20,7 @@ import {
   permissionsOf,
   requireWithin,
 } from "./lib/orgs/membership";
+import { insertPerson } from "./lib/orgs/people";
 import { reserveRateLimit } from "./lib/rateLimits";
 
 /**
@@ -308,7 +309,7 @@ export const preview = authenticatedQuery({
     }
 
     const member = await ctx.db
-      .query("memberships")
+      .query("people")
       .withIndex("by_user_and_org", (q) =>
         q.eq("userId", ctx.userId).eq("orgId", invite.orgId),
       )
@@ -335,7 +336,7 @@ export const preview = authenticatedQuery({
  * Take up an invitation.
  *
  * INSERT ONLY, and that is a security property rather than a simplification.
- * If this patched an existing membership's role, any invitation link would be
+ * If this patched an existing seat's role, any invitation link would be
  * a self-demotion primitive: an owner opens a "member" link somebody sent them
  * and is demoted out of their own workspace. So an existing member consumes the
  * link and keeps the role they already had.
@@ -409,7 +410,7 @@ export const accept = authenticatedMutation({
     }
 
     const existing = await ctx.db
-      .query("memberships")
+      .query("people")
       .withIndex("by_user_and_org", (q) =>
         q.eq("userId", ctx.userId).eq("orgId", invite.orgId),
       )
@@ -426,12 +427,7 @@ export const accept = authenticatedMutation({
     // held. `members.list` and `deleteOrg` both assume they are.
     await assertCanJoin(ctx, ctx.userId, invite.orgId);
 
-    await ctx.db.insert("memberships", {
-      userId: ctx.userId,
-      orgId: invite.orgId,
-      roleId: invite.roleId,
-      createdAt: Date.now(),
-    });
+    await insertPerson(ctx, ctx.userId, invite.orgId, invite.roleId);
     await ctx.db.delete(invite._id);
     await setActiveOrgOf(ctx, ctx.userId, invite.orgId);
     return { slug: org.slug, orgId: invite.orgId };

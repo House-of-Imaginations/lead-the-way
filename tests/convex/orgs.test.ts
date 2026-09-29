@@ -4,7 +4,7 @@ import { ConvexError } from "convex/values";
 import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import schema from "../../convex/schema";
-import { registerComponents, seedAuthUser } from "./testHelpers";
+import { personFields, registerComponents, seedAuthUser } from "./testHelpers";
 
 /**
  * Organizations, and the four ways this feature can go badly wrong.
@@ -48,7 +48,7 @@ test("creating a workspace makes an owner, two starter roles and one seat", asyn
 
   const rows = await t.run(async (ctx) => ({
     roles: await ctx.db.query("orgRoles").collect(),
-    members: await ctx.db.query("memberships").collect(),
+    members: await ctx.db.query("people").collect(),
   }));
 
   // An owner, plus something to invite people as.
@@ -212,7 +212,7 @@ test("an admin cannot promote somebody past themselves, or evict an owner", asyn
   await expect(
     t.withIdentity(BOB).mutation(api.members.remove, {
       orgId,
-      membershipId: aliceSeat.membershipId,
+      personId: aliceSeat.personId,
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 
@@ -220,7 +220,7 @@ test("an admin cannot promote somebody past themselves, or evict an owner", asyn
   await expect(
     t.withIdentity(BOB).mutation(api.members.changeRole, {
       orgId,
-      membershipId: bobSeat.membershipId,
+      personId: bobSeat.personId,
       roleId: aliceSeat.roleId,
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
@@ -271,13 +271,13 @@ test("the last owner cannot leave, be removed, or be demoted", async () => {
   await expect(
     alice.mutation(api.members.remove, {
       orgId,
-      membershipId: seat.membershipId,
+      personId: seat.personId,
     }),
   ).rejects.toMatchObject({ data: { code: "LAST_OWNER" } });
   await expect(
     alice.mutation(api.members.changeRole, {
       orgId,
-      membershipId: seat.membershipId,
+      personId: seat.personId,
       roleId: memberId,
     }),
   ).rejects.toMatchObject({ data: { code: "LAST_OWNER" } });
@@ -684,14 +684,14 @@ test("accepting an invite gives the new member a display name", async () => {
 
   const members = await alice.query(api.members.list, { orgId });
   const seat = members.find((member) => member.userId === bob.subject);
-  // `accept` calls `setActiveOrgOf`, which ensures a profile from his auth
-  // account, so he is listed by name rather than by his raw address.
-  expect(seat?.displayName).toBe("Bob");
+  // `insertPerson` names the seat from his profile, which `ensureProfile`
+  // creates from his auth account.
+  expect(seat?.name).toBe("Bob");
 
   // Alice has no auth row seeded and no profile either, which is the only case
   // the placeholder is left for.
   const owner = members.find((member) => member.isOwner);
-  expect(owner?.displayName).toBe("Someone");
+  expect(owner?.name).toBe("Someone");
 });
 
 test("there is a ceiling on how many workspaces one account can hold", async () => {
@@ -736,11 +736,10 @@ test("a member without org:manage cannot touch the workspace picture", async () 
     permissions: ["members:read"],
   });
   await t.run(async (ctx) => {
-    await ctx.db.insert("memberships", {
-      userId: BOB.subject,
+    await ctx.db.insert("people", {
       orgId,
       roleId,
-      createdAt: Date.now(),
+      ...personFields(BOB.subject),
     });
   });
 

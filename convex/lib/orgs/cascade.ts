@@ -45,11 +45,11 @@ export async function deleteOrg(
     for (const row of rows) await ctx.db.delete(row._id);
   }
 
-  const memberships = await ctx.db
-    .query("memberships")
+  const people = await ctx.db
+    .query("people")
     .withIndex("by_org", (q) => q.eq("orgId", orgId))
     .collect();
-  for (const row of memberships) await ctx.db.delete(row._id);
+  for (const row of people) await ctx.db.delete(row._id);
 
   const invites = await ctx.db
     .query("orgInvites")

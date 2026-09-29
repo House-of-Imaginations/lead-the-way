@@ -89,27 +89,30 @@ export const orgTables = {
   ).index("by_org", ["orgId"]),
 
   /**
-   * One person's seat in one org.
+   * One person's seat in one workspace, and how they appear in it.
    *
-   * `userId` is the Better Auth subject as a plain string, the same contract
-   * every other table here keeps. NO `by_user` INDEX: a compound index on
-   * `["userId", "orgId"]` already answers a query on `userId` alone, because
-   * Convex indexes serve prefixes. A second index would be write amplification
-   * that buys nothing.
+   * `name`, `initials` and `email` are copied in at join, so a manager's view
+   * reads this table and never another person's account or profile. `userId`
+   * is the Better Auth subject as a plain string. NO `by_user` INDEX: the
+   * compound index serves a query on `userId` alone.
    */
-  memberships: defineTable({
+  people: defineTable({
     userId: v.string(),
     orgId: v.id("orgs"),
     roleId: v.id("orgRoles"),
+    name: v.string(),
+    initials: v.string(),
+    email: v.string(),
+    jobTitle: v.string(),
+    timeZone: v.string(),
     createdAt: v.number(),
   })
     // The gate read, on every scoped call in the product.
     .index("by_user_and_org", ["userId", "orgId"])
-    // An org's member list, and the switcher's "which orgs am I in".
+    // A workspace's people, and the switcher's "which workspaces am I in".
     .index("by_org", ["orgId"])
-    // Pays for itself three times over: refusing to delete a role somebody
-    // still holds, counting whether an owner would survive a demotion, and
-    // being the read that makes two admins demoting each other safe under OCC.
+    // Refusing to delete a held role, counting surviving owners, and the read
+    // that makes two admins demoting each other safe under OCC.
     .index("by_role", ["roleId"]),
 
   /**

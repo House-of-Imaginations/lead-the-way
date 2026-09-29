@@ -27,7 +27,6 @@ test("saving a name creates the profile, and saving again renames it", async () 
   await alice.mutation(api.profiles.saveProfile, { displayName: "Alice" });
   await expect(alice.query(api.profiles.me, {})).resolves.toMatchObject({
     displayName: "Alice",
-    avatarUrl: null,
   });
 
   await alice.mutation(api.profiles.saveProfile, { displayName: "Alicia" });

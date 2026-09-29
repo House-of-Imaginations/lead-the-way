@@ -9,24 +9,24 @@ import {
 } from "./permissions";
 
 /**
- * Every read and every write of a membership row, in one file.
+ * Every read and every write of a `people` row, in one file.
  *
  * THE REASON IT IS A CHOKEPOINT. The invariant this product cannot survive
  * losing is "somebody can still administer this org". That is not a property of
  * a role document -- a role saying `kind: "owner"` guarantees the capability
  * EXISTS, never that anybody holds it. It is a property of the member
  * population, so it has to be re-checked by every path that writes or deletes a
- * membership: changing somebody's role, removing them, leaving and accepting an
- * invite. One of them forgetting is an org nobody can ever administer again.
+ * `people` row: changing somebody's role, removing them, leaving and accepting
+ * an invite. One of them forgetting is an org nobody can ever administer again.
  *
- * So no Convex function patches or deletes a `memberships` row directly. They
+ * So no Convex function patches or deletes a `people` row directly. They
  * come through here: a helper that owns one table's writes, whose callers did
  * their own authorization first.
  */
 
 /** A seat and what it can do: the answer the gate needs, in one value. */
 export type Seat = {
-  membership: Doc<"memberships">;
+  person: Doc<"people">;
   role: Doc<"orgRoles">;
   permissions: readonly Permission[];
 };
@@ -55,20 +55,20 @@ export async function findSeat(
   userId: string,
   orgId: Id<"orgs">,
 ): Promise<Seat | null> {
-  const membership = await ctx.db
-    .query("memberships")
+  const person = await ctx.db
+    .query("people")
     .withIndex("by_user_and_org", (q) =>
       q.eq("userId", userId).eq("orgId", orgId),
     )
     .unique();
-  if (!membership) return null;
+  if (!person) return null;
 
-  const role = await ctx.db.get(membership.roleId);
-  // Fails closed. A membership pointing at a role that is gone is a broken row,
-  // and a broken row must not read as unrestricted.
+  const role = await ctx.db.get(person.roleId);
+  // Fails closed. A seat pointing at a role that is gone is a broken row, and
+  // a broken row must not read as unrestricted.
   if (!role || role.orgId !== orgId) return null;
 
-  return { membership, role, permissions: permissionsOf(role) };
+  return { person, role, permissions: permissionsOf(role) };
 }
 
 /**
@@ -184,16 +184,16 @@ export async function ownerRoleOf(
 export async function assertOwnerSurvives(
   ctx: MutationCtx,
   orgId: Id<"orgs">,
-  losingMembershipId: Id<"memberships">,
+  losingId: Id<"people">,
 ): Promise<void> {
   const ownerRole = await ownerRoleOf(ctx, orgId);
 
   const owners = await ctx.db
-    .query("memberships")
+    .query("people")
     .withIndex("by_role", (q) => q.eq("roleId", ownerRole._id))
     .take(2);
 
-  const remaining = owners.filter((row) => row._id !== losingMembershipId);
+  const remaining = owners.filter((row) => row._id !== losingId);
   if (remaining.length === 0) {
     throwUserError(
       "LAST_OWNER",
@@ -205,21 +205,21 @@ export async function assertOwnerSurvives(
 /** Move a seat to another role, having checked the org keeps an owner. */
 export async function setRole(
   ctx: MutationCtx,
-  membership: Doc<"memberships">,
+  person: Doc<"people">,
   roleId: Id<"orgRoles">,
 ): Promise<void> {
-  if (membership.roleId === roleId) return;
-  await assertOwnerSurvives(ctx, membership.orgId, membership._id);
-  await ctx.db.patch(membership._id, { roleId });
+  if (person.roleId === roleId) return;
+  await assertOwnerSurvives(ctx, person.orgId, person._id);
+  await ctx.db.patch(person._id, { roleId });
 }
 
 /** Give up a seat, having checked the org keeps an owner. */
 export async function dropSeat(
   ctx: MutationCtx,
-  membership: Doc<"memberships">,
+  person: Doc<"people">,
 ): Promise<void> {
-  await assertOwnerSurvives(ctx, membership.orgId, membership._id);
-  await ctx.db.delete(membership._id);
+  await assertOwnerSurvives(ctx, person.orgId, person._id);
+  await ctx.db.delete(person._id);
 }
 
 /** Every org this person sits in. Bounded, like every list read here. */
@@ -253,7 +253,7 @@ export async function assertCanCreate(
   userId: string,
 ): Promise<void> {
   const seats = await ctx.db
-    .query("memberships")
+    .query("people")
     .withIndex("by_user_and_org", (q) => q.eq("userId", userId))
     .take(MAX_ORGS_PER_USER);
   if (seats.length >= MAX_ORGS_PER_USER) {
@@ -273,7 +273,7 @@ export async function assertCanJoin(
   await assertCanCreate(ctx, userId);
 
   const members = await ctx.db
-    .query("memberships")
+    .query("people")
     .withIndex("by_org", (q) => q.eq("orgId", orgId))
     .take(MAX_MEMBERS_PER_ORG);
   if (members.length >= MAX_MEMBERS_PER_ORG) {
@@ -287,10 +287,10 @@ export async function assertCanJoin(
 export async function seatsOfUser(
   ctx: QueryCtx | MutationCtx,
   userId: string,
-): Promise<Doc<"memberships">[]> {
+): Promise<Doc<"people">[]> {
   // The compound index serves this prefix, which is why there is no `by_user`.
   return await ctx.db
-    .query("memberships")
+    .query("people")
     .withIndex("by_user_and_org", (q) => q.eq("userId", userId))
     .take(MAX_ORGS_PER_USER);
 }

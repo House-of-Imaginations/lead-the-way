@@ -47,11 +47,11 @@ test("orgs.active follows setActiveOrg and falls back when the seat is gone", as
     isOwner: true,
   });
 
-  const { as: bob, membershipId } = await seat(t, first, "user_bob", [
+  const { as: bob, personId } = await seat(t, first, "user_bob", [
     "members:read",
   ]);
   await bob.mutation(api.profiles.setActiveOrg, { orgId: first });
-  await t.run((ctx) => ctx.db.delete(membershipId));
+  await t.run((ctx) => ctx.db.delete(personId));
   expect(await bob.query(api.orgs.active, {})).toBeNull();
   await expect(
     t

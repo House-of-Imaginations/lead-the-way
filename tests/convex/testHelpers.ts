@@ -23,6 +23,19 @@ export function registerComponents(t: TestConvex<typeof schema>): void {
   resend.register(generic, "resend");
 }
 
+/** The fields a `people` row needs beyond its ids, for tests that insert one. */
+export function personFields(userId: string, name = userId) {
+  return {
+    userId,
+    name,
+    initials: name.slice(0, 2).toUpperCase(),
+    email: `${userId}@example.com`,
+    jobTitle: "",
+    timeZone: "Australia/Melbourne",
+    createdAt: Date.now(),
+  };
+}
+
 /**
  * Put a real row in the auth component's `user` table, and hand back the
  * identity that matches it.

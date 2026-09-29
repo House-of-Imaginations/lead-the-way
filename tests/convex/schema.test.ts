@@ -7,7 +7,7 @@ import schema from "../../convex/schema";
 import { harness, workspace } from "./workspace/helpers";
 
 /** The org layer's own tables. Everything else must be in `ORG_TABLES`. */
-const ORG_LAYER = ["orgs", "profiles", "memberships", "orgRoles", "orgInvites"];
+const ORG_LAYER = ["orgs", "profiles", "people", "orgRoles", "orgInvites"];
 
 test("every table is cleared with its workspace or belongs to the org layer", () => {
   expect(Object.keys(schema.tables).sort()).toEqual(

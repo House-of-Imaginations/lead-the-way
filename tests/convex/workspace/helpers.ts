@@ -4,7 +4,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { Permission } from "../../../convex/lib/orgs/permissions";
 import schema from "../../../convex/schema";
-import { registerComponents } from "../testHelpers";
+import { personFields, registerComponents } from "../testHelpers";
 
 export const modules = import.meta.glob("../../../convex/**/*.ts");
 
@@ -31,7 +31,7 @@ export async function seat(
   subject: string,
   permissions: Permission[],
 ) {
-  const membershipId = await t.run(async (ctx) => {
+  const { personId, roleId } = await t.run(async (ctx) => {
     const roleId = await ctx.db.insert("orgRoles", {
       orgId,
       kind: "custom",
@@ -39,12 +39,12 @@ export async function seat(
       permissions,
       createdAt: Date.now(),
     });
-    return ctx.db.insert("memberships", {
-      userId: subject,
+    const personId = await ctx.db.insert("people", {
       orgId,
       roleId,
-      createdAt: Date.now(),
+      ...personFields(subject),
     });
+    return { personId, roleId };
   });
-  return { as: t.withIdentity({ subject }), membershipId };
+  return { as: t.withIdentity({ subject }), personId, roleId };
 }

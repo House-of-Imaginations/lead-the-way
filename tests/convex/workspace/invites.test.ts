@@ -44,7 +44,7 @@ test("an invite seats the person and opens the workspace", async () => {
   });
   const state = await t.run(async (ctx) => ({
     seat: await ctx.db
-      .query("memberships")
+      .query("people")
       .withIndex("by_user_and_org", (q) =>
         q.eq("userId", "bob").eq("orgId", orgId),
       )

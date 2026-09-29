@@ -14,8 +14,7 @@ import { literals } from "convex-helpers/validators";
  * What a manager may see of them is decided in `convex/lib/privacy.ts`.
  */
 
-// Task 2 renames `memberships` to `people`; this line changes with it.
-const personId = v.id("memberships");
+const personId = v.id("people");
 
 export const EVENT_TYPES = [
   "hour.committed",

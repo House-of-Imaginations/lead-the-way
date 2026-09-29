@@ -25,6 +25,7 @@ import type * as lib_orgs_cascade from "../lib/orgs/cascade.js";
 import type * as lib_orgs_email from "../lib/orgs/email.js";
 import type * as lib_orgs_invites from "../lib/orgs/invites.js";
 import type * as lib_orgs_membership from "../lib/orgs/membership.js";
+import type * as lib_orgs_people from "../lib/orgs/people.js";
 import type * as lib_orgs_permissions from "../lib/orgs/permissions.js";
 import type * as lib_orgs_slug from "../lib/orgs/slug.js";
 import type * as lib_pathway from "../lib/pathway.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   "lib/orgs/email": typeof lib_orgs_email;
   "lib/orgs/invites": typeof lib_orgs_invites;
   "lib/orgs/membership": typeof lib_orgs_membership;
+  "lib/orgs/people": typeof lib_orgs_people;
   "lib/orgs/permissions": typeof lib_orgs_permissions;
   "lib/orgs/slug": typeof lib_orgs_slug;
   "lib/pathway": typeof lib_pathway;

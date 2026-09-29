@@ -71,14 +71,14 @@ export const authenticatedAction = customAction(action, requiredActionIdentity);
  * rather than merely discouraged. A handler must NOT redeclare `orgId` in its
  * own `args` -- convex-helpers refuses the duplicate.
  *
- * Two reads: one indexed membership lookup and one `ctx.db.get` of the role,
+ * Two reads: one indexed seat lookup and one `ctx.db.get` of the role,
  * which is the cheapest read Convex has. Permissions are deliberately not
- * copied onto the membership row -- that would save one read per call and cost
+ * copied onto the `people` row -- that would save one read per call and cost
  * an unbounded fan-out on every role edit, during which some members would be
  * authorized against a stale set. A stale authorization that heals itself is a
  * defect nobody can reproduce afterwards.
  *
- * `ctx` gains `userId`, `orgId`, `membership`, `role` and `permissions`, so a
+ * `ctx` gains `userId`, `orgId`, `person`, `role` and `permissions`, so a
  * handler that needs any of them does not read them a second time.
  */
 export const orgQuery = (...need: Permission[]) =>
