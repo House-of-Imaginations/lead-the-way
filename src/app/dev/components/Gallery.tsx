@@ -1,6 +1,7 @@
 "use client";
 
 import { ButtonsSection } from "./sections/ButtonsSection";
+import { FieldsSection } from "./sections/FieldsSection";
 import { LogoSection } from "./sections/LogoSection";
 import { StatusSection } from "./sections/StatusSection";
 
@@ -25,6 +26,7 @@ export function Gallery() {
         <LogoSection />
         <ButtonsSection />
         <StatusSection />
+        <FieldsSection />
       </main>
       <footer className="px-07 pb-07 text-label-01 text-text-helper">
         Concept prototype. Not an official IBM product.

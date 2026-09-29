@@ -786,3 +786,37 @@ textarea.ltw-field {
   display: block;
   background: var(--layer-01);
 }
+
+/* PasswordInput: a 40px show/hide button inside the field */
+.ltw-pw {
+  position: relative;
+}
+.ltw-pw .ltw-field {
+  padding-right: 48px;
+}
+.ltw-pw-b {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.ltw-pw-b:hover {
+  background: var(--layer-hover);
+}
+
+/* Checkbox: helper on its own line, disabled state */
+.ltw-cb-h {
+  display: block;
+}
+.ltw-cb:has(input:disabled) {
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
