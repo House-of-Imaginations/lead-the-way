@@ -27,13 +27,16 @@ import type * as lib_orgs_invites from "../lib/orgs/invites.js";
 import type * as lib_orgs_membership from "../lib/orgs/membership.js";
 import type * as lib_orgs_permissions from "../lib/orgs/permissions.js";
 import type * as lib_orgs_slug from "../lib/orgs/slug.js";
+import type * as lib_pathway from "../lib/pathway.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as members from "../members.js";
 import type * as orgRoles from "../orgRoles.js";
 import type * as orgs from "../orgs.js";
 import type * as profiles from "../profiles.js";
+import type * as tables_demo from "../tables/demo.js";
 import type * as tables_orgs from "../tables/orgs.js";
 import type * as tables_profiles from "../tables/profiles.js";
+import type * as tables_sprint from "../tables/sprint.js";
 
 import type {
   ApiFromModules,
@@ -61,13 +64,16 @@ declare const fullApi: ApiFromModules<{
   "lib/orgs/membership": typeof lib_orgs_membership;
   "lib/orgs/permissions": typeof lib_orgs_permissions;
   "lib/orgs/slug": typeof lib_orgs_slug;
+  "lib/pathway": typeof lib_pathway;
   "lib/rateLimits": typeof lib_rateLimits;
   members: typeof members;
   orgRoles: typeof orgRoles;
   orgs: typeof orgs;
   profiles: typeof profiles;
+  "tables/demo": typeof tables_demo;
   "tables/orgs": typeof tables_orgs;
   "tables/profiles": typeof tables_profiles;
+  "tables/sprint": typeof tables_sprint;
 }>;
 
 /**

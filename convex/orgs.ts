@@ -65,10 +65,15 @@ async function publicOrg(
   ctx: { storage: { getUrl: (id: Id<"_storage">) => Promise<string | null> } },
   org: Doc<"orgs">,
 ) {
-  const { imageId, ...rest } = org;
+  // Named fields, not a spread: a spread would put `privacyThreshold`,
+  // `isDemo` and `demoNow` in the answer and fail `orgValidator`.
   return {
-    ...rest,
-    imageUrl: imageId ? await ctx.storage.getUrl(imageId) : null,
+    _id: org._id,
+    _creationTime: org._creationTime,
+    name: org.name,
+    slug: org.slug,
+    createdAt: org.createdAt,
+    imageUrl: org.imageId ? await ctx.storage.getUrl(org.imageId) : null,
   };
 }
 
@@ -230,6 +235,8 @@ export const create = authenticatedMutation({
     const orgId = await ctx.db.insert("orgs", {
       name: trimmed,
       slug,
+      privacyThreshold: 5, // Task 6 replaces the literal with MIN_THRESHOLD.
+      isDemo: false,
       createdAt: now,
     });
     const ownerRoleId = await ctx.db.insert("orgRoles", {

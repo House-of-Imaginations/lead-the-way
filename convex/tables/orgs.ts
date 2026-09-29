@@ -42,6 +42,17 @@ export const orgTables = {
      * and no return validator a member can reach exposes the id itself.
      */
     imageId: v.optional(v.id("_storage")),
+    // The company's email domain and the partner that brought it in. Shown on
+    // the invitation and in settings; neither grants anything.
+    domain: v.optional(v.string()),
+    partnerName: v.optional(v.string()),
+    // Aggregates built from fewer responses than this are hidden. Never below
+    // 5, whatever this says: `thresholdOf` in `convex/lib/privacy.ts` clamps it.
+    privacyThreshold: v.number(),
+    // The seeded Calder Lane workspace. Only a demo workspace has a script, and
+    // only there does `demoNow` replace real time (`nowFor` in `lib/clock.ts`).
+    isDemo: v.boolean(),
+    demoNow: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_slug", ["slug"]),
 
