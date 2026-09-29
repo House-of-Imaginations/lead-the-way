@@ -10,6 +10,7 @@ import { SideNavSection } from "./sections/SideNavSection";
 import { StatusSection } from "./sections/StatusSection";
 import { TabsProgressSection } from "./sections/TabsProgressSection";
 import { ToastSection } from "./sections/ToastSection";
+import { TopBarSection } from "./sections/TopBarSection";
 
 export function Gallery() {
   return (
@@ -38,6 +39,7 @@ export function Gallery() {
         <ToastSection />
         <OverlaysSection />
         <SideNavSection />
+        <TopBarSection />
       </main>
       <footer className="px-07 pb-07 text-label-01 text-text-helper">
         Concept prototype. Not an official IBM product.

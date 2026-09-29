@@ -51,3 +51,4 @@ export {
   type SideNavProps,
   type SideNavSection,
 } from "./SideNav";
+export { TopBar, type TopBarProps } from "./TopBar";

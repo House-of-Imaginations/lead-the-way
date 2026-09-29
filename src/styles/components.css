@@ -1096,3 +1096,50 @@ button.ltw-sn-acct:hover {
 .ltw-sn-rs:focus-visible::after {
   background: var(--interactive);
 }
+
+/* TopBar and drawer: the navigation below 672px */
+.ltw-tb {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding-left: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--background);
+}
+.ltw-tb a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+.ltw-tb button {
+  margin-left: auto;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ltw-tb button:hover {
+  background: var(--layer-hover);
+}
+.ltw-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 101;
+  width: min(320px, calc(100vw - 48px));
+  background: var(--background);
+  box-shadow: var(--shadow-float);
+}
+.ltw-drawer .ltw-sn {
+  width: 100%;
+  border-right: 0;
+}
