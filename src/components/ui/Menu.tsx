@@ -35,7 +35,7 @@ export function Menu({
           align={align}
           sideOffset={4}
         >
-          {items.map((item) => {
+          {items.map((item, i) => {
             const body = (
               <>
                 {item.label}
@@ -43,18 +43,14 @@ export function Menu({
               </>
             );
             return item.href && !item.disabled ? (
-              <DropdownMenu.Item
-                key={item.label}
-                asChild
-                textValue={item.label}
-              >
+              <DropdownMenu.Item key={i} asChild textValue={item.label}>
                 <Link href={item.href} className="ltw-menu-i">
                   {body}
                 </Link>
               </DropdownMenu.Item>
             ) : (
               <DropdownMenu.Item
-                key={item.label}
+                key={i}
                 className="ltw-menu-i"
                 disabled={item.disabled}
                 onSelect={item.onSelect}

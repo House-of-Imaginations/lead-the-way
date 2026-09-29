@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures";
-import { THEMES, expectedRing, focusRing, gallery } from "./helpers";
+import { THEMES, TOKENS, expectedRing, focusRing, gallery } from "./helpers";
 
 for (const theme of THEMES) {
   test.describe(`toast, ${theme}`, () => {
@@ -24,6 +24,15 @@ for (const theme of THEMES) {
       const viewport = page.viewportSize()!;
       expect(Math.round(box.x + box.width)).toBe(viewport.width - 16);
       expect(Math.round(box.y)).toBe(16);
+      await expect(toast).toHaveCSS("width", "320px");
+      await expect(toast).toHaveCSS(
+        "border-left-color",
+        TOKENS[theme].supportSuccess,
+      );
+      await expect(toast).toHaveCSS(
+        "background-color",
+        TOKENS[theme].layerInverse,
+      );
       await toast.getByRole("button", { name: "Close" }).click();
       await expect(toast).toHaveCount(0);
     });
@@ -41,6 +50,21 @@ for (const theme of THEMES) {
         .locator(".ltw-toast")
         .getByRole("button", { name: "Close" });
       expect(await focusRing(close)).toEqual(expectedRing(theme));
+    });
+
+    test("a toast dismisses itself after five seconds", async ({ page }) => {
+      await page.clock.install();
+      await page.goto(gallery(theme));
+      await page
+        .locator("#toast")
+        .getByRole("button", { name: "Send invitations" })
+        .click();
+      const toast = page.locator(".ltw-toast");
+      await expect(toast).toBeVisible();
+      await page.clock.runFor(4900);
+      await expect(toast).toBeVisible();
+      await page.clock.runFor(200);
+      await expect(toast).toHaveCount(0);
     });
 
     test("a toast can carry a body line", async ({ page, expectAxeClean }) => {

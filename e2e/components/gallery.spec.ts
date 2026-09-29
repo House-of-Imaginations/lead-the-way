@@ -33,4 +33,15 @@ for (const theme of THEMES) {
       TOKENS[theme].interactive,
     );
   });
+
+  test(`the gallery never scrolls sideways (only tables may), ${theme} @mobile`, async ({
+    page,
+  }) => {
+    await page.goto(gallery(theme));
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  });
 }

@@ -53,6 +53,18 @@ export function OverlaysSection() {
             { label: "Sign out", onSelect: () => setLast("Sign out") },
           ]}
         />
+        <Menu
+          side="top"
+          trigger={
+            <Button kind="secondary" size="md">
+              Open account
+            </Button>
+          }
+          items={[
+            { label: "Your profile", onSelect: () => setLast("Your profile") },
+            { label: "Log out", onSelect: () => setLast("Log out") },
+          ]}
+        />
       </div>
       <p className="text-body-02">Last action: {last}</p>
     </Section>

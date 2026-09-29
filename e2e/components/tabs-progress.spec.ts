@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures";
-import { THEMES, gallery } from "./helpers";
+import { THEMES, expectedRing, focusRing, gallery } from "./helpers";
 
 for (const theme of THEMES) {
   test.describe(`tabs and progress, ${theme}`, () => {
@@ -13,7 +13,7 @@ for (const theme of THEMES) {
       const profile = list.getByRole("tab", { name: "Profile" });
       await expect(profile).toHaveAttribute("aria-selected", "true");
       await expect(profile).toHaveCSS("font-weight", "600");
-      await profile.focus();
+      expect(await focusRing(profile)).toEqual(expectedRing(theme));
       await page.keyboard.press("ArrowRight");
       const notifications = list.getByRole("tab", { name: "Notifications" });
       await expect(notifications).toBeFocused();
@@ -30,7 +30,7 @@ for (const theme of THEMES) {
       const summary = details.locator("summary");
       await expect(summary).toHaveText("Why can't I see individual progress?");
       await expect(details).not.toHaveAttribute("open", "");
-      await summary.focus();
+      expect(await focusRing(summary)).toEqual(expectedRing(theme));
       await page.keyboard.press("Enter");
       await expect(details).toHaveAttribute("open", "");
       await expect(

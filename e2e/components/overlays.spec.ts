@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures";
-import { THEMES, gallery } from "./helpers";
+import { THEMES, TOKENS, expectedRing, focusRing, gallery } from "./helpers";
 
 for (const theme of THEMES) {
   test.describe(`overlays, ${theme}`, () => {
@@ -34,6 +34,54 @@ for (const theme of THEMES) {
         ).toBe(true);
       }
       await expectAxeClean(page, '[role="dialog"]');
+    });
+
+    test("the modal has its scrim, panel, close button and footer", async ({
+      page,
+    }) => {
+      const trigger = page
+        .locator("#overlays")
+        .getByRole("button", { name: "Open dialog" });
+      await trigger.focus();
+      await page.keyboard.press("Enter");
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+      await expect(page.locator(".ltw-scrim")).toHaveCSS(
+        "background-color",
+        "rgba(22, 22, 22, 0.5)",
+      );
+      await expect(dialog).toHaveCSS("max-width", "560px");
+      await expect(dialog).toHaveCSS("background-color", TOKENS[theme].layer01);
+      await expect(dialog).toHaveCSS(
+        "box-shadow",
+        "rgba(0, 0, 0, 0.3) 0px 2px 6px 0px",
+      );
+      await expect(dialog.locator(".ltw-modal-b")).toHaveCSS(
+        "padding-bottom",
+        "48px",
+      );
+      const close = dialog.getByRole("button", { name: "Close" });
+      const size = (await close.boundingBox())!;
+      expect([Math.round(size.width), Math.round(size.height)]).toEqual([
+        48, 48,
+      ]);
+      const [a, b] = await dialog.locator(".ltw-modal-f .ltw-btn").all();
+      const left = (await a.boundingBox())!;
+      const right = (await b.boundingBox())!;
+      expect(right.x - (left.x + left.width)).toBeCloseTo(0, 0);
+      expect(await focusRing(close)).toEqual(expectedRing(theme));
+    });
+
+    test("tall modal content scrolls inside the panel", async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 200 });
+      await page
+        .locator("#overlays")
+        .getByRole("button", { name: "Open dialog" })
+        .click();
+      const dialog = page.getByRole("dialog");
+      const box = (await dialog.boundingBox())!;
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(200);
     });
 
     test("Escape closes the modal and returns focus", async ({ page }) => {
@@ -77,6 +125,32 @@ for (const theme of THEMES) {
       await expect(dialog).toHaveCount(0);
     });
 
+    test("a menu link navigates on Enter", async ({ page }) => {
+      const trigger = page
+        .locator("#overlays")
+        .getByRole("button", { name: "Show actions" });
+      await trigger.focus();
+      await page.keyboard.press("Enter");
+      await expect(
+        page.getByRole("menuitem", { name: "Settings", exact: true }),
+      ).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(/#overlays$/);
+    });
+
+    test("the account menu opens upward", async ({ page }) => {
+      const trigger = page
+        .locator("#overlays")
+        .getByRole("button", { name: "Open account" });
+      const t = (await trigger.boundingBox())!;
+      await trigger.focus();
+      await page.keyboard.press("Enter");
+      const menu = page.getByRole("menu");
+      await expect(menu).toBeVisible();
+      const m = (await menu.boundingBox())!;
+      expect(m.y + m.height).toBeLessThanOrEqual(t.y);
+    });
+
     test("menu is keyboard operable and returns focus", async ({
       page,
       expectAxeClean,
@@ -96,9 +170,17 @@ for (const theme of THEMES) {
       ).toHaveAttribute("aria-disabled", "true");
       await expect(menu.getByText("Managed by Priya Raman")).toBeVisible();
       await expectAxeClean(page, '[role="menu"]');
-      await expect(
-        menu.getByRole("menuitem", { name: "Settings", exact: true }),
-      ).toBeFocused();
+      const first = menu.getByRole("menuitem", {
+        name: "Settings",
+        exact: true,
+      });
+      await expect(first).toBeFocused();
+      await expect(first).toHaveAttribute("data-highlighted", "");
+      await expect(first).toHaveCSS(
+        "background-color",
+        TOKENS[theme].layerHover,
+      );
+      expect(await focusRing(first)).toEqual(expectedRing(theme));
       await page.keyboard.press("ArrowDown"); // skips the disabled item
       await expect(
         menu.getByRole("menuitem", { name: "Sign out" }),

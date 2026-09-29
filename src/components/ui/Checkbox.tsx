@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { ComponentProps, ReactNode } from "react";
+import { useId, type ComponentProps, type ReactNode } from "react";
 
 export type CheckboxProps = { label: ReactNode; helper?: string } & Omit<
   ComponentProps<"input">,
@@ -12,13 +12,22 @@ export function Checkbox({
   className,
   ...input
 }: CheckboxProps) {
+  const helperId = useId();
   return (
-    <label className={clsx("ltw-cb", className)}>
-      <input type="checkbox" {...input} />
-      <span>
-        {label}
-        {helper && <span className="ltw-cb-h ltw-help">{helper}</span>}
-      </span>
-    </label>
+    <div className={clsx("ltw-cb", className)}>
+      <label className="ltw-cb-l">
+        <input
+          type="checkbox"
+          aria-describedby={helper ? helperId : undefined}
+          {...input}
+        />
+        <span>{label}</span>
+      </label>
+      {helper && (
+        <span id={helperId} className="ltw-cb-h ltw-help">
+          {helper}
+        </span>
+      )}
+    </div>
   );
 }

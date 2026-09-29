@@ -38,7 +38,7 @@ export function StatusSection() {
       <InlineNotification kind="success" title="Saved.">
         Your team now has a shared AI working agreement.
       </InlineNotification>
-      <div className="grid max-w-[720px] grid-cols-1 gap-01 sm:grid-cols-3">
+      <div className="grid max-w-[720px] grid-cols-1 gap-01 min-[900px]:grid-cols-3">
         <StatTile label="Joined the sprint" value="7" suffix="of 8" />
         <StatTile
           label="Time saved"

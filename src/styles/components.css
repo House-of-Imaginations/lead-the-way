@@ -35,6 +35,7 @@
   .ltw-sn button,
   .ltw-sn-rs,
   .ltw-tag button,
+  .ltw-toast,
   .ltw-toast button,
   .ltw-modal-x,
   .ltw-pw-b,
@@ -247,7 +248,7 @@ textarea.ltw-field {
 }
 
 /* Checkbox */
-.ltw-cb {
+.ltw-cb-l {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -330,11 +331,12 @@ textarea.ltw-field {
 /* Content switcher */
 .ltw-cs {
   display: inline-flex;
+  max-width: 100%;
   border: 1px solid var(--border-inverse);
 }
 .ltw-cs button {
   height: var(--size-control-md);
-  padding: 0 min(24px, 3vw);
+  padding: 0 24px;
   border: 0;
   border-left: 1px solid var(--border-strong);
   background: var(--background);
@@ -353,6 +355,15 @@ textarea.ltw-field {
 .ltw-cs button[aria-pressed="true"] {
   background: var(--layer-inverse);
   color: var(--text-inverse);
+}
+@media (max-width: 671px) {
+  .ltw-cs {
+    display: flex;
+  }
+  .ltw-cs button {
+    flex: 1 1 0;
+    padding: 0 8px;
+  }
 }
 
 /* Selectable tile */
@@ -418,6 +429,7 @@ textarea.ltw-field {
 /* Toast */
 .ltw-toast {
   width: 320px;
+  max-width: calc(100vw - 32px);
   background: var(--layer-inverse);
   color: var(--text-inverse);
   border-left: 3px solid var(--support-success);
@@ -712,6 +724,7 @@ textarea.ltw-field {
 .ltw-modal {
   width: 100%;
   max-width: 560px;
+  max-height: 100%;
   background: var(--layer-01);
   display: flex;
   flex-direction: column;
@@ -750,6 +763,8 @@ textarea.ltw-field {
   background: var(--layer-hover);
 }
 .ltw-modal-b {
+  min-height: 0;
+  overflow-y: auto;
   padding: 16px 16px 48px;
   color: var(--text-primary);
 }
@@ -815,9 +830,12 @@ textarea.ltw-field {
 /* Checkbox: helper on its own line, disabled state */
 .ltw-cb-h {
   display: block;
+  padding-left: 24px;
 }
 .ltw-cb:has(input:disabled) {
   color: var(--text-disabled);
+}
+.ltw-cb:has(input:disabled) .ltw-cb-l {
   cursor: not-allowed;
 }
 

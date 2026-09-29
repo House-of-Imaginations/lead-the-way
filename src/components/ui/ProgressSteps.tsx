@@ -25,7 +25,7 @@ export function ProgressSteps({ label, steps, current }: ProgressStepsProps) {
         const Icon = ICONS[state];
         return (
           <li
-            key={step.label}
+            key={i}
             className={`ltw-step ltw-step-${state}`}
             aria-current={state === "current" ? "step" : undefined}
           >

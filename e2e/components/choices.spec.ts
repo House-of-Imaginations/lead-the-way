@@ -17,6 +17,30 @@ for (const theme of THEMES) {
       expect(await focusRing(pressed)).toEqual(expectedRing(theme));
     });
 
+    test("the toggle shows the focus ring", async ({ page }) => {
+      const toggle = page.locator("#choices").getByRole("switch", {
+        name: "Weekly reminder before the protected hour",
+      });
+      expect(await focusRing(toggle)).toEqual(expectedRing(theme));
+    });
+
+    test("a focused Likert radio rings its box", async ({ page }) => {
+      const radio = page
+        .locator("#choices")
+        .getByRole("radio", { name: "3", exact: true });
+      await radio.focus();
+      const ring = await radio.evaluate((el) => {
+        const s = getComputedStyle(el.nextElementSibling!);
+        return {
+          outline: `${s.outlineWidth} ${s.outlineStyle} ${s.outlineColor}`,
+          offset: s.outlineOffset,
+          boxShadow: s.boxShadow,
+        };
+      });
+      const { outline, offset, boxShadow } = expectedRing(theme);
+      expect(ring).toEqual({ outline, offset, boxShadow });
+    });
+
     test("a toggle is a switch that applies at once", async ({ page }) => {
       const toggle = page.locator("#choices").getByRole("switch", {
         name: "Weekly reminder before the protected hour",

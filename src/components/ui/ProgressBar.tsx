@@ -2,7 +2,10 @@ export type ProgressBarProps = {
   label: string;
   value: number;
   max: number;
-  /** A count such as "5 of 8 teammates". Defaults to a rounded percentage. */
+  /**
+   * A count such as "5 of 8 teammates". Defaults to a rounded percentage.
+   * Manager views always pass a count here, never a percentage.
+   */
   valueText?: string;
   helper?: string;
   /** Keep the label for assistive tech only, e.g. inside a StatTile. */
