@@ -21,7 +21,12 @@ export function StatTile({
       <span className="ltw-stat-l">{label}</span>
       <span className="ltw-stat-v">
         {value}
-        {suffix && <span className="ltw-stat-s">{suffix}</span>}
+        {suffix && (
+          <>
+            {" "}
+            <span className="ltw-stat-s">{suffix}</span>
+          </>
+        )}
       </span>
       {children}
       {helper && <span className="ltw-help">{helper}</span>}

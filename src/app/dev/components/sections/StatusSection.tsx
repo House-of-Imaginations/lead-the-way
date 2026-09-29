@@ -1,3 +1,5 @@
+"use client";
+
 import { Locked } from "@carbon/icons-react";
 import { useState } from "react";
 import {

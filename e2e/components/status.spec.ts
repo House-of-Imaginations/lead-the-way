@@ -76,7 +76,7 @@ for (const theme of THEMES) {
       const joined = status.locator(".ltw-stat", {
         hasText: "Joined the sprint",
       });
-      await expect(joined.locator(".ltw-stat-v")).toHaveText("7of 8");
+      await expect(joined.locator(".ltw-stat-v")).toHaveText("7 of 8");
       await expect(joined.locator(".ltw-stat-v")).toHaveCSS(
         "font-weight",
         "300",

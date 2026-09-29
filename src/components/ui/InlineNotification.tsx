@@ -25,7 +25,8 @@ export function InlineNotification({
   return (
     <div
       className={clsx("ltw-ntf", kind === "success" && "ltw-ntf-success")}
-      role="status"
+      // Only success is news; info (the privacy promise) is static.
+      role={kind === "success" ? "status" : undefined}
     >
       <Icon className="ltw-i" aria-hidden="true" />
       <div>
