@@ -4,7 +4,7 @@ import { isDemoAddress } from "../../convex/lib/demo/cast";
 import { DEMO_NOW, SCHEDULE } from "../../convex/lib/demo/schedule";
 import { sendEmail, type EmailCtx } from "../../convex/lib/email/send";
 import { personFields, seedDemoAccounts } from "./testHelpers";
-import { harness, workspace } from "./workspace/helpers";
+import { harness, workspace, type T } from "./workspace/helpers";
 
 // convex/auth.ts reads SITE_URL when the module loads, and convex-test loads
 // it lazily on the first action that reaches it. Nothing here imports it
@@ -152,11 +152,13 @@ test("writeCalderLane seeds Calder Lane on Tuesday 1 September", async () => {
 test("reset replaces the demo workspace and nothing else", async () => {
   const t = harness();
   const { orgId: realId } = await workspace(t);
-  await seedDemoAccounts(t);
+  const accounts = await seedDemoAccounts(t);
   const first = await t.action(internal.seed.reset, {});
   const second = await t.action(internal.seed.reset, {});
 
   expect(second).not.toBe(first);
+  // The accounts survive: the same ids come back.
+  expect(await t.action(internal.seed.accounts, {})).toEqual(accounts);
   const state = await t.run(async (ctx) => ({
     first: await ctx.db.get(first),
     names: (await ctx.db.query("orgs").collect()).map((o) => o.name).sort(),
@@ -174,7 +176,7 @@ test("reset replaces the demo workspace and nothing else", async () => {
   // A real workspace can't take the demo's slug, and the reset won't touch
   // one that somehow has it.
   const other = harness();
-  const accounts = await seedDemoAccounts(other);
+  const otherAccounts = await seedDemoAccounts(other);
   await other.run((ctx) =>
     ctx.db.insert("orgs", {
       name: "Not a demo",
@@ -185,8 +187,94 @@ test("reset replaces the demo workspace and nothing else", async () => {
     }),
   );
   await expect(
-    other.mutation(internal.seed.writeCalderLane, { accounts }),
+    other.mutation(internal.seed.writeCalderLane, {
+      accounts: otherAccounts,
+    }),
   ).rejects.toThrow(/real workspace/);
+});
+
+const SITE = "http://localhost:3000";
+const PASSWORD = "correct horse battery";
+const LOCKED = "Demo accounts can't be changed. Reset the demo instead.";
+
+/** A browser's POST to Better Auth, through the HTTP routes in convex/http.ts. */
+async function post(t: T, path: string, body: object, cookie = "") {
+  return await t.fetch(`/api/auth${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: SITE, cookie },
+    body: JSON.stringify(body),
+  });
+}
+const cookieOf = (res: Response) =>
+  res.headers
+    .getSetCookie()
+    .map((c) => c.split(";")[0])
+    .join("; ");
+
+test("a demo persona can't change the shared account", async () => {
+  const t = harness();
+  // Dan through the seed's sign-up, so he has the demo password.
+  await seedDemoAccounts(t, ["dan"]);
+  await t.action(internal.seed.accounts, {});
+  const email = "dan.okafor@calderlane.com.au";
+  const signIn = await post(t, "/sign-in/email", { email, password: PASSWORD });
+  expect(signIn.status).toBe(200);
+  const cookie = cookieOf(signIn);
+
+  const attempts: [string, object][] = [
+    [
+      "/change-password",
+      { currentPassword: PASSWORD, newPassword: "not the demo password" },
+    ],
+    ["/change-email", { newEmail: "dan@example.com" }],
+    ["/update-user", { name: "Not Dan" }],
+    ["/delete-user", {}],
+  ];
+  for (const [path, body] of attempts) {
+    const res = await post(t, path, body, cookie);
+    expect(res.status, path).toBe(403);
+    expect(await res.json(), path).toMatchObject({ message: LOCKED });
+  }
+  // Every other tester can still switch to Dan.
+  expect(
+    (await post(t, "/sign-in/email", { email, password: PASSWORD })).status,
+  ).toBe(200);
+});
+
+test("only the seed signs up a demo address; real accounts are unaffected", async () => {
+  const t = harness();
+  const omar = "omar.haddad@calderlane.com.au";
+  const res = await post(t, "/sign-up/email", {
+    name: "Omar Haddad",
+    email: omar,
+    password: PASSWORD,
+  });
+  expect(res.status).toBe(403);
+  expect(await res.json()).toMatchObject({
+    message: "Demo accounts are made by the seed. Use the persona switch.",
+  });
+  const user = await t.run((ctx) =>
+    ctx.runQuery(components.betterAuth.adapter.findOne, {
+      model: "user",
+      where: [{ field: "email", value: omar }],
+    }),
+  );
+  expect(user).toBeNull();
+
+  // A real address signs up and changes its own password as before.
+  const bec = await post(t, "/sign-up/email", {
+    name: "Bec",
+    email: "bec@example.com",
+    password: PASSWORD,
+  });
+  expect(bec.status).toBe(200);
+  const changed = await post(
+    t,
+    "/change-password",
+    { currentPassword: PASSWORD, newPassword: "a new long password" },
+    cookieOf(bec),
+  );
+  expect(changed.status).toBe(200);
 });
 
 test("demo.reset is refused outside the demo, and without demo mode", async () => {

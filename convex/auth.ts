@@ -5,7 +5,11 @@ import {
 } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth } from "better-auth/minimal";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import {
+  APIError,
+  createAuthMiddleware,
+  getSessionFromCtx,
+} from "better-auth/api";
 import { lastLoginMethod } from "better-auth/plugins";
 import { username } from "better-auth/plugins/username";
 import type { BetterAuthOptions } from "better-auth";
@@ -15,6 +19,7 @@ import { flagOn } from "./app";
 import type { DataModel } from "./_generated/dataModel";
 import { publicQuery } from "./lib/customFunctions";
 import { insertProfile, profileOf } from "./lib/account/profile";
+import { isDemoAddress } from "./lib/demo/cast";
 import {
   sendPasswordResetEmail,
   sendVerificationEmail,
@@ -85,6 +90,14 @@ function emailCtx(ctx: GenericCtx<DataModel>): EmailCtx | null {
   return "runMutation" in ctx ? (ctx as EmailCtx) : null;
 }
 
+/** What a signed-in persona may not do to the account every tester shares. */
+const DEMO_LOCKED = new Set([
+  "/change-password",
+  "/change-email",
+  "/update-user",
+  "/delete-user",
+]);
+
 export const createAuth = (ctx: GenericCtx<DataModel>) =>
   betterAuth({
     baseURL: siteUrl,
@@ -126,13 +139,35 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
       changeEmail: { enabled: true },
     },
     socialProviders: socialProviders(),
-    // While the app is closed: no sign-in, sign-up or session. See `convex/app.ts`.
     hooks: {
-      before: createAuthMiddleware(async () => {
+      before: createAuthMiddleware(async (ctx) => {
+        // While the app is closed: no sign-in, sign-up or session. See `convex/app.ts`.
         if (flagOn("closed"))
           throw new APIError("SERVICE_UNAVAILABLE", {
             message: "FEATURE_UNAVAILABLE",
           });
+        if (!flagOn("demo")) return;
+
+        // The demo accounts are shared: every tester holds the one demo
+        // password, and a reset reuses the accounts as they are. So nobody
+        // may change one, and only the seed may create one: its
+        // `auth.api.signUpEmail` call has no `ctx.request`, while anything
+        // from a browser does. Real accounts pass untouched.
+        if (ctx.path === "/sign-up/email") {
+          const email: unknown = ctx.body?.email;
+          if (ctx.request && typeof email === "string" && isDemoAddress(email))
+            throw new APIError("FORBIDDEN", {
+              message:
+                "Demo accounts are made by the seed. Use the persona switch.",
+            });
+        } else if (DEMO_LOCKED.has(ctx.path)) {
+          const session = await getSessionFromCtx(ctx);
+          if (session && isDemoAddress(session.user.email))
+            throw new APIError("FORBIDDEN", {
+              message:
+                "Demo accounts can't be changed. Reset the demo instead.",
+            });
+        }
       }),
     },
     // `username()` layers username sign-in on top of email+password, so either
