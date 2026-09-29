@@ -334,7 +334,7 @@ textarea.ltw-field {
 }
 .ltw-cs button {
   height: var(--size-control-md);
-  padding: 0 24px;
+  padding: 0 min(24px, 3vw);
   border: 0;
   border-left: 1px solid var(--border-strong);
   background: var(--background);
@@ -955,4 +955,25 @@ textarea.ltw-field {
   max-width: 65ch;
   padding-top: 8px;
   color: var(--text-secondary);
+}
+
+/* Toast: the viewport stacks toasts top-right; title and body lines */
+.ltw-toast-vp {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  outline: none;
+}
+.ltw-toast-t {
+  font-weight: 600;
+}
+.ltw-toast-d {
+  margin-top: 2px;
 }

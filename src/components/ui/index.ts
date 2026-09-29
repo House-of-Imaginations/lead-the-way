@@ -42,3 +42,4 @@ export {
   type ProgressStepsProps,
   type Step,
 } from "./ProgressSteps";
+export { ToastProvider, useToast, type ToastInput } from "./Toast";
