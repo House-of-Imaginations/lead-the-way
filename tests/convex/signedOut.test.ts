@@ -63,6 +63,8 @@ const SIGNED_OUT: Record<
   "auth:getCurrentUser": { args: {}, answer: null },
   // The log-in page lists its buttons.
   "authMethods:enabled": { args: {}, answer: ["google"] },
+  // "Start as Priya" on /guide signs in from nothing. Null: DEMO_MODE is off here.
+  "demo:personaPassword": { args: {}, answer: null },
   // Null when signed out.
   "profiles:me": { args: {}, answer: null },
   // The invitation page, before sign-up: what the link invites to, no address.
@@ -130,8 +132,8 @@ const callsFor = ({
   inviteId,
   storageId,
 }: Ids): Record<string, Record<string, unknown>> => ({
-  "demo:reset": {},
-  "demo:setClock": { target: "week1" },
+  "demo:reset": { expectOrgId: orgId },
+  "demo:setClock": { target: "week1", expectOrgId: orgId },
   "orgs:active": {},
   "orgs:bySlug": { slug: "aster-network" },
   "orgs:create": { name: "Aster Network" },

@@ -8,8 +8,11 @@ import {
 } from "./_generated/server";
 import { assertFlag } from "./app";
 import { createAuth } from "./auth";
-import { writeCalderLane as write } from "./lib/demo/calderLane";
+import { DEMO_SLUG, writeCalderLane as write } from "./lib/demo/calderLane";
 import { ACCOUNT_HOLDERS, demoUserId } from "./lib/demo/cast";
+import { moveClock } from "./lib/demo/moveClock";
+import { demoTargetValidator } from "./lib/demo/schedule";
+import { throwUserError } from "./lib/errors";
 
 /**
  * Seeding the Calder Lane demo. `npx convex run seed:reset` does all of it;
@@ -75,5 +78,28 @@ export const reset = internalAction({
   handler: async (ctx): Promise<Id<"orgs">> => {
     const accounts = await ensureDemoAccounts(ctx);
     return await ctx.runMutation(internal.seed.writeCalderLane, { accounts });
+  },
+});
+
+/**
+ * `pnpm exec convex run seed:clock '{"target":"week2"}'`: move the demo clock
+ * without signing in. For e2e and local runs; the guide uses `demo.setClock`.
+ */
+export const clock = internalMutation({
+  args: { target: demoTargetValidator },
+  returns: v.object({ demoNow: v.number(), applied: v.array(v.string()) }),
+  handler: async (ctx, { target }) => {
+    assertFlag("demo", true);
+    const org = await ctx.db
+      .query("orgs")
+      .withIndex("by_slug", (q) => q.eq("slug", DEMO_SLUG))
+      .unique();
+    if (!org?.isDemo) {
+      throwUserError(
+        "DEMO_NOT_SEEDED",
+        "Seed the demo first: pnpm exec convex run seed:reset.",
+      );
+    }
+    return await moveClock(ctx, org, target);
   },
 });

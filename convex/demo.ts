@@ -1,9 +1,9 @@
 import { v } from "convex/values";
-import { assertFlag } from "./app";
-import { viewerMutation } from "./lib/customFunctions";
+import { assertFlag, flagOn } from "./app";
+import { publicQuery, viewerMutation } from "./lib/customFunctions";
 import { demoAccounts, writeCalderLane } from "./lib/demo/calderLane";
-import { DEMO_TARGETS, demoTargetValidator } from "./lib/demo/schedule";
-import { STEPS, isStepKey } from "./lib/demo/script";
+import { moveClock } from "./lib/demo/moveClock";
+import { demoTargetValidator } from "./lib/demo/schedule";
 import { throwUserError } from "./lib/errors";
 import type { Viewer } from "./lib/viewer";
 
@@ -54,29 +54,18 @@ export const reset = viewerMutation()({
 export const setClock = viewerMutation()({
   args: { target: demoTargetValidator },
   returns: v.object({ demoNow: v.number(), applied: v.array(v.string()) }),
-  handler: async (ctx, { target }) => {
-    const org = demoOrgOf(ctx.viewer);
-    const to = DEMO_TARGETS[target];
-    if (to < (org.demoNow ?? 0)) {
-      throwUserError(
-        "DEMO_CLOCK_BACKWARDS",
-        "The demo clock only moves forward. Reset the demo to start again.",
-      );
-    }
-    await ctx.db.patch(org._id, { demoNow: to });
+  handler: async (ctx, { target }) =>
+    await moveClock(ctx, demoOrgOf(ctx.viewer), target),
+});
 
-    // One row per scripted step (23), so the due range fits in one read.
-    const due = await ctx.db
-      .query("demoScript")
-      .withIndex("by_org_and_at", (q) => q.eq("orgId", org._id).lte("at", to))
-      .collect();
-    const applied: string[] = [];
-    for (const row of due) {
-      if (row.appliedAt !== undefined || !isStepKey(row.key)) continue;
-      await STEPS[row.key]({ ctx, orgId: org._id, at: row.at });
-      await ctx.db.patch(row._id, { appliedAt: Date.now() });
-      applied.push(row.key);
-    }
-    return { demoNow: to, applied };
-  },
+/**
+ * The shared demo password, for the persona switch (spec 6). Null unless
+ * DEMO_MODE is on. Signed out too, on purpose: "Start as Priya" on /guide
+ * signs in from nothing. It unlocks only the seeded demo accounts, which the
+ * auth hook keeps from being changed (DEMO_ALLOWED in `convex/auth.ts`).
+ */
+export const personaPassword = publicQuery({
+  args: {},
+  returns: v.union(v.null(), v.string()),
+  handler: async () => (flagOn("demo") && process.env.DEMO_PASSWORD) || null,
 });

@@ -8,6 +8,7 @@ import { v } from "convex/values";
 import type { ActionCtx, MutationCtx, QueryCtx } from "../_generated/server";
 import { action, mutation, query } from "../_generated/server";
 import { requireUserId, safeUserId } from "./auth/identity";
+import { throwUserError } from "./errors";
 import { requirePermissions, seatOf } from "./orgs/membership";
 import type { Permission } from "./orgs/permissions";
 import { requireViewer } from "./viewer";
@@ -81,6 +82,11 @@ export const authenticatedAction = customAction(action, requiredActionIdentity);
  *
  * `ctx` gains `userId`, `orgId`, `person`, `role` and `permissions`, so a
  * handler that needs any of them does not read them a second time.
+ *
+ * FROZEN (P3). No new callers: product functions use `viewerQuery` and
+ * `viewerMutation`. The callers left (orgs, members, orgRoles, invites and
+ * `profiles.setActiveOrg`) move over in P7, and these two go.
+ * `tests/convex/frozen.test.ts` fails when one is added.
  */
 export const orgQuery = (...need: Permission[]) =>
   customQuery(query, {
@@ -122,11 +128,26 @@ export const viewerQuery = (...need: Permission[]) =>
     },
   });
 
+/**
+ * `expectOrgId` IS THE WORKSPACE THE PAGE WAS SHOWING (R6). The viewer's open
+ * workspace lives on the profile, so a second tab can switch it under the
+ * first. Every product mutation takes this echo (the client passes
+ * `shell.expectOrgId`) and refuses with WORKSPACE_CHANGED rather than act on a
+ * workspace the person isn't looking at. Consumed here, like `orgId` in
+ * `orgMutation`: a handler never redeclares it.
+ */
 export const viewerMutation = (...need: Permission[]) =>
   customMutation(mutation, {
-    args: {},
-    input: async (ctx: MutationCtx) => {
+    args: { expectOrgId: v.id("orgs") },
+    input: async (ctx: MutationCtx, { expectOrgId }) => {
       assertAppOpen();
-      return { ctx: { viewer: await requireViewer(ctx, need) }, args: {} };
+      const viewer = await requireViewer(ctx, need);
+      if (viewer.org._id !== expectOrgId) {
+        throwUserError(
+          "WORKSPACE_CHANGED",
+          "You switched workspace in another tab. Reload the page to continue.",
+        );
+      }
+      return { ctx: { viewer }, args: {} };
     },
   });

@@ -55,7 +55,11 @@ export type ErrorCode =
   | "DEMO_CLOCK_BACKWARDS"
   // A shared demo persona, while the demo is on, stays in the demo workspace.
   | "DEMO_ACCOUNT_CREATE"
-  | "DEMO_ACCOUNT_JOIN";
+  | "DEMO_ACCOUNT_JOIN"
+  // The viewer's open workspace isn't the one the page was showing (R6).
+  | "WORKSPACE_CHANGED"
+  // Sign-up needs the terms box once (R8).
+  | "TERMS_REQUIRED";
 
 export function isRateLimitedError(error: unknown): error is ConvexError<{
   code: "RATE_LIMITED";

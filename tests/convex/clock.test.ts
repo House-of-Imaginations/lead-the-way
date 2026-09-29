@@ -35,7 +35,7 @@ const ALLOWED: {
     reason: "the script's invitations lapse like any other link",
   },
   {
-    file: "demo.ts",
+    file: "lib/demo/moveClock.ts",
     line: "appliedAt: Date.now()",
     reason: "when a step really ran, for debugging the script",
   },

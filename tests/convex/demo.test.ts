@@ -21,6 +21,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllEnvs();
 });
 
 const DAN = "dan.okafor@calderlane.com.au";
@@ -183,7 +184,12 @@ test("each step runs once, in order, when the clock passes it", async () => {
     .filter(([, at]) => at <= DEMO_TARGETS.week2)
     .map(([key]) => key);
   expect(
-    (await priya.mutation(api.demo.setClock, { target: "week2" })).applied,
+    (
+      await priya.mutation(api.demo.setClock, {
+        target: "week2",
+        expectOrgId: orgId,
+      })
+    ).applied,
   ).toEqual(dueByWeek2);
 
   const week2 = await snapshot(t, orgId);
@@ -197,13 +203,23 @@ test("each step runs once, in order, when the clock passes it", async () => {
 
   // The same target again applies nothing and changes nothing.
   expect(
-    (await priya.mutation(api.demo.setClock, { target: "week2" })).applied,
+    (
+      await priya.mutation(api.demo.setClock, {
+        target: "week2",
+        expectOrgId: orgId,
+      })
+    ).applied,
   ).toEqual([]);
   expect(await snapshot(t, orgId)).toEqual(week2);
 
   // The rest, each exactly once: nothing due by week 2 runs again.
   expect(
-    (await priya.mutation(api.demo.setClock, { target: "complete" })).applied,
+    (
+      await priya.mutation(api.demo.setClock, {
+        target: "complete",
+        expectOrgId: orgId,
+      })
+    ).applied,
   ).toEqual(Object.keys(SCHEDULE).filter((key) => !dueByWeek2.includes(key)));
   const end = await snapshot(t, orgId);
   expect(end.saved).toBe(6);
@@ -272,7 +288,10 @@ test("the sprint completes automatically when the clock passes the end of the we
   const { t, orgId, as } = await calderLane();
   const priya = as("priya");
 
-  await priya.mutation(api.demo.setClock, { target: "week4" });
+  await priya.mutation(api.demo.setClock, {
+    target: "week4",
+    expectOrgId: orgId,
+  });
   const during = await sprintOf(t, orgId);
   expect(during.status).toBe("active");
   expect(during.completedAt).toBeUndefined();
@@ -282,7 +301,10 @@ test("the sprint completes automatically when the clock passes the end of the we
   expect(SCHEDULE["sprint.complete"]).toBeGreaterThan(hourEnds);
   expect(DEMO_TARGETS.complete).toBeGreaterThan(hourEnds);
 
-  await priya.mutation(api.demo.setClock, { target: "complete" });
+  await priya.mutation(api.demo.setClock, {
+    target: "complete",
+    expectOrgId: orgId,
+  });
   expect(await sprintOf(t, orgId)).toMatchObject({
     status: "complete",
     completedAt: SCHEDULE["sprint.complete"],
@@ -292,10 +314,14 @@ test("the sprint completes automatically when the clock passes the end of the we
 test("an employee can move the demo clock", async () => {
   const { orgId, as, t } = await calderLane();
   // Dan has a seat once he joins (8 September).
-  await as("priya").mutation(api.demo.setClock, { target: "week1" });
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
 
   const result = await as("dan").mutation(api.demo.setClock, {
     target: "week2",
+    expectOrgId: orgId,
   });
   expect(result.demoNow).toBe(DEMO_TARGETS.week2);
   expect(result.applied).toContain("week1.session");
@@ -330,7 +356,10 @@ test("setClock keeps the tester's own choices", async () => {
     await ctx.db.patch(team._id, { sizeBand: "11 to 20" });
   });
 
-  await priya.mutation(api.demo.setClock, { target: "week1" });
+  await priya.mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
   const setup = await t.run(async (ctx) => ({
     sprint: await ctx.db
       .query("sprints")
@@ -394,10 +423,16 @@ test("setClock keeps the tester's own choices", async () => {
     });
   });
 
-  await priya.mutation(api.demo.setClock, { target: "week2" });
+  await priya.mutation(api.demo.setClock, {
+    target: "week2",
+    expectOrgId: orgId,
+  });
   expect((await snapshot(t, orgId)).percent["Dan Okafor"]).toBe(90);
 
-  await priya.mutation(api.demo.setClock, { target: "complete" });
+  await priya.mutation(api.demo.setClock, {
+    target: "complete",
+    expectOrgId: orgId,
+  });
   // His project, his words, and no safety check ticked for him.
   expect(await projectOf(t, orgId, dan)).toMatchObject({
     title: "My own task",
@@ -410,21 +445,27 @@ test("setClock keeps the tester's own choices", async () => {
   expect(end.presented).toHaveLength(5);
 
   await expect(
-    priya.mutation(api.demo.setClock, { target: "week1" }),
+    priya.mutation(api.demo.setClock, { target: "week1", expectOrgId: orgId }),
   ).rejects.toMatchObject({ data: { code: "DEMO_CLOCK_BACKWARDS" } });
 });
 
 test("setClock never ticks the safety checks on a project the tester edited", async () => {
   const { t, orgId, as } = await calderLane();
   const priya = as("priya");
-  await priya.mutation(api.demo.setClock, { target: "week2" });
+  await priya.mutation(api.demo.setClock, {
+    target: "week2",
+    expectOrgId: orgId,
+  });
 
   // As Mei: her own words in the draft the script started for her.
   const mei = await personId(t, orgId, "mei.tanaka@calderlane.com.au");
   const draft = await projectOf(t, orgId, mei);
   await t.run((ctx) => ctx.db.patch(draft._id, { after: "My own words." }));
 
-  await priya.mutation(api.demo.setClock, { target: "complete" });
+  await priya.mutation(api.demo.setClock, {
+    target: "complete",
+    expectOrgId: orgId,
+  });
   expect(await projectOf(t, orgId, mei)).toMatchObject({
     after: "My own words.",
     humanReviewed: false,
@@ -440,14 +481,20 @@ test("Dan's reflection is left alone when the tester renamed his project", async
   const { t, orgId, as } = await calderLane();
   const priya = as("priya");
   // His project is saved on 29 September.
-  await priya.mutation(api.demo.setClock, { target: "week4" });
+  await priya.mutation(api.demo.setClock, {
+    target: "week4",
+    expectOrgId: orgId,
+  });
 
   const dan = await personId(t, orgId, "dan.okafor@calderlane.com.au");
   const saved = await projectOf(t, orgId, dan);
   expect(saved.status).toBe("saved");
   await t.run((ctx) => ctx.db.patch(saved._id, { title: "My weekly report" }));
 
-  await priya.mutation(api.demo.setClock, { target: "complete" });
+  await priya.mutation(api.demo.setClock, {
+    target: "complete",
+    expectOrgId: orgId,
+  });
   const project = await projectOf(t, orgId, dan);
   expect(project.title).toBe("My weekly report");
   expect(project.learned).toBeUndefined();
@@ -462,7 +509,7 @@ test("Dan's reflection is left alone when the tester renamed his project", async
 });
 
 test("the demo script never touches a non-demo workspace", async () => {
-  const { t, as } = await calderLane();
+  const { t, orgId, as } = await calderLane();
   const { owner, orgId: realId } = await workspace(t);
   // A real workspace carrying demo-looking fields must still be left alone.
   await t.run(async (ctx) => {
@@ -475,13 +522,21 @@ test("the demo script never touches a non-demo workspace", async () => {
   });
 
   await expect(
-    owner.mutation(api.demo.setClock, { target: "complete" }),
+    owner.mutation(api.demo.setClock, {
+      target: "complete",
+      expectOrgId: realId,
+    }),
   ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
-  await expect(owner.mutation(api.demo.reset, {})).rejects.toMatchObject({
+  await expect(
+    owner.mutation(api.demo.reset, { expectOrgId: realId }),
+  ).rejects.toMatchObject({
     data: { code: "FORBIDDEN" },
   });
 
-  await as("priya").mutation(api.demo.setClock, { target: "complete" });
+  await as("priya").mutation(api.demo.setClock, {
+    target: "complete",
+    expectOrgId: orgId,
+  });
 
   const counts = await t.run(async (ctx) => {
     const out: Record<string, number> = {};
@@ -518,7 +573,10 @@ test("the demo clock is refused when demo mode is off", async () => {
 
   vi.stubEnv("DEMO_MODE", "");
   await expect(
-    as("priya").mutation(api.demo.setClock, { target: "week1" }),
+    as("priya").mutation(api.demo.setClock, {
+      target: "week1",
+      expectOrgId: orgId,
+    }),
   ).rejects.toMatchObject({ data: { code: "FEATURE_UNAVAILABLE" } });
   expect(Math.abs(nowFor(org) - Date.now())).toBeLessThan(5_000);
 });
@@ -558,7 +616,10 @@ test("a saved agreement stands, even with a newer draft on top", async () => {
     };
   });
 
-  await as("priya").mutation(api.demo.setClock, { target: "week2" });
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week2",
+    expectOrgId: orgId,
+  });
   const draft = await t.run((ctx) => ctx.db.get(v2));
   expect(draft).toMatchObject({ status: "draft", escalation: "" });
   expect(draft?.savedBy).toBeUndefined();
@@ -574,7 +635,10 @@ test("a saved agreement stands, even with a newer draft on top", async () => {
 
 test("a tester playing Dan can sign the agreement before the script does", async () => {
   const { t, orgId, as } = await calderLane();
-  await as("priya").mutation(api.demo.setClock, { target: "week1" });
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
   const dan = await personId(t, orgId, DAN);
   const signed = await signaturesOf(t, orgId);
   expect(signed).toHaveLength(7);
@@ -596,7 +660,10 @@ test("a tester playing Dan can sign the agreement before the script does", async
     });
   });
 
-  await as("priya").mutation(api.demo.setClock, { target: "week2" });
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week2",
+    expectOrgId: orgId,
+  });
   const all = await signaturesOf(t, orgId);
   expect(all).toHaveLength(8);
   expect(all.filter((s) => s.personId === dan).map((s) => s.signedAt)).toEqual([
@@ -610,7 +677,10 @@ test("the script leaves a team the tester saved as it is", async () => {
   const team = await teamOf(t, orgId);
   await t.run((ctx) => ctx.db.patch(team._id, { sizeBand: "2 to 5", savedAt }));
 
-  await as("priya").mutation(api.demo.setClock, { target: "week1" });
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
   const after = await teamOf(t, orgId);
   expect(after).toMatchObject({ sizeBand: "2 to 5", savedAt, challenges: [] });
   expect(after.industry).toBeUndefined();
@@ -623,7 +693,10 @@ test("the script doesn't commit the hour over a 'not ready'", async () => {
   const notReady = { at: mel("2026-09-01T09:40"), reason: "Too busy" };
   await t.run((ctx) => ctx.db.patch(sprint._id, { notReady }));
 
-  await as("priya").mutation(api.demo.setClock, { target: "week1" });
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
   const after = await sprintOf(t, orgId);
   expect(after.notReady).toEqual(notReady);
   expect(after.committedAt).toBeUndefined();
@@ -657,7 +730,10 @@ test("without Employee, the script invites into the custom role with the fewest 
     });
   });
 
-  await as("priya").mutation(api.demo.setClock, { target: "week1" });
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
   const invites = await t.run((ctx) =>
     ctx.db
       .query("orgInvites")
@@ -687,7 +763,10 @@ test("a revoked invitation keeps that teammate out", async () => {
   });
   await priya.mutation(api.invites.revoke, { orgId, inviteId });
 
-  await priya.mutation(api.demo.setClock, { target: "week1" });
+  await priya.mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
   const state = await snapshot(t, orgId);
   expect(state.people).not.toContain("Sarah Whitlock");
   expect(state.people).toHaveLength(7);
@@ -697,7 +776,10 @@ test("a revoked invitation keeps that teammate out", async () => {
 test("a tester's own survey answer is kept", async () => {
   const { t, orgId, as } = await calderLane();
   // Dan joins on 8 September and answers the before check-in late (1:30 PM).
-  await as("priya").mutation(api.demo.setClock, { target: "week1" });
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
   const dan = await personId(t, orgId, DAN);
   const sprint = await sprintOf(t, orgId);
   // As Dan, before the script answers for him.
@@ -714,7 +796,10 @@ test("a tester's own survey answer is kept", async () => {
     }
   });
 
-  await as("priya").mutation(api.demo.setClock, { target: "week2" });
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week2",
+    expectOrgId: orgId,
+  });
   const mine = await t.run((ctx) =>
     ctx.db
       .query("surveyResponses")
@@ -730,11 +815,14 @@ test("a tester's own survey answer is kept", async () => {
 });
 
 test("a reset after the end starts the demo again on 1 September", async () => {
-  const { t, as } = await calderLane();
+  const { t, orgId: firstId, as } = await calderLane();
   const priya = as("priya");
-  await priya.mutation(api.demo.setClock, { target: "complete" });
+  await priya.mutation(api.demo.setClock, {
+    target: "complete",
+    expectOrgId: firstId,
+  });
 
-  await priya.mutation(api.demo.reset, {});
+  await priya.mutation(api.demo.reset, { expectOrgId: firstId });
   const orgId = (await priya.query(api.orgs.active, {}))!.org._id;
   expect((await t.run((ctx) => ctx.db.get(orgId)))?.demoNow).toBe(DEMO_NOW);
   const rows = await t.run((ctx) =>
@@ -748,7 +836,7 @@ test("a reset after the end starts the demo again on 1 September", async () => {
 });
 
 test("a missing demo account says to reseed", async () => {
-  const { t, as } = await calderLane();
+  const { t, orgId, as } = await calderLane();
   await t.run((ctx) =>
     ctx.runMutation(components.betterAuth.adapter.deleteOne, {
       input: {
@@ -760,9 +848,11 @@ test("a missing demo account says to reseed", async () => {
   const priya = as("priya");
   // Grace joins on 8 September.
   await expect(
-    priya.mutation(api.demo.setClock, { target: "week1" }),
+    priya.mutation(api.demo.setClock, { target: "week1", expectOrgId: orgId }),
   ).rejects.toMatchObject({ data: { code: "DEMO_NOT_SEEDED" } });
-  await expect(priya.mutation(api.demo.reset, {})).rejects.toMatchObject({
+  await expect(
+    priya.mutation(api.demo.reset, { expectOrgId: orgId }),
+  ).rejects.toMatchObject({
     data: { code: "DEMO_NOT_SEEDED" },
   });
 });
@@ -777,7 +867,10 @@ test("a broken demo workspace says to reset, in words the client gets", async ()
     await ctx.db.delete(team!._id);
   });
   await expect(
-    as("priya").mutation(api.demo.setClock, { target: "week1" }),
+    as("priya").mutation(api.demo.setClock, {
+      target: "week1",
+      expectOrgId: orgId,
+    }),
   ).rejects.toMatchObject({
     data: {
       code: "DEMO_BROKEN",
@@ -799,7 +892,10 @@ test("the demo workspace can't be deleted in the app", async () => {
 test("demo invitations expire by the demo clock, not real time", async () => {
   const { orgId, as } = await calderLane();
   const priya = as("priya");
-  await priya.mutation(api.demo.setClock, { target: "week1" });
+  await priya.mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
   // Omar never joins, so his invitation stays open.
   const pending = async () =>
     (await priya.query(api.invites.list, { orgId }))
@@ -874,4 +970,59 @@ test("a demo persona can't join a real workspace while the demo is on", async ()
   await expect(
     as("dan").mutation(api.invites.accept, { token }),
   ).resolves.toMatchObject({ orgId });
+});
+
+test("a demo mutation refuses when the caller's workspace changed", async () => {
+  const { t, orgId, as } = await calderLane();
+  // Another tab still shows a different workspace than the one Priya has open.
+  const { orgId: otherId } = await workspace(t);
+  await expect(
+    as("priya").mutation(api.demo.setClock, {
+      target: "week1",
+      expectOrgId: otherId,
+    }),
+  ).rejects.toMatchObject({
+    data: {
+      code: "WORKSPACE_CHANGED",
+      message:
+        "You switched workspace in another tab. Reload the page to continue.",
+    },
+  });
+  expect((await t.run((ctx) => ctx.db.get(orgId)))?.demoNow).toBe(DEMO_NOW);
+});
+
+test("personaPassword answers only while the demo is on", async () => {
+  const t = harness();
+  vi.stubEnv("DEMO_PASSWORD", "correct horse battery");
+  expect(await t.query(api.demo.personaPassword, {})).toBe(
+    "correct horse battery",
+  );
+  vi.stubEnv("DEMO_MODE", "");
+  expect(await t.query(api.demo.personaPassword, {})).toBeNull();
+  vi.stubEnv("DEMO_MODE", "on");
+  vi.stubEnv("DEMO_PASSWORD", "");
+  expect(await t.query(api.demo.personaPassword, {})).toBeNull();
+});
+
+test("seed:clock moves the demo clock without a persona", async () => {
+  const { t, orgId } = await calderLane();
+  const { demoNow, applied } = await t.mutation(internal.seed.clock, {
+    target: "week2",
+  });
+  expect(demoNow).toBe(DEMO_TARGETS.week2);
+  expect(applied).toContain("priya.launch");
+  expect((await t.run((ctx) => ctx.db.get(orgId)))?.demoNow).toBe(
+    DEMO_TARGETS.week2,
+  );
+  vi.stubEnv("DEMO_MODE", "");
+  await expect(
+    t.mutation(internal.seed.clock, { target: "week3" }),
+  ).rejects.toMatchObject({ data: { code: "FEATURE_UNAVAILABLE" } });
+});
+
+test("seed:clock says to seed first when there is no demo", async () => {
+  const t = harness();
+  await expect(
+    t.mutation(internal.seed.clock, { target: "week1" }),
+  ).rejects.toMatchObject({ data: { code: "DEMO_NOT_SEEDED" } });
 });

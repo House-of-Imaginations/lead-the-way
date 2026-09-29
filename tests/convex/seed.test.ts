@@ -319,25 +319,31 @@ test("nobody signs up a demo address from a browser, demo on or off", async () =
 
 test("demo.reset is refused outside the demo, and without demo mode", async () => {
   const t = harness();
-  const { owner } = await workspace(t);
+  const { owner, orgId } = await workspace(t);
   const accounts = await seedDemoAccounts(t);
   const demoId = await t.mutation(internal.seed.writeCalderLane, { accounts });
   const priya = t.withIdentity({ subject: accounts.priya });
 
-  await expect(owner.mutation(api.demo.reset, {})).rejects.toMatchObject({
+  await expect(
+    owner.mutation(api.demo.reset, { expectOrgId: orgId }),
+  ).rejects.toMatchObject({
     data: { code: "FORBIDDEN" },
   });
   await expect(
-    t.withIdentity({ subject: "user_loner" }).mutation(api.demo.reset, {}),
+    t
+      .withIdentity({ subject: "user_loner" })
+      .mutation(api.demo.reset, { expectOrgId: demoId }),
   ).rejects.toMatchObject({ data: { code: "NO_WORKSPACE" } });
 
-  await priya.mutation(api.demo.reset, {});
+  await priya.mutation(api.demo.reset, { expectOrgId: demoId });
   const active = await priya.query(api.orgs.active, {});
   expect(active?.org.slug).toBe("calder-lane");
   expect(active?.org._id).not.toBe(demoId);
 
   vi.stubEnv("DEMO_MODE", "");
-  await expect(priya.mutation(api.demo.reset, {})).rejects.toMatchObject({
+  await expect(
+    priya.mutation(api.demo.reset, { expectOrgId: active!.org._id }),
+  ).rejects.toMatchObject({
     data: { code: "FEATURE_UNAVAILABLE" },
   });
   await expect(t.action(internal.seed.reset, {})).rejects.toMatchObject({
@@ -366,7 +372,7 @@ test("any persona in the demo can reset it, Dan included", async () => {
   const dan = t.withIdentity({ subject: accounts.dan });
   expect((await dan.query(api.orgs.active, {}))?.org._id).toBe(demoId);
 
-  await dan.mutation(api.demo.reset, {});
+  await dan.mutation(api.demo.reset, { expectOrgId: demoId });
   expect(await dan.query(api.orgs.active, {})).toBeNull();
   const priya = t.withIdentity({ subject: accounts.priya });
   expect((await priya.query(api.orgs.active, {}))?.org._id).not.toBe(demoId);

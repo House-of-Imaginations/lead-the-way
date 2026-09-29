@@ -23,6 +23,7 @@ import type * as lib_clock from "../lib/clock.js";
 import type * as lib_customFunctions from "../lib/customFunctions.js";
 import type * as lib_demo_calderLane from "../lib/demo/calderLane.js";
 import type * as lib_demo_cast from "../lib/demo/cast.js";
+import type * as lib_demo_moveClock from "../lib/demo/moveClock.js";
 import type * as lib_demo_schedule from "../lib/demo/schedule.js";
 import type * as lib_demo_script from "../lib/demo/script.js";
 import type * as lib_email_messages from "../lib/email/messages.js";
@@ -72,6 +73,7 @@ declare const fullApi: ApiFromModules<{
   "lib/customFunctions": typeof lib_customFunctions;
   "lib/demo/calderLane": typeof lib_demo_calderLane;
   "lib/demo/cast": typeof lib_demo_cast;
+  "lib/demo/moveClock": typeof lib_demo_moveClock;
   "lib/demo/schedule": typeof lib_demo_schedule;
   "lib/demo/script": typeof lib_demo_script;
   "lib/email/messages": typeof lib_email_messages;
