@@ -95,9 +95,8 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
       // demanded: blocking sign-in on a click in an inbox turns a deployment
       // with no sending domain into one where nobody can get in, and this
       // product's rule is that an unconfigured feature is inert, not fatal.
-      // What verification buys is the `emailVerified` flag that
-      // `convex/invites.ts` checks before honouring an invitation pinned to an
-      // address -- turn this on once a domain is verified, if you want it.
+      // Nothing in the product depends on a verified address: an invitation
+      // checks only that the address matches (spec 5).
       requireEmailVerification: false,
       sendResetPassword: async ({ user, url }) => {
         const sender = emailCtx(ctx);
@@ -108,9 +107,8 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     },
     emailVerification: {
       // On sign-up, because that is the only moment the address is fresh in
-      // somebody's mind. Without this nothing ever sets `emailVerified` for an
-      // email-and-password account, and invitations pinned to an address would
-      // be a feature that cannot be used.
+      // somebody's mind. A courtesy, not a gate: an invitation pinned to an
+      // address asks only that the account's address matches, verified or not.
       sendOnSignUp: true,
       sendVerificationEmail: async ({ user, url }) => {
         const sender = emailCtx(ctx);
@@ -122,8 +120,9 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     user: {
       // Settings > Profile. The new address only replaces the old one once its
       // link is clicked -- Better Auth sends that link through the
-      // `sendVerificationEmail` above -- so the `emailVerified` flag invitations
-      // rely on can never describe an address nobody has proved they hold.
+      // `sendVerificationEmail` above. An invitation pinned to an address needs
+      // that address and its link; the link, which only the inbox has, is the
+      // proof (spec 5).
       changeEmail: { enabled: true },
     },
     socialProviders: socialProviders(),

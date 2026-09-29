@@ -1,5 +1,6 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
+import { literals } from "convex-helpers/validators";
 import { permissionValidator } from "../lib/orgs/permissions";
 
 /**
@@ -116,30 +117,32 @@ export const orgTables = {
     .index("by_role", ["roleId"]),
 
   /**
-   * An unaccepted invitation.
-   *
-   * The token is the credential, stored in plaintext on purpose: a shareable
-   * link has to be readable again by the admin who created it, which a hash
-   * would forbid. What protects it instead is that no return validator a
-   * non-admin can reach includes this column -- the same move `profiles` makes
-   * with `avatarId`. A return validator is a leak guard, not documentation.
-   *
-   * `email`, when present, is ENFORCED at accept against the account's verified
-   * address. A pinned address that nothing checks would be a guarantee the
-   * column only appears to make.
+   * An invitation. The row outlives its answer: `status` records what
+   * happened, so a link opened twice can say "already used" or "withdrawn"
+   * instead of "not valid", and the launch screen can show who has joined.
    */
   orgInvites: defineTable({
     orgId: v.id("orgs"),
     roleId: v.id("orgRoles"),
     token: v.string(),
+    /** Pinned: only an account with this address (lowercased) may accept. */
     email: v.optional(v.string()),
+    /** Who it is for, as the manager typed it. Shown on the invitation. */
+    name: v.optional(v.string()),
+    sprintId: v.optional(v.id("sprints")),
+    message: v.optional(v.string()),
+    status: literals("pending", "accepted", "declined", "revoked"),
+    /** The seat it became, once accepted. */
+    personId: v.optional(v.id("people")),
     invitedBy: v.string(),
+    sentAt: v.optional(v.number()),
+    respondedAt: v.optional(v.number()),
     expiresAt: v.number(),
     createdAt: v.number(),
   })
     .index("by_token", ["token"])
-    .index("by_org", ["orgId"])
-    // Deleting or widening a role revokes the invitations pinned to it, so an
-    // old link cannot become a bigger grant than it was written for.
+    // One status at a time for the cap and the list; the prefix serves "all of them".
+    .index("by_org_and_status", ["orgId", "status"])
+    // Revoking what a role change would otherwise silently widen.
     .index("by_role", ["roleId"]),
 };

@@ -152,14 +152,17 @@ export const update = orgMutation("roles:manage")({
     await ctx.db.patch(roleId, { name: trimmed, permissions: next });
 
     // Widening a role widens every invitation pinned to it, and those were
-    // written for what the role was. Revoked rather than honoured.
+    // written for what the role was. Revoked rather than honoured. Revoked,
+    // not deleted, so the link says it was withdrawn.
     if (added.length > 0) {
-      const pinned = await ctx.db
+      const invites = await ctx.db
         .query("orgInvites")
         .withIndex("by_role", (q) => q.eq("roleId", roleId))
         .collect();
-      for (const invite of pinned) {
-        await ctx.db.delete(invite._id);
+      for (const invite of invites) {
+        if (invite.status === "pending") {
+          await ctx.db.patch(invite._id, { status: "revoked" });
+        }
       }
     }
     return null;
@@ -199,13 +202,16 @@ export const remove = orgMutation("roles:manage")({
 
     // An invitation is not a person, so taking it with the role is not a
     // surprise -- it is the only alternative to a link that grants a role
-    // which no longer exists.
-    const pinned = await ctx.db
+    // which no longer exists. Revoked, not deleted, so the link says it was
+    // withdrawn.
+    const invites = await ctx.db
       .query("orgInvites")
       .withIndex("by_role", (q) => q.eq("roleId", roleId))
       .collect();
-    for (const invite of pinned) {
-      await ctx.db.delete(invite._id);
+    for (const invite of invites) {
+      if (invite.status === "pending") {
+        await ctx.db.patch(invite._id, { status: "revoked" });
+      }
     }
 
     await ctx.db.delete(roleId);

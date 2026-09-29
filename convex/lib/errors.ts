@@ -42,7 +42,10 @@ export type ErrorCode =
   | "ORG_IMAGE_SIZE"
   | "INVITE_INVALID"
   | "INVITE_EXPIRED"
-  | "EMAIL_UNVERIFIED"
+  | "INVITE_REVOKED"
+  | "INVITE_DECLINED"
+  | "INVITE_USED"
+  | "INVITE_WRONG_ACCOUNT"
   | "ALREADY_A_MEMBER";
 
 export function isRateLimitedError(error: unknown): error is ConvexError<{

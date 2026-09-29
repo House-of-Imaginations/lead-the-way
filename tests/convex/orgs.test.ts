@@ -334,7 +334,7 @@ test("an invitation is single use and cannot be replayed", async () => {
   await t.withIdentity(BOB).mutation(api.invites.accept, { token });
   await expect(
     t.withIdentity(CAROL).mutation(api.invites.accept, { token }),
-  ).rejects.toMatchObject({ data: { code: "INVITE_INVALID" } });
+  ).rejects.toMatchObject({ data: { code: "INVITE_USED" } });
 });
 
 test("an invitation cannot hand over ownership", async () => {
@@ -370,7 +370,9 @@ test("accepting an invitation never changes a role you already have", async () =
   });
 
   // The owner opens a member-level link for her own workspace.
-  await alice.mutation(api.invites.accept, { token });
+  await expect(
+    alice.mutation(api.invites.accept, { token }),
+  ).rejects.toMatchObject({ data: { code: "ALREADY_A_MEMBER" } });
 
   const permissions = await alice.query(api.orgs.myPermissions, { orgId });
   expect(permissions).toContain("org:manage");
@@ -426,10 +428,10 @@ test("widening a role revokes the invitations written for what it was", async ()
   // The link promised a reader's seat. It does not silently become an admin's.
   await expect(
     t.withIdentity(BOB).mutation(api.invites.accept, { token }),
-  ).rejects.toMatchObject({ data: { code: "INVITE_INVALID" } });
+  ).rejects.toMatchObject({ data: { code: "INVITE_REVOKED" } });
 });
 
-test("a pinned invitation is refused for anybody but its verified address", async () => {
+test("a pinned invitation is refused for anybody but its address", async () => {
   const t = harness();
   const { orgId } = await workspace(t);
   const alice = t.withIdentity(ALICE);
@@ -467,12 +469,11 @@ test("a pinned invitation is refused for anybody but its verified address", asyn
   // link still works. The feature detects its own absence.
   expect(emailed).toBe(false);
 
-  // The wrong address.
   await expect(
     t.withIdentity(carol).mutation(api.invites.accept, { token }),
-  ).rejects.toMatchObject({ data: { code: "INVITE_INVALID" } });
+  ).rejects.toMatchObject({ data: { code: "INVITE_WRONG_ACCOUNT" } });
 
-  // His own address, but unverified: a claim, not a fact.
+  // His own address, unverified: the link in his inbox is the proof (spec 5).
   const pinnedToDan = await alice.mutation(api.invites.create, {
     orgId,
     roleId: memberId,
@@ -482,16 +483,13 @@ test("a pinned invitation is refused for anybody but its verified address", asyn
     t
       .withIdentity(dan)
       .mutation(api.invites.accept, { token: pinnedToDan.token }),
-  ).rejects.toMatchObject({ data: { code: "EMAIL_UNVERIFIED" } });
+  ).resolves.toMatchObject({ slug: "acme" });
 
-  // The page knows each outcome before anybody presses Join, without being
-  // told the pinned address.
-  const accessFor = async (who: typeof bob, invite: string) =>
+  const stateFor = async (who: typeof bob, invite: string) =>
     (await t.withIdentity(who).query(api.invites.preview, { token: invite }))
-      ?.access;
-  expect(await accessFor(bob, token)).toBe("ready");
-  expect(await accessFor(carol, token)).toBe("wrongAccount");
-  expect(await accessFor(dan, pinnedToDan.token)).toBe("confirmEmail");
+      ?.acceptState;
+  expect(await stateFor(bob, token)).toBe("READY");
+  expect(await stateFor(carol, token)).toBe("WRONG_ACCOUNT");
 
   // Normalised on both sides, so the casing and the stray space do not matter.
   await expect(
@@ -630,26 +628,44 @@ test("a lapsed invitation does not hold a slot forever", async () => {
     roleId: memberId,
   });
 
-  // Age it past its window. Nothing sweeps on a timer, so a lapsed row sits in
-  // the table counting against the ceiling while `list` hides it -- which is
-  // how the invite cap used to brick itself with nothing visible to revoke.
-  await t.run(async (ctx) => {
+  // Age it past its window, and fill the rest of the cap (100) straight into
+  // the table: the rate limit would stop a loop of `create` long before that.
+  // `list` hides a lapsed row, so if it counted, the cap would brick itself
+  // with nothing visible to revoke.
+  const lapsed = await t.run(async (ctx) => {
     const invite = await ctx.db
       .query("orgInvites")
       .withIndex("by_token", (q) => q.eq("token", token))
       .unique();
     await ctx.db.patch(invite!._id, { expiresAt: Date.now() - 1 });
+    for (let i = 1; i < 100; i++) {
+      await ctx.db.insert("orgInvites", {
+        orgId,
+        roleId: memberId,
+        token: `live-${i}`,
+        status: "pending",
+        invitedBy: ALICE.subject,
+        expiresAt: Date.now() + 60_000,
+        createdAt: Date.now(),
+      });
+    }
+    return invite!._id;
   });
 
   await expect(
     t.withIdentity(BOB).mutation(api.invites.accept, { token }),
   ).rejects.toMatchObject({ data: { code: "INVITE_EXPIRED" } });
 
-  // Creating the next one clears whatever has lapsed, so the count that the
-  // ceiling is checked against is of live invitations only.
+  // 99 live and one lapsed: the lapsed one frees its slot...
   await alice.mutation(api.invites.create, { orgId, roleId: memberId });
-  const rows = await t.run(async (ctx) => ctx.db.query("orgInvites").collect());
-  expect(rows).toHaveLength(1);
+  // ...and now the cap is really full.
+  await expect(
+    alice.mutation(api.invites.create, { orgId, roleId: memberId }),
+  ).rejects.toMatchObject({ data: { code: "FIELD_REQUIRED" } });
+
+  // Nothing was deleted to make room: the row keeps its history (spec 5).
+  const row = await t.run(async (ctx) => ctx.db.get(lapsed));
+  expect(row?.status).toBe("pending");
 });
 
 test("a workspace name cannot carry an email header into a subject line", async () => {

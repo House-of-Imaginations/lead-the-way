@@ -53,7 +53,7 @@ export async function deleteOrg(
 
   const invites = await ctx.db
     .query("orgInvites")
-    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .withIndex("by_org_and_status", (q) => q.eq("orgId", orgId))
     .collect();
   for (const row of invites) await ctx.db.delete(row._id);
 
