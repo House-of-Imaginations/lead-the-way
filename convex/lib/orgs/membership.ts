@@ -230,10 +230,10 @@ export const MAX_ORGS_PER_USER = 50;
  *
  * THIS IS AN ENFORCED CEILING, NOT A PAGE SIZE, and the difference matters:
  * `members.list` reads with `.take(MAX_MEMBERS_PER_ORG)` and `deleteOrg`
- * `.collect()`s the whole table range in one transaction. If joining could
- * exceed this, the first would silently hide people and the second would grow
- * into a transaction that cannot commit -- with the workspace's deletion as the
- * thing that fails. So the check lives at the only door in.
+ * `.collect()`s the whole table range in one transaction (fine to about 4k
+ * rows, per the ponytail note there). If joining could exceed this, the first
+ * would silently hide people and the second would grow into a transaction that
+ * cannot commit -- with the workspace's deletion as the thing that fails. So the check lives at the only door in.
  */
 export const MAX_MEMBERS_PER_ORG = 200;
 

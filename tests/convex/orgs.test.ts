@@ -350,9 +350,9 @@ test("an invitation cannot hand over ownership", async () => {
 });
 
 /**
- * THE SELF-DEMOTION PRIMITIVE. If accepting patched an existing membership,
+ * THE SELF-DEMOTION PRIMITIVE. If accepting patched an existing seat,
  * any invitation link would demote whoever opened it -- including an owner
- * opening a "member" link somebody sent them.
+ * opening an "Employee" link somebody sent them.
  */
 test("accepting an invitation never changes a role you already have", async () => {
   const t = harness();

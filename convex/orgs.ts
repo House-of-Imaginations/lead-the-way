@@ -46,7 +46,7 @@ const MAX_ORG_NAME = 60;
 /**
  * `imageId` is absent on purpose and `imageUrl` stands in its place -- the id is
  * a handle only this backend can act on, and the URL is signed and expiring so
- * it has to be minted per read. Same move `profiles.me` makes with `avatarId`.
+ * it has to be minted per read.
  */
 const orgValidator = v.object({
   _id: v.id("orgs"),
@@ -244,7 +244,7 @@ export const create = authenticatedMutation({
     await setActiveOrgOf(ctx, ctx.userId, orgId);
 
     // SEEDED, because an invitation grants a role and the owner role cannot be
-    // invited into. A workspace born with only "Owner" had nothing to invite
+    // invited into. A workspace born with only its owner role had nothing to invite
     // anybody as, so the first thing a new owner tried -- asking a colleague in
     // -- silently offered no way to do it. Ordinary custom rows: renamed,
     // edited or deleted like any role somebody made by hand.

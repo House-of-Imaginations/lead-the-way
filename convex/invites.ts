@@ -450,7 +450,7 @@ export const preview = authenticatedQuery({
  *
  * INSERT ONLY, and that is a security property. If this patched an existing
  * seat's role, any link would be a self-demotion primitive: an owner opens a
- * member link and is demoted out of their own workspace. So somebody already
+ * Employee link and is demoted out of their own workspace. So somebody already
  * seated is refused with ALREADY_A_MEMBER and nothing is written.
  *
  * One mutation, so one transaction: the token read is in the read set, which

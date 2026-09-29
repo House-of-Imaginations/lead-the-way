@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import type { MutationCtx } from "../../convex/_generated/server";
 import { ORG_TABLES, deleteOrg } from "../../convex/lib/orgs/cascade";
 import schema from "../../convex/schema";
 import { harness, workspace } from "./workspace/helpers";
@@ -15,7 +14,9 @@ test("every table is cleared with its workspace or belongs to the org layer", ()
   );
 });
 
-async function fill(ctx: MutationCtx, orgId: Id<"orgs">) {
+type RunCtx = Parameters<Parameters<ReturnType<typeof harness>["run"]>[0]>[0];
+
+async function fill(ctx: RunCtx, orgId: Id<"orgs">) {
   const teamId = await ctx.db.insert("teams", {
     orgId,
     name: "Client Services team",
@@ -40,6 +41,31 @@ async function fill(ctx: MutationCtx, orgId: Id<"orgs">) {
     at: 0,
   });
   await ctx.db.insert("demoScript", { orgId, key: "priya.team", at: 0 });
+  const person = await ctx.db
+    .query("people")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .first();
+  const screenshotId = await ctx.storage.store(new Blob(["x"]));
+  await ctx.db.insert("projects", {
+    orgId,
+    personId: person!._id,
+    sprintId,
+    startedWeek: 1,
+    title: "Draft the weekly update",
+    before: "",
+    change: "",
+    after: "",
+    resultTypes: [],
+    humanReviewed: false,
+    dataSafe: false,
+    screenshotId,
+    status: "draft",
+    sharing: "private",
+    autosavedAt: 0,
+  });
+  const imageId = await ctx.storage.store(new Blob(["x"]));
+  await ctx.db.patch(orgId, { imageId });
+  return [screenshotId, imageId];
 }
 
 test("deleting a workspace clears its product rows and nobody else's", async () => {
@@ -49,11 +75,17 @@ test("deleting a workspace clears its product rows and nobody else's", async () 
     name: "Kept Network",
   });
 
-  await t.run(async (ctx) => {
-    await fill(ctx, gone);
-    await fill(ctx, kept);
+  const files = await t.run(async (ctx) => {
+    const goneFiles = await fill(ctx, gone);
+    const keptFiles = await fill(ctx, kept);
     await deleteOrg(ctx, gone);
+    return {
+      gone: await Promise.all(goneFiles.map((id) => ctx.db.system.get(id))),
+      kept: await Promise.all(keptFiles.map((id) => ctx.db.system.get(id))),
+    };
   });
+  expect(files.gone).toEqual([null, null]);
+  expect(files.kept.every((f) => f !== null)).toBe(true);
 
   const left = await t.run(async (ctx) => ({
     teams: (await ctx.db.query("teams").collect()).map((r) => r.orgId),

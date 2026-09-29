@@ -22,27 +22,26 @@ export const ORG_TABLES = [
 ] as const;
 
 /**
- * Erase a workspace and everything filed under it. */
+ * Erase a workspace and everything filed under it: its rows, its people and
+ * invitations, its roles, and the files its projects and picture point at.
+ */
 export async function deleteOrg(
   ctx: MutationCtx,
   orgId: Id<"orgs">,
 ): Promise<void> {
   // ponytail: one-transaction delete, fine at prototype scale; batch with .take(n) and reschedule past ~4k rows
-  // Files first: an orphaned file is storage nobody can find again.
-  const projects = await ctx.db
-    .query("projects")
-    .withIndex("by_org", (q) => q.eq("orgId", orgId))
-    .collect();
-  for (const project of projects) {
-    if (project.screenshotId) await ctx.storage.delete(project.screenshotId);
-  }
-
   for (const table of ORG_TABLES) {
     const rows = await ctx.db
       .query(table)
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .collect();
-    for (const row of rows) await ctx.db.delete(row._id);
+    for (const row of rows) {
+      // A screenshot is storage nobody can find again once its row is gone.
+      if (table === "projects" && "screenshotId" in row && row.screenshotId) {
+        await ctx.storage.delete(row.screenshotId);
+      }
+      await ctx.db.delete(row._id);
+    }
   }
 
   const people = await ctx.db

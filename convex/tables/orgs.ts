@@ -9,7 +9,7 @@ import { permissionValidator } from "../lib/orgs/permissions";
  * WHY THESE ARE HERE AND NOT IN BETTER AUTH. Better Auth ships an organization
  * plugin and it is installed. With the Convex adapter its tables live INSIDE
  * the auth component, reachable only through `authComponent.adapter(ctx)` and
- * never through `ctx.db`. A membership check is the hottest read in a
+ * never through `ctx.db`. A seat check is the hottest read in a
  * multi-tenant app -- it runs on every single gated call -- so it has to be an
  * index this schema owns and can compose with its own tables in one
  * transaction. The plugin's access control also gates Better Auth's own
@@ -37,7 +37,7 @@ export const orgTables = {
     /**
      * The workspace picture, as a storage handle rather than a URL.
      *
-     * Same reasoning as `profiles.avatarId`: a Convex storage URL is signed and
+     * A Convex storage URL is signed and
      * expiring, so a stored one is a string going stale on its own schedule in
      * a row nobody thinks to refresh. The id is resolved to a URL at read time,
      * and no return validator a member can reach exposes the id itself.
