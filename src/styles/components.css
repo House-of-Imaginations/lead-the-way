@@ -19,17 +19,38 @@
   flex-shrink: 0;
   fill: currentColor;
 }
-.ltw-focus:focus-visible,
-.ltw-btn:focus-visible,
-.ltw-field:focus-visible,
-.ltw-tab:focus-visible,
-.ltw-cs button:focus-visible,
-.ltw-tile:focus-visible,
-.ltw-toggle:focus-visible,
-.ltw-sn a:focus-visible,
-.ltw-sn button:focus-visible {
+/* Focus: Carbon's double ring. A 2px focus outline inset, then 1px of page background inside it, so the ring
+   still reads where focus and fill are the same colour (blue on a primary button in light, white on the dark
+   inverse surface). The list includes classes added further down. */
+:is(
+  .ltw-focus,
+  .ltw-btn,
+  .ltw-field,
+  .ltw-tab,
+  .ltw-tabpanel,
+  .ltw-cs button,
+  .ltw-tile,
+  .ltw-toggle,
+  .ltw-sn a,
+  .ltw-sn button,
+  .ltw-sn-rs,
+  .ltw-tag button,
+  .ltw-toast button,
+  .ltw-modal-x,
+  .ltw-pw-b,
+  .ltw-menu-i,
+  .ltw-dsc > summary,
+  .ltw-tb a,
+  .ltw-tb button
+):focus-visible,
+.ltw-lk input:focus-visible + span {
   outline: 2px solid var(--focus);
   outline-offset: -2px;
+  box-shadow: inset 0 0 0 3px var(--background);
+}
+.ltw-cb input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
 }
 
 /* Button */
