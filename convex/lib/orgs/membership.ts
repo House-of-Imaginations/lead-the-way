@@ -213,12 +213,20 @@ export async function setRole(
   await ctx.db.patch(person._id, { roleId });
 }
 
-/** Give up a seat, having checked the org keeps an owner. */
+/**
+ * Give up a seat, having checked the org keeps an owner. The person's
+ * settings row goes with it: nothing else would ever read it again.
+ */
 export async function dropSeat(
   ctx: MutationCtx,
   person: Doc<"people">,
 ): Promise<void> {
   await assertOwnerSurvives(ctx, person.orgId, person._id);
+  const settings = await ctx.db
+    .query("settings")
+    .withIndex("by_person", (q) => q.eq("personId", person._id))
+    .first();
+  if (settings) await ctx.db.delete(settings._id);
   await ctx.db.delete(person._id);
 }
 
@@ -233,7 +241,8 @@ export const MAX_ORGS_PER_USER = 50;
  * `.collect()`s the whole table range in one transaction (fine to about 4k
  * rows, per the ponytail note there). If joining could exceed this, the first
  * would silently hide people and the second would grow into a transaction that
- * cannot commit -- with the workspace's deletion as the thing that fails. So the check lives at the only door in.
+ * cannot commit -- with the workspace's deletion as the thing that fails. So
+ * the check lives at the only door in.
  */
 export const MAX_MEMBERS_PER_ORG = 200;
 
