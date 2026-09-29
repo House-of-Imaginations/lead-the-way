@@ -1,18 +1,15 @@
 /* Lead the Way components. Copied from docs/design/design-system/components/bundle.css, which wins on values.
-   Local changes only: the held-hour logo, the double focus ring, and the marked additions at the end.
-   Every colour is a token var. */
-.ltw-root,
-.ltw-root * {
-  box-sizing: border-box;
-}
-.ltw-root {
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 20px;
-  letter-spacing: 0.16px;
-  color: var(--text-primary);
-  -webkit-font-smoothing: antialiased;
-}
+   Every colour is a token var. Local edits to the bundle copy, each marked in place with a local comment:
+   - the held-hour logo and the double focus ring;
+   - .ltw-root deleted (unused);
+   - .ltw-cb renamed to .ltw-cb-l;
+   - .ltw-cs width, max-width and its phone media block;
+   - .ltw-toast max-width;
+   - .ltw-modal max-height and .ltw-modal-b overflow;
+   - the Lead the Way additions at the end, including the drawer close, the side nav scroll area, the modal
+     scrim layer and the 48px phone touch targets.
+   To see every edit: pnpm exec prettier docs/design/design-system/components/bundle.css | diff - src/styles/components.css
+   Phone breakpoint: 671px is the last width below DESIGN.md's 672px (md) breakpoint. */
 .ltw-i {
   width: 16px;
   height: 16px;
@@ -21,7 +18,9 @@
 }
 /* Focus: Carbon's double ring. A 2px focus outline inset, then 1px of page background inside it, so the ring
    still reads where focus and fill are the same colour (blue on a primary button in light, white on the dark
-   inverse surface). The list includes classes added further down. */
+   inverse surface). The list includes classes added further down. globals.css gives every other focusable
+   element the same ring from the base layer. */
+/* local: the double ring and its class list replace the bundle's single-outline rule */
 :is(
   .ltw-focus,
   .ltw-btn,
@@ -52,6 +51,7 @@
 .ltw-cb input:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 1px;
+  box-shadow: none; /* local: keeps the global ring's inset fill off the native box */
 }
 
 /* Button */
@@ -248,6 +248,7 @@ textarea.ltw-field {
 }
 
 /* Checkbox */
+/* local: the bundle's .ltw-cb row is .ltw-cb-l, so .ltw-cb can wrap the row and its helper */
 .ltw-cb-l {
   display: flex;
   align-items: flex-start;
@@ -331,6 +332,8 @@ textarea.ltw-field {
 /* Content switcher */
 .ltw-cs {
   display: inline-flex;
+  /* local: a flex-column parent blockifies and stretches it, so hug the buttons; never wider than the parent */
+  width: fit-content;
   max-width: 100%;
   border: 1px solid var(--border-inverse);
 }
@@ -356,9 +359,11 @@ textarea.ltw-field {
   background: var(--layer-inverse);
   color: var(--text-inverse);
 }
+/* local: on phones the switcher spans its parent with equal segments. 671px: below DESIGN.md's 672px (md). */
 @media (max-width: 671px) {
   .ltw-cs {
     display: flex;
+    width: 100%;
   }
   .ltw-cs button {
     flex: 1 1 0;
@@ -429,7 +434,7 @@ textarea.ltw-field {
 /* Toast */
 .ltw-toast {
   width: 320px;
-  max-width: calc(100vw - 32px);
+  max-width: calc(100vw - 32px); /* local: fits a 390px phone */
   background: var(--layer-inverse);
   color: var(--text-inverse);
   border-left: 3px solid var(--support-success);
@@ -551,6 +556,7 @@ textarea.ltw-field {
   white-space: nowrap;
   overflow: hidden;
 }
+/* local: the held-hour mark (DESIGN.md, Logo) replaces the bundle's blue logo tile */
 .ltw-logo {
   display: block;
   width: 24px;
@@ -724,7 +730,7 @@ textarea.ltw-field {
 .ltw-modal {
   width: 100%;
   max-width: 560px;
-  max-height: 100%;
+  max-height: 100%; /* local: tall content scrolls in .ltw-modal-b instead of leaving the viewport */
   background: var(--layer-01);
   display: flex;
   flex-direction: column;
@@ -763,6 +769,7 @@ textarea.ltw-field {
   background: var(--layer-hover);
 }
 .ltw-modal-b {
+  /* local: min-height and overflow let the body scroll inside a capped panel */
   min-height: 0;
   overflow-y: auto;
   padding: 16px 16px 48px;
@@ -1002,6 +1009,10 @@ textarea.ltw-field {
   inset: 0;
   z-index: 100;
 }
+/* A modal opened from the drawer (z-index 101) sits above it; menus (110) and toasts (120) stay on top. */
+.ltw-scrim-modal {
+  z-index: 105;
+}
 
 /* Menu: a floating layer-01 list (account menu, workspace switcher, row actions) */
 .ltw-menu {
@@ -1136,10 +1147,59 @@ button.ltw-sn-acct:hover {
   left: 0;
   z-index: 101;
   width: min(320px, calc(100vw - 48px));
+  overflow-y: auto;
   background: var(--background);
   box-shadow: var(--shadow-float);
 }
 .ltw-drawer .ltw-sn {
   width: 100%;
   border-right: 0;
+}
+/* The drawer's close button shares the brand row, top-right. */
+.ltw-drawer > .ltw-modal-x {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  margin: 0;
+}
+
+/* SideNav scroll area: the column scrolls on short screens while the resize handle stays outside it,
+   so the handle keeps its full hit area across the border. */
+.ltw-sn-in {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+/* Rows keep their height and the area scrolls; without this, rows with overflow: hidden squash to fit. */
+.ltw-sn-in > * {
+  flex-shrink: 0;
+}
+
+/* Phones: 48px touch targets (DESIGN.md, Responsive behaviour). 671px: below DESIGN.md's 672px (md).
+   The toast close and tag dismiss grow an invisible hit area, so neither the look nor the focus ring changes. */
+@media (max-width: 671px) {
+  .ltw-drawer .ltw-sn-a {
+    height: 48px;
+  }
+  .ltw-menu-i {
+    min-height: 48px;
+  }
+  .ltw-toast button,
+  .ltw-tag button {
+    position: relative;
+  }
+  .ltw-toast button::after,
+  .ltw-tag button::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 48px;
+    height: 48px;
+    transform: translate(-50%, -50%);
+  }
 }

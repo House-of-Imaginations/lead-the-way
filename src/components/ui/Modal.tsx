@@ -37,7 +37,7 @@ export function Modal({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       {trigger && <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>}
       <Dialog.Portal>
-        <Dialog.Overlay className="ltw-scrim ltw-scrim-fixed">
+        <Dialog.Overlay className="ltw-scrim ltw-scrim-fixed ltw-scrim-modal">
           <Dialog.Content className="ltw-modal" aria-describedby={undefined}>
             <div className="ltw-modal-h">
               <div>

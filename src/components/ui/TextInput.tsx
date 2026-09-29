@@ -19,8 +19,13 @@ export function TextInput({
         id={id}
         className={clsx("ltw-field", error && "ltw-field-invalid", className)}
         aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy(id, helper, error)}
         {...input}
+        aria-describedby={describedBy(
+          id,
+          helper,
+          error,
+          input["aria-describedby"],
+        )}
       />
     </Field>
   );
@@ -42,8 +47,13 @@ export function TextArea({
         rows={rows}
         className={clsx("ltw-field", error && "ltw-field-invalid", className)}
         aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy(id, helper, error)}
         {...textarea}
+        aria-describedby={describedBy(
+          id,
+          helper,
+          error,
+          textarea["aria-describedby"],
+        )}
       />
     </Field>
   );

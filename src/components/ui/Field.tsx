@@ -7,11 +7,15 @@ export type FieldProps = {
   error?: string;
 };
 
-/** The id a control's aria-describedby points at: its error, else its helper. */
-export function describedBy(id: string, helper?: string, error?: string) {
-  if (error) return `${id}-error`;
-  if (helper) return `${id}-helper`;
-  return undefined;
+/** A control's aria-describedby: its error, else its helper, then any ids the caller passed. */
+export function describedBy(
+  id: string,
+  helper?: string,
+  error?: string,
+  extra?: string,
+) {
+  const own = error ? `${id}-error` : helper ? `${id}-helper` : undefined;
+  return [own, extra].filter(Boolean).join(" ") || undefined;
 }
 
 /** Label above, control, then the error or the helper below. */

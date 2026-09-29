@@ -26,8 +26,13 @@ export function PasswordInput({
           type={shown ? "text" : "password"}
           className={clsx("ltw-field", error && "ltw-field-invalid", className)}
           aria-invalid={error ? true : undefined}
-          aria-describedby={describedBy(id, helper, error)}
           {...input}
+          aria-describedby={describedBy(
+            id,
+            helper,
+            error,
+            input["aria-describedby"],
+          )}
         />
         <button
           type="button"

@@ -25,8 +25,13 @@ export function Select({
           id={id}
           className={clsx("ltw-field", error && "ltw-field-invalid", className)}
           aria-invalid={error ? true : undefined}
-          aria-describedby={describedBy(id, helper, error)}
           {...select}
+          aria-describedby={describedBy(
+            id,
+            helper,
+            error,
+            select["aria-describedby"],
+          )}
         >
           {options.map((o) => (
             <option key={o.value} value={o.value}>

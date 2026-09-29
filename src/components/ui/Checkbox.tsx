@@ -18,8 +18,12 @@ export function Checkbox({
       <label className="ltw-cb-l">
         <input
           type="checkbox"
-          aria-describedby={helper ? helperId : undefined}
           {...input}
+          aria-describedby={
+            [helper && helperId, input["aria-describedby"]]
+              .filter(Boolean)
+              .join(" ") || undefined
+          }
         />
         <span>{label}</span>
       </label>

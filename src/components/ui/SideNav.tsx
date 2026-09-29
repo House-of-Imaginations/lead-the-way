@@ -45,7 +45,7 @@ const MAX = 400;
 const DEFAULT = 256;
 const SNAP = 140;
 const STEP = 16;
-const NARROW = "(max-width: 1055px)";
+const NARROW = "(max-width: 1055px)"; // below DESIGN.md's 1056px (lg) breakpoint
 
 type NavState = { width: number; collapsed: boolean };
 
@@ -153,6 +153,7 @@ export function SideNav({
   }
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
+    if (e.button !== 0) return; // primary button only
     e.currentTarget.setPointerCapture(e.pointerId);
     start.current = {
       x: e.clientX,
@@ -197,6 +198,86 @@ export function SideNav({
         transition: drag === null ? undefined : "none",
       }}
     >
+      <div className="ltw-sn-in">
+        <Link className="ltw-sn-brand" href={homeHref} title="Lead the Way">
+          <Logo />
+          <span className="ltw-sn-t">Lead the Way</span>
+        </Link>
+        {orgMenu ? (
+          <Menu
+            items={orgMenu}
+            trigger={
+              <button
+                type="button"
+                className="ltw-sn-org"
+                title={org.name}
+                aria-label={org.name}
+              >
+                {orgBlock}
+              </button>
+            }
+          />
+        ) : (
+          <div className="ltw-sn-org" title={org.name}>
+            {orgBlock}
+          </div>
+        )}
+        {sections.map((section) => (
+          <Fragment key={section.title}>
+            <div className="ltw-sn-h">
+              <span className="ltw-sn-t">{section.title}</span>
+            </div>
+            {section.links.map(({ label, href, icon: Icon, current }) => (
+              <Link
+                key={label}
+                className="ltw-sn-a"
+                href={href}
+                title={label}
+                aria-current={current ? "page" : undefined}
+              >
+                <Icon className="ltw-i" aria-hidden="true" />
+                <span className="ltw-sn-t">{label}</span>
+              </Link>
+            ))}
+          </Fragment>
+        ))}
+        {status && <div className="ltw-sn-st ltw-sn-x">{status}</div>}
+        {resizable && (
+          <button
+            type="button"
+            className="ltw-sn-tg"
+            aria-expanded={!collapsed}
+            title={collapsed ? "Expand navigation" : undefined}
+            onClick={toggle}
+          >
+            <ChevronLeft className="ltw-i" aria-hidden="true" />
+            <span className="ltw-sn-t">Collapse</span>
+          </button>
+        )}
+        <Menu
+          side="top"
+          items={accountMenu}
+          trigger={
+            <button
+              type="button"
+              className="ltw-sn-acct"
+              title={user.name}
+              aria-label={user.name}
+            >
+              <Avatar initials={user.initials} />
+              <span className="ltw-sn-who ltw-sn-x">
+                <span className="ltw-sn-name">{user.name}</span>
+                <span className="ltw-sn-sub">{user.role}</span>
+              </span>
+              <ChevronSort className="ltw-i ltw-sn-x" aria-hidden="true" />
+            </button>
+          }
+        />
+        <p className="ltw-sn-cap ltw-sn-x">
+          Concept prototype. Not an official IBM product.
+        </p>
+      </div>
+      {/* Last in the DOM so it is the last Tab stop; it is absolutely positioned, so nothing moves. */}
       {resizable && (
         <div
           className="ltw-sn-rs"
@@ -215,73 +296,6 @@ export function SideNav({
           onDoubleClick={toggle}
         />
       )}
-      <Link className="ltw-sn-brand" href={homeHref} title="Lead the Way">
-        <Logo />
-        <span className="ltw-sn-t">Lead the Way</span>
-      </Link>
-      {orgMenu ? (
-        <Menu
-          items={orgMenu}
-          trigger={
-            <button type="button" className="ltw-sn-org" title={org.name}>
-              {orgBlock}
-            </button>
-          }
-        />
-      ) : (
-        <div className="ltw-sn-org" title={org.name}>
-          {orgBlock}
-        </div>
-      )}
-      {sections.map((section) => (
-        <Fragment key={section.title}>
-          <div className="ltw-sn-h">
-            <span className="ltw-sn-t">{section.title}</span>
-          </div>
-          {section.links.map(({ label, href, icon: Icon, current }) => (
-            <Link
-              key={label}
-              className="ltw-sn-a"
-              href={href}
-              title={label}
-              aria-current={current ? "page" : undefined}
-            >
-              <Icon className="ltw-i" aria-hidden="true" />
-              <span className="ltw-sn-t">{label}</span>
-            </Link>
-          ))}
-        </Fragment>
-      ))}
-      {status && <div className="ltw-sn-st ltw-sn-x">{status}</div>}
-      {resizable && (
-        <button
-          type="button"
-          className="ltw-sn-tg"
-          aria-expanded={!collapsed}
-          title={collapsed ? "Expand navigation" : undefined}
-          onClick={toggle}
-        >
-          <ChevronLeft className="ltw-i" aria-hidden="true" />
-          <span className="ltw-sn-t">Collapse</span>
-        </button>
-      )}
-      <Menu
-        side="top"
-        items={accountMenu}
-        trigger={
-          <button type="button" className="ltw-sn-acct" title={user.name}>
-            <Avatar initials={user.initials} />
-            <span className="ltw-sn-who ltw-sn-x">
-              <span className="ltw-sn-name">{user.name}</span>
-              <span className="ltw-sn-sub">{user.role}</span>
-            </span>
-            <ChevronSort className="ltw-i ltw-sn-x" aria-hidden="true" />
-          </button>
-        }
-      />
-      <p className="ltw-sn-cap ltw-sn-x">
-        Concept prototype. Not an official IBM product.
-      </p>
     </nav>
   );
 }
