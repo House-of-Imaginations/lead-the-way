@@ -820,3 +820,86 @@ textarea.ltw-field {
   color: var(--text-disabled);
   cursor: not-allowed;
 }
+
+/* Toggle row text and disabled state */
+.ltw-trow-l {
+  font-weight: 600;
+}
+.ltw-trow-d {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.32px;
+  color: var(--text-secondary);
+}
+.ltw-toggle:disabled {
+  background: var(--button-disabled);
+  cursor: not-allowed;
+}
+
+/* SelectableTile text blocks */
+.ltw-tile-title,
+.ltw-tile-desc {
+  display: block;
+}
+
+/* LikertScale: five 48px segments; the chosen one fills like a pressed content switcher segment */
+.ltw-lk {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ltw-lk legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+.ltw-lk-o {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border: 1px solid var(--border-inverse);
+}
+.ltw-lk-o label {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+.ltw-lk-o input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.ltw-lk-o span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  border-left: 1px solid var(--border-strong);
+  background: var(--background);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.ltw-lk-o label:first-child span {
+  border-left: 0;
+}
+.ltw-lk-o label:hover span {
+  background: var(--layer-hover);
+  color: var(--text-primary);
+}
+.ltw-lk-o input:checked + span {
+  background: var(--layer-inverse);
+  color: var(--text-inverse);
+}
+.ltw-lk-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.32px;
+  color: var(--text-secondary);
+}
