@@ -1,7 +1,9 @@
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
+import { flagOn } from "../../app";
 import { authComponent } from "../../auth";
 import { ensureProfile } from "../account/ensureProfile";
+import { isDemoAddress } from "../demo/cast";
 
 export const DEFAULT_TIME_ZONE = "Australia/Melbourne";
 
@@ -50,4 +52,18 @@ export async function insertPerson(
   const person = await ctx.db.get(id);
   if (!person) throw new Error("just-inserted person is missing");
   return person;
+}
+
+/**
+ * A shared demo persona, while the demo is on. Such an account stays in the
+ * demo workspace: it neither makes a workspace nor joins a real one. Read from
+ * the auth component's own row, as `invites.ts` reads a pinned address.
+ */
+export async function isDemoAccount(
+  ctx: MutationCtx,
+  userId: string,
+): Promise<boolean> {
+  if (!flagOn("demo")) return false;
+  const user = await authComponent.getAnyUserById(ctx, userId);
+  return user ? isDemoAddress(user.email) : false;
 }

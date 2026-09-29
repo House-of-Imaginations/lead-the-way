@@ -24,7 +24,7 @@ import {
   permissionsOf,
   requireWithin,
 } from "./lib/orgs/membership";
-import { insertPerson } from "./lib/orgs/people";
+import { insertPerson, isDemoAccount } from "./lib/orgs/people";
 import { reserveRateLimit } from "./lib/rateLimits";
 
 /**
@@ -493,6 +493,12 @@ export const accept = authenticatedMutation({
     { token },
   ): Promise<{ slug: string; orgId: Id<"orgs"> }> => {
     const { invite, org } = await usableInvite(ctx, token, ctx.userId);
+    if (!org.isDemo && (await isDemoAccount(ctx, ctx.userId))) {
+      throwUserError(
+        "DEMO_ACCOUNT_JOIN",
+        "Demo accounts can only join the demo workspace. Log in with your own account to accept this invitation.",
+      );
+    }
     // The only door into a workspace, so the only place the ceilings are held.
     await assertCanJoin(ctx, ctx.userId, invite.orgId);
 

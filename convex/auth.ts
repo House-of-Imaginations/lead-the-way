@@ -96,6 +96,8 @@ const DEMO_LOCKED = new Set([
   "/change-email",
   "/update-user",
   "/delete-user",
+  "/link-social",
+  "/unlink-account",
 ]);
 
 export const createAuth = (ctx: GenericCtx<DataModel>) =>
@@ -146,13 +148,12 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
           throw new APIError("SERVICE_UNAVAILABLE", {
             message: "FEATURE_UNAVAILABLE",
           });
-        if (!flagOn("demo")) return;
-
         // The demo accounts are shared: every tester holds the one demo
-        // password, and a reset reuses the accounts as they are. So nobody
-        // may change one, and only the seed may create one: its
-        // `auth.api.signUpEmail` call has no `ctx.request`, while anything
-        // from a browser does. Real accounts pass untouched.
+        // password, and a reset reuses the accounts as they are. So only the
+        // seed may create one, demo on or off: its `auth.api.signUpEmail`
+        // call has no `ctx.request`, while anything from a browser does.
+        // Nor, while the demo is on, may anybody change one. Real accounts
+        // pass untouched.
         if (ctx.path === "/sign-up/email") {
           const email: unknown = ctx.body?.email;
           if (ctx.request && typeof email === "string" && isDemoAddress(email))
@@ -160,7 +161,10 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
               message:
                 "Demo accounts are made by the seed. Use the persona switch.",
             });
-        } else if (DEMO_LOCKED.has(ctx.path)) {
+        }
+        if (!flagOn("demo")) return;
+
+        if (DEMO_LOCKED.has(ctx.path)) {
           const session = await getSessionFromCtx(ctx);
           if (session && isDemoAddress(session.user.email))
             throw new APIError("FORBIDDEN", {

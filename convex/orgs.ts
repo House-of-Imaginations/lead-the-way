@@ -11,7 +11,7 @@ import { permissionValidator, type Permission } from "./lib/orgs/permissions";
 import { deleteOrg } from "./lib/orgs/cascade";
 import { MIN_THRESHOLD } from "./lib/privacy";
 import { assertCanCreate, findSeat, seatsOfUser } from "./lib/orgs/membership";
-import { insertPerson } from "./lib/orgs/people";
+import { insertPerson, isDemoAccount } from "./lib/orgs/people";
 import { cleanOrgName, slugIsAvailableShape, slugify } from "./lib/orgs/slug";
 import { setActiveOrgOf } from "./lib/account/ensureProfile";
 import { getViewer } from "./lib/viewer";
@@ -176,6 +176,14 @@ export const create = authenticatedMutation({
   args: { name: v.string() },
   returns: v.object({ orgId: v.id("orgs"), slug: v.string() }),
   handler: async (ctx, { name }) => {
+    // Every tester shares the demo accounts, and a reset clears only the demo
+    // workspace, so a demo persona's workspace would be anybody's and forever.
+    if (await isDemoAccount(ctx, ctx.userId)) {
+      throwUserError(
+        "DEMO_ACCOUNT_CREATE",
+        "Demo accounts can't make a workspace. Sign up with your own email to make one.",
+      );
+    }
     const trimmed = cleanOrgName(name);
     if (!trimmed) {
       throwUserError("ORG_NAME_REQUIRED", "A workspace needs a name.");

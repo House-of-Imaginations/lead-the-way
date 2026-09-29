@@ -50,7 +50,10 @@ export type ErrorCode =
   | "INVITE_WRONG_ACCOUNT"
   | "ALREADY_A_MEMBER"
   | "DEMO_NOT_SEEDED"
-  | "DEMO_CLOCK_BACKWARDS";
+  | "DEMO_CLOCK_BACKWARDS"
+  // A shared demo persona, while the demo is on, stays in the demo workspace.
+  | "DEMO_ACCOUNT_CREATE"
+  | "DEMO_ACCOUNT_JOIN";
 
 export function isRateLimitedError(error: unknown): error is ConvexError<{
   code: "RATE_LIMITED";

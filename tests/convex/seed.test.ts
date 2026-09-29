@@ -229,6 +229,8 @@ test("a demo persona can't change the shared account", async () => {
     ["/change-email", { newEmail: "dan@example.com" }],
     ["/update-user", { name: "Not Dan" }],
     ["/delete-user", {}],
+    ["/link-social", { provider: "google" }],
+    ["/unlink-account", { providerId: "credential" }],
   ];
   for (const [path, body] of attempts) {
     const res = await post(t, path, body, cookie);
@@ -275,6 +277,20 @@ test("only the seed signs up a demo address; real accounts are unaffected", asyn
     cookieOf(bec),
   );
   expect(changed.status).toBe(200);
+});
+
+test("nobody signs up a demo address from a browser, demo on or off", async () => {
+  const t = harness();
+  vi.stubEnv("DEMO_MODE", "");
+  const res = await post(t, "/sign-up/email", {
+    name: "Omar Haddad",
+    email: "omar.haddad@calderlane.com.au",
+    password: PASSWORD,
+  });
+  expect(res.status).toBe(403);
+  expect(await res.json()).toMatchObject({
+    message: "Demo accounts are made by the seed. Use the persona switch.",
+  });
 });
 
 test("demo.reset is refused outside the demo, and without demo mode", async () => {

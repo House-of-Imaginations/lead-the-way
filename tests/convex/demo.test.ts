@@ -823,3 +823,34 @@ test("what a tester does in the demo is stamped with demo time", async () => {
     DEMO_NOW,
   );
 });
+
+test("a demo persona can't make a workspace while the demo is on", async () => {
+  const { as } = await calderLane();
+  await expect(
+    as("dan").mutation(api.orgs.create, { name: "Okafor Network" }),
+  ).rejects.toMatchObject({ data: { code: "DEMO_ACCOUNT_CREATE" } });
+
+  vi.stubEnv("DEMO_MODE", "");
+  await expect(
+    as("dan").mutation(api.orgs.create, { name: "Okafor Network" }),
+  ).resolves.toMatchObject({ slug: "okafor-network" });
+});
+
+test("a demo persona can't join a real workspace while the demo is on", async () => {
+  const { t, as } = await calderLane();
+  const { owner, orgId } = await workspace(t);
+  const roles = await owner.query(api.orgRoles.list, { orgId });
+  const employee = roles.find((r) => r.name === "Employee")!._id;
+  const { token } = await owner.mutation(api.invites.create, {
+    orgId,
+    roleId: employee,
+  });
+  await expect(
+    as("dan").mutation(api.invites.accept, { token }),
+  ).rejects.toMatchObject({ data: { code: "DEMO_ACCOUNT_JOIN" } });
+
+  vi.stubEnv("DEMO_MODE", "");
+  await expect(
+    as("dan").mutation(api.invites.accept, { token }),
+  ).resolves.toMatchObject({ orgId });
+});
