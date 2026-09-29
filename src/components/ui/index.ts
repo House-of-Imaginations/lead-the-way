@@ -43,3 +43,5 @@ export {
   type Step,
 } from "./ProgressSteps";
 export { ToastProvider, useToast, type ToastInput } from "./Toast";
+export { Modal, type ModalProps } from "./Modal";
+export { Menu, type MenuItem, type MenuProps } from "./Menu";
