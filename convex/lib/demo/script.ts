@@ -45,6 +45,10 @@ const TEAM = {
   challenges: ["Staff are using AI differently", "Lack of time to learn"],
 };
 
+// ponytail: the demo holds a handful of invitations (9 by script). Past 500 a
+// step could miss one and invite a cast member twice; page it if that matters.
+const DEMO_INVITES_READ = 500;
+
 const INVITE_MESSAGE =
   "Hi team, from Wednesday 9 September we'll protect 2:00 to 3:00 PM every week for practical AI learning. Bring one real task you'd like to make easier. Priya";
 
@@ -245,6 +249,18 @@ async function latestAgreement(ctx: MutationCtx, teamId: Id<"teams">) {
     .first();
 }
 
+/** The newest saved version, or null. A newer draft on top doesn't count. */
+async function latestSaved(ctx: MutationCtx, teamId: Id<"teams">) {
+  const versions = ctx.db
+    .query("agreements")
+    .withIndex("by_team_and_version", (q) => q.eq("teamId", teamId))
+    .order("desc");
+  for await (const version of versions) {
+    if (version.status === "saved") return version;
+  }
+  return null;
+}
+
 async function log(
   { ctx, orgId, at }: StepCtx,
   type: EventType,
@@ -382,13 +398,7 @@ async function watch(step: StepCtx, moduleKey: ModuleKey, minutes: number) {
 async function sign(step: StepCtx, keys: CastKey[]) {
   const { ctx, orgId, at } = step;
   const team = await teamOf(ctx, orgId);
-  // A handful of versions per team, so read them and pick in code.
-  const versions = await ctx.db
-    .query("agreements")
-    .withIndex("by_team_and_version", (q) => q.eq("teamId", team._id))
-    .order("desc")
-    .collect();
-  const saved = versions.find((a) => a.status === "saved");
+  const saved = await latestSaved(ctx, team._id);
   if (!saved) return;
   for (const key of keys) {
     const person = await personOf(ctx, orgId, key);
@@ -484,7 +494,8 @@ async function save(step: StepCtx, key: ProjectKey) {
     status: "saved",
     autosavedAt: at,
   });
-  await log(step, "project.saved");
+  // after, resultTypes and headline, as a product save counts them (spec 5).
+  await log(step, "project.saved", { fieldsFilled: 3 });
 }
 
 async function employeeRoleOf(ctx: MutationCtx, orgId: Id<"orgs">) {
@@ -492,10 +503,12 @@ async function employeeRoleOf(ctx: MutationCtx, orgId: Id<"orgs">) {
     .query("orgRoles")
     .withIndex("by_org", (q) => q.eq("orgId", orgId))
     .collect();
-  // Found by name to invite into, never to authorise anything.
+  // Found by name to invite into, never to authorise anything. Without
+  // "Employee", the custom role that grants the least.
+  const custom = roles.flatMap((r) => (r.kind === "custom" ? [r] : []));
   const role =
-    roles.find((r) => r.kind === "custom" && r.name === "Employee") ??
-    roles.find((r) => r.kind === "custom");
+    custom.find((r) => r.name === "Employee") ??
+    custom.sort((a, b) => a.permissions.length - b.permissions.length)[0];
   if (!role) {
     throw new Error("The demo workspace has no Employee role. Reset the demo.");
   }
@@ -507,21 +520,27 @@ async function employeeRoleOf(ctx: MutationCtx, orgId: Id<"orgs">) {
 export const STEPS: Record<StepKey, Step> = {
   "priya.team": async (step) => {
     const team = await teamOf(step.ctx, step.orgId);
-    await step.ctx.db.patch(team._id, {
-      sizeBand: team.sizeBand ?? TEAM.sizeBand,
-      industry: team.industry ?? TEAM.industry,
-      teamFunction: team.teamFunction ?? TEAM.teamFunction,
-      aiUse: team.aiUse ?? TEAM.aiUse,
-      challenges: team.challenges.length ? team.challenges : TEAM.challenges,
-      savedAt: team.savedAt ?? step.at,
-    });
+    // Saved by the tester: their answers stand, blanks included.
+    if (team.savedAt === undefined) {
+      await step.ctx.db.patch(team._id, {
+        sizeBand: team.sizeBand ?? TEAM.sizeBand,
+        industry: team.industry ?? TEAM.industry,
+        teamFunction: team.teamFunction ?? TEAM.teamFunction,
+        aiUse: team.aiUse ?? TEAM.aiUse,
+        challenges: team.challenges.length ? team.challenges : TEAM.challenges,
+        savedAt: step.at,
+      });
+    }
     const priya = await personOf(step.ctx, step.orgId, "priya");
     if (priya) await answer(step, priya, "before", "normsConfidence", 2);
   },
 
   "priya.commit": async (step) => {
     const sprint = await sprintOf(step.ctx, step.orgId);
-    if (sprint.committedAt !== undefined) return;
+    // Committed, or "not ready" chosen: either way the tester has answered.
+    if (sprint.committedAt !== undefined || sprint.notReady !== undefined) {
+      return;
+    }
     await step.ctx.db.patch(sprint._id, { committedAt: step.at });
     await log(step, "hour.committed");
   },
@@ -539,8 +558,9 @@ export const STEPS: Record<StepKey, Step> = {
   "priya.agreement": async (step) => {
     const { ctx, orgId, at } = step;
     const team = await teamOf(ctx, orgId);
+    // Any saved version means the tester saved one, even with a draft on top.
+    if (await latestSaved(ctx, team._id)) return;
     const latest = await latestAgreement(ctx, team._id);
-    if (latest?.status === "saved") return;
     const priya = await personOf(ctx, orgId, "priya");
     if (!priya) return;
     const canon = agreementV1(priya._id);
@@ -568,6 +588,8 @@ export const STEPS: Record<StepKey, Step> = {
     await log(step, "agreement.saved", { version: latest?.version ?? 1 });
   },
 
+  // Always invites the full cast, even after the tester launched and chose
+  // who to invite: the spec wants the team to arrive (spec 6).
   "priya.launch": async (step) => {
     const { ctx, orgId, at } = step;
     const sprint = await sprintOf(ctx, orgId);
@@ -587,7 +609,7 @@ export const STEPS: Record<StepKey, Step> = {
         await ctx.db
           .query("orgInvites")
           .withIndex("by_org_and_status", (q) => q.eq("orgId", orgId))
-          .collect()
+          .take(DEMO_INVITES_READ)
       ).map((invite) => invite.email),
     );
     for (const person of DEMO_CAST) {
@@ -603,7 +625,8 @@ export const STEPS: Record<StepKey, Step> = {
         status: "pending",
         invitedBy: priya.userId,
         sentAt: at,
-        // Real time: expiry protects a real link, whatever the demo clock says.
+        // Stamped in real time, judged by the demo clock (`nowFor`), so it
+        // outlives every demo target and Omar stays invited.
         expiresAt: Date.now() + INVITE_WINDOW_MS,
         createdAt: at,
       });
@@ -617,7 +640,7 @@ export const STEPS: Record<StepKey, Step> = {
       .withIndex("by_org_and_status", (q) =>
         q.eq("orgId", orgId).eq("status", "pending"),
       )
-      .collect();
+      .take(DEMO_INVITES_READ);
     for (const key of JOINED) {
       if (await personOf(ctx, orgId, key)) continue;
       const cast = castOf(key);
@@ -651,11 +674,16 @@ export const STEPS: Record<StepKey, Step> = {
   "team.before": (step) =>
     checkIn(step, "before", ["sarah", "mei", "tomas", "aisha"]),
 
-  "team.sign": (step) => sign(step, ["priya", ...JOINED]),
+  "team.sign": (step) =>
+    sign(step, ["priya", ...JOINED.filter((key) => key !== "dan")]),
 
   // Dan answers late, so a tester playing Dan can answer first. Luca and Grace
   // skip the before check-in: 5 before, 7 after (spec 3.3).
   "team.beforeLate": (step) => checkIn(step, "before", ["dan"]),
+
+  // Dan signs late too, after the week 1 target, so a tester playing Dan can
+  // sign first (spec 6: "Dan signs only if the tester hasn't").
+  "team.signLate": (step) => sign(step, ["dan"]),
 
   "sprint.start": async ({ ctx, orgId }) => {
     const sprint = await sprintOf(ctx, orgId);
@@ -731,9 +759,10 @@ export const STEPS: Record<StepKey, Step> = {
       ) {
         continue;
       }
-      await ctx.db.patch(project._id, { presentedAt: at + slot * 60_000 });
+      const when = at + slot * 60_000;
+      await ctx.db.patch(project._id, { presentedAt: when });
       slot += 1;
-      await log(step, "project.presented");
+      await log({ ...step, at: when }, "project.presented");
     }
   },
 

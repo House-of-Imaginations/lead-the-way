@@ -377,6 +377,10 @@ export const remove = orgMutation("org:manage")({
     if (ctx.role.kind !== "owner") {
       throwUserError("FORBIDDEN", "Only an owner can delete a workspace.");
     }
+    // Only a reset brings the demo back, and a reset needs the workspace.
+    if ((await ctx.db.get(ctx.orgId))?.isDemo) {
+      throwUserError("FORBIDDEN", "Reset the demo instead.");
+    }
     await deleteOrg(ctx, ctx.orgId);
     return null;
   },

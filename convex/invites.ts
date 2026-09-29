@@ -11,6 +11,7 @@ import {
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { setActiveOrgOf } from "./lib/account/ensureProfile";
+import { nowFor } from "./lib/clock";
 import { profileOf } from "./lib/account/profile";
 import { emailConfigured } from "./lib/email/send";
 import { throwUserError, type ErrorCode } from "./lib/errors";
@@ -70,9 +71,19 @@ async function nameOf(ctx: QueryCtx | MutationCtx, userId: string) {
   return user?.name || "Someone";
 }
 
+/**
+ * "Now" for judging a link's expiry: the demo clock in the demo (`nowFor`),
+ * so a scripted invitation stays open however much real time passes. Real
+ * workspaces get `Date.now()`.
+ */
+async function nowIn(ctx: QueryCtx | MutationCtx, orgId: Id<"orgs">) {
+  const org = await ctx.db.get(orgId);
+  return org ? nowFor(org) : Date.now();
+}
+
 /** Live pending invitations, up to the cap. Lapsed rows are outside the range. */
 async function livePending(ctx: QueryCtx | MutationCtx, orgId: Id<"orgs">) {
-  const now = Date.now();
+  const now = await nowIn(ctx, orgId);
   return await ctx.db
     .query("orgInvites")
     .withIndex("by_org_status_and_expiresAt", (q) =>
@@ -104,7 +115,9 @@ async function refusalOf(
   if (invite.status === "revoked") return no("INVITE_REVOKED");
   if (invite.status === "declined") return no("INVITE_DECLINED");
   if (invite.status === "accepted") return no("INVITE_USED");
-  if (invite.expiresAt <= Date.now()) return no("INVITE_EXPIRED");
+  if (invite.expiresAt <= (await nowIn(ctx, invite.orgId))) {
+    return no("INVITE_EXPIRED");
+  }
 
   const org = await ctx.db.get(invite.orgId);
   const role = await ctx.db.get(invite.roleId);
@@ -321,7 +334,7 @@ export const resend = orgMutation("members:manage")({
     }
     // A lapsed link is not revived: it is hidden from `list` and uncounted.
     const now = Date.now();
-    if (invite.expiresAt <= now) {
+    if (invite.expiresAt <= (await nowIn(ctx, ctx.orgId))) {
       throwUserError(
         "INVITE_EXPIRED",
         "That invitation has expired. Send a new one.",
@@ -387,7 +400,7 @@ export const publicPreview = publicQuery({
     const invite = await byToken(ctx, token);
     if (!invite || invite.status !== "pending") return null;
     // Display only: `accept` checks the clock again.
-    if (invite.expiresAt <= Date.now()) return null;
+    if (invite.expiresAt <= (await nowIn(ctx, invite.orgId))) return null;
     const org = await ctx.db.get(invite.orgId);
     if (!org) return null;
     return {
