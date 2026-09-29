@@ -66,7 +66,19 @@ async function nameOf(ctx: QueryCtx | MutationCtx, userId: string) {
   const profile = await profileOf(ctx, userId);
   if (profile?.displayName) return profile.displayName;
   const user = await authComponent.getAnyUserById(ctx, userId);
-  return user?.name || user?.email || "Someone";
+  // Never the address: the signed-out preview shows this to any token holder.
+  return user?.name || "Someone";
+}
+
+/** Live pending invitations, up to the cap. Lapsed rows are outside the range. */
+async function livePending(ctx: QueryCtx | MutationCtx, orgId: Id<"orgs">) {
+  const now = Date.now();
+  return await ctx.db
+    .query("orgInvites")
+    .withIndex("by_org_status_and_expiresAt", (q) =>
+      q.eq("orgId", orgId).eq("status", "pending").gt("expiresAt", now),
+    )
+    .take(MAX_INVITES_PER_ORG);
 }
 
 async function byToken(ctx: QueryCtx | MutationCtx, token: string) {
@@ -123,7 +135,15 @@ async function usableInvite(ctx: MutationCtx, token: string, userId: string) {
   if (!invite) throwUserError("INVITE_INVALID", REFUSALS.INVITE_INVALID);
   const { refusal, org } = await refusalOf(ctx, invite, userId);
   if (refusal) throwUserError(refusal, REFUSALS[refusal]);
-  if (await findSeat(ctx, userId, invite.orgId)) {
+  // Any row, broken or not. `findSeat` reads a seat whose role is gone as no
+  // seat, and a second row for this person would break every gate after.
+  const seated = await ctx.db
+    .query("people")
+    .withIndex("by_user_and_org", (q) =>
+      q.eq("userId", userId).eq("orgId", invite.orgId),
+    )
+    .first();
+  if (seated) {
     throwUserError("ALREADY_A_MEMBER", "You are already in this workspace.");
   }
   return { invite, org };
@@ -145,14 +165,13 @@ export const list = orgQuery("members:manage")({
   args: {},
   returns: v.array(inviteValidator),
   handler: async (ctx) => {
-    // One bounded read per status, newest first, so old answered rows can
-    // never push a live one out of a shared window. Revoked is never shown.
-    // ponytail: each status shows its newest N. Page it if a workspace ever
-    // needs to see further back.
-    const newest = async (
-      status: "pending" | "accepted" | "declined",
-      limit: number,
-    ) =>
+    // One bounded read per status, so old answered rows can never push a live
+    // one out of a shared window. Revoked is never read. Every live pending row
+    // is read, since the cap bounds them; lapsed ones are outside the range.
+    // Display only: `accept` checks the clock again.
+    // ponytail: each answered status shows its newest N. Page it if a
+    // workspace ever needs to see further back.
+    const newest = async (status: "accepted" | "declined", limit: number) =>
       (
         await ctx.db
           .query("orgInvites")
@@ -162,18 +181,17 @@ export const list = orgQuery("members:manage")({
           .order("desc")
           .take(limit)
       ).reverse();
-    const pending = await newest("pending", MAX_INVITES_PER_ORG);
     const accepted = await newest("accepted", MAX_MEMBERS_PER_ORG);
     const declined = await newest("declined", MAX_INVITES_PER_ORG);
+    const pending = await livePending(ctx, ctx.orgId);
 
-    // Display only: `accept` checks the clock again.
-    const now = Date.now();
     const rows = [];
     for (const invite of [...accepted, ...declined, ...pending]) {
-      if (invite.status === "revoked") continue;
-      if (invite.status === "pending" && invite.expiresAt <= now) continue;
+      if (invite.status === "revoked") continue; // Never read; narrows the type.
       const role = await ctx.db.get(invite.roleId);
-      if (!role) continue;
+      // A pending link to a role that is gone grants nothing, so it is not
+      // shown. An answered row is history and stays.
+      if (!role && invite.status === "pending") continue;
       rows.push({
         _id: invite._id,
         token: invite.token,
@@ -181,7 +199,7 @@ export const list = orgQuery("members:manage")({
         name: invite.name ?? null,
         status: invite.status,
         roleId: invite.roleId,
-        roleName: role.name,
+        roleName: role?.name ?? "Removed role",
         expiresAt: invite.expiresAt,
       });
     }
@@ -246,20 +264,8 @@ export const create = orgMutation("members:manage")({
 
     // The cap counts live pending invitations only. Lapsed ones stay in the
     // table (spec 5) but `list` hides them, so counting them would brick
-    // `create` with nothing visible to revoke. Newest first, because the
-    // lapsed ones are the old ones.
-    // ponytail: a resent old invitation outside this window goes uncounted,
-    // so the cap can run over by the number resent. Index on `expiresAt` if
-    // it ever has to be exact.
-    const pending = await ctx.db
-      .query("orgInvites")
-      .withIndex("by_org_and_status", (q) =>
-        q.eq("orgId", ctx.orgId).eq("status", "pending"),
-      )
-      .order("desc")
-      .take(MAX_INVITES_PER_ORG);
-    const live = pending.filter((row) => row.expiresAt > now).length;
-    if (live >= MAX_INVITES_PER_ORG) {
+    // `create` with nothing visible to revoke.
+    if ((await livePending(ctx, ctx.orgId)).length >= MAX_INVITES_PER_ORG) {
       throwUserError(
         "FIELD_REQUIRED",
         "There are too many invitations open. Revoke some first.",
@@ -313,6 +319,14 @@ export const resend = orgMutation("members:manage")({
     if (!invite || invite.orgId !== ctx.orgId || invite.status !== "pending") {
       throwUserError("NOT_FOUND", "That invitation is no longer open.");
     }
+    // A lapsed link is not revived: it is hidden from `list` and uncounted.
+    const now = Date.now();
+    if (invite.expiresAt <= now) {
+      throwUserError(
+        "INVITE_EXPIRED",
+        "That invitation has expired. Send a new one.",
+      );
+    }
     if (!invite.email) {
       throwUserError(
         "FIELD_REQUIRED",
@@ -323,9 +337,10 @@ export const resend = orgMutation("members:manage")({
     if (!role) {
       throwUserError("NOT_FOUND", "That invitation's role no longer exists.");
     }
+    // As in `create`: nobody extends a link into a role they could not grant.
+    requireWithin(permissionsOf(role), ctx);
     await reserveRateLimit(ctx, "orgInvite", ctx.userId);
 
-    const now = Date.now();
     await ctx.db.patch(invite._id, { expiresAt: now + INVITE_WINDOW_MS });
     const org = await ctx.db.get(ctx.orgId);
     const emailed = await sendInvite(ctx, {
@@ -449,9 +464,9 @@ export const preview = authenticatedQuery({
  * Take up an invitation.
  *
  * INSERT ONLY, and that is a security property. If this patched an existing
- * seat's role, any link would be a self-demotion primitive: an owner opens a
- * Employee link and is demoted out of their own workspace. So somebody already
- * seated is refused with ALREADY_A_MEMBER and nothing is written.
+ * seat's role, any link would be a self-demotion primitive: an owner opens an
+ * Employee link and is demoted out of their own workspace. So somebody
+ * already seated is refused with ALREADY_A_MEMBER and nothing is written.
  *
  * One mutation, so one transaction: the token read is in the read set, which
  * makes two simultaneous accepts of the same link safe without a lock.

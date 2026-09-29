@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { seedAuthUser } from "../testHelpers";
+import { personFields, seedAuthUser } from "../testHelpers";
 import { harness, seat, workspace, type T } from "./helpers";
 
 const memberRole = (t: T, orgId: Id<"orgs">) =>
@@ -251,4 +251,234 @@ test("old answered invitations never push a pending one off the list", async () 
 
   const rows = await owner.query(api.invites.list, { orgId });
   expect(rows.find((row) => row.token === token)?.status).toBe("pending");
+});
+
+test("a resent invitation stays listed and counted however many newer ones lapse", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  const old = await owner.mutation(api.invites.create, {
+    orgId,
+    roleId,
+    email: "pat@example.com",
+  });
+  const insert = (n: number, prefix: string, expiresAt: number) =>
+    t.run(async (ctx) => {
+      for (let i = 0; i < n; i++) {
+        await ctx.db.insert("orgInvites", {
+          orgId,
+          roleId,
+          token: `${prefix}-${i}`,
+          status: "pending",
+          invitedBy: "user_owner",
+          expiresAt,
+          createdAt: Date.now(),
+        });
+      }
+    });
+  // 100 newer invitations, all lapsed, then the old one is resent.
+  await insert(100, "lapsed", Date.now() - 1);
+  await owner.mutation(api.invites.resend, { orgId, inviteId: old.inviteId });
+
+  const rows = await owner.query(api.invites.list, { orgId });
+  expect(rows.map((row) => row.token)).toEqual([old.token]);
+
+  // 99 more live ones make 100 open with the resent one: the cap is reached.
+  await insert(99, "live", Date.now() + 60_000);
+  await expect(
+    owner.mutation(api.invites.create, { orgId, roleId }),
+  ).rejects.toMatchObject({ data: { code: "FIELD_REQUIRED" } });
+});
+
+test("resend refuses a lapsed invitation and a role wider than the sender's", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  const invite = () =>
+    owner.mutation(api.invites.create, {
+      orgId,
+      roleId,
+      email: "pat@example.com",
+    });
+
+  // Holds members:manage but not the members:read the Member role grants.
+  const admin = await seat(t, orgId, "user_admin", ["members:manage"]);
+  const wide = await invite();
+  await expect(
+    admin.as.mutation(api.invites.resend, { orgId, inviteId: wide.inviteId }),
+  ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
+
+  const lapsed = await invite();
+  await t.run((ctx) =>
+    ctx.db.patch(lapsed.inviteId, { expiresAt: Date.now() - 1 }),
+  );
+  await expect(
+    owner.mutation(api.invites.resend, { orgId, inviteId: lapsed.inviteId }),
+  ).rejects.toMatchObject({
+    data: {
+      code: "INVITE_EXPIRED",
+      message: "That invitation has expired. Send a new one.",
+    },
+  });
+  // Still lapsed: the refusal gave it no fresh week.
+  const row = await t.run((ctx) => ctx.db.get(lapsed.inviteId));
+  expect(row!.expiresAt).toBeLessThan(Date.now());
+});
+
+test("list shows answered rows and hides revoked and lapsed ones", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  const create = () => owner.mutation(api.invites.create, { orgId, roleId });
+
+  const accepted = await create();
+  await t
+    .withIdentity({ subject: "bob" })
+    .mutation(api.invites.accept, { token: accepted.token });
+  const declined = await create();
+  await t
+    .withIdentity({ subject: "carol" })
+    .mutation(api.invites.decline, { token: declined.token });
+  const revoked = await create();
+  await owner.mutation(api.invites.revoke, {
+    orgId,
+    inviteId: revoked.inviteId,
+  });
+  const lapsed = await create();
+  await t.run((ctx) =>
+    ctx.db.patch(lapsed.inviteId, { expiresAt: Date.now() - 1 }),
+  );
+  const open = await create();
+
+  const statusOf = async () =>
+    Object.fromEntries(
+      (await owner.query(api.invites.list, { orgId })).map((row) => [
+        row.token,
+        [row.status, row.roleName],
+      ]),
+    );
+  expect(await statusOf()).toEqual({
+    [accepted.token]: ["accepted", "Member"],
+    [declined.token]: ["declined", "Member"],
+    [open.token]: ["pending", "Member"],
+  });
+
+  // An answered row outlives its role; a pending one pinned to it does not.
+  await t.run((ctx) => ctx.db.delete(roleId));
+  expect(await statusOf()).toEqual({
+    [accepted.token]: ["accepted", "Removed role"],
+    [declined.token]: ["declined", "Removed role"],
+  });
+});
+
+test("decline refuses the wrong account and finished links", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  const bob = await seedAuthUser(t, {
+    name: "Bob",
+    email: "bob@example.com",
+    emailVerified: true,
+  });
+  const carol = await seedAuthUser(t, {
+    name: "Carol",
+    email: "carol@example.com",
+    emailVerified: true,
+  });
+  const invite = () =>
+    owner.mutation(api.invites.create, {
+      orgId,
+      roleId,
+      email: "bob@example.com",
+    });
+  const declineAs = (who: { subject: string }, token: string) =>
+    t.withIdentity(who).mutation(api.invites.decline, { token });
+
+  const forBob = await invite();
+  await expect(declineAs(carol, forBob.token)).rejects.toMatchObject({
+    data: { code: "INVITE_WRONG_ACCOUNT" },
+  });
+
+  const revoked = await invite();
+  await owner.mutation(api.invites.revoke, {
+    orgId,
+    inviteId: revoked.inviteId,
+  });
+  await expect(declineAs(bob, revoked.token)).rejects.toMatchObject({
+    data: { code: "INVITE_REVOKED" },
+  });
+
+  const lapsed = await invite();
+  await t.run((ctx) =>
+    ctx.db.patch(lapsed.inviteId, { expiresAt: Date.now() - 1 }),
+  );
+  await expect(declineAs(bob, lapsed.token)).rejects.toMatchObject({
+    data: { code: "INVITE_EXPIRED" },
+  });
+
+  // None of the refusals answered the link.
+  const statuses = await t.run(async (ctx) =>
+    Promise.all(
+      [forBob, revoked, lapsed].map(
+        async ({ inviteId }) => (await ctx.db.get(inviteId))!.status,
+      ),
+    ),
+  );
+  expect(statuses).toEqual(["pending", "revoked", "pending"]);
+});
+
+test("a seat whose role is gone still counts as seated", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  const { token } = await owner.mutation(api.invites.create, {
+    orgId,
+    roleId,
+  });
+  // Corrupt on purpose: bob's seat points at a role that no longer exists.
+  await t.run(async (ctx) => {
+    const gone = await ctx.db.insert("orgRoles", {
+      orgId,
+      kind: "custom",
+      name: "Gone",
+      permissions: [],
+      createdAt: 0,
+    });
+    await ctx.db.insert("people", {
+      orgId,
+      roleId: gone,
+      ...personFields("bob"),
+    });
+    await ctx.db.delete(gone);
+  });
+  await expect(
+    t.withIdentity({ subject: "bob" }).mutation(api.invites.accept, { token }),
+  ).rejects.toMatchObject({ data: { code: "ALREADY_A_MEMBER" } });
+});
+
+test("the signed-out preview never shows the inviter's address", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  // An account with no name and no profile: only its address could stand in.
+  const nameless = await seedAuthUser(t, {
+    name: "",
+    email: "nameless@example.com",
+    emailVerified: true,
+  });
+  await t.run((ctx) =>
+    ctx.db.insert("orgInvites", {
+      orgId,
+      roleId,
+      token: "nameless",
+      status: "pending",
+      invitedBy: nameless.subject,
+      expiresAt: Date.now() + 60_000,
+      createdAt: Date.now(),
+    }),
+  );
+  expect(
+    (await t.query(api.invites.publicPreview, { token: "nameless" }))
+      ?.invitedBy,
+  ).toBe("Someone");
 });

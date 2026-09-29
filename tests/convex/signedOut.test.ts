@@ -2,6 +2,7 @@
 import { makeFunctionReference } from "convex/server";
 import { afterEach, expect, test, vi } from "vitest";
 import type { Id } from "../../convex/_generated/dataModel";
+import http from "../../convex/http";
 import { personFields } from "./testHelpers";
 import { harness, type T } from "./workspace/helpers";
 
@@ -188,6 +189,20 @@ test("every public function refuses a signed-out caller unless it is listed", as
   // A listed name that no longer exists would pass silently; refuse it too.
   const names = new Set(publicFunctions().map((fn) => fn.name));
   expect(Object.keys(calls).filter((name) => !names.has(name))).toEqual([]);
+});
+
+test("HTTP serves only the routes Better Auth mounts", () => {
+  // The sweep above sees functions, not routes. A new route fails here until
+  // somebody has checked what it answers signed out, then listed it.
+  const routes = http
+    .getRoutes()
+    .map(([path, method]) => `${method} ${path}`)
+    .sort();
+  expect(routes).toEqual([
+    "GET /.well-known/openid-configuration",
+    "GET /api/auth/*",
+    "POST /api/auth/*",
+  ]);
 });
 
 test("the signed-out allowlist answers without an account", async () => {

@@ -231,10 +231,10 @@ export const create = authenticatedMutation({
     await setActiveOrgOf(ctx, ctx.userId, orgId);
 
     // SEEDED, because an invitation grants a role and the owner role cannot be
-    // invited into. A workspace born with only its owner role had nothing to invite
-    // anybody as, so the first thing a new owner tried -- asking a colleague in
-    // -- silently offered no way to do it. Ordinary custom rows: renamed,
-    // edited or deleted like any role somebody made by hand.
+    // invited into. A workspace born with only its owner role had nothing to
+    // invite anybody as, so the first thing a new owner tried -- asking a
+    // colleague in -- silently offered no way to do it. Ordinary custom rows:
+    // renamed, edited or deleted like any role somebody made by hand.
     for (const role of DEFAULT_ROLES) {
       await ctx.db.insert("orgRoles", {
         orgId,
