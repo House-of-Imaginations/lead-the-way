@@ -145,6 +145,8 @@ export const orgTables = {
     // lapsed row never takes a place in the range. Its prefixes serve one
     // answered status at a time, and "all of them" for a workspace.
     .index("by_org_status_and_expiresAt", ["orgId", "status", "expiresAt"])
+    // First sign-in: is there a live invitation for this address? (R8)
+    .index("by_email_status_and_expiresAt", ["email", "status", "expiresAt"])
     // Revoking what a role change would otherwise silently widen.
     .index("by_role", ["roleId"]),
 };

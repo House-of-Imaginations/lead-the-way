@@ -40,14 +40,24 @@ const ALLOWED: {
     reason: "when a step really ran, for debugging the script",
   },
   {
-    file: "orgs.ts",
+    file: "lib/orgs/create.ts",
     line: "const now = Date.now()",
     reason: "an org and its roles are created before any clock exists",
   },
   {
+    file: "onboarding.ts",
+    line: "termsAcceptedAt: Date.now()",
+    reason: "the terms are accepted by an account, not in any workspace",
+  },
+  {
+    file: "onboarding.ts",
+    line: '.gt("expiresAt", Date.now())',
+    reason: "a link lapses in real time, as `invites.create` sets it",
+  },
+  {
     file: "lib/demo/calderLane.ts",
     line: "const now = Date.now()",
-    reason: "the demo org and its roles, as `orgs.create` stamps them",
+    reason: "the demo org and its roles, as `createWorkspace` stamps them",
   },
   {
     file: "orgRoles.ts",

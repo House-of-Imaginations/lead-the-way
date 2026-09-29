@@ -12,6 +12,8 @@ export const profileTables = {
     displayName: v.string(),
     // The workspace the app opens. `getViewer` falls back when it is stale.
     activeOrgId: v.optional(v.id("orgs")),
+    // When the terms box was ticked (02a). Asked once per account (R8).
+    termsAcceptedAt: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
 };

@@ -134,6 +134,7 @@ const callsFor = ({
 }: Ids): Record<string, Record<string, unknown>> => ({
   "demo:reset": { expectOrgId: orgId },
   "demo:setClock": { target: "week1", expectOrgId: orgId },
+  "onboarding:start": { acceptTerms: true },
   "orgs:active": {},
   "orgs:bySlug": { slug: "aster-network" },
   "orgs:create": { name: "Aster Network" },

@@ -96,7 +96,7 @@ test("deleting a workspace clears its product rows and nobody else's", async () 
     ),
   }));
   expect(left).toEqual({
-    teams: [kept],
+    teams: [kept, kept],
     sprints: [kept],
     events: [kept],
     demoScript: [kept],

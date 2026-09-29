@@ -552,6 +552,7 @@ test("the demo script never touches a non-demo workspace", async () => {
   });
   expect(counts).toEqual({
     ...Object.fromEntries(ORG_TABLES.map((table) => [table, 0])),
+    teams: 1,
     demoScript: 1,
   });
   const real = await t.run(async (ctx) => ({

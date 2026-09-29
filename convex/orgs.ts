@@ -7,13 +7,11 @@ import {
   orgQuery,
 } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
-import { permissionValidator, type Permission } from "./lib/orgs/permissions";
+import { permissionValidator } from "./lib/orgs/permissions";
 import { deleteOrg } from "./lib/orgs/cascade";
-import { MIN_THRESHOLD } from "./lib/privacy";
-import { assertCanCreate, findSeat, seatsOfUser } from "./lib/orgs/membership";
-import { insertPerson, isDemoAccount } from "./lib/orgs/people";
-import { cleanOrgName, slugIsAvailableShape, slugify } from "./lib/orgs/slug";
-import { setActiveOrgOf } from "./lib/account/ensureProfile";
+import { findSeat, seatsOfUser } from "./lib/orgs/membership";
+import { createWorkspace, MAX_ORG_NAME } from "./lib/orgs/create";
+import { cleanOrgName } from "./lib/orgs/slug";
 import { getViewer } from "./lib/viewer";
 // The workspace picture obeys the SAME rules as an account picture -- PNG/JPEG/
 // WebP/GIF, under 2MB, no SVG -- so it shares the module rather than restating
@@ -36,8 +34,6 @@ import {
  *    as an argument, proves membership, and refuses without the permissions
  *    named. See `convex/lib/customFunctions.ts` for why that is a factory.
  */
-
-const MAX_ORG_NAME = 60;
 
 /**
  * `imageId` is absent on purpose and `imageUrl` stands in its place -- the id is
@@ -152,15 +148,6 @@ export const active = authenticatedQuery({
 });
 
 /**
- * The one starter role besides the owner. Employee holds nothing: everything
- * an employee does is their own rows, which need a seat and no permission.
- * An ordinary custom row, renamed or deleted like any other.
- */
-const DEFAULT_ROLES: readonly { name: string; permissions: Permission[] }[] = [
-  { name: "Employee", permissions: [] },
-];
-
-/**
  * Make a workspace, and become its owner in the same transaction.
  *
  * All three writes commit together or not at all, which is what stops an org
@@ -175,86 +162,8 @@ const DEFAULT_ROLES: readonly { name: string; permissions: Permission[] }[] = [
 export const create = authenticatedMutation({
   args: { name: v.string() },
   returns: v.object({ orgId: v.id("orgs"), slug: v.string() }),
-  handler: async (ctx, { name }) => {
-    // Every tester shares the demo accounts, and a reset clears only the demo
-    // workspace, so a demo persona's workspace would be anybody's and forever.
-    if (await isDemoAccount(ctx, ctx.userId)) {
-      throwUserError(
-        "DEMO_ACCOUNT_CREATE",
-        "Demo accounts can't make a workspace. Sign up with your own email to make one.",
-      );
-    }
-    const trimmed = cleanOrgName(name);
-    if (!trimmed) {
-      throwUserError("ORG_NAME_REQUIRED", "A workspace needs a name.");
-    }
-    if (trimmed.length > MAX_ORG_NAME) {
-      throwUserError(
-        "ORG_NAME_REQUIRED",
-        `A workspace name can be at most ${MAX_ORG_NAME} characters.`,
-      );
-    }
-
-    const slug = slugify(trimmed);
-    if (!slugIsAvailableShape(slug)) {
-      throwUserError(
-        "SLUG_TAKEN",
-        "That name cannot be used as a web address. Try another.",
-      );
-    }
-
-    const clash = await ctx.db
-      .query("orgs")
-      .withIndex("by_slug", (q) => q.eq("slug", slug))
-      .unique();
-    if (clash) {
-      throwUserError(
-        "SLUG_TAKEN",
-        "A workspace with that name already exists.",
-      );
-    }
-
-    // Creating is the OTHER door into a workspace, and it has to hold the same
-    // ceiling accepting an invitation does: `seatsOfUser` reads
-    // `.take(MAX_ORGS_PER_USER)`, so a seat past the ceiling would never show.
-    await assertCanCreate(ctx, ctx.userId);
-
-    const now = Date.now();
-    const orgId = await ctx.db.insert("orgs", {
-      name: trimmed,
-      slug,
-      privacyThreshold: MIN_THRESHOLD,
-      isDemo: false,
-      createdAt: now,
-    });
-    const ownerRoleId = await ctx.db.insert("orgRoles", {
-      orgId,
-      kind: "owner",
-      name: "Manager",
-      createdAt: now,
-    });
-    await insertPerson(ctx, ctx.userId, orgId, ownerRoleId, now);
-
-    // The new workspace is where this person is working now.
-    await setActiveOrgOf(ctx, ctx.userId, orgId);
-
-    // SEEDED, because an invitation grants a role and the owner role cannot be
-    // invited into. A workspace born with only its owner role had nothing to
-    // invite anybody as, so the first thing a new owner tried -- asking a
-    // colleague in -- silently offered no way to do it. Ordinary custom rows:
-    // renamed, edited or deleted like any role somebody made by hand.
-    for (const role of DEFAULT_ROLES) {
-      await ctx.db.insert("orgRoles", {
-        orgId,
-        kind: "custom",
-        name: role.name,
-        permissions: [...role.permissions],
-        createdAt: now,
-      });
-    }
-
-    return { orgId, slug };
-  },
+  handler: async (ctx, { name }) =>
+    await createWorkspace(ctx, ctx.userId, name),
 });
 
 /** Rename a workspace. The slug is not touched -- links already exist. */
