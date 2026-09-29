@@ -27,6 +27,8 @@ export type ErrorCode =
   // second in place. `NOT_A_MEMBER` also covers "no such org", so probing an
   // id never distinguishes the two.
   | "NOT_A_MEMBER"
+  // Signed in, but no workspace resolves: the client sends them to set one up.
+  | "NO_WORKSPACE"
   | "FORBIDDEN"
   | "PERMISSION_ESCALATION"
   | "ORG_NAME_REQUIRED"

@@ -10,6 +10,7 @@ import { action, mutation, query } from "../_generated/server";
 import { requireUserId, safeUserId } from "./auth/identity";
 import { requirePermissions, seatOf } from "./orgs/membership";
 import type { Permission } from "./orgs/permissions";
+import { requireViewer } from "./viewer";
 import { assertFlag } from "../app";
 
 // Every public function refuses while the app is closed. See `convex/app.ts`.
@@ -102,5 +103,30 @@ export const orgMutation = (...need: Permission[]) =>
       const seat = await seatOf(ctx, userId, orgId);
       requirePermissions(seat, need);
       return { ctx: { userId, orgId, ...seat }, args: {} };
+    },
+  });
+
+/**
+ * Product functions: the viewer's own workspace, no `orgId` argument.
+ *
+ * `ctx.viewer` is the resolved seat, workspace and permissions. Scope every
+ * read and write to `ctx.viewer.org._id`; a client never names the tenant.
+ * Throws NOT_SIGNED_IN, then NO_WORKSPACE, then FORBIDDEN.
+ */
+export const viewerQuery = (...need: Permission[]) =>
+  customQuery(query, {
+    args: {},
+    input: async (ctx: QueryCtx) => {
+      assertAppOpen();
+      return { ctx: { viewer: await requireViewer(ctx, need) }, args: {} };
+    },
+  });
+
+export const viewerMutation = (...need: Permission[]) =>
+  customMutation(mutation, {
+    args: {},
+    input: async (ctx: MutationCtx) => {
+      assertAppOpen();
+      return { ctx: { viewer: await requireViewer(ctx, need) }, args: {} };
     },
   });

@@ -9,16 +9,11 @@ import {
 import { throwUserError } from "./lib/errors";
 import { permissionValidator, type Permission } from "./lib/orgs/permissions";
 import { deleteOrg } from "./lib/orgs/cascade";
-import {
-  assertCanCreate,
-  findSeat,
-  permissionsOf,
-  seatsOfUser,
-} from "./lib/orgs/membership";
+import { assertCanCreate, findSeat, seatsOfUser } from "./lib/orgs/membership";
 import { insertPerson } from "./lib/orgs/people";
 import { cleanOrgName, slugIsAvailableShape, slugify } from "./lib/orgs/slug";
-import { profileOf } from "./lib/account/profile";
 import { setActiveOrgOf } from "./lib/account/ensureProfile";
+import { getViewer } from "./lib/viewer";
 // The workspace picture obeys the SAME rules as an account picture -- PNG/JPEG/
 // WebP/GIF, under 2MB, no SVG -- so it shares the module rather than restating
 // them. Two ceilings that are meant to be identical and are written down twice
@@ -139,27 +134,18 @@ export const bySlug = authenticatedQuery({
   },
 });
 
-/**
- * The workspace the app opens: the remembered one while the
- * caller still holds a seat there, otherwise their first, otherwise null.
- */
+/** The workspace the app opens: the last one opened, or any other still held. */
 export const active = authenticatedQuery({
   args: {},
   returns: v.union(v.null(), seatedOrgValidator),
   handler: async (ctx) => {
-    const profile = await profileOf(ctx, ctx.userId);
-    const seats = await seatsOfUser(ctx, ctx.userId);
-    const seat =
-      seats.find((s) => s.orgId === profile?.activeOrgId) ?? seats[0];
-    if (!seat) return null;
-    const org = await ctx.db.get(seat.orgId);
-    const role = await ctx.db.get(seat.roleId);
-    if (!org || !role) return null;
+    const viewer = await getViewer(ctx);
+    if (!viewer) return null;
     return {
-      org: await publicOrg(ctx, org),
-      roleName: role.name,
-      isOwner: role.kind === "owner",
-      permissions: [...permissionsOf(role)],
+      org: await publicOrg(ctx, viewer.org),
+      roleName: viewer.role.name,
+      isOwner: viewer.role.kind === "owner",
+      permissions: [...viewer.permissions],
     };
   },
 });

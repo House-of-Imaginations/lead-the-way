@@ -30,6 +30,7 @@ import type * as lib_orgs_permissions from "../lib/orgs/permissions.js";
 import type * as lib_orgs_slug from "../lib/orgs/slug.js";
 import type * as lib_pathway from "../lib/pathway.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
+import type * as lib_viewer from "../lib/viewer.js";
 import type * as members from "../members.js";
 import type * as orgRoles from "../orgRoles.js";
 import type * as orgs from "../orgs.js";
@@ -68,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   "lib/orgs/slug": typeof lib_orgs_slug;
   "lib/pathway": typeof lib_pathway;
   "lib/rateLimits": typeof lib_rateLimits;
+  "lib/viewer": typeof lib_viewer;
   members: typeof members;
   orgRoles: typeof orgRoles;
   orgs: typeof orgs;
