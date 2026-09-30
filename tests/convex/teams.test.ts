@@ -191,3 +191,20 @@ test("a real workspace gets its first sprint on save", async () => {
   });
   expect((await owner.query(api.teams.current, {}))?.normsConfidence).toBe(3);
 });
+
+test("the before rating is frozen once the sprint has launched", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  const save = (normsConfidence: number) =>
+    priya.mutation(api.teams.saveProfile, {
+      ...PAGE_1,
+      normsConfidence,
+      finish: true,
+      expectOrgId: orgId,
+    });
+  await save(2);
+  const [sprint] = await sprintsOf(t, orgId);
+  await t.run((ctx) => ctx.db.patch(sprint!._id, { launchedAt: DEMO_NOW }));
+  await save(5);
+  expect((await priya.query(api.teams.current, {}))?.normsConfidence).toBe(2);
+});

@@ -11,6 +11,7 @@ export async function currentTeam(
   ctx: QueryCtx,
   orgId: Id<"orgs">,
 ): Promise<Doc<"teams"> | null> {
+  // ponytail: one team per org is the writer contract; P7 must keep it or switch to `.first()`.
   return await ctx.db
     .query("teams")
     .withIndex("by_org", (q) => q.eq("orgId", orgId))

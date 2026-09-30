@@ -137,13 +137,24 @@ export const commit = viewerMutation("sprint:manage")({
   handler: async (ctx, args): Promise<null> => {
     const { viewer } = ctx;
     const { sprint, hour } = await draftFor(ctx, viewer, args);
-    const first = sprint.committedAt === undefined;
+    // "Keep exploring" clears `committedAt`, so the event is the record of a
+    // first commit. ponytail: `events` only has by_org; add an index on
+    // (orgId, type) if an org's event count ever makes this scan slow.
+    let logged = false;
+    for await (const e of ctx.db
+      .query("events")
+      .withIndex("by_org", (q) => q.eq("orgId", viewer.org._id))) {
+      if (e.type === "hour.committed" && e.sprintId === sprint._id) {
+        logged = true;
+        break;
+      }
+    }
     await ctx.db.patch(sprint._id, {
       ...hour,
       committedAt: sprint.committedAt ?? viewer.now,
       notReady: undefined,
     });
-    if (first) {
+    if (!logged) {
       await logEvent(ctx, {
         orgId: viewer.org._id,
         sprintId: sprint._id,

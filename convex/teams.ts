@@ -142,7 +142,8 @@ export const saveProfile = viewerMutation("sprint:manage")({
     });
     // Page 2's rating needs a sprint, and so does 04 next.
     const sprint = await ensureSprint(ctx, viewer);
-    if (score !== undefined) {
+    // The before rating is a baseline: it stops moving once the sprint launched.
+    if (score !== undefined && sprint.launchedAt === undefined) {
       await upsertAnswer(ctx, {
         orgId: viewer.org._id,
         sprintId: sprint._id,

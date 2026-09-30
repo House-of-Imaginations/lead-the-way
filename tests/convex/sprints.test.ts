@@ -354,3 +354,17 @@ test("current is null for a workspace with no team", async () => {
     }),
   ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
 });
+
+test("committing again after not ready logs hour.committed once", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  const hour = { weekday: 3, start: "14:00", expectOrgId: orgId };
+  await priya.mutation(api.sprints.commit, hour);
+  await priya.mutation(api.sprints.notReady, {
+    choice: "keepExploring",
+    expectOrgId: orgId,
+  });
+  await priya.mutation(api.sprints.commit, hour);
+  const types = (await eventsOf(t, orgId)).map((e) => e.type);
+  expect(types.filter((x) => x === "hour.committed")).toHaveLength(1);
+});

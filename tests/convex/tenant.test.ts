@@ -24,6 +24,26 @@ async function rowsOf(t: T, orgId: Id<"orgs">) {
       .query("events")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .collect(),
+    teams: await ctx.db
+      .query("teams")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
+    sprints: await ctx.db
+      .query("sprints")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
+    surveyResponses: await ctx.db
+      .query("surveyResponses")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
+    pathwayProgress: await ctx.db
+      .query("pathwayProgress")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
+    agreements: await ctx.db
+      .query("agreements")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
   }));
 }
 
@@ -62,7 +82,11 @@ test("no public function reads another workspace's ids", async () => {
     swept++;
     try {
       const answer = await call(attacker, fn, args);
-      if (answer !== null) leaked.push(`${fn.name} answered`);
+      // A mutation that resolves at all got past the tenant check, even
+      // when it returns null on success.
+      if (fn.kind !== "query" || answer !== null) {
+        leaked.push(`${fn.name} answered`);
+      }
     } catch {
       // Refused, as it should be.
     }
