@@ -159,4 +159,6 @@ export const callsFor = ({
     contact: { kind: "person", personId },
     expectOrgId: orgId,
   },
+  "sprints:launchPage": {},
+  "sprints:launch": { emails: [], message: "", expectOrgId: orgId },
 });

@@ -79,9 +79,10 @@ export async function insertInvite(
 }
 
 /**
- * The role a team is invited into: "Employee", or else the custom role that
- * grants the least. Found by name to invite into, never to authorise
- * anything. The owner role is never a candidate.
+ * The role a team is invited into, chosen for them: a custom role that grants
+ * nothing, "Employee" first. A role that grants anything is never picked, even
+ * one called "Employee" or the only one left, since nobody chose it for these
+ * people. The owner role is never a candidate.
  */
 export async function inviteRoleOf(
   ctx: QueryCtx,
@@ -92,10 +93,10 @@ export async function inviteRoleOf(
     .query("orgRoles")
     .withIndex("by_org", (q) => q.eq("orgId", orgId))
     .collect();
-  const custom = roles.flatMap((r) => (r.kind === "custom" ? [r] : []));
-  const role =
-    custom.find((r) => r.name === "Employee") ??
-    custom.sort((a, b) => a.permissions.length - b.permissions.length)[0];
+  const bare = roles.flatMap((r) =>
+    r.kind === "custom" && r.permissions.length === 0 ? [r] : [],
+  );
+  const role = bare.find((r) => r.name === "Employee") ?? bare[0];
   if (!role) {
     throwUserError(
       "NOT_FOUND",

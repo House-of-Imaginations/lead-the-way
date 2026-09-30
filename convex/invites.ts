@@ -45,7 +45,7 @@ import { reserveRateLimit } from "./lib/rateLimits";
 
 const MAX_INVITES_PER_ORG = 100;
 const MAX_NAME = 80;
-const MAX_MESSAGE = 500;
+export const MAX_MESSAGE = 500;
 
 const REFUSALS = {
   INVITE_INVALID: "That invitation is no longer valid.",
@@ -297,17 +297,22 @@ export const create = orgMutation("members:manage")({
       at: now,
     });
 
-    // Only when an address was named. A shareable link has nowhere to go.
+    // Only when an address was named. A shareable link has nowhere to go,
+    // and the demo workspace never sends: its links are copied instead.
     let emailed = false;
     if (to) {
       const org = await ctx.db.get(ctx.orgId);
-      emailed = await sendInvite(ctx, {
-        to,
-        orgName: org?.name ?? "a workspace",
-        roleName: role.name,
-        inviterName: await nameOf(ctx, ctx.userId),
-        token,
-      });
+      if (org && !org.isDemo) {
+        emailed = await sendInvite(ctx, {
+          to,
+          orgName: org.name,
+          roleName: role.name,
+          inviterName: await nameOf(ctx, ctx.userId),
+          token,
+          message: note,
+          senderId: ctx.userId,
+        });
+      }
       if (emailed) await ctx.db.patch(inviteId, { sentAt: now });
     }
 
@@ -353,13 +358,19 @@ export const resend = orgMutation("members:manage")({
     const expiresAt = Date.now() + INVITE_WINDOW_MS;
     await ctx.db.patch(invite._id, { expiresAt });
     const org = await ctx.db.get(ctx.orgId);
-    const emailed = await sendInvite(ctx, {
-      to: invite.email,
-      orgName: org?.name ?? "a workspace",
-      roleName: role.name,
-      inviterName: await nameOf(ctx, ctx.userId),
-      token: invite.token,
-    });
+    // The demo workspace never sends.
+    const emailed =
+      org !== null &&
+      !org.isDemo &&
+      (await sendInvite(ctx, {
+        to: invite.email,
+        orgName: org.name,
+        roleName: role.name,
+        inviterName: await nameOf(ctx, ctx.userId),
+        token: invite.token,
+        message: invite.message,
+        senderId: ctx.userId,
+      }));
     if (emailed) await ctx.db.patch(invite._id, { sentAt: now });
     return { emailed };
   },

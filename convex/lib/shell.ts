@@ -3,6 +3,7 @@ import { v, type Infer } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { flagOn } from "../app";
+import { agreementSaved } from "./agreement";
 import { castOf } from "./demo/cast";
 import { MAX_MEMBERS_PER_ORG, seatsOfUser } from "./orgs/membership";
 import { initialsOf } from "./orgs/people";
@@ -127,6 +128,14 @@ const MANAGER_NAV = [
   },
 ];
 
+/** Once the sprint launches, Sprint opens the overview (spec 4.1). */
+const LAUNCHED_NAV = MANAGER_NAV.map((group) => ({
+  ...group,
+  links: group.links.map((l) =>
+    l.label === "Sprint" ? { ...l, href: "/manager" } : l,
+  ),
+}));
+
 const EMPLOYEE_NAV = [
   {
     title: null,
@@ -140,15 +149,6 @@ const EMPLOYEE_NAV = [
     ],
   },
 ];
-
-async function agreementSaved(ctx: QueryCtx, team: Doc<"teams">) {
-  // ponytail: every version of one team's agreement, a handful of rows.
-  const versions = await ctx.db
-    .query("agreements")
-    .withIndex("by_team_and_version", (q) => q.eq("teamId", team._id))
-    .collect();
-  return versions.some((a) => a.status === "saved");
-}
 
 /** The 03 steps, until launch. The first step not done is current. */
 async function checklistOf(
@@ -251,7 +251,11 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
       team: team?.name ?? "",
     },
     workspaces,
-    nav: manager ? MANAGER_NAV : EMPLOYEE_NAV,
+    nav: manager
+      ? sprint?.launchedAt === undefined
+        ? MANAGER_NAV
+        : LAUNCHED_NAV
+      : EMPLOYEE_NAV,
     checklist: await checklistOf(ctx, viewer, team, sprint),
     status: sprint ? sprintStatus(sprint, now, manager) : null,
     switchTo: await switchToOf(ctx, viewer, isDemo),

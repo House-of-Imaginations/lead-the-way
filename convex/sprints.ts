@@ -1,9 +1,18 @@
 import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
 import type { MutationCtx } from "./_generated/server";
+import { MAX_MESSAGE } from "./invites";
+import { agreementSaved, dayMonth, latestSaved } from "./lib/agreement";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
+import { DEMO_CAST } from "./lib/demo/cast";
+import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
+import { inviteEmailOn, sendInvite } from "./lib/orgs/email";
+import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
+import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
+import { requiredDone } from "./lib/pathway";
+import { MAX_LAUNCH_INVITES, reserveRateLimit } from "./lib/rateLimits";
 import {
   HOUR_STARTS,
   isOneOf,
@@ -17,7 +26,14 @@ import {
   ensureSprint,
   requireDraft,
 } from "./lib/sprint";
-import { addDays, sprintPhase, weekOneDate } from "./lib/sprintTime";
+import {
+  addDays,
+  hourPattern,
+  hourStart,
+  spanLabel,
+  sprintPhase,
+  weekOneDate,
+} from "./lib/sprintTime";
 import type { Viewer } from "./lib/viewer";
 
 /** "Something else" words in the not ready dialog. */
@@ -210,5 +226,245 @@ export const notReady = viewerMutation("sprint:manage")({
       });
     }
     return null;
+  },
+});
+
+// ponytail: one workspace's invitations, up to 100 open plus a sprint's worth
+// answered. Past 500, page this read.
+const INVITES_READ = 500;
+
+// Deliberately loose: a real check is the email arriving. This only stops
+// typos like a missing @ or a pasted sentence.
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const linkValidator = v.object({ email: v.string(), token: v.string() });
+
+/** 07: the gate, the invitation list and the summary. Null before a sprint. */
+export const launchPage = viewerQuery("sprint:manage")({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      launched: v.boolean(),
+      gate: v.object({
+        committed: v.boolean(),
+        pathwayDone: v.boolean(),
+        agreementSaved: v.boolean(),
+      }),
+      suggested: v.array(v.string()),
+      invited: v.array(
+        v.object({
+          email: v.string(),
+          status: literals("pending", "accepted", "declined", "revoked"),
+        }),
+      ),
+      message: v.string(),
+      links: v.union(v.null(), v.array(linkValidator)),
+      summary: v.object({
+        hour: v.string(),
+        runs: v.string(),
+        course: v.string(),
+        showAndTell: v.string(),
+        agreementSaved: v.union(v.null(), v.string()),
+      }),
+    }),
+  ),
+  handler: async (ctx) => {
+    const { viewer } = ctx;
+    const orgId = viewer.org._id;
+    const [team, sprint] = await Promise.all([
+      currentTeam(ctx, orgId),
+      currentSprint(ctx, orgId),
+    ]);
+    if (!team || !sprint) return null;
+    const isDemo = viewer.org.isDemo;
+    const tz = sprint.timeZone;
+    const last = hourStart(sprint, sprint.weeks);
+    const savedAt = (await latestSaved(ctx, team._id))?.savedAt;
+    const rows = await ctx.db
+      .query("orgInvites")
+      .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
+      .take(INVITES_READ);
+    const mine = rows.flatMap((i) =>
+      i.sprintId === sprint._id && i.email ? [{ ...i, email: i.email }] : [],
+    );
+    // Tokens only to whoever may hand them out, and only when nothing was
+    // mailed (Ruling 30). ponytail: a demo address in a real workspace that
+    // sent nothing gets its link from `launch`'s return, not from here.
+    const showLinks =
+      viewer.permissions.includes("members:manage") &&
+      (isDemo || !inviteEmailOn());
+    return {
+      launched: sprint.launchedAt !== undefined,
+      gate: {
+        committed: sprint.committedAt !== undefined,
+        pathwayDone: await requiredDone(ctx, viewer.person._id),
+        agreementSaved: savedAt !== undefined,
+      },
+      // The demo's list and message are 07's; a real workspace starts empty.
+      suggested: isDemo
+        ? DEMO_CAST.filter((p) => p.key !== "priya").map((p) => p.email)
+        : [],
+      invited: mine.map((i) => ({ email: i.email, status: i.status })),
+      message: sprint.inviteMessage ?? (isDemo ? INVITE_MESSAGE : ""),
+      links: showLinks
+        ? mine
+            .filter((i) => i.status === "pending")
+            .map((i) => ({ email: i.email, token: i.token }))
+        : null,
+      summary: {
+        hour: hourPattern(
+          sprint.protectedHour.weekday,
+          sprint.protectedHour.start,
+          sprint.protectedHour.durationMinutes,
+        ),
+        runs: spanLabel(hourStart(sprint, 1), last, tz),
+        course: sprint.courseTitle,
+        showAndTell: `Show and tell, ${dayMonth(last, tz)}`,
+        agreementSaved:
+          savedAt === undefined ? null : `Saved ${dayMonth(savedAt, tz)}`,
+      },
+    };
+  },
+});
+
+/**
+ * "Send invitations" (07). Launches the sprint and invites each new address
+ * once. The count is the invitations created; addresses already invited or
+ * already members are skipped (Ruling 29).
+ */
+export const launch = viewerMutation(
+  "sprint:manage",
+  "members:manage",
+)({
+  args: { emails: v.array(v.string()), message: v.string() },
+  returns: v.object({
+    invited: v.number(),
+    emailed: v.number(),
+    links: v.array(linkValidator),
+  }),
+  handler: async (ctx, args) => {
+    const { viewer } = ctx;
+    const orgId = viewer.org._id;
+    // Before any write, so a refusal costs nothing (Ruling 5).
+    await reserveRateLimit(ctx, "orgInvite", viewer.userId);
+
+    const [team, sprint] = await Promise.all([
+      currentTeam(ctx, orgId),
+      currentSprint(ctx, orgId),
+    ]);
+    // A stale 07 in a second tab: say it launched, not that it isn't ready.
+    if (sprint) requireDraft(sprint);
+    if (
+      !team ||
+      !sprint ||
+      sprint.committedAt === undefined ||
+      !(await requiredDone(ctx, viewer.person._id)) ||
+      !(await agreementSaved(ctx, team))
+    ) {
+      throwUserError(
+        "LAUNCH_NOT_READY",
+        "Protect the hour, finish the pathway and save the agreement first.",
+      );
+    }
+
+    const emails = [
+      ...new Set(
+        args.emails.map((e) => e.trim().toLowerCase()).filter(Boolean),
+      ),
+    ];
+    if (emails.length === 0) {
+      throwUserError("FIELD_REQUIRED", "Add at least one email address.");
+    }
+    if (emails.length > MAX_LAUNCH_INVITES) {
+      throwUserError(
+        "FIELD_REQUIRED",
+        `You can invite at most ${MAX_LAUNCH_INVITES} people at once.`,
+      );
+    }
+    if (!emails.every((e) => EMAIL.test(e))) {
+      throwUserError(
+        "FIELD_REQUIRED",
+        "Check the email addresses and try again.",
+      );
+    }
+    const message = args.message.trim() || undefined;
+    if (message && message.length > MAX_MESSAGE) {
+      throwUserError(
+        "FIELD_REQUIRED",
+        `A message can be at most ${MAX_MESSAGE} characters.`,
+      );
+    }
+    // Before any write too: never a role that grants anything.
+    const role = await inviteRoleOf(ctx, orgId);
+
+    const now = viewer.now;
+    // Ruling 17: a late launch never starts in the past.
+    const startDate =
+      hourStart(sprint, 1) <= now
+        ? weekOneDate(sprint.protectedHour.weekday, now, sprint.timeZone)
+        : sprint.startDate;
+    await ctx.db.patch(sprint._id, {
+      startDate,
+      launchedAt: now,
+      status: "scheduled",
+      inviteMessage: message,
+    });
+    await logEvent(ctx, {
+      orgId,
+      sprintId: sprint._id,
+      type: "sprint.launched",
+      at: now,
+    });
+
+    const skip = new Set<string>();
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .take(MAX_MEMBERS_PER_ORG);
+    for (const person of people) skip.add(person.email);
+    const pending = await ctx.db
+      .query("orgInvites")
+      .withIndex("by_org_status_and_expiresAt", (q) =>
+        q.eq("orgId", orgId).eq("status", "pending"),
+      )
+      .take(INVITES_READ);
+    for (const invite of pending) if (invite.email) skip.add(invite.email);
+
+    let invited = 0;
+    let emailed = 0;
+    const links: { email: string; token: string }[] = [];
+    for (const email of emails) {
+      if (skip.has(email)) continue;
+      const { inviteId, token } = await insertInvite(ctx, {
+        orgId,
+        roleId: role._id,
+        email,
+        sprintId: sprint._id,
+        message,
+        invitedBy: viewer.userId,
+        at: now,
+      });
+      invited++;
+      // The demo workspace never sends (Ruling 5): its links are copied.
+      const sent =
+        !viewer.org.isDemo &&
+        (await sendInvite(ctx, {
+          to: email,
+          orgName: viewer.org.name,
+          roleName: role.name,
+          inviterName: viewer.person.name || "Someone",
+          token,
+          message,
+          senderId: viewer.userId,
+        }));
+      if (sent) {
+        emailed++;
+        await ctx.db.patch(inviteId, { sentAt: now });
+      } else {
+        links.push({ email, token });
+      }
+    }
+    return { invited, emailed, links };
   },
 });

@@ -1,4 +1,4 @@
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 
 /**
@@ -64,6 +64,14 @@ export async function latestSaved(ctx: QueryCtx, teamId: Id<"teams">) {
     if (version.status === "saved") return version;
   }
   return null;
+}
+
+/** Any saved version counts, even with a newer draft on top. */
+export async function agreementSaved(
+  ctx: QueryCtx,
+  team: Doc<"teams">,
+): Promise<boolean> {
+  return (await latestSaved(ctx, team._id)) !== null;
 }
 
 /** "7 September", or "7 September 2026" with the year. */
