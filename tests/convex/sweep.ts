@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { makeFunctionReference } from "convex/server";
 import type { Id } from "../../convex/_generated/dataModel";
+import { CHECK_LABELS } from "../../convex/lib/agreement";
 import { personFields } from "./testHelpers";
 import type { T } from "./workspace/helpers";
 
@@ -154,7 +155,8 @@ export const callsFor = ({
   "agreements:save": {
     tools: [],
     neverIn: [],
-    checks: [],
+    // Valid checks, so the contact is what answers.
+    checks: CHECK_LABELS.map((label) => ({ label, on: true })),
     escalation: "",
     contact: { kind: "person", personId },
     expectOrgId: orgId,

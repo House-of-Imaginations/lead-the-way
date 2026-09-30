@@ -33,7 +33,7 @@ type Form = {
   neverIn: Toggle[];
   checks: Toggle[];
   escalation: string;
-  /** A `contactOptions` value: the viewer's people id first, then labels. */
+  /** A `contactOptionsOf` value: a people id or a label. */
   contact: string;
 };
 
@@ -43,10 +43,21 @@ function formOf(a: Agreement): Form {
     neverIn: a.neverIn.map(({ label, on }) => ({ label, on })),
     checks: a.checks.map(({ label, on }) => ({ label, on })),
     escalation: a.escalation,
-    // ponytail: a saved person contact is always the manager (the only person option).
+    // A saved person who has since left falls back to the viewer.
     contact:
-      a.contact.kind === "person" ? a.contactOptions[0].value : a.contact.label,
+      a.contact.kind === "person"
+        ? (a.contactPerson?.id ?? a.contactOptions[0].value)
+        : a.contact.label,
   };
+}
+
+/** The viewer, then a saved contact who is someone else, then the labels. */
+export function contactOptionsOf(a: Agreement) {
+  const [viewer, ...labels] = a.contactOptions;
+  const saved = a.contactPerson;
+  return saved && saved.id !== viewer.value
+    ? [viewer, { value: saved.id, label: saved.name }, ...labels]
+    : a.contactOptions;
 }
 
 const keyOf = (f: Form) => JSON.stringify(f);
@@ -170,9 +181,9 @@ export function AgreementBuilder({ initial }: { initial: Agreement }) {
   const isSaved =
     data.status === "saved" && keyOf(formOf(data)) === keyOf(form);
   const person = data.contactOptions[0];
+  const contactOptions = contactOptionsOf(data);
   const contactName =
-    data.contactOptions.find((o) => o.value === form.contact)?.label ??
-    person.label;
+    contactOptions.find((o) => o.value === form.contact)?.label ?? person.label;
 
   function addTool(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -221,8 +232,9 @@ export function AgreementBuilder({ initial }: { initial: Agreement }) {
         checks: form.checks,
         escalation: form.escalation,
         contact:
-          form.contact === person.value
-            ? { kind: "person", personId: person.value as Id<"people"> }
+          form.contact === person.value ||
+          form.contact === data.contactPerson?.id
+            ? { kind: "person", personId: form.contact as Id<"people"> }
             : { kind: "label", label: form.contact },
       });
       toast(
@@ -358,7 +370,7 @@ export function AgreementBuilder({ initial }: { initial: Agreement }) {
             <Select
               id="contact"
               label="AI question contact"
-              options={data.contactOptions}
+              options={contactOptions}
               value={form.contact}
               onChange={(e) => set({ contact: e.target.value })}
             />

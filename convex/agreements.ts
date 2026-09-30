@@ -88,6 +88,11 @@ export const current = viewerQuery("sprint:manage")({
     checks: v.array(toggleValidator),
     escalation: v.string(),
     contact: contactValidator,
+    /** The saved person contact, who may be another manager. */
+    contactPerson: v.union(
+      v.null(),
+      v.object({ id: v.id("people"), name: v.string() }),
+    ),
     contactOptions: v.array(v.object({ value: v.string(), label: v.string() })),
     teamName: v.string(),
     dateLabel: v.string(),
@@ -117,6 +122,14 @@ export const current = viewerQuery("sprint:manage")({
       escalation: DEFAULT_ESCALATION,
       contact: { kind: "person", personId: viewer.person._id },
     };
+    // ponytail: a contact who has left reads as none, and 06 offers the viewer.
+    const contactPerson =
+      content.contact.kind === "person"
+        ? await getInOrg(ctx, orgId, content.contact.personId).then(
+            (p) => ({ id: p._id, name: p.name }),
+            () => null,
+          )
+        : null;
     return {
       status: latest ? latest.status : ("none" as const),
       version: latest?.version ?? null,
@@ -126,6 +139,7 @@ export const current = viewerQuery("sprint:manage")({
       checks: content.checks,
       escalation: content.escalation,
       contact: content.contact,
+      contactPerson,
       // The person option carries the viewer's id, so the page can send it
       // back as `{ kind: "person", personId }`.
       contactOptions: [

@@ -134,6 +134,7 @@ test("the first save makes version 1", async () => {
     version: 1,
     savedOn: "7 September",
     ...input,
+    contactPerson: { id: priyaId, name: "Priya Raman" },
     contactOptions: [
       { value: priyaId, label: "Priya Raman" },
       { value: "#ai-questions channel", label: "#ai-questions channel" },
@@ -290,6 +291,36 @@ test("a contact from another workspace is refused", async () => {
     }),
   ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
   expect(await versionsOf(t, b.orgId)).toEqual([]);
+});
+
+test("current names a saved contact who isn't the viewer", async () => {
+  const { t, owner, orgId, save } = await manager();
+  const { as: lead, personId: leadId } = await seat(t, orgId, "user_lead", [
+    "sprint:manage",
+  ]);
+  const me = await personIdOf(t, orgId, (p) => p.userId === "user_owner");
+  await save(content({ kind: "person", personId: leadId }));
+  const page = await owner.query(api.agreements.current, {});
+  expect(page.contact).toEqual({ kind: "person", personId: leadId });
+  expect(page.contactPerson).toEqual({ id: leadId, name: "user_lead" });
+  // The viewer is still offered first.
+  expect(page.contactOptions[0]).toEqual({
+    value: me,
+    label: expect.any(String),
+  });
+  expect((await lead.query(api.agreements.current, {})).contactPerson).toEqual({
+    id: leadId,
+    name: "user_lead",
+  });
+  // A contact who has since left reads as none; the page falls back to the viewer.
+  await t.run((ctx) => ctx.db.delete(leadId));
+  expect((await owner.query(api.agreements.current, {})).contactPerson).toBe(
+    null,
+  );
+  await save(content(PRIVACY));
+  expect((await owner.query(api.agreements.current, {})).contactPerson).toBe(
+    null,
+  );
 });
 
 test("current returns the defaults before any save", async () => {

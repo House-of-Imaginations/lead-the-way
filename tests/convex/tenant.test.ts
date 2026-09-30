@@ -65,20 +65,45 @@ test("getInOrg refuses another workspace's document", async () => {
   ).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
 });
 
+/** True when `value` holds one of `ids` at any depth, `expectOrgId` aside. */
+function holdsId(value: unknown, ids: Set<unknown>): boolean {
+  if (ids.has(value)) return true;
+  if (typeof value !== "object" || value === null) return false;
+  return Object.entries(value).some(
+    ([key, v]) => key !== "expectOrgId" && holdsId(v, ids),
+  );
+}
+
 test("no public function reads another workspace's ids", async () => {
   const t = harness();
   const ids = await fixtures(t);
   // The owner of another workspace, signed in, with that workspace open.
-  const { owner: attacker } = await workspace(t, "Birch Studio");
+  const { owner: attacker, orgId: attackerOrg } = await workspace(
+    t,
+    "Birch Studio",
+  );
   const theirs = new Set<unknown>(Object.values(ids) as unknown[]);
   const calls = callsFor(ids);
   const before = await rowsOf(t, ids.orgId);
 
   const leaked: string[] = [];
   let swept = 0;
+  let reached = 0;
   for (const fn of publicFunctions()) {
-    const args = calls[fn.name];
-    if (!args || !Object.values(args).some((a) => theirs.has(a))) continue;
+    const fixed = calls[fn.name];
+    if (!fixed) continue;
+    let args = fixed;
+    if (holdsId(fixed, theirs)) {
+      // A foreign id inside the args: echo the attacker's own workspace, so
+      // the call gets past the workspace check and the handler's own
+      // `getInOrg` is what must refuse it.
+      if ("expectOrgId" in fixed) args = { ...fixed, expectOrgId: attackerOrg };
+      reached++;
+    } else if (fixed.expectOrgId !== ids.orgId) {
+      continue;
+    }
+    // Otherwise the only foreign id is `expectOrgId`: the workspace check
+    // itself must refuse the victim's.
     swept++;
     try {
       const answer = await call(attacker, fn, args);
@@ -94,6 +119,8 @@ test("no public function reads another workspace's ids", async () => {
   expect(leaked).toEqual([]);
   expect(await rowsOf(t, ids.orgId)).toEqual(before);
   // The sweep reached every function that takes an id (21 before P4, 29
-  // after Task 5). Raise this as functions join.
+  // after Task 5), and 20 of them hold one past the workspace check. Raise
+  // these as functions join.
   expect(swept).toBeGreaterThanOrEqual(29);
+  expect(reached).toBeGreaterThanOrEqual(20);
 });

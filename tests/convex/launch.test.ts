@@ -6,7 +6,7 @@ import { mel } from "../../convex/lib/demo/schedule";
 import { PATHWAY_MODULES } from "../../convex/lib/pathway";
 import { weekOneDate } from "../../convex/lib/sprintTime";
 import { rateLimiter } from "../../convex/lib/rateLimits";
-import { personFields } from "./testHelpers";
+import { personFields, seedAuthUser } from "./testHelpers";
 import {
   calderLane,
   harness,
@@ -363,6 +363,42 @@ test("a draft revisited six days on names one week one everywhere", async () => 
     expectOrgId: orgId,
   });
   expect((await sprintOf(t, orgId))?.startDate).toBe("2026-09-16");
+});
+
+test("an address launched with capitals and a dot joins as an Employee", async () => {
+  const { t, orgId, launch } = await manager();
+  await ready(t, orgId);
+  const { links } = await launch(["Ana@Example.com."]);
+  expect(links.map((l) => l.email)).toEqual(["ana@example.com"]);
+  const ana = await seedAuthUser(t, {
+    name: "Ana",
+    email: "ana@example.com",
+    emailVerified: true,
+  });
+  await t.withIdentity(ana).mutation(api.invites.accept, {
+    token: links[0]!.token,
+  });
+
+  const roleId = await employeeRoleId(t, orgId);
+  const sprint = await sprintOf(t, orgId);
+  const seatOf = await t.run(async (ctx) =>
+    (
+      await ctx.db
+        .query("people")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect()
+    ).find((p) => p.userId === ana.subject),
+  );
+  expect(seatOf).toMatchObject({ roleId, email: "ana@example.com" });
+  const events = await t.run((ctx) =>
+    ctx.db
+      .query("events")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
+  );
+  expect(
+    events.filter((e) => e.type === "invite.accepted").map((e) => e.sprintId),
+  ).toEqual([sprint!._id]);
 });
 
 test("the demo workspace never sends and returns every link", async () => {
