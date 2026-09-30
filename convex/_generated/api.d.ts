@@ -55,6 +55,7 @@ import type * as members from "../members.js";
 import type * as onboarding from "../onboarding.js";
 import type * as orgRoles from "../orgRoles.js";
 import type * as orgs from "../orgs.js";
+import type * as pathway from "../pathway.js";
 import type * as profiles from "../profiles.js";
 import type * as seed from "../seed.js";
 import type * as sprints from "../sprints.js";
@@ -119,6 +120,7 @@ declare const fullApi: ApiFromModules<{
   onboarding: typeof onboarding;
   orgRoles: typeof orgRoles;
   orgs: typeof orgs;
+  pathway: typeof pathway;
   profiles: typeof profiles;
   seed: typeof seed;
   sprints: typeof sprints;

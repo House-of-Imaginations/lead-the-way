@@ -6,7 +6,7 @@ import { flagOn } from "../app";
 import { castOf } from "./demo/cast";
 import { MAX_MEMBERS_PER_ORG, seatsOfUser } from "./orgs/membership";
 import { initialsOf } from "./orgs/people";
-import { PATHWAY_MODULES } from "./pathway";
+import { requiredDone } from "./pathway";
 import { SETUP_STEPS } from "./setupSteps";
 import { currentSprint, currentTeam } from "./sprint";
 import { sprintStatus } from "./sprintTime";
@@ -141,20 +141,6 @@ const EMPLOYEE_NAV = [
   },
 ];
 
-async function pathwayDone(ctx: QueryCtx, person: Doc<"people">) {
-  for (const m of PATHWAY_MODULES) {
-    if (m.pathway !== "required") continue;
-    const row = await ctx.db
-      .query("pathwayProgress")
-      .withIndex("by_person_and_module", (q) =>
-        q.eq("personId", person._id).eq("moduleKey", m.key),
-      )
-      .unique();
-    if (row?.completedAt === undefined) return false;
-  }
-  return true;
-}
-
 async function agreementSaved(ctx: QueryCtx, team: Doc<"teams">) {
   // ponytail: every version of one team's agreement, a handful of rows.
   const versions = await ctx.db
@@ -175,7 +161,7 @@ async function checklistOf(
   const done = [
     team?.savedAt !== undefined,
     sprint?.committedAt !== undefined,
-    await pathwayDone(ctx, viewer.person),
+    await requiredDone(ctx, viewer.person._id),
     team !== null && (await agreementSaved(ctx, team)),
     false, // Invite team is done when the sprint launches, and then the list goes.
   ];

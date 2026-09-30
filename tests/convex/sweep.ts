@@ -147,4 +147,7 @@ export const callsFor = ({
   },
   "sprints:commit": { weekday: 3, start: "14:00", expectOrgId: orgId },
   "sprints:notReady": { choice: "keepExploring", expectOrgId: orgId },
+  "pathway:forViewer": {},
+  "pathway:completeModule": { moduleKey: "shared-norms", expectOrgId: orgId },
+  "pathway:rateConfidence": { score: 4, expectOrgId: orgId },
 });
