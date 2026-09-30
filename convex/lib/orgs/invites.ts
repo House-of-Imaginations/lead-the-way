@@ -21,6 +21,26 @@ import { throwUserError } from "../errors";
  */
 export const INVITE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** Live pending invitations a workspace may hold at once. */
+export const MAX_INVITES_PER_ORG = 100;
+
+/**
+ * Live pending invitations, up to the cap. Lapsed rows are outside the range.
+ * `now` is the workspace clock (`nowFor`).
+ */
+export async function livePending(
+  ctx: QueryCtx,
+  orgId: Id<"orgs">,
+  now: number,
+) {
+  return await ctx.db
+    .query("orgInvites")
+    .withIndex("by_org_status_and_expiresAt", (q) =>
+      q.eq("orgId", orgId).eq("status", "pending").gt("expiresAt", now),
+    )
+    .take(MAX_INVITES_PER_ORG);
+}
+
 /**
  * 256 bits from the platform CSPRNG, base64url so it survives a URL intact.
  *

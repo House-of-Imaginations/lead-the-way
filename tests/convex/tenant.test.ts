@@ -93,6 +93,7 @@ test("no public function reads another workspace's ids", async () => {
   }
   expect(leaked).toEqual([]);
   expect(await rowsOf(t, ids.orgId)).toEqual(before);
-  // The sweep reached every function that takes an id (21 before P4).
-  expect(swept).toBeGreaterThanOrEqual(21);
+  // The sweep reached every function that takes an id (21 before P4, 29
+  // after Task 5). Raise this as functions join.
+  expect(swept).toBeGreaterThanOrEqual(29);
 });

@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { DEMO_CAST } from "../../convex/lib/demo/cast";
+import { DEMO_CAST, isDemoAddress } from "../../convex/lib/demo/cast";
 import { mel } from "../../convex/lib/demo/schedule";
 import { PATHWAY_MODULES } from "../../convex/lib/pathway";
+import { rateLimiter } from "../../convex/lib/rateLimits";
 import { personFields } from "./testHelpers";
 import {
   calderLane,
@@ -551,4 +552,114 @@ test("launch never invites into a role that grants anything", async () => {
   );
   await launch(["ana@example.com"]);
   expect((await invitesOf(t, orgId)).map((i) => i.roleId)).toEqual([learner]);
+});
+
+/** A pending invitation to `email`, open until `expiresAt` (real time). */
+async function pendingInvite(
+  t: T,
+  orgId: Id<"orgs">,
+  email: string,
+  expiresAt: number,
+) {
+  const roleId = await employeeRoleId(t, orgId);
+  await t.run((ctx) =>
+    ctx.db.insert("orgInvites", {
+      orgId,
+      roleId,
+      token: `tok-${email}`,
+      email,
+      status: "pending",
+      invitedBy: "user_owner",
+      expiresAt,
+      createdAt: 1,
+    }),
+  );
+}
+
+test("a lapsed invitation doesn't block its address at launch", async () => {
+  const { t, orgId, launch } = await manager();
+  await ready(t, orgId);
+  await pendingInvite(t, orgId, "ana@example.com", Date.now() - 1);
+  expect(await launch(["ana@example.com"])).toMatchObject({ invited: 1 });
+  expect(
+    (await invitesOf(t, orgId)).filter((i) => i.email === "ana@example.com"),
+  ).toHaveLength(2);
+});
+
+test("launch holds the open-invitation cap", async () => {
+  const { t, orgId, launch } = await manager();
+  await ready(t, orgId);
+  for (let i = 0; i < 99; i++) {
+    await pendingInvite(t, orgId, `open${i}@example.com`, Date.now() + 60_000);
+  }
+  // A lapsed one doesn't count toward the cap.
+  await pendingInvite(t, orgId, "gone@example.com", Date.now() - 1);
+  await expect(
+    launch(["ana@example.com", "ben@example.com"]),
+  ).rejects.toMatchObject({
+    data: {
+      code: "FIELD_REQUIRED",
+      message: "There are too many invitations open. Revoke some first.",
+    },
+  });
+  expect(await invitesOf(t, orgId)).toHaveLength(100);
+  expect((await sprintOf(t, orgId))?.launchedAt).toBeUndefined();
+  // An address already open doesn't count twice: 99 open plus one new is 100.
+  expect(await launch(["open0@example.com", "ana@example.com"])).toMatchObject({
+    invited: 1,
+  });
+});
+
+test("launch refuses address punctuation and a trailing dot", async () => {
+  emailOn();
+  const { t, orgId, launch } = await manager();
+  await ready(t, orgId);
+  for (const bad of [
+    '"ana"@example.com',
+    "<ana@example.com>",
+    "ana(x)@example.com",
+    "ana,ben@example.com",
+    "ana;ben@example.com",
+    "ana:ben@example.com",
+    "ana[1]@example.com",
+    "ana\\ben@example.com",
+    "ana@example..",
+  ]) {
+    await expect(launch([bad]), bad).rejects.toMatchObject({
+      data: {
+        code: "FIELD_REQUIRED",
+        message: "Check the email addresses and try again.",
+      },
+    });
+  }
+  expect(isDemoAddress("dan.okafor@calderlane.com.au.")).toBe(true);
+  // A trailing dot is dropped, so a demo address can't dodge the demo check.
+  expect(await launch(["Dan.Okafor@CalderLane.com.au."])).toEqual({
+    invited: 1,
+    emailed: 0,
+    links: [
+      { email: "dan.okafor@calderlane.com.au", token: expect.any(String) },
+    ],
+  });
+  expect((await invitesOf(t, orgId)).map((i) => i.email)).toEqual([
+    "dan.okafor@calderlane.com.au",
+  ]);
+});
+
+test("a launch that runs out of inviteEmail tokens writes nothing", async () => {
+  emailOn();
+  const { t, orgId, launch } = await manager();
+  await ready(t, orgId);
+  // 49 of this hour's 50 real emails already spent.
+  await t.run((ctx) =>
+    rateLimiter.limit(ctx, "inviteEmail", { key: "user_owner", count: 49 }),
+  );
+  await expect(
+    launch(["ana@example.com", "ben@example.com"]),
+  ).rejects.toMatchObject({
+    data: { code: "RATE_LIMITED", name: "inviteEmail" },
+  });
+  expect((await sprintOf(t, orgId))?.launchedAt).toBeUndefined();
+  expect(await invitesOf(t, orgId)).toEqual([]);
+  expect(await launchedEvents(t, orgId)).toEqual([]);
 });

@@ -84,9 +84,16 @@ export function castOf(key: CastKey) {
   return person;
 }
 
+/**
+ * An address as it is compared: trimmed, lowercased, and without the one
+ * trailing dot a fully qualified domain may carry (it still delivers).
+ */
+export const normalEmail = (email: string) =>
+  email.trim().toLowerCase().replace(/\.$/, "");
+
 /** Demo addresses can't receive mail, so nothing is ever sent to one. */
 export const isDemoAddress = (email: string) =>
-  email.trim().toLowerCase().endsWith(`@${DEMO_DOMAIN}`);
+  normalEmail(email).endsWith(`@${DEMO_DOMAIN}`);
 
 /** The auth user id for an address, or null. */
 export async function demoUserId(

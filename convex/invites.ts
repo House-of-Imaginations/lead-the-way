@@ -15,7 +15,12 @@ import { profileOf } from "./lib/account/profile";
 import { emailConfigured } from "./lib/email/send";
 import { throwUserError, type ErrorCode } from "./lib/errors";
 import { sendInvite } from "./lib/orgs/email";
-import { INVITE_WINDOW_MS, insertInvite } from "./lib/orgs/invites";
+import {
+  INVITE_WINDOW_MS,
+  MAX_INVITES_PER_ORG,
+  insertInvite,
+  livePending,
+} from "./lib/orgs/invites";
 import { joinByInvite } from "./lib/orgs/join";
 import {
   MAX_MEMBERS_PER_ORG,
@@ -43,7 +48,6 @@ import { reserveRateLimit } from "./lib/rateLimits";
  * email address" tells the holder only that this account is not the one.
  */
 
-const MAX_INVITES_PER_ORG = 100;
 const MAX_NAME = 80;
 export const MAX_MESSAGE = 500;
 
@@ -80,17 +84,6 @@ async function nameOf(ctx: QueryCtx | MutationCtx, userId: string) {
 async function nowIn(ctx: QueryCtx | MutationCtx, orgId: Id<"orgs">) {
   const org = await ctx.db.get(orgId);
   return org ? nowFor(org) : Date.now();
-}
-
-/** Live pending invitations, up to the cap. Lapsed rows are outside the range. */
-async function livePending(ctx: QueryCtx | MutationCtx, orgId: Id<"orgs">) {
-  const now = await nowIn(ctx, orgId);
-  return await ctx.db
-    .query("orgInvites")
-    .withIndex("by_org_status_and_expiresAt", (q) =>
-      q.eq("orgId", orgId).eq("status", "pending").gt("expiresAt", now),
-    )
-    .take(MAX_INVITES_PER_ORG);
 }
 
 async function byToken(ctx: QueryCtx | MutationCtx, token: string) {
@@ -196,7 +189,11 @@ export const list = orgQuery("members:manage")({
       ).reverse();
     const accepted = await newest("accepted", MAX_MEMBERS_PER_ORG);
     const declined = await newest("declined", MAX_INVITES_PER_ORG);
-    const pending = await livePending(ctx, ctx.orgId);
+    const pending = await livePending(
+      ctx,
+      ctx.orgId,
+      await nowIn(ctx, ctx.orgId),
+    );
 
     const rows = [];
     for (const invite of [...accepted, ...declined, ...pending]) {
@@ -278,7 +275,9 @@ export const create = orgMutation("members:manage")({
     // The cap counts live pending invitations only. Lapsed ones stay in the
     // table (spec 5) but `list` hides them, so counting them would brick
     // `create` with nothing visible to revoke.
-    if ((await livePending(ctx, ctx.orgId)).length >= MAX_INVITES_PER_ORG) {
+    if (
+      (await livePending(ctx, ctx.orgId, now)).length >= MAX_INVITES_PER_ORG
+    ) {
       throwUserError(
         "FIELD_REQUIRED",
         "There are too many invitations open. Revoke some first.",

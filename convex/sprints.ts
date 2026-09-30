@@ -4,12 +4,17 @@ import type { MutationCtx } from "./_generated/server";
 import { MAX_MESSAGE } from "./invites";
 import { agreementSaved, dayMonth, latestSaved } from "./lib/agreement";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
-import { DEMO_CAST } from "./lib/demo/cast";
+import { DEMO_CAST, normalEmail } from "./lib/demo/cast";
 import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
 import { inviteEmailOn, sendInvite } from "./lib/orgs/email";
-import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
+import {
+  MAX_INVITES_PER_ORG,
+  insertInvite,
+  inviteRoleOf,
+  livePending,
+} from "./lib/orgs/invites";
 import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
 import { requiredDone } from "./lib/pathway";
 import { MAX_LAUNCH_INVITES, reserveRateLimit } from "./lib/rateLimits";
@@ -234,8 +239,10 @@ export const notReady = viewerMutation("sprint:manage")({
 const INVITES_READ = 500;
 
 // Deliberately loose: a real check is the email arriving. This only stops
-// typos like a missing @ or a pasted sentence.
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// typos like a missing @ or a pasted sentence, and the punctuation that turns
+// one address into several or into a display name (`"`, `<>`, `,`, `;`).
+const EMAIL =
+  /^[^\s@<>(),;:"[\]\\]+@[^\s@<>(),;:"[\]\\]+\.[^\s@<>(),;:"[\]\\]+$/;
 
 const linkValidator = v.object({ email: v.string(), token: v.string() });
 
@@ -368,11 +375,9 @@ export const launch = viewerMutation(
       );
     }
 
-    const emails = [
-      ...new Set(
-        args.emails.map((e) => e.trim().toLowerCase()).filter(Boolean),
-      ),
-    ];
+    // Normalised as `isDemoAddress` reads them, so a trailing dot can't slip
+    // a demo address past it.
+    const emails = [...new Set(args.emails.map(normalEmail).filter(Boolean))];
     if (emails.length === 0) {
       throwUserError("FIELD_REQUIRED", "Add at least one email address.");
     }
@@ -397,8 +402,27 @@ export const launch = viewerMutation(
     }
     // Before any write too: never a role that grants anything.
     const role = await inviteRoleOf(ctx, orgId);
-
     const now = viewer.now;
+
+    // Members and live invitations are skipped. A lapsed one isn't: its
+    // address gets a fresh invitation.
+    const skip = new Set<string>();
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .take(MAX_MEMBERS_PER_ORG);
+    for (const person of people) skip.add(person.email);
+    const pending = await livePending(ctx, orgId, now);
+    for (const invite of pending) if (invite.email) skip.add(invite.email);
+    const fresh = emails.filter((email) => !skip.has(email));
+    // The same cap `invites.create` holds.
+    if (pending.length + fresh.length > MAX_INVITES_PER_ORG) {
+      throwUserError(
+        "FIELD_REQUIRED",
+        "There are too many invitations open. Revoke some first.",
+      );
+    }
+
     // Ruling 17: a late launch never starts in the past.
     const startDate =
       hourStart(sprint, 1) <= now
@@ -417,25 +441,10 @@ export const launch = viewerMutation(
       at: now,
     });
 
-    const skip = new Set<string>();
-    const people = await ctx.db
-      .query("people")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .take(MAX_MEMBERS_PER_ORG);
-    for (const person of people) skip.add(person.email);
-    const pending = await ctx.db
-      .query("orgInvites")
-      .withIndex("by_org_status_and_expiresAt", (q) =>
-        q.eq("orgId", orgId).eq("status", "pending"),
-      )
-      .take(INVITES_READ);
-    for (const invite of pending) if (invite.email) skip.add(invite.email);
-
     let invited = 0;
     let emailed = 0;
     const links: { email: string; token: string }[] = [];
-    for (const email of emails) {
-      if (skip.has(email)) continue;
+    for (const email of fresh) {
       const { inviteId, token } = await insertInvite(ctx, {
         orgId,
         roleId: role._id,
