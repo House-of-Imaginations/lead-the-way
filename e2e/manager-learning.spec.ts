@@ -32,7 +32,14 @@ async function completeRequired(page: Page) {
   for (const title of REQUIRED) await markComplete(page, title);
 }
 
-test.beforeEach(() => resetDemo());
+// Uncaught errors, which would raise the Next dev overlay.
+let errors: string[] = [];
+test.beforeEach(({ page }) => {
+  resetDemo();
+  errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+});
+test.afterEach(() => expect(errors).toEqual([]));
 
 test("modules complete in order", async ({ page }) => {
   await open(page);
@@ -46,9 +53,17 @@ test("modules complete in order", async ({ page }) => {
     "0 of 3 complete",
   );
 
+  // Selecting a locked module moves the selection, not the state tags.
   await moduleButton(page, REQUIRED[1]).click();
+  await expect(moduleButton(page, REQUIRED[1])).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
   await expect(
-    moduleButton(page, REQUIRED[1]).getByText("In progress"),
+    moduleButton(page, REQUIRED[1]).getByText("Not started"),
+  ).toBeVisible();
+  await expect(
+    moduleButton(page, REQUIRED[0]).getByText("In progress"),
   ).toBeVisible();
   await expect(mark).toBeDisabled();
   await expect(mark).toHaveAccessibleDescription(
@@ -78,6 +93,52 @@ test("modules complete in order", async ({ page }) => {
   await expect(mark).toHaveAccessibleDescription(
     "You've completed this module.",
   );
+});
+
+test("the header and rows follow the PNG", async ({ page }) => {
+  await open(page);
+  await expect(
+    page
+      .getByRole("navigation", { name: "Breadcrumb" })
+      .getByRole("link", { name: "My learning" }),
+  ).toHaveAttribute("href", "/manager/learning");
+  await expect(
+    page.getByRole("button", { name: "Mark as complete" }).locator("svg"),
+  ).toHaveCount(1);
+
+  // Minutes in the right column, the tag under the objective.
+  const row = moduleButton(page, REQUIRED[0]);
+  const minutes = await row.getByText("5 min", { exact: true }).boundingBox();
+  const tag = await row.getByText("In progress", { exact: true }).boundingBox();
+  const objective = await row
+    .getByText("See why consistent, visible AI use", { exact: false })
+    .boundingBox();
+  expect(minutes!.x).toBeGreaterThan(objective!.x + objective!.width - 1);
+  expect(tag!.y).toBeGreaterThan(objective!.y);
+  expect(tag!.x).toBeCloseTo(objective!.x, 0);
+});
+
+test("tapping a row at 390 brings the player into view", async ({
+  page,
+  expectAxeClean,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await moduleButton(page, FIRST_COACHING).click();
+  await expect(page.locator("video")).toHaveAttribute(
+    "aria-label",
+    FIRST_COACHING,
+  );
+  await expect(page.locator("video")).toBeInViewport();
+  // "Mark as complete" keeps its 16px padding right of the check icon.
+  const mark = page.getByRole("button", { name: "Mark as complete" });
+  const button = await mark.boundingBox();
+  const icon = await mark.locator("svg").boundingBox();
+  expect(icon!.x + icon!.width).toBeLessThanOrEqual(
+    button!.x + button!.width - 16 + 0.5,
+  );
+  await expectAxeClean(page);
+  await page.screenshot({ path: "output/screens/05-390.png", fullPage: true });
 });
 
 test("captions are on by default", async ({ page }) => {
