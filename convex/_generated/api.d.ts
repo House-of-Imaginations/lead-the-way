@@ -43,6 +43,7 @@ import type * as lib_orgs_slug from "../lib/orgs/slug.js";
 import type * as lib_pathway from "../lib/pathway.js";
 import type * as lib_privacy from "../lib/privacy.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
+import type * as lib_setupOptions from "../lib/setupOptions.js";
 import type * as lib_setupSteps from "../lib/setupSteps.js";
 import type * as lib_shell from "../lib/shell.js";
 import type * as lib_sprint from "../lib/sprint.js";
@@ -56,10 +57,12 @@ import type * as orgRoles from "../orgRoles.js";
 import type * as orgs from "../orgs.js";
 import type * as profiles from "../profiles.js";
 import type * as seed from "../seed.js";
+import type * as sprints from "../sprints.js";
 import type * as tables_demo from "../tables/demo.js";
 import type * as tables_orgs from "../tables/orgs.js";
 import type * as tables_profiles from "../tables/profiles.js";
 import type * as tables_sprint from "../tables/sprint.js";
+import type * as teams from "../teams.js";
 import type * as viewer from "../viewer.js";
 
 import type {
@@ -104,6 +107,7 @@ declare const fullApi: ApiFromModules<{
   "lib/pathway": typeof lib_pathway;
   "lib/privacy": typeof lib_privacy;
   "lib/rateLimits": typeof lib_rateLimits;
+  "lib/setupOptions": typeof lib_setupOptions;
   "lib/setupSteps": typeof lib_setupSteps;
   "lib/shell": typeof lib_shell;
   "lib/sprint": typeof lib_sprint;
@@ -117,10 +121,12 @@ declare const fullApi: ApiFromModules<{
   orgs: typeof orgs;
   profiles: typeof profiles;
   seed: typeof seed;
+  sprints: typeof sprints;
   "tables/demo": typeof tables_demo;
   "tables/orgs": typeof tables_orgs;
   "tables/profiles": typeof tables_profiles;
   "tables/sprint": typeof tables_sprint;
+  teams: typeof teams;
   viewer: typeof viewer;
 }>;
 

@@ -137,4 +137,14 @@ export const callsFor = ({
   "invites:decline": { token: "tok" },
   "profiles:saveProfile": { displayName: "Pat" },
   "profiles:setActiveOrg": { orgId },
+  "teams:current": {},
+  "teams:saveProfile": { challenges: [], finish: false, expectOrgId: orgId },
+  "sprints:current": {},
+  "sprints:setProtectedHour": {
+    weekday: 3,
+    start: "14:00",
+    expectOrgId: orgId,
+  },
+  "sprints:commit": { weekday: 3, start: "14:00", expectOrgId: orgId },
+  "sprints:notReady": { choice: "keepExploring", expectOrgId: orgId },
 });
