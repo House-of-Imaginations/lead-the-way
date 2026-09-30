@@ -4,26 +4,46 @@ import { Close, Menu as MenuIcon } from "@carbon/icons-react";
 import Link from "next/link";
 import { Dialog } from "radix-ui";
 import { useState, type ReactNode } from "react";
+import { Avatar } from "./Avatar";
 import { Logo } from "./Logo";
+import { Menu, type MenuItem } from "./Menu";
 
 export type TopBarProps = {
   homeHref: string;
+  /** The signed-in person: their avatar opens the account menu, as the side nav's does. */
+  user: { initials: string; name: string };
+  accountMenu: MenuItem[];
   /** The drawer contents: the SideNav with resizable={false}. */
   children: ReactNode;
 };
 
-export function TopBar({ homeHref, children }: TopBarProps) {
+/** M2: menu on the left, then the brand, then the person's avatar on the right. */
+export function TopBar({ homeHref, user, accountMenu, children }: TopBarProps) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <header className="ltw-tb">
+        <Dialog.Trigger aria-label="Open menu">
+          <MenuIcon size={20} aria-hidden="true" />
+        </Dialog.Trigger>
         <Link href={homeHref}>
           <Logo />
           Lead the Way
         </Link>
-        <Dialog.Trigger aria-label="Open menu">
-          <MenuIcon size={20} aria-hidden="true" />
-        </Dialog.Trigger>
+        <Menu
+          align="end"
+          items={accountMenu}
+          trigger={
+            <button
+              type="button"
+              className="ltw-tb-acct"
+              aria-label={user.name}
+              title={user.name}
+            >
+              <Avatar initials={user.initials} />
+            </button>
+          }
+        />
       </header>
       <Dialog.Portal>
         <Dialog.Overlay className="ltw-scrim ltw-scrim-fixed" />

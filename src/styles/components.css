@@ -1111,12 +1111,12 @@ button.ltw-sn-acct:hover {
   background: var(--interactive);
 }
 
-/* TopBar and drawer: the navigation below 672px */
+/* TopBar and drawer: the navigation below 672px. M2's order: menu, brand, avatar. */
 .ltw-tb {
   display: flex;
   align-items: center;
+  box-sizing: content-box; /* 48px of tap targets above the hairline */
   height: 48px;
-  padding-left: 16px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--background);
 }
@@ -1124,12 +1124,14 @@ button.ltw-sn-acct:hover {
   display: flex;
   align-items: center;
   gap: 10px;
+  height: 48px;
+  padding: 0 8px;
   color: var(--text-primary);
   font-weight: 600;
   text-decoration: none;
 }
 .ltw-tb button {
-  margin-left: auto;
+  flex: none;
   width: 48px;
   height: 48px;
   border: 0;
@@ -1142,6 +1144,9 @@ button.ltw-sn-acct:hover {
 }
 .ltw-tb button:hover {
   background: var(--layer-hover);
+}
+.ltw-tb .ltw-tb-acct {
+  margin-left: auto;
 }
 .ltw-drawer {
   position: fixed;

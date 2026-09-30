@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures";
-import { THEMES, expectedRing, focusRing, gallery } from "./helpers";
+import { THEMES, TOKENS, expectedRing, focusRing, gallery } from "./helpers";
 
 async function openDrawer(page: Page) {
   await page
@@ -17,6 +17,7 @@ for (const theme of THEMES) {
     page,
     expectAxeClean,
   }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(gallery(theme));
     const bar = page.locator("#topbar .ltw-tb");
     await expect(bar).toHaveCSS("height", "48px");
@@ -49,9 +50,47 @@ for (const theme of THEMES) {
 }
 
 for (const theme of THEMES) {
+  test(`the top bar reads menu, brand, avatar, as on M2, ${theme} @mobile`, async ({
+    page,
+    expectAxeClean,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(gallery(theme));
+    const bar = page.locator("#topbar .ltw-tb");
+    const menu = bar.getByRole("button", { name: "Open menu" });
+    const brand = bar.getByRole("link", { name: "Lead the Way" });
+    const avatar = bar.getByRole("button", { name: "Priya Raman" });
+    const barBox = (await bar.boundingBox())!;
+    const [m, b, a] = [
+      (await menu.boundingBox())!,
+      (await brand.boundingBox())!,
+      (await avatar.boundingBox())!,
+    ];
+    // Menu flush left, brand next, avatar flush right; every tap target 48px.
+    expect(m.x).toBe(barBox.x);
+    expect(b.x).toBeGreaterThanOrEqual(m.x + m.width);
+    expect(a.x + a.width).toBe(barBox.x + barBox.width);
+    for (const box of [m, b, a]) expect(box.height).toBe(48);
+    expect([m.width, a.width]).toEqual([48, 48]);
+    await expect(avatar.locator(".ltw-av")).toHaveCSS("width", "32px");
+    await expect(bar).toHaveCSS("background-color", TOKENS[theme].background);
+    await expect(bar).toHaveCSS(
+      "border-bottom-color",
+      TOKENS[theme].borderSubtle,
+    );
+    await expectAxeClean(page, "#topbar");
+
+    await avatar.click();
+    await expect(
+      page.getByRole("menuitem", { name: "Sign out" }),
+    ).toBeVisible();
+    await expectAxeClean(page, '[role="menu"]');
+  });
+
   test(`the drawer's close button closes it and returns focus, ${theme} @mobile`, async ({
     page,
   }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(gallery(theme));
     // Found by CSS: the open drawer hides the page from the accessibility tree.
     const trigger = page.locator('#topbar [aria-label="Open menu"]');
@@ -70,6 +109,7 @@ for (const theme of THEMES) {
 }
 
 test("following a link in the drawer closes it @mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(gallery("light"));
   const drawer = await openDrawer(page);
   await drawer.getByRole("link", { name: "Sprint" }).click();

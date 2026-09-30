@@ -134,7 +134,11 @@ export function AppShell({
   return (
     <div className="group/shell flex min-h-0 flex-1 flex-col">
       <div className="md:hidden">
-        <TopBar homeHref={shell.home}>
+        <TopBar
+          homeHref={shell.home}
+          user={shell.user}
+          accountMenu={accountMenu}
+        >
           <SideNav {...nav} resizable={false} />
         </TopBar>
       </div>

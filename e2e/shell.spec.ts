@@ -225,7 +225,21 @@ test.describe("week 2", () => {
     expect(top.y).toBe(0);
     expect(top.height).toBeGreaterThanOrEqual(48);
     const bar = page.getByRole("banner");
-    expect((await bar.boundingBox())!.y).toBeGreaterThanOrEqual(top.height);
+    const barBox = (await bar.boundingBox())!;
+    expect(barBox.y).toBeGreaterThanOrEqual(top.height);
+    // M2: the menu on the left, the person's avatar on the right.
+    const menu = (await bar
+      .getByRole("button", { name: "Open menu" })
+      .boundingBox())!;
+    const avatar = bar.getByRole("button", { name: "Dan Okafor" });
+    const avatarBox = (await avatar.boundingBox())!;
+    expect(menu.x).toBe(barBox.x);
+    expect(avatarBox.x + avatarBox.width).toBe(barBox.x + barBox.width);
+    await avatar.click();
+    await expect(
+      page.getByRole("menuitem", { name: "Switch to Priya's view" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
     await expect(
       page.getByText(DISCLAIMER).filter({ visible: true }),
     ).toHaveCount(1);
@@ -236,6 +250,20 @@ test.describe("week 2", () => {
     await expect(drawer).toBeHidden();
     await expect(page).toHaveURL("/me/sprint");
   });
+
+  for (const scheme of ["light", "dark"] as const) {
+    test(`/me on a phone passes axe, ${scheme} @mobile`, async ({
+      page,
+      expectAxeClean,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await signInAs(page, "dan");
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/me");
+      await expect(page.getByRole("banner")).toBeVisible();
+      await expectAxeClean(page);
+    });
+  }
 
   test("sign out ends at log in", async ({ page }) => {
     await signInAs(page, "dan");
