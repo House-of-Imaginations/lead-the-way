@@ -591,6 +591,10 @@ textarea.ltw-field {
   background: var(--avatar-manager);
   color: var(--avatar-ink);
 }
+.ltw-av-neutral {
+  background: var(--tag-gray-bg);
+  color: var(--tag-gray-text);
+}
 .ltw-av-org {
   background: var(--text-primary);
   color: var(--background);

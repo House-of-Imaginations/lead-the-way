@@ -1,3 +1,4 @@
+import type { ConvexError } from "convex/values";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { api } from "@convex/_generated/api";
@@ -6,14 +7,21 @@ import { fetchAuthQuery } from "./auth-server";
 
 /**
  * R1: the proxy no longer asks Convex whether the app is closed. Convex refuses
- * every public function while it is (FEATURE_UNAVAILABLE), and every page
- * that reads Convex goes through here, so a closed app sends people to "/".
+ * every public function while it is (FEATURE_UNAVAILABLE with flag "closed",
+ * from `assertFlag` in `convex/app.ts`), and every page that reads Convex goes
+ * through here, so a closed app sends people to "/". Another flag's refusal
+ * is that feature's, not a closed app.
  */
 export async function openOrHome<T>(read: () => Promise<T>): Promise<T> {
   try {
     return await read();
   } catch (error) {
-    if (errorCode(error) === "FEATURE_UNAVAILABLE") redirect("/");
+    // A code means a ConvexError carrying an object (`errorCode`).
+    if (
+      errorCode(error) === "FEATURE_UNAVAILABLE" &&
+      (error as ConvexError<{ flag?: string }>).data.flag === "closed"
+    )
+      redirect("/");
     throw error;
   }
 }

@@ -1,5 +1,6 @@
 import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
+import { safeNext } from "@/lib/url";
 
 const PRIVATE = /^\/(manager|me|settings|workspace|setup|guide|home)(\/|$)/;
 const AUTH_PAGES = /^\/(login|signup)\/?$/;
@@ -19,8 +20,10 @@ export function proxy(request: NextRequest) {
   }
   // GET only: the forms' own server action (`startAccount`) posts back to
   // /signup or /login once the cookie is set, and must reach the page.
-  if (signedIn && request.method === "GET" && AUTH_PAGES.test(pathname))
-    return NextResponse.redirect(new URL("/home", request.url));
+  if (signedIn && request.method === "GET" && AUTH_PAGES.test(pathname)) {
+    const next = safeNext(request.nextUrl.searchParams.get("next"));
+    return NextResponse.redirect(new URL(next ?? "/home", request.url));
+  }
   return NextResponse.next();
 }
 

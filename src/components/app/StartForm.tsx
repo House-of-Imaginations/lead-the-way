@@ -15,6 +15,7 @@ export function StartForm({ needsTerms }: { needsTerms: boolean }) {
       className="flex max-w-auth-form flex-col gap-05"
       onSubmit={(e) => {
         e.preventDefault();
+        setError(null);
         startTransition(async () => {
           const started = await startAccount(needsTerms);
           if ("error" in started) setError(started.error);

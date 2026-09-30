@@ -38,6 +38,26 @@ test("signed in, log in and sign up go home", async ({ page }) => {
   }
 });
 
+test("signed in, log in keeps a safe next", async ({ page }) => {
+  resetDemo("week1");
+  await signInAs(page, "dan");
+  await page.goto("/login?next=/me");
+  await expect(page).toHaveURL("/me");
+  // Dan's /home is /me too, so read the proxy's own answer.
+  for (const [next, to] of [
+    ["/me", "/me"],
+    ["//evil.example", "/home"],
+  ]) {
+    const res = await page.request.get(
+      `/login?next=${encodeURIComponent(next)}`,
+      { maxRedirects: 0 },
+    );
+    expect(res.headers().location, next).toBe(to);
+  }
+  await page.goto(`/login?next=${encodeURIComponent("//evil.example")}`);
+  await expect(page).toHaveURL("/me");
+});
+
 test("next never leaves the site", async ({ page, context }) => {
   resetDemo("week1");
   for (const next of [
@@ -57,23 +77,28 @@ test("next never leaves the site", async ({ page, context }) => {
   }
 });
 
-test("a stale cookie ends at /login", async ({ page, context }) => {
-  await context.addCookies([
-    {
-      name: "better-auth.session_token",
-      value: "not-a-session.signature",
-      url: "http://localhost:3000",
-    },
-  ]);
-  await page.goto("/manager");
-  await expect(page).toHaveURL("/login");
-  await expect(
-    page.getByRole("heading", { level: 1, name: "Log in to your account" }),
-  ).toBeVisible();
-  expect(
-    (await context.cookies()).some((c) => c.name.includes("session_token")),
-  ).toBe(false);
-});
+for (const entry of ["/manager", "/login"]) {
+  test(`a stale cookie ends at /login, entering at ${entry}`, async ({
+    page,
+    context,
+  }) => {
+    await context.addCookies([
+      {
+        name: "better-auth.session_token",
+        value: "not-a-session.signature",
+        url: "http://localhost:3000",
+      },
+    ]);
+    await page.goto(entry);
+    await expect(page).toHaveURL("/login");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Log in to your account" }),
+    ).toBeVisible();
+    expect(
+      (await context.cookies()).some((c) => c.name.includes("session_token")),
+    ).toBe(false);
+  });
+}
 
 test("a role page sends you to your home with a toast", async ({ page }) => {
   resetDemo("week2");
@@ -172,7 +197,7 @@ test("an account with no workspace accepts the terms at /setup/start", async ({
   await expect(page.getByText("Demo workspace.")).toHaveCount(0);
 });
 
-test("a closed app sends every page but the landing page home", async ({
+test("a closed app sends every page that reads Convex home", async ({
   page,
 }) => {
   convex(["env", "set", "APP_CLOSED", "on"]);

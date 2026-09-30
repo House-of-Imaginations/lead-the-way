@@ -16,8 +16,9 @@ import {
 import { useConvex, useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache";
 import { usePathname } from "next/navigation";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, createContext, useContext, type ReactNode } from "react";
 import {
+  InlineNotification,
   SideNav,
   TopBar,
   type MenuItem,
@@ -44,6 +45,19 @@ const ICONS: Record<NavIcon, CarbonIconType> = {
   Certificate,
 };
 
+const ExpectOrgId = createContext<Shell["expectOrgId"] | null>(null);
+
+/**
+ * The workspace this page was rendered for (R6). Product forms echo it on
+ * every mutation. It never follows the live shell: a switch in another tab
+ * must make a stale form fail, not quietly aim it at the other workspace.
+ */
+export function useExpectOrgId() {
+  const id = useContext(ExpectOrgId);
+  if (!id) throw new Error("useExpectOrgId needs the AppShell above it.");
+  return id;
+}
+
 /** The signed-in shell. The (app) layout renders the demo banner above it. */
 export function AppShell({
   initial,
@@ -54,8 +68,12 @@ export function AppShell({
   navState: NavState | null;
   children: ReactNode;
 }) {
-  // Ruling 17: live, starting from the server's copy (and kept through a sign-out).
-  const shell = useQuery(api.viewer.shell, {}) ?? initial;
+  // Ruling 17: live, starting from the server's copy (and kept through a
+  // sign-out). A live shell for another workspace (switched in another tab)
+  // is not shown: the page stays the one it was rendered for.
+  const live = useQuery(api.viewer.shell, {});
+  const switched = !!live && live.expectOrgId !== initial.expectOrgId;
+  const shell = (!switched && live) || initial;
   const pathname = usePathname();
   const convex = useConvex();
   const setActiveOrg = useMutation(api.profiles.setActiveOrg);
@@ -68,12 +86,21 @@ export function AppShell({
   // Switching persona or workspace and signing out all end in a full load, on
   // purpose: the server layout reads the new session and paints its shell and banner.
   // R2 and spec 6: the demo password comes from a DEMO_MODE-gated query, never the bundle.
+  // Anything that fails ends at log in, never silently where it started.
   async function switchPersona(email: string) {
-    const password = await convex.query(api.demo.personaPassword, {});
-    if (!password) return;
-    await authClient.signOut();
-    const { error } = await authClient.signIn.email({ email, password });
-    window.location.assign(error ? "/login" : "/home");
+    let to = "/login";
+    try {
+      const password = await convex.query(api.demo.personaPassword, {});
+      if (password) {
+        await authClient.signOut();
+        const { error } = await authClient.signIn.email({ email, password });
+        if (!error) to = "/home";
+      }
+    } catch {
+      // A rejection ends at log in too.
+    }
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
+    window.location.assign(to);
   }
 
   const orgMenu: MenuItem[] = [
@@ -81,11 +108,14 @@ export function AppShell({
       .filter((w) => !w.current)
       .map((w) => ({
         label: `Switch to ${w.name}`,
+        // Home either way: a refused switch lands on the workspace still open.
         onSelect: () =>
-          void setActiveOrg({ orgId: w.id }).then(() =>
-            // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
-            window.location.assign("/home"),
-          ),
+          void setActiveOrg({ orgId: w.id })
+            .catch(() => null)
+            .then(() =>
+              // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
+              window.location.assign("/home"),
+            ),
       })),
     // Ruling 18: the employee's disabled item waits for P7's settings pages.
     ...(shell.area === "manager"
@@ -104,14 +134,21 @@ export function AppShell({
       : []),
     {
       label: "Sign out",
+      // /signed-out drops the cookies and goes to log in, so a sign-out that
+      // failed on the server still ends signed out here.
       onSelect: () =>
-        void authClient.signOut().then(() =>
-          // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
-          window.location.assign("/login"),
-        ),
+        void authClient
+          .signOut()
+          .catch(() => null)
+          .then(() =>
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
+            window.location.assign("/signed-out"),
+          ),
     },
   ];
 
+  // Ruling: a person who isn't a manager gets the neutral avatar.
+  const user = { ...shell.user, manager: shell.area === "manager" };
   const nav: SideNavProps = {
     homeHref: shell.home,
     org: shell.org,
@@ -127,18 +164,14 @@ export function AppShell({
     })),
     checklist: shell.checklist,
     status: shell.status,
-    user: shell.user,
+    user,
     accountMenu,
   };
 
   return (
     <div className="group/shell flex min-h-0 flex-1 flex-col">
       <div className="md:hidden">
-        <TopBar
-          homeHref={shell.home}
-          user={shell.user}
-          accountMenu={accountMenu}
-        >
+        <TopBar homeHref={shell.home} user={user} accountMenu={accountMenu}>
           <SideNav {...nav} resizable={false} />
         </TopBar>
       </div>
@@ -147,7 +180,15 @@ export function AppShell({
           <SideNav {...nav} initialState={navState} />
         </div>
         <main className="flex min-w-0 flex-1 flex-col gap-07 overflow-y-auto p-05 md:p-07">
-          {children}
+          {switched && (
+            <div role="status">
+              <InlineNotification>
+                You switched workspace in another tab. Reload the page to
+                continue.
+              </InlineNotification>
+            </div>
+          )}
+          <ExpectOrgId value={initial.expectOrgId}>{children}</ExpectOrgId>
           {/* The disclaimer must be on every surface. The expanded nav carries it; the rail hides
               every label, so here it shows on phones (no side nav) and beside the rail. */}
           <p className="mt-auto text-label-01 text-text-helper md:hidden md:group-has-[.ltw-sn-col]/shell:block">

@@ -15,7 +15,12 @@ export function MovedToast() {
   const moved = params.get("moved") === "1";
 
   useEffect(() => {
-    if (!moved || shown.current) return;
+    // Reset once the param is gone, so a later role redirect toasts again.
+    if (!moved) {
+      shown.current = false;
+      return;
+    }
+    if (shown.current) return;
     shown.current = true;
     toast({ title: "That page is for your team. You're back on your home." });
     router.replace(withParams(pathname, params.toString(), { moved: null }));

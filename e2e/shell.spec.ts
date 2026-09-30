@@ -52,6 +52,34 @@ test.describe("week 2", () => {
     await expect(page.getByText(EMPTY_OVERVIEW)).toHaveCount(0);
   });
 
+  for (const scheme of ["light", "dark"] as const) {
+    test(`the avatar follows the role, ${scheme}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      const cases = [
+        ["priya", "/manager", "Priya Raman", TOKENS[scheme].avatarManager],
+        ["dan", "/me", "Dan Okafor", TOKENS[scheme].tagGrayBg],
+      ] as const;
+      for (const [who, path, name, fill] of cases) {
+        await page.context().clearCookies();
+        await page.setViewportSize({ width: 1280, height: 800 });
+        await signInAs(page, who);
+        await page.goto(path);
+        const avatar = (scope: ReturnType<typeof nav>) =>
+          scope.getByRole("button", { name }).locator(".ltw-av");
+        await expect(avatar(nav(page)), who).toHaveCSS(
+          "background-color",
+          fill,
+        );
+        // The top bar, on a phone.
+        await page.setViewportSize({ width: 390, height: 844 });
+        await expect(avatar(page.getByRole("banner")), who).toHaveCSS(
+          "background-color",
+          fill,
+        );
+      }
+    });
+  }
+
   test("Dan's shell reads as 11", async ({ page }) => {
     await signInAs(page, "dan");
     await page.goto("/me");

@@ -19,6 +19,8 @@ export const TOKENS = {
     highlight: "rgb(237, 245, 255)",
     borderSubtle: "rgb(224, 224, 224)",
     borderStrong: "rgb(141, 141, 141)",
+    tagGrayBg: "rgb(224, 224, 224)",
+    avatarManager: "rgb(166, 200, 255)",
   },
   dark: {
     focus: "rgb(255, 255, 255)",
@@ -34,6 +36,8 @@ export const TOKENS = {
     highlight: "rgb(0, 29, 108)",
     borderSubtle: "rgb(57, 57, 57)",
     borderStrong: "rgb(111, 111, 111)",
+    tagGrayBg: "rgb(82, 82, 82)",
+    avatarManager: "rgb(166, 200, 255)",
   },
 } as const;
 

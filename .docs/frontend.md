@@ -16,7 +16,7 @@ Follows the OS by default. A `?theme=light|dark` query param and a stored choice
 
 ## Feature flags on the frontend
 
-The frontend never reads a flag (`convex/app.ts`) directly. While `APP_CLOSED` is on, every public Convex function refuses with `FEATURE_UNAVAILABLE`, and `openOrHome` in [`src/lib/account/queries.ts`](../src/lib/account/queries.ts) turns that refusal into a redirect to `/` on every page that reads Convex. [`src/proxy.ts`](../src/proxy.ts) checks session cookie presence only, with no Convex call.
+The frontend never reads a flag (`convex/app.ts`) directly. While `APP_CLOSED` is on, every public Convex function refuses with `FEATURE_UNAVAILABLE`, and `openOrHome` in [`src/lib/account/queries.ts`](../src/lib/account/queries.ts) turns that refusal into a redirect to `/` on every page that reads Convex. The closed app only covers pages that read Convex; a page that reads nothing from Convex still renders. [`src/proxy.ts`](../src/proxy.ts) checks session cookie presence only, with no Convex call.
 
 ## Components
 

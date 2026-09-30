@@ -9,15 +9,14 @@ import { getHome, getShell } from "@/lib/account/queries";
 import { NAV_COOKIE, parseNav } from "@/lib/navState";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const [token, home, shell, jar] = await Promise.all([
+  const [token, shell, jar] = await Promise.all([
     getToken(),
-    getHome(),
     getShell(),
     cookies(),
   ]);
-  // A cookie Convex doesn't accept (Ruling 16), then no workspace yet (R4).
-  if (home === null) redirect("/signed-out");
-  if (shell === null) redirect(home);
+  // No shell: a cookie Convex doesn't accept (Ruling 16), or no workspace yet
+  // (R4). Only then ask where the person belongs, so a normal load reads once.
+  if (shell === null) redirect((await getHome()) ?? "/signed-out");
   return (
     <div className="flex h-dvh flex-col">
       {/* R11: rendered on the server, so its role="status" never announces a change after load. */}

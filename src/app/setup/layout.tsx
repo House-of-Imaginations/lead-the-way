@@ -13,13 +13,10 @@ export default async function SetupLayout({
 }: {
   children: ReactNode;
 }) {
-  const [token, home, shell] = await Promise.all([
-    getToken(),
-    getHome(),
-    getShell(),
-  ]);
-  // A cookie Convex doesn't accept (Ruling 16).
-  if (home === null) redirect("/signed-out");
+  const [token, shell] = await Promise.all([getToken(), getShell()]);
+  // No shell: no workspace yet, or a cookie Convex doesn't accept (Ruling 16).
+  // Only then ask whether the session is real, so a normal load reads once.
+  if (shell === null && (await getHome()) === null) redirect("/signed-out");
   return (
     <div className="flex min-h-dvh flex-col">
       {/* R11: rendered on the server, so its role="status" never announces a change after load. */}

@@ -58,7 +58,7 @@ export type SideNavProps = {
   sections: SideNavSection[];
   checklist?: SideNavChecklist | null;
   status?: SideNavStatus | null;
-  user: { initials: string; name: string; role: string };
+  user: { initials: string; name: string; role: string; manager?: boolean };
   accountMenu: MenuItem[];
   resizable?: boolean;
   /** The saved state as the server read it from the cookie: the first paint matches. */
@@ -337,7 +337,7 @@ export function SideNav({
               title={user.name}
               aria-label={user.name}
             >
-              <Avatar initials={user.initials} />
+              <Avatar initials={user.initials} manager={user.manager} />
               <span className="ltw-sn-who ltw-sn-x">
                 <span className="ltw-sn-name">{user.name}</span>
                 <span className="ltw-sn-sub">{user.role}</span>

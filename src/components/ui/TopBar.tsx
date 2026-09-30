@@ -11,7 +11,7 @@ import { Menu, type MenuItem } from "./Menu";
 export type TopBarProps = {
   homeHref: string;
   /** The signed-in person: their avatar opens the account menu, as the side nav's does. */
-  user: { initials: string; name: string };
+  user: { initials: string; name: string; manager?: boolean };
   accountMenu: MenuItem[];
   /** The drawer contents: the SideNav with resizable={false}. */
   children: ReactNode;
@@ -40,7 +40,7 @@ export function TopBar({ homeHref, user, accountMenu, children }: TopBarProps) {
               aria-label={user.name}
               title={user.name}
             >
-              <Avatar initials={user.initials} />
+              <Avatar initials={user.initials} manager={user.manager} />
             </button>
           }
         />
