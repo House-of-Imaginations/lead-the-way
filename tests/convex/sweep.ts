@@ -150,4 +150,13 @@ export const callsFor = ({
   "pathway:forViewer": {},
   "pathway:completeModule": { moduleKey: "shared-norms", expectOrgId: orgId },
   "pathway:rateConfidence": { score: 4, expectOrgId: orgId },
+  "agreements:current": {},
+  "agreements:save": {
+    tools: [],
+    neverIn: [],
+    checks: [],
+    escalation: "",
+    contact: { kind: "person", personId },
+    expectOrgId: orgId,
+  },
 });
