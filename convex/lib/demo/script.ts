@@ -1,12 +1,14 @@
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import type { EventType, ProjectCategory } from "../../tables/sprint";
-import { setActiveOrgOf } from "../account/ensureProfile";
 import { throwUserError } from "../errors";
-import { INVITE_WINDOW_MS, mintToken } from "../orgs/invites";
+import { logEvent } from "../events";
+import { insertInvite, inviteRoleOf } from "../orgs/invites";
+import { joinByInvite } from "../orgs/join";
 import { MAX_MEMBERS_PER_ORG } from "../orgs/membership";
-import { insertPerson } from "../orgs/people";
 import { PATHWAY_MODULES, type ModuleKey } from "../pathway";
+import { currentSprint, currentTeam } from "../sprint";
+import { upsertAnswer } from "../surveys";
 import { DEMO_CAST, castOf, demoUserId, type CastKey } from "./cast";
 import type { StepKey } from "./schedule";
 
@@ -68,7 +70,7 @@ const TEAM = {
 // step could miss one and invite a cast member twice; page it if that matters.
 const DEMO_INVITES_READ = 500;
 
-const INVITE_MESSAGE =
+export const INVITE_MESSAGE =
   "Hi team, from Wednesday 9 September we'll protect 2:00 to 3:00 PM every week for practical AI learning. Bring one real task you'd like to make easier. Priya";
 
 /** Agreement v1, worded as `docs/design/data-model.md` and screen 06 have it. */
@@ -218,10 +220,7 @@ const DAN_HOW_CHECKED =
 // ---- reads ----
 
 async function teamOf(ctx: MutationCtx, orgId: Id<"orgs">) {
-  const team = await ctx.db
-    .query("teams")
-    .withIndex("by_org", (q) => q.eq("orgId", orgId))
-    .first();
+  const team = await currentTeam(ctx, orgId);
   if (!team) {
     throwUserError(
       "DEMO_BROKEN",
@@ -232,10 +231,7 @@ async function teamOf(ctx: MutationCtx, orgId: Id<"orgs">) {
 }
 
 async function sprintOf(ctx: MutationCtx, orgId: Id<"orgs">) {
-  const sprint = await ctx.db
-    .query("sprints")
-    .withIndex("by_org", (q) => q.eq("orgId", orgId))
-    .first();
+  const sprint = await currentSprint(ctx, orgId);
   if (!sprint) {
     throwUserError(
       "DEMO_BROKEN",
@@ -294,13 +290,7 @@ async function log(
   meta?: Record<string, string | number | boolean>,
 ) {
   const sprint = await sprintOf(ctx, orgId);
-  await ctx.db.insert("events", {
-    orgId,
-    sprintId: sprint._id,
-    type,
-    at,
-    meta,
-  });
+  await logEvent(ctx, { orgId, sprintId: sprint._id, type, at, meta });
 }
 
 // ---- writes, each keeping the three rules ----
@@ -312,7 +302,7 @@ async function answer(
   question: "aiConfidence" | "comfortWithManager" | "normsConfidence",
   score: number,
 ): Promise<boolean> {
-  const { ctx, orgId } = step;
+  const { ctx, orgId, at } = step;
   const sprint = await sprintOf(ctx, orgId);
   const mine = await ctx.db
     .query("surveyResponses")
@@ -320,16 +310,18 @@ async function answer(
       q.eq("personId", person._id).eq("sprintId", sprint._id),
     )
     .collect();
+  // Rule 2: an answer somebody gave stands; `upsertAnswer` would replace it.
   if (mine.some((r) => r.phase === phase && r.question === question)) {
     return false;
   }
-  await ctx.db.insert("surveyResponses", {
+  await upsertAnswer(ctx, {
     orgId,
     sprintId: sprint._id,
     personId: person._id,
     phase,
     question,
     score,
+    at,
   });
   return true;
 }
@@ -390,11 +382,15 @@ async function session(step: StepCtx, week: number, keys: CastKey[]) {
   for (const key of keys) await progress(step, key, week, week * 25);
 }
 
-/** Priya watches `minutes` of a pathway module. */
-async function watch(step: StepCtx, moduleKey: ModuleKey, minutes: number) {
+/** Priya watches `minutes` of a pathway module. True when that completed it. */
+async function watch(
+  step: StepCtx,
+  moduleKey: ModuleKey,
+  minutes: number,
+): Promise<boolean> {
   const { ctx, orgId, at } = step;
   const priya = await personOf(ctx, orgId, "priya");
-  if (!priya) return;
+  if (!priya) return false;
   const total = PATHWAY_MODULES.find((m) => m.key === moduleKey)?.minutes ?? 0;
   const row = await ctx.db
     .query("pathwayProgress")
@@ -419,6 +415,7 @@ async function watch(step: StepCtx, moduleKey: ModuleKey, minutes: number) {
     });
   }
   if (newlyDone) await log(step, "pathway.completed", { moduleKey });
+  return newlyDone;
 }
 
 /** Everyone in `keys` signs the latest saved agreement. */
@@ -525,42 +522,22 @@ async function save(step: StepCtx, key: ProjectKey) {
   await log(step, "project.saved", { fieldsFilled: 3 });
 }
 
-async function employeeRoleOf(ctx: MutationCtx, orgId: Id<"orgs">) {
-  const roles = await ctx.db
-    .query("orgRoles")
-    .withIndex("by_org", (q) => q.eq("orgId", orgId))
-    .collect();
-  // Found by name to invite into, never to authorise anything. Without
-  // "Employee", the custom role that grants the least.
-  const custom = roles.flatMap((r) => (r.kind === "custom" ? [r] : []));
-  const role =
-    custom.find((r) => r.name === "Employee") ??
-    custom.sort((a, b) => a.permissions.length - b.permissions.length)[0];
-  if (!role) {
-    throwUserError(
-      "DEMO_BROKEN",
-      "The demo workspace has no Employee role. Reset the demo.",
-    );
-  }
-  return role;
-}
-
 // ---- the steps ----
 
 export const STEPS: Record<StepKey, Step> = {
   "priya.team": async (step) => {
     const team = await teamOf(step.ctx, step.orgId);
-    // Saved by the tester: their answers stand, blanks included.
-    if (team.savedAt === undefined) {
-      await step.ctx.db.patch(team._id, {
-        sizeBand: team.sizeBand ?? TEAM.sizeBand,
-        industry: team.industry ?? TEAM.industry,
-        teamFunction: team.teamFunction ?? TEAM.teamFunction,
-        aiUse: team.aiUse ?? TEAM.aiUse,
-        challenges: team.challenges.length ? team.challenges : TEAM.challenges,
-        savedAt: step.at,
-      });
-    }
+    // Saved by the tester: their answers stand, blanks and a skipped rating
+    // included (Ruling 4).
+    if (team.savedAt !== undefined) return;
+    await step.ctx.db.patch(team._id, {
+      sizeBand: team.sizeBand ?? TEAM.sizeBand,
+      industry: team.industry ?? TEAM.industry,
+      teamFunction: team.teamFunction ?? TEAM.teamFunction,
+      aiUse: team.aiUse ?? TEAM.aiUse,
+      challenges: team.challenges.length ? team.challenges : TEAM.challenges,
+      savedAt: step.at,
+    });
     const priya = await personOf(step.ctx, step.orgId, "priya");
     if (priya) await answer(step, priya, "before", "normsConfidence", 2);
   },
@@ -576,11 +553,20 @@ export const STEPS: Record<StepKey, Step> = {
   },
 
   "priya.pathway": async (step) => {
+    let finished = false;
     for (const pathwayModule of PATHWAY_MODULES) {
       if (pathwayModule.pathway === "required") {
-        await watch(step, pathwayModule.key, pathwayModule.minutes);
+        const done = await watch(
+          step,
+          pathwayModule.key,
+          pathwayModule.minutes,
+        );
+        finished = done || finished;
       }
     }
+    // Only when the script finished the path. A tester who finished it and
+    // skipped "Ready to launch?" keeps the skip (Ruling 4).
+    if (!finished) return;
     const priya = await personOf(step.ctx, step.orgId, "priya");
     if (priya) await answer(step, priya, "after", "normsConfidence", 4);
   },
@@ -633,7 +619,7 @@ export const STEPS: Record<StepKey, Step> = {
     }
     const priya = await personOf(ctx, orgId, "priya");
     if (!priya) return;
-    const role = await employeeRoleOf(ctx, orgId);
+    const role = await inviteRoleOf(ctx, orgId);
     const invited = new Set(
       (
         await ctx.db
@@ -644,21 +630,18 @@ export const STEPS: Record<StepKey, Step> = {
     );
     for (const person of DEMO_CAST) {
       if (person.key === "priya" || invited.has(person.email)) continue;
-      await ctx.db.insert("orgInvites", {
+      // `expiresAt` is real time, judged by the demo clock (`nowFor`), so it
+      // outlives every demo target and Omar stays invited.
+      await insertInvite(ctx, {
         orgId,
         roleId: role._id,
-        token: mintToken(),
         email: person.email,
         name: person.name,
         sprintId: sprint._id,
         message: sprint.inviteMessage ?? INVITE_MESSAGE,
-        status: "pending",
         invitedBy: priya.userId,
+        at,
         sentAt: at,
-        // Stamped in real time, judged by the demo clock (`nowFor`), so it
-        // outlives every demo target and Omar stays invited.
-        expiresAt: Date.now() + INVITE_WINDOW_MS,
-        createdAt: at,
       });
     }
   },
@@ -684,21 +667,7 @@ export const STEPS: Record<StepKey, Step> = {
           "The demo accounts are missing. Run seed:reset from the terminal first.",
         );
       }
-      const person = await insertPerson(
-        ctx,
-        userId,
-        orgId,
-        invite.roleId,
-        at,
-        cast.jobTitle,
-      );
-      await ctx.db.patch(invite._id, {
-        status: "accepted",
-        personId: person._id,
-        respondedAt: at,
-      });
-      await setActiveOrgOf(ctx, userId, orgId);
-      await log(step, "invite.accepted");
+      await joinByInvite(ctx, invite, userId, at, cast.jobTitle);
     }
   },
 

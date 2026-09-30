@@ -46,7 +46,7 @@ function offsetAt(timeZone: string, at: number): number {
 }
 
 /** "2026-09-09" plus `days`, as a date string. */
-function addDays(date: string, days: number): string {
+export function addDays(date: string, days: number): string {
   const [y, m, d] = date.split("-").map(Number);
   return new Date(Date.UTC(y!, m! - 1, d! + days)).toISOString().slice(0, 10);
 }
@@ -59,12 +59,85 @@ function zoned(date: string, time: string, timeZone: string): number {
   return asUtc - offsetAt(timeZone, guess);
 }
 
+/** A date string's day of the week, as `Date#getDay` numbers it (0 is Sunday). */
+function dayOf(date: string): number {
+  return new Date(`${date}T00:00:00Z`).getUTCDay();
+}
+
 /** When week `week`'s protected hour starts (week 1 is the first). */
 export function hourStart(sprint: HourOf, week: number): number {
-  const startDay = new Date(`${sprint.startDate}T00:00:00Z`).getUTCDay();
-  const shift = (sprint.protectedHour.weekday - startDay + 7) % 7;
+  const shift =
+    (sprint.protectedHour.weekday - dayOf(sprint.startDate) + 7) % 7;
   const date = addDays(sprint.startDate, shift + 7 * (week - 1));
   return zoned(date, sprint.protectedHour.start, sprint.timeZone);
+}
+
+/**
+ * Week one is the week that starts on the first Monday after `now`, in
+ * `timeZone` (Ruling 17). Returns that week's `weekday` (1 is Monday, 5 is
+ * Friday) as "YYYY-MM-DD". On Tuesday 1 September, Wednesday is the 9th.
+ */
+export function weekOneDate(
+  weekday: number,
+  now: number,
+  timeZone: string,
+): string {
+  const p = parts(now, timeZone, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const today = `${p.year}-${p.month}-${p.day}`;
+  const toMonday = (8 - dayOf(today)) % 7 || 7;
+  return addDays(today, toMonday + weekday - 1);
+}
+
+export type SprintPhase = "draft" | "scheduled" | "active" | "complete";
+
+/**
+ * Where a sprint is, from `launchedAt` and the clock (Ruling 1). The stored
+ * `status` is never read: no product writer moves it past "scheduled".
+ */
+export function sprintPhase(sprint: Doc<"sprints">, now: number): SprintPhase {
+  if (sprint.launchedAt === undefined) return "draft";
+  const lastHourEnds =
+    hourStart(sprint, sprint.weeks) +
+    sprint.protectedHour.durationMinutes * 60_000;
+  if (sprint.completedAt !== undefined || now >= lastHourEnds) {
+    return "complete";
+  }
+  if (now < zoned(sprint.startDate, "00:00", sprint.timeZone)) {
+    return "scheduled";
+  }
+  return "active";
+}
+
+const EVERY = [
+  "Sundays",
+  "Mondays",
+  "Tuesdays",
+  "Wednesdays",
+  "Thursdays",
+  "Fridays",
+  "Saturdays",
+];
+
+/** "14:00" plus `minutes`, as "3:00 PM". */
+function clockLabel(time: string, minutes = 0): string {
+  const [h, m] = time.split(":").map(Number);
+  const total = (h! * 60 + m! + minutes) % (24 * 60);
+  const hour = Math.floor(total / 60);
+  const mm = String(total % 60).padStart(2, "0");
+  return `${hour % 12 || 12}:${mm} ${hour < 12 ? "AM" : "PM"}`;
+}
+
+/** "Wednesdays, 2:00 PM to 3:00 PM": the hour as 04 and 07 write it (Ruling 19). */
+export function hourPattern(
+  weekday: number,
+  start: string,
+  durationMinutes: number,
+): string {
+  return `${EVERY[weekday]}, ${clockLabel(start)} to ${clockLabel(start, durationMinutes)}`;
 }
 
 /** "Wed 16 Sep, 2:00 PM" */

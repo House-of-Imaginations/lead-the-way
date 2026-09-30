@@ -8,6 +8,7 @@ import { MAX_MEMBERS_PER_ORG, seatsOfUser } from "./orgs/membership";
 import { initialsOf } from "./orgs/people";
 import { PATHWAY_MODULES } from "./pathway";
 import { SETUP_STEPS } from "./setupSteps";
+import { currentSprint, currentTeam } from "./sprint";
 import { sprintStatus } from "./sprintTime";
 import type { Viewer } from "./viewer";
 
@@ -89,30 +90,15 @@ export const isManager = (viewer: Viewer) =>
   viewer.permissions.includes("team:insights") ||
   viewer.permissions.includes("sprint:manage");
 
-async function teamOf(ctx: QueryCtx, viewer: Viewer) {
-  return await ctx.db
-    .query("teams")
-    .withIndex("by_org", (q) => q.eq("orgId", viewer.org._id))
-    .first();
-}
-
-async function sprintOf(ctx: QueryCtx, viewer: Viewer) {
-  // The newest sprint is the current one (P7 may add another).
-  return await ctx.db
-    .query("sprints")
-    .withIndex("by_org", (q) => q.eq("orgId", viewer.org._id))
-    .order("desc")
-    .first();
-}
-
 /** Where this viewer belongs (R4). */
 export async function homeOf(
   ctx: QueryCtx,
   viewer: Viewer,
-  known?: Awaited<ReturnType<typeof teamOf>>,
+  known?: Doc<"teams"> | null,
 ): Promise<string> {
   if (!isManager(viewer)) return "/me";
-  const team = known === undefined ? await teamOf(ctx, viewer) : known;
+  const team =
+    known === undefined ? await currentTeam(ctx, viewer.org._id) : known;
   return team?.savedAt === undefined ? "/setup/team" : "/manager";
 }
 
@@ -249,8 +235,8 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
   const manager = isManager(viewer);
   const isDemo = viewer.org.isDemo && flagOn("demo");
   const [team, sprint] = await Promise.all([
-    teamOf(ctx, viewer),
-    sprintOf(ctx, viewer),
+    currentTeam(ctx, viewer.org._id),
+    currentSprint(ctx, viewer.org._id),
   ]);
   const workspaces: Shell["workspaces"] = [];
   for (const seat of await seatsOfUser(ctx, viewer.userId)) {

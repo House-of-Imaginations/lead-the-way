@@ -10,13 +10,13 @@ import {
 } from "./lib/customFunctions";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { setActiveOrgOf } from "./lib/account/ensureProfile";
 import { nowFor } from "./lib/clock";
 import { profileOf } from "./lib/account/profile";
 import { emailConfigured } from "./lib/email/send";
 import { throwUserError, type ErrorCode } from "./lib/errors";
 import { sendInvite } from "./lib/orgs/email";
-import { INVITE_WINDOW_MS, mintToken } from "./lib/orgs/invites";
+import { INVITE_WINDOW_MS, insertInvite } from "./lib/orgs/invites";
+import { joinByInvite } from "./lib/orgs/join";
 import {
   MAX_MEMBERS_PER_ORG,
   assertCanJoin,
@@ -24,7 +24,7 @@ import {
   permissionsOf,
   requireWithin,
 } from "./lib/orgs/membership";
-import { insertPerson, isDemoAccount } from "./lib/orgs/people";
+import { isDemoAccount } from "./lib/orgs/people";
 import { reserveRateLimit } from "./lib/rateLimits";
 
 /**
@@ -274,7 +274,6 @@ export const create = orgMutation("members:manage")({
     }
 
     const now = await nowIn(ctx, ctx.orgId);
-    const expiresAt = Date.now() + INVITE_WINDOW_MS;
 
     // The cap counts live pending invitations only. Lapsed ones stay in the
     // table (spec 5) but `list` hides them, so counting them would brick
@@ -286,20 +285,16 @@ export const create = orgMutation("members:manage")({
       );
     }
 
-    const token = mintToken();
     const to = email?.trim().toLowerCase() || undefined;
-    const inviteId = await ctx.db.insert("orgInvites", {
+    const { inviteId, token, expiresAt } = await insertInvite(ctx, {
       orgId: ctx.orgId,
       roleId,
-      token,
       email: to,
       name: who,
       sprintId,
       message: note,
-      status: "pending",
       invitedBy: ctx.userId,
-      expiresAt,
-      createdAt: now,
+      at: now,
     });
 
     // Only when an address was named. A shareable link has nowhere to go.
@@ -508,20 +503,7 @@ export const accept = authenticatedMutation({
     // The only door into a workspace, so the only place the ceilings are held.
     await assertCanJoin(ctx, ctx.userId, invite.orgId);
 
-    const now = nowFor(org);
-    const person = await insertPerson(
-      ctx,
-      ctx.userId,
-      invite.orgId,
-      invite.roleId,
-      now,
-    );
-    await ctx.db.patch(invite._id, {
-      status: "accepted",
-      personId: person._id,
-      respondedAt: now,
-    });
-    await setActiveOrgOf(ctx, ctx.userId, invite.orgId);
+    await joinByInvite(ctx, invite, ctx.userId, nowFor(org));
     return { slug: org.slug, orgId: invite.orgId };
   },
 });

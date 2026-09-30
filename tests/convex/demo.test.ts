@@ -1055,3 +1055,100 @@ test("a demo persona is refused a real workspace's invitation up front", async (
     "READY",
   );
 });
+
+test("a draft team keeps the tester's answers after a clock jump", async () => {
+  const { t, orgId, as } = await calderLane();
+  const team = await teamOf(t, orgId);
+  // As Priya: page 1 half filled, then Save and exit (a draft, no savedAt).
+  await t.run((ctx) =>
+    ctx.db.patch(team._id, {
+      sizeBand: "2 to 5",
+      challenges: ["Lack of time to learn"],
+    }),
+  );
+
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
+  expect(await teamOf(t, orgId)).toMatchObject({
+    // Hers, kept.
+    sizeBand: "2 to 5",
+    challenges: ["Lack of time to learn"],
+    // The blanks, filled by the script at 10:00 on 1 September.
+    industry: "Professional services",
+    teamFunction: "Client service",
+    aiUse: "Advanced users, inconsistent practices",
+    savedAt: SCHEDULE["priya.team"],
+  });
+});
+
+test("a skipped rating stays skipped after a jump", async () => {
+  const { t, orgId, as } = await calderLane();
+  const team = await teamOf(t, orgId);
+  const priya = await personId(t, orgId, castOf("priya").email);
+  // As Priya: she saves page 2 without a rating, and finishes the required
+  // modules without answering "Ready to launch?".
+  await t.run(async (ctx) => {
+    await ctx.db.patch(team._id, { savedAt: mel("2026-09-01T09:40") });
+    for (const [moduleKey, minutes] of [
+      ["shared-norms", 5],
+      ["without-micromanaging", 10],
+      ["team-agreement", 10],
+    ] as const) {
+      await ctx.db.insert("pathwayProgress", {
+        orgId,
+        personId: priya,
+        moduleKey,
+        minutesWatched: minutes,
+        completedAt: mel("2026-09-01T09:45"),
+      });
+    }
+  });
+
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
+  const sprint = await sprintOf(t, orgId);
+  const mine = await t.run((ctx) =>
+    ctx.db
+      .query("surveyResponses")
+      .withIndex("by_person_and_sprint", (q) =>
+        q.eq("personId", priya).eq("sprintId", sprint._id),
+      )
+      .collect(),
+  );
+  expect(mine.filter((r) => r.question === "normsConfidence")).toEqual([]);
+});
+
+test("the scripted team.join logs through joinByInvite", async () => {
+  const { t, orgId, as } = await calderLane();
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
+  const joinedAt = SCHEDULE["team.join"];
+  const accepted = (await eventsOf(t, orgId)).filter(
+    (e) => e.type === "invite.accepted",
+  );
+  // Seven of the eight join (Omar stays invited), each through joinByInvite.
+  expect(accepted).toHaveLength(7);
+  expect(accepted.every((e) => e.at === joinedAt)).toBe(true);
+  const sprint = await sprintOf(t, orgId);
+  expect(accepted.every((e) => e.sprintId === sprint._id)).toBe(true);
+  // And the seat, the answered invitation and the open workspace with it.
+  const dan = await as("dan").run((ctx) => getViewer(ctx));
+  expect(dan?.org._id).toBe(orgId);
+  const invites = await t.run((ctx) =>
+    ctx.db
+      .query("orgInvites")
+      .withIndex("by_org_status_and_expiresAt", (q) =>
+        q.eq("orgId", orgId).eq("status", "accepted"),
+      )
+      .collect(),
+  );
+  expect(invites.find((i) => i.personId === dan?.person._id)).toMatchObject({
+    respondedAt: joinedAt,
+  });
+});

@@ -1,7 +1,12 @@
+import type { Doc, Id } from "../../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../../_generated/server";
+import { throwUserError } from "../errors";
+
 /**
- * The credential on an invitation link, and how long it is good for.
+ * The credential on an invitation link, how long it is good for, and the one
+ * insert into `orgInvites`.
  *
- * Pure and separate from the mutations: this is the half where being quietly
+ * `mintToken` and the window are pure: this is the half where being quietly
  * wrong costs something, so it is testable without a database.
  */
 
@@ -32,4 +37,70 @@ export function mintToken(): string {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
+}
+
+/**
+ * The one insert into `orgInvites`: `invites.create`, `sprints.launch` and the
+ * script's `priya.launch` all write through here (writer contract rule 6, so
+ * the address is lowercased here). `at` is the workspace clock and stamps
+ * `createdAt`; `expiresAt` is real time, as the window above says.
+ */
+export async function insertInvite(
+  ctx: MutationCtx,
+  i: {
+    orgId: Id<"orgs">;
+    roleId: Id<"orgRoles">;
+    email?: string;
+    name?: string;
+    sprintId?: Id<"sprints">;
+    message?: string;
+    invitedBy: string;
+    at: number;
+    sentAt?: number;
+  },
+): Promise<{ inviteId: Id<"orgInvites">; token: string; expiresAt: number }> {
+  const token = mintToken();
+  const expiresAt = Date.now() + INVITE_WINDOW_MS;
+  const inviteId = await ctx.db.insert("orgInvites", {
+    orgId: i.orgId,
+    roleId: i.roleId,
+    token,
+    email: i.email?.trim().toLowerCase() || undefined,
+    name: i.name,
+    sprintId: i.sprintId,
+    message: i.message,
+    status: "pending",
+    invitedBy: i.invitedBy,
+    sentAt: i.sentAt,
+    expiresAt,
+    createdAt: i.at,
+  });
+  return { inviteId, token, expiresAt };
+}
+
+/**
+ * The role a team is invited into: "Employee", or else the custom role that
+ * grants the least. Found by name to invite into, never to authorise
+ * anything. The owner role is never a candidate.
+ */
+export async function inviteRoleOf(
+  ctx: QueryCtx,
+  orgId: Id<"orgs">,
+): Promise<Doc<"orgRoles">> {
+  // ponytail: a workspace holds at most 25 roles (`MAX_ROLES_PER_ORG`).
+  const roles = await ctx.db
+    .query("orgRoles")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .collect();
+  const custom = roles.flatMap((r) => (r.kind === "custom" ? [r] : []));
+  const role =
+    custom.find((r) => r.name === "Employee") ??
+    custom.sort((a, b) => a.permissions.length - b.permissions.length)[0];
+  if (!role) {
+    throwUserError(
+      "NOT_FOUND",
+      "There is no role to invite your team into. Add one in workspace settings first.",
+    );
+  }
+  return role;
 }

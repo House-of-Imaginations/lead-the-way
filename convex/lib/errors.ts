@@ -59,7 +59,10 @@ export type ErrorCode =
   // The viewer's open workspace isn't the one the page was showing (R6).
   | "WORKSPACE_CHANGED"
   // Sign-up needs the terms box once (R8).
-  | "TERMS_REQUIRED";
+  | "TERMS_REQUIRED"
+  // Setup edits after launch, and a launch before setup is done (P4).
+  | "SPRINT_LAUNCHED"
+  | "LAUNCH_NOT_READY";
 
 export function isRateLimitedError(error: unknown): error is ConvexError<{
   code: "RATE_LIMITED";
