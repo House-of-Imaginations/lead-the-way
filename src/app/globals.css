@@ -105,6 +105,8 @@
     --text-primary: #161616;
     --text-secondary: #525252;
     --highlight: #edf5ff;
+    --tag-gray-bg: #e0e0e0;
+    --tag-gray-text: #161616;
     color: var(--text-primary);
     print-color-adjust: exact;
   }

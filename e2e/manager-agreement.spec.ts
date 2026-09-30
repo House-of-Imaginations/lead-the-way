@@ -9,16 +9,30 @@ const preview = (page: Page) =>
   page.getByRole("region", { name: "Live preview" });
 const saveButton = (page: Page) =>
   page.getByRole("button", { name: "Save agreement" });
+/** The page's own Draft or Saved tag beside the h1; the sheet has its own. */
+const titleTag = (page: Page, text: string) =>
+  page
+    .getByRole("heading", { level: 1 })
+    .locator("xpath=..")
+    .getByText(text, { exact: true });
 
 async function open(page: Page) {
   await signInAs(page, "priya");
   await page.goto("/manager/agreement");
 }
 
+// Uncaught errors, which would raise the Next dev overlay.
+let errors: string[] = [];
+test.beforeEach(({ page }) => {
+  errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+});
+test.afterEach(() => expect(errors).toEqual([]));
+
 test("live preview follows the form", async ({ page }) => {
   resetDemo();
   await open(page);
-  await expect(page.getByText("Draft", { exact: true })).toBeVisible();
+  await expect(titleTag(page, "Draft")).toBeVisible();
 
   const tool = page.getByRole("textbox", { name: "Add a tool" });
   await tool.fill("Gemini for Workspace");
@@ -77,10 +91,14 @@ test("Save agreement saves version 1 and toasts", async ({ page }) => {
     page.getByText("Agreement saved", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText(SAVED_V1, { exact: true })).toBeVisible();
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(titleTag(page, "Saved")).toBeVisible();
+  // A saved agreement prints without the Draft mark.
+  await expect(preview(page).getByText("Draft", { exact: true })).toHaveCount(
+    0,
+  );
 
   await page.reload();
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(titleTag(page, "Saved")).toBeVisible();
 });
 
 test("a second save with changes makes version 2", async ({ page }) => {
@@ -95,14 +113,14 @@ test("a second save with changes makes version 2", async ({ page }) => {
   ).toBeVisible();
 
   await page.getByRole("checkbox", { name: "Check calculations" }).check();
-  await expect(page.getByText("Draft", { exact: true })).toBeVisible();
+  await expect(titleTag(page, "Draft")).toBeVisible();
   await saveButton(page).click();
   await expect(
     page.getByText("Version 2. Your team signs it when they join.", {
       exact: true,
     }),
   ).toBeVisible();
-  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(titleTag(page, "Saved")).toBeVisible();
 
   // A contact that is a person survives a round trip through a label (Contract issue 1).
   const contact = page.getByRole("combobox", { name: "AI question contact" });
@@ -146,6 +164,8 @@ test("Download PDF prints only the preview", async ({ page }) => {
   await expect(
     sheet.getByText("Concept prototype. Not an official IBM product."),
   ).toBeVisible();
+  // Unsaved, so the paper says it's a draft.
+  await expect(sheet.getByText("Draft", { exact: true })).toBeVisible();
   await expect(sheet.locator("article")).toHaveCSS(
     "background-color",
     "rgb(255, 255, 255)",
@@ -188,6 +208,35 @@ test("an employee is sent home from /manager/agreement", async ({ page }) => {
   await page.goto("/manager/agreement");
   await expect(page).toHaveURL("/me");
   await expect(page.getByText(MOVED, { exact: true })).toBeVisible();
+});
+
+test("06 follows the PNG", async ({ page }) => {
+  resetDemo();
+  await open(page);
+  // Section helpers are body-02.
+  await expect(
+    page.getByText("Approved tools only. Anything else, ask first."),
+  ).toHaveCSS("font-size", "14px");
+  // The label row sits on the layer-01 backdrop with the sheet.
+  const backdrop = preview(page).locator(".bg-layer-01");
+  await expect(backdrop.getByText("Live preview")).toBeVisible();
+  await expect(backdrop.getByText("One page, A4")).toBeVisible();
+  // The sheet title is heading-02: 28px at weight 300.
+  const title = preview(page).getByRole("heading", {
+    name: "Our Team AI Agreement",
+  });
+  await expect(title).toHaveCSS("font-size", "28px");
+  await expect(title).toHaveCSS("font-weight", "300");
+});
+
+test("06 at 390", async ({ page, expectAxeClean }) => {
+  resetDemo();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await expect(preview(page)).toContainText("Our Team AI Agreement");
+  await expect(saveButton(page)).toBeEnabled();
+  await expectAxeClean(page);
+  await page.screenshot({ path: "output/screens/06-390.png", fullPage: true });
 });
 
 for (const scheme of ["light", "dark"] as const) {

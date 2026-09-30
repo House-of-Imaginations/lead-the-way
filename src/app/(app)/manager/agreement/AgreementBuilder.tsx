@@ -76,7 +76,7 @@ function Section({
     <section className="grid grid-cols-[220px_minmax(0,1fr)] gap-07 border-t border-border-subtle py-06 max-[900px]:grid-cols-1 max-[900px]:gap-05">
       <div className="flex flex-col gap-02">
         <h2 className="text-heading-04">{title}</h2>
-        <p className="text-label-01 text-text-secondary">{helper}</p>
+        <p className="text-body-02 text-text-secondary">{helper}</p>
       </div>
       <div className="flex flex-col gap-05">{children}</div>
     </section>
@@ -365,15 +365,12 @@ export function AgreementBuilder({ initial }: { initial: Agreement }) {
           </Section>
         </div>
 
-        <section
-          aria-labelledby="preview-label"
-          className="flex flex-col gap-03"
-        >
-          <div className="flex justify-between gap-05 text-label-01 text-text-secondary">
-            <span id="preview-label">Live preview</span>
-            <span>One page, A4</span>
-          </div>
-          <div className="bg-layer-01 p-06">
+        <section aria-labelledby="preview-label">
+          <div className="flex flex-col gap-05 bg-layer-01 p-06">
+            <div className="flex justify-between gap-05 text-label-01 text-text-secondary">
+              <span id="preview-label">Live preview</span>
+              <span>One page, A4</span>
+            </div>
             <AgreementPreview
               teamName={data.teamName}
               dateLabel={data.dateLabel}
@@ -384,6 +381,7 @@ export function AgreementBuilder({ initial }: { initial: Agreement }) {
               escalation={form.escalation}
               contactName={contactName}
               managerInitials={data.managerInitials}
+              isSaved={isSaved}
             />
           </div>
         </section>

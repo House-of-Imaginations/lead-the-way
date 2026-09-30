@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Avatar } from "@/components/ui/Avatar";
+import { Tag } from "@/components/ui/Tag";
 
 export type AgreementPreviewProps = {
   teamName: string;
@@ -11,6 +12,8 @@ export type AgreementPreviewProps = {
   escalation: string;
   contactName: string;
   managerInitials: string;
+  /** False while the form differs from the saved version, so paper says Draft. */
+  isSaved: boolean;
 };
 
 const NONE = "None chosen yet.";
@@ -38,12 +41,21 @@ export function AgreementPreview({
   escalation,
   contactName,
   managerInitials,
+  isSaved,
 }: AgreementPreviewProps) {
   return (
     <div data-print="agreement" className="flex flex-col gap-03">
       <article className="flex flex-col gap-05 border border-border-subtle bg-background p-[40px] text-text-primary">
         <header className="flex flex-col gap-02">
-          <h2 className="text-heading-03">Our Team AI Agreement</h2>
+          <div className="flex items-center justify-between gap-05">
+            <h2 className="text-heading-02">Our Team AI Agreement</h2>
+            {/* On screen the page's own tag says Draft; paper needs its own. */}
+            {isSaved ? null : (
+              <span className="hidden print:block">
+                <Tag>Draft</Tag>
+              </span>
+            )}
+          </div>
           <p className="text-label-01 text-text-secondary">
             {teamName}, {dateLabel}
           </p>
