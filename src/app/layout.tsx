@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
-import { ConvexClientProvider } from "./_components/ConvexClientProvider";
 import { ToastProvider } from "@/components/ui/Toast";
-import { getToken } from "@/lib/account/auth-server";
 import { themeScript } from "@/lib/theme";
 
 const plexSans = IBM_Plex_Sans({
@@ -26,14 +24,11 @@ export const metadata: Metadata = {
     "A manager-first team AI learning experience. Concept prototype. Not an official IBM product.",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Handing the token to the provider avoids an unauthenticated first paint.
-  const initialToken = await getToken();
-
   return (
     <html
       lang="en"
@@ -46,9 +41,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-full bg-background" suppressHydrationWarning>
-        <ConvexClientProvider initialToken={initialToken}>
-          <ToastProvider>{children}</ToastProvider>
-        </ConvexClientProvider>
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );
