@@ -579,6 +579,10 @@ textarea.ltw-field {
   background: var(--layer-01);
   color: var(--text-primary);
 }
+/* No section heading (the employee nav): keep the heading's 16px gap. */
+.ltw-sn-org + .ltw-sn-a {
+  margin-top: 12px;
+}
 .ltw-av {
   width: 32px;
   height: 32px;
@@ -1026,6 +1030,29 @@ textarea.ltw-field {
   background: var(--layer-01);
   color: var(--text-primary);
   box-shadow: var(--shadow-float);
+  --ltw-menu-from: -4px;
+}
+/* Fades in and slides 4px away from its trigger; Radix waits for the close
+   animation before unmounting. Reduced motion is handled in globals.css. */
+.ltw-menu[data-side="top"] {
+  --ltw-menu-from: 4px;
+}
+.ltw-menu[data-state="open"] {
+  animation: ltw-menu-in var(--duration-moderate) var(--ease-productive);
+}
+.ltw-menu[data-state="closed"] {
+  animation: ltw-menu-out var(--duration-fast) var(--ease-productive);
+}
+@keyframes ltw-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--ltw-menu-from));
+  }
+}
+@keyframes ltw-menu-out {
+  to {
+    opacity: 0;
+  }
 }
 .ltw-menu-i {
   display: flex;

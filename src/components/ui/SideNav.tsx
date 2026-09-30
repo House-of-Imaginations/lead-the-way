@@ -213,7 +213,12 @@ export function SideNav({
       }}
     >
       <div className="ltw-sn-in">
-        <Link className="ltw-sn-brand" href={homeHref} title="Lead the Way">
+        {/* Titles are the rail's tooltips; expanded, the labels show. */}
+        <Link
+          className="ltw-sn-brand"
+          href={homeHref}
+          title={collapsed ? "Lead the Way" : undefined}
+        >
           <Logo />
           <span className="ltw-sn-t">Lead the Way</span>
         </Link>
@@ -224,7 +229,7 @@ export function SideNav({
               <button
                 type="button"
                 className="ltw-sn-org"
-                title={org.name}
+                title={collapsed ? org.name : undefined}
                 aria-label={org.name}
               >
                 {orgBlock}
@@ -232,7 +237,7 @@ export function SideNav({
             }
           />
         ) : (
-          <div className="ltw-sn-org" title={org.name}>
+          <div className="ltw-sn-org" title={collapsed ? org.name : undefined}>
             {orgBlock}
           </div>
         )}
@@ -248,7 +253,7 @@ export function SideNav({
                 key={label}
                 className="ltw-sn-a"
                 href={href}
-                title={label}
+                title={collapsed ? label : undefined}
                 aria-current={current ? "page" : undefined}
               >
                 <Icon className="ltw-i" aria-hidden="true" />
@@ -296,7 +301,7 @@ export function SideNav({
                     <Link
                       className="ltw-sn-a"
                       href={href}
-                      title={label}
+                      title={collapsed ? label : undefined}
                       data-state={state}
                       aria-current={state === "current" ? "step" : undefined}
                     >
@@ -334,7 +339,7 @@ export function SideNav({
             <button
               type="button"
               className="ltw-sn-acct"
-              title={user.name}
+              title={collapsed ? user.name : undefined}
               aria-label={user.name}
             >
               <Avatar initials={user.initials} manager={user.manager} />
