@@ -62,12 +62,17 @@ function emailCtx(ctx: GenericCtx<DataModel>): EmailCtx | null {
   return "runMutation" in ctx ? (ctx as EmailCtx) : null;
 }
 
+const seedOnly = () =>
+  new APIError("FORBIDDEN", {
+    message: "Demo accounts are made by the seed. Use the persona switch.",
+  });
+
 /**
  * The auth paths a signed-in demo persona may use: sign in, sign out and the
  * session plumbing the Convex plugin needs. Everything else (change password,
  * email or name, delete, link, list or revoke sessions, and anything a later
- * Better Auth adds) is refused while the demo is on, because every tester
- * shares these accounts. An allowlist, so a new endpoint starts refused.
+ * Better Auth adds) is refused, demo on or off, because every tester shares
+ * these accounts. An allowlist, so a new endpoint starts refused.
  */
 const DEMO_ALLOWED = new Set([
   "/sign-in/email",
@@ -126,6 +131,34 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     socialProviders: providerCredentials(),
     // The component's schema has the rateLimit table; count in the database.
     rateLimit: { storage: "database" },
+    // The demo accounts are shared: every tester holds the one demo password,
+    // and a reset reuses the accounts as they are. So only the seed may make a
+    // demo user or give one a login, demo on or off and whatever the path
+    // (email sign-up, a first social sign-in, linking): the seed's
+    // `auth.api.signUpEmail` call has no `request`, while anything from a
+    // browser does. Real accounts pass untouched.
+    databaseHooks: {
+      user: {
+        create: {
+          before: async (user, endpoint) => {
+            if (endpoint?.request && isDemoAddress(user.email))
+              throw seedOnly();
+          },
+        },
+      },
+      account: {
+        create: {
+          before: async (account, endpoint) => {
+            if (!endpoint?.request) return;
+            const owner = await authComponent.getAnyUserById(
+              ctx,
+              account.userId,
+            );
+            if (owner && isDemoAddress(owner.email)) throw seedOnly();
+          },
+        },
+      },
+    },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         // While the app is closed: no sign-in, sign-up or session. See `convex/app.ts`.
@@ -133,21 +166,16 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
           throw new APIError("SERVICE_UNAVAILABLE", {
             message: "FEATURE_UNAVAILABLE",
           });
-        // The demo accounts are shared: every tester holds the one demo
-        // password, and a reset reuses the accounts as they are. So only the
-        // seed may create one, demo on or off: its `auth.api.signUpEmail`
-        // call has no `ctx.request`, while anything from a browser does.
-        // Nor, while the demo is on, may anybody change one. Real accounts
-        // pass untouched.
+        // Kept beside the database hook: an email sign-up for a demo address
+        // that already exists stops at "already exists" before any user is
+        // created, and the sign-up form needs this sentence either way.
         if (ctx.path === "/sign-up/email") {
           const email: unknown = ctx.body?.email;
           if (ctx.request && typeof email === "string" && isDemoAddress(email))
-            throw new APIError("FORBIDDEN", {
-              message:
-                "Demo accounts are made by the seed. Use the persona switch.",
-            });
+            throw seedOnly();
         }
-        if (!flagOn("demo") || DEMO_ALLOWED.has(ctx.path)) return;
+        // Nor, demo on or off, may anybody change a demo account.
+        if (DEMO_ALLOWED.has(ctx.path)) return;
         const session = await getSessionFromCtx(ctx);
         if (session && isDemoAddress(session.user.email))
           throw new APIError("FORBIDDEN", {

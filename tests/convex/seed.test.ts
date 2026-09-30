@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, components, internal } from "../../convex/_generated/api";
-import { isDemoAddress } from "../../convex/lib/demo/cast";
+import {
+  ACCOUNT_HOLDERS,
+  demoUserId,
+  isDemoAddress,
+} from "../../convex/lib/demo/cast";
 import { DEMO_NOW, SCHEDULE } from "../../convex/lib/demo/schedule";
 import { sendEmail, type EmailCtx } from "../../convex/lib/email/send";
-import { personFields, seedDemoAccounts } from "./testHelpers";
+import { personFields, seedAuthUser, seedDemoAccounts } from "./testHelpers";
 import { harness, workspace, type T } from "./workspace/helpers";
 
 // convex/auth.ts reads SITE_URL when the module loads, and convex-test loads
@@ -320,6 +324,90 @@ test("nobody signs up a demo address from a browser, demo on or off", async () =
   expect(await res.json()).toMatchObject({
     message: "Demo accounts are made by the seed. Use the persona switch.",
   });
+});
+
+test("a demo account stays locked with the demo off", async () => {
+  const t = harness();
+  await seedDemoAccounts(t, ["dan"]);
+  await t.action(internal.seed.accounts, {});
+  vi.stubEnv("DEMO_MODE", "");
+  const email = "dan.okafor@calderlane.com.au";
+  const signIn = await post(t, "/sign-in/email", { email, password: PASSWORD });
+  expect(signIn.status).toBe(200);
+  const res = await post(
+    t,
+    "/change-password",
+    { currentPassword: PASSWORD, newPassword: "not the demo password" },
+    cookieOf(signIn),
+  );
+  expect(res.status).toBe(403);
+  expect(await res.json()).toMatchObject({ message: LOCKED });
+});
+
+test("no request makes a demo user or links an account to one; the seed still does", async () => {
+  const t = harness();
+  const accounts = await seedDemoAccounts(t);
+  const bec = await seedAuthUser(t, {
+    name: "Bec",
+    email: "bec@example.com",
+    emailVerified: true,
+  });
+  // Loaded here, after the env stubs: convex/auth.ts reads SITE_URL on load.
+  const { createAuth } = await import("../../convex/auth");
+  // What a browser's call carries (a first social sign-in, a link); the
+  // seed's own sign-up has no request.
+  const browser = { request: new Request(SITE) } as never;
+  const now = new Date();
+  const omar = {
+    id: "u1",
+    name: "Omar Haddad",
+    email: "omar.haddad@calderlane.com.au",
+    emailVerified: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const link = (userId: string) => ({
+    id: "a1",
+    userId,
+    providerId: "google",
+    accountId: "g-1",
+    createdAt: now,
+    updatedAt: now,
+  });
+  const refusal = {
+    message: "Demo accounts are made by the seed. Use the persona switch.",
+  };
+  await t.run(async (ctx) => {
+    const hooks = createAuth(ctx).options.databaseHooks!;
+    const createUser = hooks.user!.create!.before!;
+    const createAccount = hooks.account!.create!.before!;
+    await expect(createUser(omar, browser)).rejects.toMatchObject(refusal);
+    await expect(
+      createAccount(link(accounts.priya!), browser),
+    ).rejects.toMatchObject(refusal);
+    // Real accounts pass.
+    await expect(
+      createUser({ ...omar, email: "omar@example.com" }, browser),
+    ).resolves.toBeUndefined();
+    await expect(
+      createAccount(link(bec.subject), browser),
+    ).resolves.toBeUndefined();
+  });
+
+  // The seed signs the whole cast up through Better Auth, and they sign in.
+  const fresh = harness();
+  await fresh.action(internal.seed.reset, {});
+  const made = await fresh.run(async (ctx) => {
+    const ids = [];
+    for (const p of ACCOUNT_HOLDERS) ids.push(await demoUserId(ctx, p.email));
+    return ids;
+  });
+  expect(made.filter(Boolean)).toHaveLength(ACCOUNT_HOLDERS.length);
+  const signIn = await post(fresh, "/sign-in/email", {
+    email: "priya.raman@calderlane.com.au",
+    password: PASSWORD,
+  });
+  expect(signIn.status).toBe(200);
 });
 
 test("demo.reset is refused outside the demo, and without demo mode", async () => {

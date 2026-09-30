@@ -983,17 +983,21 @@ test("a demo mutation refuses when the caller's workspace changed", async () => 
   expect((await t.run((ctx) => ctx.db.get(orgId)))?.demoNow).toBe(DEMO_NOW);
 });
 
-test("personaPassword answers only while the demo is on", async () => {
+test("personaPassword answers a signed-in caller only while the demo is on", async () => {
   const t = harness();
+  const bec = t.withIdentity({ subject: "user_bec" });
   vi.stubEnv("DEMO_PASSWORD", "correct horse battery");
-  expect(await t.query(api.demo.personaPassword, {})).toBe(
+  await expect(t.query(api.demo.personaPassword, {})).rejects.toMatchObject({
+    data: { code: "NOT_SIGNED_IN" },
+  });
+  expect(await bec.query(api.demo.personaPassword, {})).toBe(
     "correct horse battery",
   );
   vi.stubEnv("DEMO_MODE", "");
-  expect(await t.query(api.demo.personaPassword, {})).toBeNull();
+  expect(await bec.query(api.demo.personaPassword, {})).toBeNull();
   vi.stubEnv("DEMO_MODE", "on");
   vi.stubEnv("DEMO_PASSWORD", "");
-  expect(await t.query(api.demo.personaPassword, {})).toBeNull();
+  expect(await bec.query(api.demo.personaPassword, {})).toBeNull();
 });
 
 test("seed:clock moves the demo clock without a persona", async () => {

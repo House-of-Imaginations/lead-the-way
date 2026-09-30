@@ -3,7 +3,7 @@ import { authComponent } from "./auth";
 import { ensureProfile } from "./lib/account/ensureProfile";
 import { authenticatedMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
-import { createWorkspace } from "./lib/orgs/create";
+import { MAX_ORG_NAME, createWorkspace } from "./lib/orgs/create";
 import { getViewer } from "./lib/viewer";
 
 /**
@@ -13,7 +13,8 @@ import { getViewer } from "./lib/viewer";
  *  - "/join/<token>" when a live invitation names its address and the account
  *    has VERIFIED that address (the join page seats it, P6). Sign-up doesn't
  *    demand verification, so an unverified address proves nothing: the token
- *    is never returned to it (spec 5, "holding the link is the proof");
+ *    is never returned to it (spec 5, "holding the link is the proof"). An
+ *    invitation from the demo workspace never counts;
  *  - "/setup/team" after making a fresh workspace and team.
  * The terms box is asked once and stored on the profile.
  *
@@ -40,23 +41,27 @@ export const start = authenticatedMutation({
     const user = await authComponent.getAnyUserById(ctx, ctx.userId);
     const email = user?.email?.trim().toLowerCase();
     if (email && user?.emailVerified === true) {
-      const invite = await ctx.db
+      const invites = ctx.db
         .query("orgInvites")
         .withIndex("by_email_status_and_expiresAt", (q) =>
           q
             .eq("email", email)
             .eq("status", "pending")
             .gt("expiresAt", Date.now()),
-        )
-        .first();
-      if (invite) return `/join/${invite.token}`;
+        );
+      // The demo's invitations are the script's, never a real account's seat.
+      for await (const invite of invites) {
+        if (!(await ctx.db.get(invite.orgId))?.isDemo)
+          return `/join/${invite.token}`;
+      }
     }
 
     const first = user?.name?.trim().split(/\s+/)[0];
+    const name = first ? `${first}'s workspace` : "";
     await createWorkspace(
       ctx,
       ctx.userId,
-      first ? `${first}'s workspace` : "My workspace",
+      name && name.length <= MAX_ORG_NAME ? name : "My workspace",
       { suffix: true },
     );
     return "/setup/team";

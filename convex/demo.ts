@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { assertFlag, flagOn } from "./app";
-import { publicQuery, viewerMutation } from "./lib/customFunctions";
+import { authenticatedQuery, viewerMutation } from "./lib/customFunctions";
 import { demoAccounts, writeCalderLane } from "./lib/demo/calderLane";
 import { moveClock } from "./lib/demo/moveClock";
 import { demoTargetValidator } from "./lib/demo/schedule";
@@ -62,11 +62,12 @@ export const setClock = viewerMutation()({
 
 /**
  * The shared demo password, for the persona switch (spec 6). Null unless
- * DEMO_MODE is on. Signed out too, on purpose: "Start as Priya" on /guide
- * signs in from nothing. It unlocks only the seeded demo accounts, which the
- * auth hook keeps from being changed (DEMO_ALLOWED in `convex/auth.ts`).
+ * DEMO_MODE is on, and only for a signed-in caller. /guide's "Start as Priya"
+ * signs in from nothing; P9 decides how it signs in. It unlocks only the
+ * seeded demo accounts, which the auth hook keeps from being changed
+ * (DEMO_ALLOWED in `convex/auth.ts`).
  */
-export const personaPassword = publicQuery({
+export const personaPassword = authenticatedQuery({
   args: {},
   returns: v.union(v.null(), v.string()),
   handler: async () => (flagOn("demo") && process.env.DEMO_PASSWORD) || null,

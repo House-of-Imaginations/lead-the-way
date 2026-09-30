@@ -7,6 +7,7 @@ import { castOf } from "./demo/cast";
 import { MAX_MEMBERS_PER_ORG, seatsOfUser } from "./orgs/membership";
 import { initialsOf } from "./orgs/people";
 import { PATHWAY_MODULES } from "./pathway";
+import { SETUP_STEPS } from "./setupSteps";
 import { sprintStatus } from "./sprintTime";
 import type { Viewer } from "./viewer";
 
@@ -192,17 +193,10 @@ async function checklistOf(
     team !== null && (await agreementSaved(ctx, team)),
     false, // Invite team is done when the sprint launches, and then the list goes.
   ];
-  const steps = [
-    ["Your team", "/setup/team"],
-    ["Protected hour", "/setup/protected-hour"],
-    ["Manager pathway", "/manager/learning"],
-    ["Team agreement", "/manager/agreement"],
-    ["Invite team", "/manager/sprint/launch"],
-  ] as const;
   const current = done.indexOf(false);
   return {
     title: "Sprint setup",
-    items: steps.map(([label, href], i) => ({
+    items: SETUP_STEPS.map(({ label, href }, i) => ({
       label,
       href,
       state: done[i]

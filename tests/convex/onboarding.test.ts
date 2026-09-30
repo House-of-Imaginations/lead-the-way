@@ -148,6 +148,33 @@ test.each(["revoked", "accepted"] as const)(
   },
 );
 
+test("an invitation from the demo workspace doesn't hold a verified account back", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roles = await owner.query(api.orgRoles.list, { orgId });
+  const roleId = roles.find((r) => r.name === "Employee")!._id;
+  const { token } = await owner.mutation(api.invites.create, {
+    orgId,
+    roleId,
+    email: "sam@example.com",
+  });
+  await t.run((ctx) => ctx.db.patch(orgId, { isDemo: true }));
+  const sam = await account(t, "Sam Ito", "sam@example.com", true);
+
+  const to = await sam.mutation(api.onboarding.start, { acceptTerms: true });
+  expect(to).toBe("/setup/team");
+  expect(to).not.toContain(token);
+});
+
+test("a first name too long for a workspace name makes My workspace", async () => {
+  const t = harness();
+  const long = await account(t, `${"a".repeat(49)} Lee`, "long@example.com");
+  expect(await long.mutation(api.onboarding.start, { acceptTerms: true })).toBe(
+    "/setup/team",
+  );
+  expect(await orgsOf(t)).toMatchObject([{ name: "My workspace" }]);
+});
+
 test("a seated account that never agreed to the terms is asked to", async () => {
   const t = harness();
   const { owner } = await workspace(t);

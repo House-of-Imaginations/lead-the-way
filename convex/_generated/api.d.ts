@@ -41,6 +41,7 @@ import type * as lib_orgs_slug from "../lib/orgs/slug.js";
 import type * as lib_pathway from "../lib/pathway.js";
 import type * as lib_privacy from "../lib/privacy.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
+import type * as lib_setupSteps from "../lib/setupSteps.js";
 import type * as lib_shell from "../lib/shell.js";
 import type * as lib_sprintTime from "../lib/sprintTime.js";
 import type * as lib_viewer from "../lib/viewer.js";
@@ -96,6 +97,7 @@ declare const fullApi: ApiFromModules<{
   "lib/pathway": typeof lib_pathway;
   "lib/privacy": typeof lib_privacy;
   "lib/rateLimits": typeof lib_rateLimits;
+  "lib/setupSteps": typeof lib_setupSteps;
   "lib/shell": typeof lib_shell;
   "lib/sprintTime": typeof lib_sprintTime;
   "lib/viewer": typeof lib_viewer;

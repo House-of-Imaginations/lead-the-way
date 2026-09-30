@@ -61,8 +61,6 @@ const SIGNED_OUT: Record<
   "auth:getCurrentUser": { args: {}, answer: null },
   // The log-in page lists its buttons.
   "authMethods:enabled": { args: {}, answer: ["google"] },
-  // "Start as Priya" on /guide signs in from nothing. Null: DEMO_MODE is off here.
-  "demo:personaPassword": { args: {}, answer: null },
   // Null when signed out.
   "profiles:me": { args: {}, answer: null },
   // The proxy only sees a cookie; the layouts ask where the person belongs.
@@ -134,6 +132,7 @@ const callsFor = ({
   inviteId,
   storageId,
 }: Ids): Record<string, Record<string, unknown>> => ({
+  "demo:personaPassword": {},
   "demo:reset": { expectOrgId: orgId },
   "demo:setClock": { target: "week1", expectOrgId: orgId },
   "onboarding:start": { acceptTerms: true },

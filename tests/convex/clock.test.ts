@@ -78,7 +78,8 @@ test("Date.now() only where real time is meant", () => {
     const file = path.replace("../../convex/", "");
     source.split("\n").forEach((text, i) => {
       const code = text.trim();
-      if (!code.includes("Date.now()")) return;
+      // `new Date()` with no arguments is the same read of real time.
+      if (!code.includes("Date.now()") && !code.includes("new Date()")) return;
       if (code.startsWith("*") || code.startsWith("//")) return;
       const entry = ALLOWED.find(
         (a) => a.file === file && code.includes(a.line),

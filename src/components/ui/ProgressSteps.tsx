@@ -7,7 +7,7 @@ import {
 export type Step = { label: string; helper?: string };
 export type ProgressStepsProps = {
   label: string;
-  steps: Step[];
+  steps: readonly Step[];
   current: number;
 };
 
