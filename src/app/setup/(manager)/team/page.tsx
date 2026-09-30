@@ -1,17 +1,27 @@
+import { SETUP_STEPS } from "@/app/setup/steps";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
-import { SETUP_STEPS } from "../../steps";
+import { fetchAuthQuery } from "@/lib/account/auth-server";
+import { openOrHome } from "@/lib/account/queries";
+import { api } from "@convex/_generated/api";
+import { TeamForm } from "./TeamForm";
 
-// ponytail: P3 shell page; Task 9 builds the form under the (manager) guard
-export default function SetupTeamPage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+/** 03: `/setup/team` and `/setup/team?page=2` (Ruling 34). */
+export default async function SetupTeamPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  // The (manager) layout has checked sprint:manage (Task 7).
+  const [team, { page }] = await Promise.all([
+    openOrHome(() => fetchAuthQuery(api.teams.current, {})),
+    searchParams,
+  ]);
   return (
     <>
       <ProgressSteps label="Sprint setup" steps={SETUP_STEPS} current={0} />
-      <div className="flex flex-col gap-04">
-        <h1 className="text-display-03">Tell us about your team</h1>
-        <p className="max-w-[65ch] text-body-01 text-text-secondary">
-          A few details so the sprint fits the work your team already does.
-        </p>
-      </div>
+      <TeamForm page={page === "2" ? 2 : 1} initial={team} />
     </>
   );
 }

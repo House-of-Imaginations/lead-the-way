@@ -508,6 +508,29 @@ textarea.ltw-field {
 .ltw-step .ltw-i {
   margin-top: 2px;
 }
+/* Below md (672px) five labels don't fit: only the current step keeps its
+   text on screen. The others stay in the accessibility tree, visually hidden. */
+@media (max-width: 671px) {
+  .ltw-steps {
+    display: flex;
+  }
+  .ltw-step {
+    position: relative;
+    flex: 0 0 32px;
+    min-width: 0;
+  }
+  .ltw-step-current {
+    flex: 1;
+  }
+  .ltw-step:not(.ltw-step-current) .ltw-step-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
 
 /* Stat tile */
 .ltw-stat {

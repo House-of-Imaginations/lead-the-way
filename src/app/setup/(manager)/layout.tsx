@@ -17,6 +17,8 @@ export default async function ManagerSetupLayout({
 }: {
   children: ReactNode;
 }) {
+  // The guard runs only on a full load or navigation into the group; Convex
+  // refuses a late write with SPRINT_LAUNCHED.
   const shell = await getShell();
   if (!shell) redirect("/setup/start");
   if (shell.area !== "manager")
