@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "./_components/ConvexClientProvider";
+import { ToastProvider } from "@/components/ui/Toast";
 import { getToken } from "@/lib/account/auth-server";
 import { themeScript } from "@/lib/theme";
 
@@ -46,7 +47,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full bg-background" suppressHydrationWarning>
         <ConvexClientProvider initialToken={initialToken}>
-          {children}
+          <ToastProvider>{children}</ToastProvider>
         </ConvexClientProvider>
       </body>
     </html>

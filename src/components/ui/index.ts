@@ -1,4 +1,6 @@
-// Design-system components. Import from "@/components/ui".
+// Design-system components. Client components import from "@/components/ui".
+// Server Components import the leaf ("@/components/ui/Button") so a server
+// route doesn't pull every client component into its bundle (P3 Ruling 1).
 export { Logo } from "./Logo";
 export { Tag, type TagProps } from "./Tag";
 export { Avatar, type AvatarProps } from "./Avatar";

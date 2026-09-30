@@ -13,13 +13,20 @@ export function PasswordInput({
   label,
   helper,
   error,
+  labelAction,
   className,
   ...input
 }: PasswordInputProps) {
   const [shown, setShown] = useState(false);
   const Icon = shown ? ViewOff : View;
   return (
-    <Field id={id} label={label} helper={helper} error={error}>
+    <Field
+      id={id}
+      label={label}
+      helper={helper}
+      error={error}
+      labelAction={labelAction}
+    >
       <div className="ltw-pw">
         <input
           id={id}

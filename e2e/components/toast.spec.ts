@@ -27,7 +27,7 @@ for (const theme of THEMES) {
       await expect(toast).toHaveCSS("width", "320px");
       await expect(toast).toHaveCSS(
         "border-left-color",
-        TOKENS[theme].supportSuccess,
+        TOKENS[theme].supportSuccessInverse,
       );
       await expect(toast).toHaveCSS(
         "background-color",

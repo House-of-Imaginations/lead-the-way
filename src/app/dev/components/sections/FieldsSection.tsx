@@ -41,6 +41,14 @@ export function FieldsSection() {
           label="Password"
           autoComplete="new-password"
           helper="At least 12 characters."
+          labelAction={
+            <button
+              type="button"
+              className="text-label-01 text-link underline hover:text-link-hover"
+            >
+              Forgot your password?
+            </button>
+          }
         />
         <TextArea
           id="f-learned"

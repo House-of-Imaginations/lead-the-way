@@ -437,7 +437,7 @@ textarea.ltw-field {
   max-width: calc(100vw - 32px); /* local: fits a 390px phone */
   background: var(--layer-inverse);
   color: var(--text-inverse);
-  border-left: 3px solid var(--support-success);
+  border-left: 3px solid var(--support-success-inverse);
   padding: 14px 16px;
   display: flex;
   gap: 12px;
@@ -445,7 +445,7 @@ textarea.ltw-field {
   box-shadow: var(--shadow-float);
 }
 .ltw-toast .ltw-i {
-  color: var(--support-success);
+  color: var(--support-success-inverse);
   margin-top: 2px;
 }
 .ltw-toast button {
@@ -1346,4 +1346,25 @@ button.ltw-sn-acct:hover {
   .ltw-demo .ltw-i {
     margin-top: 2px;
   }
+}
+
+/* Field label row with an action on the right (02b "Forgot your password?") */
+.ltw-fld-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* Single sign-on and social buttons: white with a hairline, icon then label (DESIGN.md, Buttons) */
+.ltw-btn-sso {
+  background: var(--background);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  flex-direction: row-reverse;
+  justify-content: center;
+  gap: 12px;
+}
+.ltw-btn-sso:hover {
+  background: var(--layer-hover);
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 
 export type ButtonKind =
-  "primary" | "secondary" | "tertiary" | "ghost" | "danger";
+  "primary" | "secondary" | "tertiary" | "ghost" | "danger" | "sso";
 export type ButtonSize = "sm" | "md" | "lg" | "xl";
 
 type Look = {

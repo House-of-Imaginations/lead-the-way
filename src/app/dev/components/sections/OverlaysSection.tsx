@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { Button, Menu, Modal } from "@/components/ui";
+import { useRef, useState } from "react";
+import { Button, Menu, Modal, TextInput } from "@/components/ui";
 import { Section } from "./Section";
 
 export function OverlaysSection() {
   const [ssoOpen, setSsoOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const email = useRef<HTMLInputElement>(null);
+  const useEmail = useRef(false);
   const [last, setLast] = useState("None yet");
   return (
     <Section id="overlays" title="Modal and menu">
@@ -16,17 +19,20 @@ export function OverlaysSection() {
           onOpenChange={setSsoOpen}
           label="Single sign-on"
           title="Single sign-on isn't set up"
+          description="Single sign-on is not set up for this demo workspace. Use your work email and password instead."
           primaryText="Use email"
           onPrimary={() => {
+            useEmail.current = true;
             setSsoOpen(false);
             setLast("Use email");
           }}
-        >
-          <p>
-            Single sign-on is not set up for this demo workspace. Use your work
-            email and password instead.
-          </p>
-        </Modal>
+          onCloseAutoFocus={(e) => {
+            if (!useEmail.current) return;
+            useEmail.current = false;
+            e.preventDefault();
+            email.current?.focus();
+          }}
+        />
         <Modal
           trigger={<Button kind="ghost">Open transcript</Button>}
           label="Leading AI at Work"
@@ -74,6 +80,27 @@ export function OverlaysSection() {
         >
           <p>Tick both safety checks to save your project.</p>
         </Modal>
+        <Modal
+          trigger={<Button kind="ghost">Rename team</Button>}
+          open={renameOpen}
+          onOpenChange={setRenameOpen}
+          title="Rename team"
+          primaryText="Save name"
+          formId="o-rename"
+        >
+          <form
+            id="o-rename"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const name = new FormData(e.currentTarget).get("name");
+              setRenameOpen(false);
+              setLast(`Saved ${String(name)}`);
+            }}
+          >
+            <TextInput id="o-team" name="name" label="Team name" />
+          </form>
+        </Modal>
+        <TextInput id="o-email" label="Work email" type="email" ref={email} />
         <div className="ml-auto">
           <Menu
             align="end"

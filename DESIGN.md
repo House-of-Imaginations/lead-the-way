@@ -35,6 +35,7 @@ colors:
   highlight: "#edf5ff"
   support-info: "#0043ce"
   support-success: "#24a148"
+  support-success-inverse: "#42be65"
   support-success-bg: "#defbe6"
   support-error: "#da1e28"
   support-warning: "#f1c21b"
@@ -309,6 +310,9 @@ components:
     rounded: "{rounded.none}"
     padding: "14px 16px"
     width: 320px
+  toast-rule:
+    backgroundColor: "{colors.support-success-inverse}"
+    width: 3px
   progress-bar:
     backgroundColor: "{colors.border-subtle}"
     height: 4px
@@ -473,7 +477,8 @@ The palette is Carbon's White theme (light, default) and Gray 100 theme (dark). 
 | `text-disabled`          | `#8d8d8d`       | `#8d8d8d`       | Label on button-disabled and disabled fields. Exempt from contrast rules.                                                                       |
 | `highlight`              | `#edf5ff`       | `#001d6c`       | Info notifications, the current week, the privacy promise and the team agreement quote.                                                         |
 | `support-info`           | `#0043ce`       | `#78a9ff`       | Left rule and icon of info notifications on highlight.                                                                                          |
-| `support-success`        | `#24a148`       | `#42be65`       | Completed module icons, toggle on track, success notification rule, toast rule. Always paired with a word or check icon.                        |
+| `support-success`        | `#24a148`       | `#42be65`       | Completed module icons, toggle on track, success notification rule. Always paired with a word or check icon.                                    |
+| `support-success-inverse` | `#42be65`       | `#24a148`       | Toast rule and check icon on `layer-inverse`. 4.8:1 light, 3.0:1 dark.                                                                          |
 | `support-success-bg`     | `#defbe6`       | `#044317`       | Success notification ground (Saved, Invitations sent).                                                                                          |
 | `support-error`          | `#da1e28`       | `#fa4d56`       | Field errors, the error outline on inputs, destructive actions.                                                                                 |
 | `support-warning`        | `#f1c21b`       | `#f1c21b`       | Warning icons only, with dark text beside them. Never text colour.                                                                              |

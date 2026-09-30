@@ -26,6 +26,7 @@
   --highlight: #edf5ff;
   --support-info: #0043ce;
   --support-success: #24a148;
+  --support-success-inverse: #42be65;
   --support-success-bg: #defbe6;
   --support-error: #da1e28;
   --support-warning: #f1c21b;
@@ -95,6 +96,7 @@
     --highlight: #001d6c;
     --support-info: #78a9ff;
     --support-success: #42be65;
+    --support-success-inverse: #24a148;
     --support-success-bg: #044317;
     --support-error: #fa4d56;
     --tag-gray-bg: #525252;
@@ -129,6 +131,7 @@
   --highlight: #001d6c;
   --support-info: #78a9ff;
   --support-success: #42be65;
+  --support-success-inverse: #24a148;
   --support-success-bg: #044317;
   --support-error: #fa4d56;
   --tag-gray-bg: #525252;

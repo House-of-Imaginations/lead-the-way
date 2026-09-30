@@ -136,7 +136,6 @@ for (const theme of THEMES) {
         .click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await expect(overlays.getByText("Last action: Use email")).toBeVisible();
-      await expect(trigger).toBeFocused();
     });
 
     test("a passive modal has only the close button", async ({ page }) => {
@@ -241,6 +240,69 @@ for (const theme of THEMES) {
       await page.keyboard.press("Escape");
       await expect(page.getByRole("menu")).toHaveCount(0);
       await expect(trigger).toBeFocused();
+    });
+
+    test("focus starts on the primary, or on Close when there is none", async ({
+      page,
+    }) => {
+      const overlays = page.locator("#overlays");
+      await overlays.getByRole("button", { name: "Open dialog" }).click();
+      const sso = page.getByRole("dialog", {
+        name: "Single sign-on isn't set up",
+      });
+      await expect(
+        sso.getByRole("button", { name: "Use email" }),
+      ).toBeFocused();
+      await expect(sso).toHaveAccessibleDescription(
+        "Single sign-on is not set up for this demo workspace. Use your work email and password instead.",
+      );
+      await page.keyboard.press("Escape");
+
+      await overlays.getByRole("button", { name: "Open transcript" }).click();
+      await expect(
+        page.getByRole("dialog", { name: "Transcript" }).getByRole("button", {
+          name: "Close",
+        }),
+      ).toBeFocused();
+      await page.keyboard.press("Escape");
+
+      // A disabled primary can't take focus; Close does.
+      await overlays.getByRole("button", { name: "Review project" }).click();
+      await expect(
+        page
+          .getByRole("dialog", { name: "Save your project" })
+          .getByRole("button", { name: "Close" }),
+      ).toBeFocused();
+    });
+
+    test("Use email closes the dialog and focuses the email field", async ({
+      page,
+    }) => {
+      await page
+        .locator("#overlays")
+        .getByRole("button", { name: "Open dialog" })
+        .click();
+      await page.getByRole("button", { name: "Use email" }).click();
+      await expect(page.getByRole("dialog")).toBeHidden();
+      await expect(
+        page.locator("#overlays").getByLabel("Work email"),
+      ).toBeFocused();
+    });
+
+    test("a form in the body submits from the primary button", async ({
+      page,
+    }) => {
+      await page
+        .locator("#overlays")
+        .getByRole("button", { name: "Rename team" })
+        .click();
+      const dialog = page.getByRole("dialog", { name: "Rename team" });
+      await dialog.getByLabel("Team name").fill("Client Services");
+      await dialog.getByRole("button", { name: "Save name" }).click();
+      await expect(dialog).toBeHidden();
+      await expect(
+        page.getByText("Last action: Saved Client Services"),
+      ).toBeVisible();
     });
   });
 }

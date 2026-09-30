@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures";
-import { THEMES, expectedRing, focusRing, gallery } from "./helpers";
+import { THEMES, TOKENS, expectedRing, focusRing, gallery } from "./helpers";
 
 for (const theme of THEMES) {
   test.describe(`buttons, ${theme}`, () => {
@@ -75,6 +75,21 @@ for (const theme of THEMES) {
 
     test("buttons pass axe", async ({ page, expectAxeClean }) => {
       await expectAxeClean(page, "#buttons");
+    });
+
+    test("the single sign-on button is white with a hairline and a left icon", async ({
+      page,
+    }) => {
+      const sso = page
+        .locator("#buttons")
+        .getByRole("button", { name: "Log in with single sign-on" });
+      await expect(sso).toHaveCSS("background-color", TOKENS[theme].background);
+      await expect(sso).toHaveCSS("border-radius", "0px");
+      const icon = (await sso.locator("svg").boundingBox())!;
+      const text = (await sso
+        .getByText("Log in with single sign-on")
+        .boundingBox())!;
+      expect(icon.x).toBeLessThan(text.x);
     });
   });
 }

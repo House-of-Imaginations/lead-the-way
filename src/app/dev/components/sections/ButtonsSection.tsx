@@ -1,4 +1,4 @@
-import { Add, ArrowRight } from "@carbon/icons-react";
+import { Add, ArrowRight, Enterprise } from "@carbon/icons-react";
 import { Button, ButtonLink } from "@/components/ui";
 import { Section } from "./Section";
 
@@ -11,6 +11,9 @@ export function ButtonsSection() {
         <Button kind="tertiary">Download summary</Button>
         <Button kind="ghost">View all</Button>
         <Button kind="danger">Remove member</Button>
+        <Button kind="sso" icon={Enterprise}>
+          Log in with single sign-on
+        </Button>
       </div>
       <div className="flex flex-wrap items-start gap-05">
         <Button size="md" icon={Add}>

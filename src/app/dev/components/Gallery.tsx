@@ -1,6 +1,5 @@
 "use client";
 
-import { ToastProvider } from "@/components/ui";
 import { ButtonsSection } from "./sections/ButtonsSection";
 import { ChoicesSection } from "./sections/ChoicesSection";
 import { FieldsSection } from "./sections/FieldsSection";
@@ -14,7 +13,7 @@ import { TopBarSection } from "./sections/TopBarSection";
 
 export function Gallery() {
   return (
-    <ToastProvider>
+    <>
       <main className="flex flex-col gap-09 p-07">
         <header className="flex flex-col gap-03">
           <h1 className="text-heading-01">Components</h1>
@@ -44,6 +43,6 @@ export function Gallery() {
       <footer className="px-07 pb-07 text-label-01 text-text-helper">
         Concept prototype. Not an official IBM product.
       </footer>
-    </ToastProvider>
+    </>
   );
 }

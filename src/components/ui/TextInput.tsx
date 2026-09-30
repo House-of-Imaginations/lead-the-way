@@ -10,11 +10,18 @@ export function TextInput({
   label,
   helper,
   error,
+  labelAction,
   className,
   ...input
 }: TextInputProps) {
   return (
-    <Field id={id} label={label} helper={helper} error={error}>
+    <Field
+      id={id}
+      label={label}
+      helper={helper}
+      error={error}
+      labelAction={labelAction}
+    >
       <input
         id={id}
         className={clsx("ltw-field", error && "ltw-field-invalid", className)}
@@ -36,12 +43,19 @@ export function TextArea({
   label,
   helper,
   error,
+  labelAction,
   className,
   rows = 3,
   ...textarea
 }: TextAreaProps) {
   return (
-    <Field id={id} label={label} helper={helper} error={error}>
+    <Field
+      id={id}
+      label={label}
+      helper={helper}
+      error={error}
+      labelAction={labelAction}
+    >
       <textarea
         id={id}
         rows={rows}

@@ -5,6 +5,8 @@ export type FieldProps = {
   label: string;
   helper?: string;
   error?: string;
+  /** Right of the label, same row: e.g. a "Forgot your password?" link button. */
+  labelAction?: ReactNode;
 };
 
 /** A control's aria-describedby: its error, else its helper, then any ids the caller passed. */
@@ -24,13 +26,23 @@ export function Field({
   label,
   helper,
   error,
+  labelAction,
   children,
 }: FieldProps & { children: ReactNode }) {
   return (
     <div className="ltw-fld">
-      <label className="ltw-lbl" htmlFor={id}>
-        {label}
-      </label>
+      {labelAction ? (
+        <div className="ltw-fld-h">
+          <label className="ltw-lbl" htmlFor={id}>
+            {label}
+          </label>
+          {labelAction}
+        </div>
+      ) : (
+        <label className="ltw-lbl" htmlFor={id}>
+          {label}
+        </label>
+      )}
       {children}
       {error ? (
         <span id={`${id}-error`} className="ltw-err">

@@ -75,6 +75,21 @@ for (const theme of THEMES) {
       ).toHaveCount(0);
     });
 
+    test("a label can carry an action on its right", async ({ page }) => {
+      const fields = page.locator("#fields");
+      const action = fields.getByRole("button", {
+        name: "Forgot your password?",
+      });
+      const label = fields.getByText("Password", { exact: true }).first();
+      const a = (await action.boundingBox())!;
+      const l = (await label.boundingBox())!;
+      expect(Math.abs(a.y - l.y)).toBeLessThan(4); // same row
+      expect(a.x).toBeGreaterThan(l.x + l.width);
+      await expect(
+        fields.getByLabel("Password", { exact: true }).first(),
+      ).toBeVisible();
+    });
+
     test("fields pass axe", async ({ page, expectAxeClean }) => {
       await expectAxeClean(page, "#fields");
     });
