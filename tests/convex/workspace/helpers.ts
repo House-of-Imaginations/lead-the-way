@@ -1,10 +1,14 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { api } from "../../../convex/_generated/api";
+import { api, internal } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { Permission } from "../../../convex/lib/orgs/permissions";
 import schema from "../../../convex/schema";
-import { personFields, registerComponents } from "../testHelpers";
+import {
+  personFields,
+  registerComponents,
+  seedDemoAccounts,
+} from "../testHelpers";
 
 export const modules = import.meta.glob("../../../convex/**/*.ts");
 
@@ -47,4 +51,13 @@ export async function seat(
     return { personId, roleId };
   });
   return { as: t.withIdentity({ subject }), personId, roleId };
+}
+
+/** Calder Lane, seeded from its demo accounts, and a way to sign in as each. */
+export async function calderLane() {
+  const t = harness();
+  const accounts = await seedDemoAccounts(t);
+  const orgId = await t.mutation(internal.seed.writeCalderLane, { accounts });
+  const as = (key: string) => t.withIdentity({ subject: accounts[key] });
+  return { t, orgId, as };
 }

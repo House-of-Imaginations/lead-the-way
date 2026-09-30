@@ -67,6 +67,10 @@ const SIGNED_OUT: Record<
   "demo:personaPassword": { args: {}, answer: null },
   // Null when signed out.
   "profiles:me": { args: {}, answer: null },
+  // The proxy only sees a cookie; the layouts ask where the person belongs.
+  "viewer:home": { args: {}, answer: null },
+  // Null when signed out.
+  "viewer:shell": { args: {}, answer: null },
   // The invitation page, before sign-up: what the link invites to, no address.
   "invites:publicPreview": {
     args: { token: "tok" },

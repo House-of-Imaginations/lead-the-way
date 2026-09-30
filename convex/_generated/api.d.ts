@@ -41,6 +41,8 @@ import type * as lib_orgs_slug from "../lib/orgs/slug.js";
 import type * as lib_pathway from "../lib/pathway.js";
 import type * as lib_privacy from "../lib/privacy.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
+import type * as lib_shell from "../lib/shell.js";
+import type * as lib_sprintTime from "../lib/sprintTime.js";
 import type * as lib_viewer from "../lib/viewer.js";
 import type * as members from "../members.js";
 import type * as onboarding from "../onboarding.js";
@@ -52,6 +54,7 @@ import type * as tables_demo from "../tables/demo.js";
 import type * as tables_orgs from "../tables/orgs.js";
 import type * as tables_profiles from "../tables/profiles.js";
 import type * as tables_sprint from "../tables/sprint.js";
+import type * as viewer from "../viewer.js";
 
 import type {
   ApiFromModules,
@@ -93,6 +96,8 @@ declare const fullApi: ApiFromModules<{
   "lib/pathway": typeof lib_pathway;
   "lib/privacy": typeof lib_privacy;
   "lib/rateLimits": typeof lib_rateLimits;
+  "lib/shell": typeof lib_shell;
+  "lib/sprintTime": typeof lib_sprintTime;
   "lib/viewer": typeof lib_viewer;
   members: typeof members;
   onboarding: typeof onboarding;
@@ -104,6 +109,7 @@ declare const fullApi: ApiFromModules<{
   "tables/orgs": typeof tables_orgs;
   "tables/profiles": typeof tables_profiles;
   "tables/sprint": typeof tables_sprint;
+  viewer: typeof viewer;
 }>;
 
 /**

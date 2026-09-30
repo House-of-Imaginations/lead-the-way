@@ -13,8 +13,7 @@ import { ORG_TABLES } from "../../convex/lib/orgs/cascade";
 import { castOf } from "../../convex/lib/demo/cast";
 import { aggregate, loadCountable } from "../../convex/lib/privacy";
 import { getViewer } from "../../convex/lib/viewer";
-import { seedDemoAccounts } from "./testHelpers";
-import { harness, workspace, type T } from "./workspace/helpers";
+import { calderLane, harness, workspace, type T } from "./workspace/helpers";
 
 beforeEach(() => {
   vi.stubEnv("DEMO_MODE", "on");
@@ -25,14 +24,6 @@ afterEach(() => {
 });
 
 const DAN = "dan.okafor@calderlane.com.au";
-
-async function calderLane() {
-  const t = harness();
-  const accounts = await seedDemoAccounts(t);
-  const orgId = await t.mutation(internal.seed.writeCalderLane, { accounts });
-  const as = (key: string) => t.withIdentity({ subject: accounts[key] });
-  return { t, orgId, as };
-}
 
 async function personId(t: T, orgId: Id<"orgs">, email: string) {
   return await t.run(async (ctx) => {
