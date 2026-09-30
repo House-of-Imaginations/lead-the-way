@@ -7,6 +7,12 @@ import type { FunctionReturnType } from "convex/server";
 import Link from "next/link";
 import { useState, type ReactNode, type SubmitEvent } from "react";
 import { api } from "@convex/_generated/api";
+import {
+  EMAIL,
+  MAX_LAUNCH_INVITES,
+  MAX_MESSAGE,
+  normalEmail,
+} from "@convex/lib/inviteRules";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import {
   Button,
@@ -22,19 +28,12 @@ import { userMessage } from "@/lib/errors";
 type LaunchPage = NonNullable<
   FunctionReturnType<typeof api.sprints.launchPage>
 >;
+type InviteLink = { email: string; token: string };
 
 const GATE_REASON =
   "Protect the hour, finish the pathway and save the agreement first.";
 const BAD_EMAIL = "Enter an email address like name@example.com.";
 const LAUNCHED = "Your sprint has already launched.";
-// ponytail: client mirrors of `launch`'s EMAIL, normalEmail, MAX_LAUNCH_INVITES
-// and MAX_MESSAGE; those live in function modules, and `launch` re-checks all four.
-const EMAIL =
-  /^[^\s@<>(),;:"[\]\\]+@[^\s@<>(),;:"[\]\\]+\.[^\s@<>(),;:"[\]\\]+$/;
-const normalEmail = (email: string) =>
-  email.trim().toLowerCase().replace(/\.$/, "");
-const MAX_INVITES = 50;
-const MAX_MESSAGE = 500;
 const STATUS = {
   pending: { label: "Invited", color: "gray" },
   accepted: { label: "Joined", color: "green" },
@@ -45,6 +44,36 @@ const STATUS = {
 const people = (n: number) => (n === 1 ? "1 person" : `${n} people`);
 const invitations = (n: number) =>
   n === 1 ? "1 invitation" : `${n} invitations`;
+
+/**
+ * Email to token for every copy button. `launchPage.links` is null when email
+ * is on, so the links `launch` returned for what it didn't mail (Ruling 30)
+ * are kept beside it.
+ */
+export const copyLinks = (page: InviteLink[] | null, sent: InviteLink[]) =>
+  new Map([...(page ?? []), ...sent].map((l) => [l.email, l.token]));
+
+/** Ruling 29, worded from the counts `launch` returns. */
+export function launchedToast({
+  invited,
+  emailed,
+}: {
+  invited: number;
+  emailed: number;
+}) {
+  const body =
+    invited === 0
+      ? "Everyone is already invited."
+      : emailed === invited
+        ? `${invitations(invited)} sent.`
+        : `${invitations(invited)} ready. Copy each link below.`;
+  return { title: "Sprint launched", body };
+}
+
+/** Moves focus to the invited list's heading once this tab has launched. */
+const focusOnMount = (el: HTMLElement | null) => {
+  el?.focus();
+};
 
 function Row({ term, children }: { term: string; children: ReactNode }) {
   return (
@@ -100,14 +129,21 @@ function Heading({
   id,
   title,
   count,
+  focusRef,
 }: {
   id: string;
   title: string;
   count: number;
+  focusRef?: (el: HTMLElement | null) => void;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-05">
-      <h2 id={id} className="text-heading-03">
+      <h2
+        id={id}
+        ref={focusRef}
+        tabIndex={focusRef ? -1 : undefined}
+        className="text-heading-03"
+      >
         {title}
       </h2>
       <span className="text-label-01 text-text-secondary tabular-nums">
@@ -131,6 +167,7 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
   const [pending, setPending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [launchedHere, setLaunchedHere] = useState(false);
+  const [sentLinks, setSentLinks] = useState<InviteLink[]>([]);
   const [copyError, setCopyError] = useState<string | null>(null);
 
   const ready =
@@ -140,7 +177,7 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
     : emails.length === 0
       ? "Add at least one email address."
       : null;
-  const links = new Map((data.links ?? []).map((l) => [l.email, l.token]));
+  const links = copyLinks(data.links, sentLinks);
 
   // Its own form, so Enter in "Add by email" adds the address and can never
   // launch: "Send invitations" is a plain button outside it.
@@ -152,9 +189,9 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
       return;
     }
     if (!emails.includes(email)) {
-      if (emails.length >= MAX_INVITES) {
+      if (emails.length >= MAX_LAUNCH_INVITES) {
         setFieldError(
-          `You can invite up to ${MAX_INVITES} people at once. Remove one to add another.`,
+          `You can invite up to ${MAX_LAUNCH_INVITES} people at once. Remove one to add another.`,
         );
         return;
       }
@@ -168,19 +205,10 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
     setPending(true);
     setSendError(null);
     try {
-      const { invited, emailed } = await launch({
-        expectOrgId,
-        emails,
-        message,
-      });
+      const result = await launch({ expectOrgId, emails, message });
+      setSentLinks(result.links);
       setLaunchedHere(true);
-      toast({
-        title: "Sprint launched",
-        body:
-          emailed > 0
-            ? `${invitations(invited)} sent.`
-            : `${invitations(invited)} ready. Copy each link below.`,
-      });
+      toast(launchedToast(result));
     } catch (error) {
       setSendError(
         userMessage(error, "The invitations didn't send. Try again."),
@@ -235,6 +263,8 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
               id="invited-title"
               title="Invitations"
               count={data.invited.length}
+              // Stable, so it runs once when launchedHere flips, not per render.
+              focusRef={launchedHere ? focusOnMount : undefined}
             />
             <ul aria-labelledby="invited-title" className="flex flex-col">
               {data.invited.map(({ email, status }) => {

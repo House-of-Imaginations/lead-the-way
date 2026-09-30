@@ -6,6 +6,7 @@
    - .ltw-cs width, max-width and its phone media block;
    - .ltw-toast max-width;
    - .ltw-modal max-height and .ltw-modal-b overflow;
+   - .ltw-btn-ghost:hover colour, link-hover so the label keeps 4.5:1 on layer-hover;
    - the Lead the Way additions at the end, including the drawer close, the side nav scroll area, the modal
      scrim layer and the 48px phone touch targets.
    To see every edit: pnpm exec prettier docs/design/design-system/components/bundle.css | diff - src/styles/components.css
@@ -118,7 +119,7 @@
 }
 .ltw-btn-ghost:hover {
   background: var(--layer-hover);
-  /* link on layer-hover is 4.1:1; link-hover keeps it above 4.5:1, as Carbon does. */
+  /* local: link on layer-hover is 4.1:1; link-hover keeps it above 4.5:1, as Carbon does. */
   color: var(--link-hover);
 }
 .ltw-btn-danger {

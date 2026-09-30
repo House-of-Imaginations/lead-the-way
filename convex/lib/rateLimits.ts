@@ -21,9 +21,6 @@ const limits = {
   inviteEmail: { kind: "token bucket", rate: 50, period: HOUR, capacity: 50 },
 } as const;
 
-/** At most this many addresses in one launch (Ruling 5). */
-export const MAX_LAUNCH_INVITES = 50;
-
 export const rateLimiter = new RateLimiter(components.rateLimiter, limits);
 
 function isOfficialRateLimitError(

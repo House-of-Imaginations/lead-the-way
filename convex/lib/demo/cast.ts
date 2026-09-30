@@ -1,5 +1,6 @@
 import { components } from "../../_generated/api";
 import type { ActionCtx, MutationCtx } from "../../_generated/server";
+import { normalEmail } from "../inviteRules";
 
 /**
  * The Calder Lane cast (`docs/design/data-model.md`). Everyone but Omar has an
@@ -83,13 +84,6 @@ export function castOf(key: CastKey) {
   if (!person) throw new Error(`No demo cast member called ${key}.`);
   return person;
 }
-
-/**
- * An address as it is compared: trimmed, lowercased, and without the one
- * trailing dot a fully qualified domain may carry (it still delivers).
- */
-export const normalEmail = (email: string) =>
-  email.trim().toLowerCase().replace(/\.$/, "");
 
 /** Demo addresses can't receive mail, so nothing is ever sent to one. */
 export const isDemoAddress = (email: string) =>

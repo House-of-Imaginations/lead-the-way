@@ -14,6 +14,7 @@ import { nowFor } from "./lib/clock";
 import { profileOf } from "./lib/account/profile";
 import { emailConfigured } from "./lib/email/send";
 import { throwUserError, type ErrorCode } from "./lib/errors";
+import { MAX_MESSAGE } from "./lib/inviteRules";
 import { sendInvite } from "./lib/orgs/email";
 import {
   INVITE_WINDOW_MS,
@@ -49,7 +50,6 @@ import { reserveRateLimit } from "./lib/rateLimits";
  */
 
 const MAX_NAME = 80;
-export const MAX_MESSAGE = 500;
 
 const REFUSALS = {
   INVITE_INVALID: "That invitation is no longer valid.",

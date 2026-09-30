@@ -81,11 +81,41 @@ test("Priya sets up and launches the sprint", async ({ page }) => {
   await field.press("Enter");
   await expect(field).toHaveValue("");
   await expect(send).toBeEnabled();
-  await expect(page.getByText("Sprint launched", { exact: true })).toHaveCount(
-    0,
-  );
+  // A launch would survive a reload; the form coming back proves none ran.
+  await page.reload();
+  await expect(send).toBeEnabled();
+  await expect(
+    page.getByRole("list", { name: "Invite your team" }),
+  ).toBeVisible();
   await expect(nav.getByText("Sprint setup")).toBeVisible();
 
+  // An emptied list gives its own reason once setup is done.
+  const remove = page.getByRole("button", { name: /^Remove / });
+  for (let i = 0; i < 8; i++) await remove.first().click();
+  await expect(remove).toHaveCount(0);
+  await expect(send).toBeDisabled();
+  await expect(send).toHaveAccessibleDescription(
+    "Add at least one email address.",
+  );
+  await page.reload();
+  await expect(send).toBeEnabled();
+
+  // Watch for the launched-elsewhere notice for the whole launch, since a
+  // flash between the query flipping and the mutation resolving is brief.
+  await page.evaluate(() => {
+    const w = window as unknown as { sawLaunched: boolean };
+    w.sawLaunched = false;
+    new MutationObserver(() => {
+      if (
+        document.body.textContent?.includes("Your sprint has already launched.")
+      )
+        w.sawLaunched = true;
+    }).observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  });
   await send.click();
   await expect(
     page.getByText("Sprint launched", { exact: true }),
@@ -98,9 +128,14 @@ test("Priya sets up and launches the sprint", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /^Copy link for / }),
   ).toHaveCount(8);
-  await expect(page.getByText("Your sprint has already launched.")).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("heading", { name: "Invitations", exact: true }),
+  ).toBeFocused();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { sawLaunched: boolean }).sawLaunched,
+    ),
+  ).toBe(false);
   await expect(nav.getByText("Sprint setup")).toHaveCount(0);
   await expect(
     nav.getByRole("link", { name: "Sprint", exact: true }),

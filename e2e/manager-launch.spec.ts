@@ -82,7 +82,7 @@ test("the demo list starts with the eight teammates", async ({ page }) => {
   ).toHaveAttribute("href", "/join/preview");
 });
 
-test("an emptied list says so and gives the empty reason", async ({ page }) => {
+test("an emptied list says to add the team by email", async ({ page }) => {
   resetDemo();
   await open(page);
   for (const email of CAST)
@@ -232,12 +232,11 @@ test("07 stacks to one column at 390", async ({ page, expectAxeClean }) => {
   const summaryBox = await summary.boundingBox();
   expect(summaryBox!.y).toBeGreaterThan(formBox!.y);
   expect(summaryBox!.x).toBeCloseTo(formBox!.x, 0);
-  // Nothing scrolls sideways.
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
+  // Nothing scrolls sideways inside the shell's scrolling main.
+  const main = page.getByRole("main");
+  expect(await main.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+    true,
+  );
   await expectAxeClean(page);
   await page.screenshot({ path: "output/screens/07-390.png", fullPage: true });
 });

@@ -1,13 +1,18 @@
 import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
 import type { MutationCtx } from "./_generated/server";
-import { MAX_MESSAGE } from "./invites";
 import { agreementSaved, dayMonth, latestSaved } from "./lib/agreement";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
-import { DEMO_CAST, normalEmail } from "./lib/demo/cast";
+import { DEMO_CAST } from "./lib/demo/cast";
 import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
+import {
+  EMAIL,
+  MAX_LAUNCH_INVITES,
+  MAX_MESSAGE,
+  normalEmail,
+} from "./lib/inviteRules";
 import { inviteEmailOn, sendInvite } from "./lib/orgs/email";
 import {
   MAX_INVITES_PER_ORG,
@@ -17,7 +22,7 @@ import {
 } from "./lib/orgs/invites";
 import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
 import { requiredDone } from "./lib/pathway";
-import { MAX_LAUNCH_INVITES, reserveRateLimit } from "./lib/rateLimits";
+import { reserveRateLimit } from "./lib/rateLimits";
 import {
   HOUR_STARTS,
   isOneOf,
@@ -244,12 +249,6 @@ export const notReady = viewerMutation("sprint:manage")({
 // ponytail: one workspace's invitations, up to 100 open plus a sprint's worth
 // answered. Past 500, page this read.
 const INVITES_READ = 500;
-
-// Deliberately loose: a real check is the email arriving. This only stops
-// typos like a missing @ or a pasted sentence, and the punctuation that turns
-// one address into several or into a display name (`"`, `<>`, `,`, `;`).
-const EMAIL =
-  /^[^\s@<>(),;:"[\]\\]+@[^\s@<>(),;:"[\]\\]+\.[^\s@<>(),;:"[\]\\]+$/;
 
 const linkValidator = v.object({ email: v.string(), token: v.string() });
 
