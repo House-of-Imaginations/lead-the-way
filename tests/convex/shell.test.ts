@@ -159,6 +159,33 @@ test("the checklist follows setup and goes once the sprint launches", async () =
   expect((await as("priya").query(api.viewer.shell, {}))?.checklist).toBeNull();
 });
 
+test("home is /manager once the sprint launched, team profile or not", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  expect(await owner.query(api.viewer.home, {})).toBe("/setup/team");
+  // The launch gate never asks for the team profile, so it can still be unsaved.
+  await t.run(async (ctx) => {
+    const team = await ctx.db
+      .query("teams")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .unique();
+    await ctx.db.insert("sprints", {
+      orgId,
+      teamId: team!._id,
+      status: "scheduled",
+      startDate: "2026-09-09",
+      timeZone: "Australia/Melbourne",
+      weeks: 4,
+      protectedHour: { weekday: 3, start: "14:00", durationMinutes: 60 },
+      courseTitle: "AI Productivity Fundamentals",
+      createdAt: 1,
+      launchedAt: 1,
+    });
+  });
+  expect(await owner.query(api.viewer.home, {})).toBe("/manager");
+  expect((await owner.query(api.viewer.shell, {}))?.home).toBe("/manager");
+});
+
 test("switchTo waits for the other persona's seat", async () => {
   const { t, as } = await calderLane();
   expect((await as("priya").query(api.viewer.shell, {}))?.switchTo).toBeNull();

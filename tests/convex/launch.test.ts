@@ -4,6 +4,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { DEMO_CAST, isDemoAddress } from "../../convex/lib/demo/cast";
 import { mel } from "../../convex/lib/demo/schedule";
 import { PATHWAY_MODULES } from "../../convex/lib/pathway";
+import { weekOneDate } from "../../convex/lib/sprintTime";
 import { rateLimiter } from "../../convex/lib/rateLimits";
 import { personFields } from "./testHelpers";
 import {
@@ -84,7 +85,7 @@ async function commitHour(t: T, orgId: Id<"orgs">) {
       orgId,
       teamId: team._id,
       status: "draft",
-      // Far ahead of real time, so launch keeps it (Ruling 17).
+      // Never read: a draft's week one is worked out live (Ruling 17).
       startDate: "2099-01-07",
       timeZone: "Australia/Melbourne",
       weeks: 4,
@@ -252,9 +253,10 @@ test("launch invites each address once and returns the count", async () => {
     });
     expect(invite.sentAt).toEqual(expect.any(Number));
   }
+  // Launch stores week one as of launch, whatever the draft held.
   expect(sprint).toMatchObject({
     status: "scheduled",
-    startDate: "2099-01-07",
+    startDate: weekOneDate(3, sprint!.launchedAt!, "Australia/Melbourne"),
     inviteMessage: "See you Wednesday.",
   });
   expect(sprint?.launchedAt).toEqual(expect.any(Number));
@@ -324,6 +326,43 @@ test("launch moves week one forward when its hour has passed", async () => {
     status: "scheduled",
     launchedAt: mel("2026-09-10T09:00"),
   });
+});
+
+test("a draft revisited six days on names one week one everywhere", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  // Tuesday 1 September: week one is Wednesday the 9th.
+  await priya.mutation(api.sprints.commit, {
+    weekday: 3,
+    start: "14:00",
+    expectOrgId: orgId,
+  });
+  await finishPathway(t, orgId);
+  await saveAgreement(t, orgId);
+  // Monday 7 September: the 9th is this week now, so week one is the 16th.
+  await t.run((ctx) =>
+    ctx.db.patch(orgId, { demoNow: mel("2026-09-07T09:30") }),
+  );
+  expect(await priya.query(api.sprints.current, {})).toMatchObject({
+    startDate: "2026-09-16",
+    weekOneMonday: "2026-09-14",
+  });
+  expect(
+    (await priya.query(api.sprints.launchPage, {}))?.summary,
+  ).toMatchObject({
+    runs: "16 September to 7 October 2026",
+    showAndTell: "Show and tell, 7 October",
+  });
+  expect((await priya.query(api.viewer.shell, {}))?.status).toMatchObject({
+    label: "Sprint starts",
+    value: "Wed 16 Sep, 2:00 PM",
+  });
+  await priya.mutation(api.sprints.launch, {
+    emails: ["dan.okafor@calderlane.com.au"],
+    message: "",
+    expectOrgId: orgId,
+  });
+  expect((await sprintOf(t, orgId))?.startDate).toBe("2026-09-16");
 });
 
 test("the demo workspace never sends and returns every link", async () => {

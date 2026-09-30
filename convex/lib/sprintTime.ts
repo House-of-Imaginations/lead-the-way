@@ -63,7 +63,7 @@ function zoned(date: string, time: string, timeZone: string): number {
 }
 
 /** A date string's day of the week, as `Date#getDay` numbers it (0 is Sunday). */
-function dayOf(date: string): number {
+export function dayOf(date: string): number {
   return new Date(`${date}T00:00:00Z`).getUTCDay();
 }
 
@@ -93,6 +93,23 @@ export function weekOneDate(
   const today = `${p.year}-${p.month}-${p.day}`;
   const toMonday = (8 - dayOf(today)) % 7 || 7;
   return addDays(today, toMonday + weekday - 1);
+}
+
+/**
+ * Week one's hour day. A draft's is always worked out now, so every screen
+ * names the same week and a draft revisited later never starts in the past
+ * (Ruling 17); `launch` stores it. A launched sprint keeps the date it stored.
+ */
+export function startDateOf(
+  sprint: Pick<
+    Doc<"sprints">,
+    "launchedAt" | "protectedHour" | "timeZone" | "startDate"
+  >,
+  now: number,
+): string {
+  return sprint.launchedAt === undefined
+    ? weekOneDate(sprint.protectedHour.weekday, now, sprint.timeZone)
+    : sprint.startDate;
 }
 
 export type SprintPhase = "draft" | "scheduled" | "active" | "complete";
@@ -190,7 +207,10 @@ export function sprintStatus(
       heading: null,
       progress: null,
       label: "Sprint starts",
-      value: hourLabel(first, tz),
+      value: hourLabel(
+        hourStart({ ...sprint, startDate: startDateOf(sprint, now) }, 1),
+        tz,
+      ),
       note: null,
     };
   }

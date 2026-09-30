@@ -38,10 +38,12 @@ import {
 } from "./lib/sprint";
 import {
   addDays,
+  dayOf,
   hourPattern,
   hourStart,
   spanLabel,
   sprintPhase,
+  startDateOf,
   weekOneDate,
 } from "./lib/sprintTime";
 import type { Viewer } from "./lib/viewer";
@@ -93,15 +95,7 @@ export const current = viewerQuery("sprint:manage")({
     if (!sprint) return null;
     const team = await currentTeam(ctx, viewer.org._id);
     const band = team?.sizeBand;
-    // A draft's week one is worked out now, as setProtectedHour and commit
-    // would save it, so a draft revisited later never shows past weeks
-    // (Ruling 17). A launched sprint keeps its dates.
-    const startDate =
-      sprint.launchedAt === undefined
-        ? weekOneDate(sprint.protectedHour.weekday, viewer.now, sprint.timeZone)
-        : sprint.startDate;
-    // `startDate` is week one's hour day; its week starts on the Monday before.
-    const day = new Date(`${startDate}T00:00:00Z`).getUTCDay();
+    const startDate = startDateOf(sprint, viewer.now);
     return {
       sprintId: sprint._id,
       weekday: sprint.protectedHour.weekday,
@@ -110,7 +104,8 @@ export const current = viewerQuery("sprint:manage")({
       weeks: sprint.weeks,
       timeZone: sprint.timeZone,
       startDate,
-      weekOneMonday: addDays(startDate, -((day + 6) % 7)),
+      // `startDate` is week one's hour day; its week starts on the Monday before.
+      weekOneMonday: addDays(startDate, -((dayOf(startDate) + 6) % 7)),
       committed: sprint.committedAt !== undefined,
       notReady: sprint.notReady !== undefined,
       launched: sprint.launchedAt !== undefined,
@@ -292,7 +287,8 @@ export const launchPage = viewerQuery("sprint:manage")({
     if (!team || !sprint) return null;
     const isDemo = viewer.org.isDemo;
     const tz = sprint.timeZone;
-    const last = hourStart(sprint, sprint.weeks);
+    const dated = { ...sprint, startDate: startDateOf(sprint, viewer.now) };
+    const last = hourStart(dated, sprint.weeks);
     const savedAt = (await latestSaved(ctx, team._id))?.savedAt;
     const rows = await ctx.db
       .query("orgInvites")
@@ -331,7 +327,7 @@ export const launchPage = viewerQuery("sprint:manage")({
           sprint.protectedHour.start,
           sprint.protectedHour.durationMinutes,
         ),
-        runs: spanLabel(hourStart(sprint, 1), last, tz),
+        runs: spanLabel(hourStart(dated, 1), last, tz),
         course: sprint.courseTitle,
         showAndTell: `Show and tell, ${dayMonth(last, tz)}`,
         agreementSaved:
@@ -429,13 +425,9 @@ export const launch = viewerMutation(
       );
     }
 
-    // Ruling 17: a late launch never starts in the past.
-    const startDate =
-      hourStart(sprint, 1) <= now
-        ? weekOneDate(sprint.protectedHour.weekday, now, sprint.timeZone)
-        : sprint.startDate;
+    // Week one as 04 and 07 show it now (Ruling 17), stored for good.
     await ctx.db.patch(sprint._id, {
-      startDate,
+      startDate: startDateOf(sprint, now),
       launchedAt: now,
       status: "scheduled",
       inviteMessage: message,

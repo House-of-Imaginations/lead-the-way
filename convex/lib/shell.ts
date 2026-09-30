@@ -91,16 +91,24 @@ export const isManager = (viewer: Viewer) =>
   viewer.permissions.includes("team:insights") ||
   viewer.permissions.includes("sprint:manage");
 
-/** Where this viewer belongs (R4). */
+/**
+ * Where this viewer belongs (R4). Launch doesn't need the team profile, and
+ * setup closes at launch, so a launched sprint is home at /manager either way.
+ */
 export async function homeOf(
   ctx: QueryCtx,
   viewer: Viewer,
-  known?: Doc<"teams"> | null,
+  known?: { team: Doc<"teams"> | null; sprint: Doc<"sprints"> | null },
 ): Promise<string> {
   if (!isManager(viewer)) return "/me";
-  const team =
-    known === undefined ? await currentTeam(ctx, viewer.org._id) : known;
-  return team?.savedAt === undefined ? "/setup/team" : "/manager";
+  const orgId = viewer.org._id;
+  const { team, sprint } = known ?? {
+    team: await currentTeam(ctx, orgId),
+    sprint: await currentSprint(ctx, orgId),
+  };
+  return team?.savedAt === undefined && sprint?.launchedAt === undefined
+    ? "/setup/team"
+    : "/manager";
 }
 
 const link = (label: string, href: string, icon: Icon) => ({
@@ -238,7 +246,7 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
     expectOrgId: viewer.org._id,
     isDemo,
     area: manager ? "manager" : "employee",
-    home: await homeOf(ctx, viewer, team),
+    home: await homeOf(ctx, viewer, { team, sprint }),
     greeting: greetingOf(viewer, now),
     user: {
       name: viewer.person.name,

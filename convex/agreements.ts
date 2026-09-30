@@ -19,7 +19,7 @@ import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
 import { currentSprint, currentTeam } from "./lib/sprint";
-import { hourStart } from "./lib/sprintTime";
+import { hourStart, startDateOf } from "./lib/sprintTime";
 import { getInOrg } from "./lib/tenant";
 import { contactValidator, toggleValidator } from "./tables/sprint";
 
@@ -136,7 +136,14 @@ export const current = viewerQuery("sprint:manage")({
       dateLabel: dayMonth(savedAt ?? viewer.now, tz, true),
       // Reviewed at the last week's hour. No sprint yet, no date.
       reviewDate: sprint
-        ? dayMonth(hourStart(sprint, sprint.weeks), tz, true)
+        ? dayMonth(
+            hourStart(
+              { ...sprint, startDate: startDateOf(sprint, viewer.now) },
+              sprint.weeks,
+            ),
+            tz,
+            true,
+          )
         : "",
       managerInitials: viewer.person.initials,
     };

@@ -141,7 +141,9 @@ test("the first save makes version 1", async () => {
     ],
     teamName: "Client Services team",
     dateLabel: "7 September 2026",
-    reviewDate: "30 September 2026",
+    // A draft sprint's week one is live: from Monday the 7th it is the 16th,
+    // so the last week's hour is 7 October (Ruling 17).
+    reviewDate: "7 October 2026",
     managerInitials: "PR",
   });
   const [v1] = await versionsOf(t, orgId);
