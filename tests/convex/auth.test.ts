@@ -76,8 +76,6 @@ test("the closed flag refuses public functions", async () => {
   registerComponents(t);
   process.env.APP_CLOSED = "on";
   try {
-    expect(await t.query(api.app.flag, { flag: "closed" })).toBe(true);
-    expect(await t.query(api.app.flag, { flag: "PATH" })).toBe(false);
     await expect(t.query(api.auth.getCurrentUser, {})).rejects.toThrow(
       /FEATURE_UNAVAILABLE/,
     );

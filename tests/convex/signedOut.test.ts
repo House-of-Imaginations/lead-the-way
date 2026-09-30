@@ -57,8 +57,6 @@ const SIGNED_OUT: Record<
   string,
   { args: Record<string, unknown>; answer: unknown }
 > = {
-  // The landing page reads flags before sign-in.
-  "app:flag": { args: { flag: "demo" }, answer: false },
   // Null when signed out.
   "auth:getCurrentUser": { args: {}, answer: null },
   // The log-in page lists its buttons.

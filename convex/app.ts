@@ -1,5 +1,4 @@
-import { ConvexError, v } from "convex/values";
-import { query } from "./_generated/server";
+import { ConvexError } from "convex/values";
 
 /**
  * Feature flags, named once. Each maps to a Convex env var and is on only when
@@ -9,13 +8,13 @@ import { query } from "./_generated/server";
  * A flag has no reach of its own. Its blast radius is wherever `assertFlag`
  * sits:
  * - the builders in `convex/lib/customFunctions.ts`: every public function;
- * - the top of one handler: that function only;
- * - `flagOn` in `src/lib/flags.ts`: a page, a route (`src/proxy.ts`) or a button.
- * Put the assertion on the server for anything that must actually be refused;
- * the frontend check only decides what to show.
+ * - the top of one handler: that function only.
+ * The frontend never reads a flag directly. A closed app reaches it as the
+ * FEATURE_UNAVAILABLE refusal, which `openOrHome` (`src/lib/account/queries.ts`)
+ * turns into "/"; DEMO_MODE reaches it through what queries return
+ * (`viewer.shell.isDemo`, `demo.personaPassword`).
  *
- * Add a flag here and nowhere else. Every value is readable by anyone through
- * `flag` below, so never register something secret.
+ * Add a flag here and nowhere else.
  */
 export const FLAGS = {
   /** The kill switch: only the landing page, no auth, no public function. */
@@ -41,15 +40,3 @@ export function assertFlag(flag: Flag, want: boolean) {
       message: "This isn't available right now.",
     });
 }
-
-/**
- * A plain `query`: the public builders refuse while the app is closed, and the
- * frontend needs the answer exactly then. Only registered flags are readable,
- * never an arbitrary env var; an unknown name is off.
- */
-export const flag = query({
-  args: { flag: v.string() },
-  returns: v.boolean(),
-  handler: async (_ctx, args) =>
-    Object.hasOwn(FLAGS, args.flag) && flagOn(args.flag as Flag),
-});

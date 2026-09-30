@@ -16,7 +16,7 @@ Follows the OS by default. A `?theme=light|dark` query param and a stored choice
 
 ## Feature flags on the frontend
 
-[`src/lib/flags.ts`](../src/lib/flags.ts) reads a Convex flag (`convex/app.ts`) server-side through `fetchQuery`, and fails closed to "off" if the backend is unreachable. It only decides what to render; the backend's own `assertFlag` is what actually refuses a call. [`src/proxy.ts`](../src/proxy.ts) is the one consumer today: it sends every route but the landing page home while `APP_CLOSED` is on.
+The frontend never reads a flag (`convex/app.ts`) directly. While `APP_CLOSED` is on, every public Convex function refuses with `FEATURE_UNAVAILABLE`, and `openOrHome` in [`src/lib/account/queries.ts`](../src/lib/account/queries.ts) turns that refusal into a redirect to `/` on every page that reads Convex. [`src/proxy.ts`](../src/proxy.ts) checks session cookie presence only, with no Convex call.
 
 ## Components
 

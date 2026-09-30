@@ -112,7 +112,7 @@ test.describe("sign up", () => {
     await expect(page).toHaveURL("/signup");
   });
 
-  test("a new account goes to setup, and ?ref changes nothing", async ({
+  test("sign-up lands on /setup/team without a banner, and ?ref changes nothing", async ({
     page,
   }) => {
     // R8: ?ref is display-only. The account gets its own workspace, not Calder Lane.
@@ -127,6 +127,10 @@ test.describe("sign up", () => {
       .check();
     await page.getByRole("button", { name: "Create account" }).click();
     await expect(page).toHaveURL("/setup/team");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Tell us about your team" }),
+    ).toBeVisible();
+    await expect(page.getByText("Demo workspace.")).toHaveCount(0);
   });
 
   test("single sign-on explains itself and Use email goes to the email field", async ({

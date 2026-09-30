@@ -1,15 +1,27 @@
+import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
-import { flagOn } from "@/lib/flags";
+
+const PRIVATE = /^\/(manager|me|settings|workspace|setup|guide|home)(\/|$)/;
+const AUTH_PAGES = /^\/(login|signup)\/?$/;
 
 /**
- * The kill switch. While the `closed` flag is on, every page
- * but the landing page sends the visitor home. Auth and data are refused by the
- * backend itself.
+ * R1: cookie presence only, no Convex call. Whether the session is real is
+ * Convex's answer (`viewer.home`); a stale cookie ends at /signed-out. A
+ * closed app is refused by Convex and turned into "/" by `openOrHome`.
  */
-export async function proxy(request: NextRequest) {
-  if (request.nextUrl.pathname === "/" || !(await flagOn("closed")))
-    return NextResponse.next();
-  return NextResponse.redirect(new URL("/", request.url));
+export function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+  const signedIn = getSessionCookie(request) !== null;
+  if (!signedIn && PRIVATE.test(pathname)) {
+    const login = new URL("/login", request.url);
+    login.searchParams.set("next", pathname + search);
+    return NextResponse.redirect(login);
+  }
+  // GET only: the forms' own server action (`startAccount`) posts back to
+  // /signup or /login once the cookie is set, and must reach the page.
+  if (signedIn && request.method === "GET" && AUTH_PAGES.test(pathname))
+    return NextResponse.redirect(new URL("/home", request.url));
+  return NextResponse.next();
 }
 
 export const config = {
