@@ -60,8 +60,11 @@ test("a token Better Auth rejects says so after Save password", async ({
     page.getByRole("heading", { level: 1, name: "Choose a new password" }),
   ).toBeVisible();
   const password = page.getByLabel("New password");
+  // The token leaves the address bar once the form has read it.
+  await expect(page).toHaveURL("/reset-password");
   await password.fill("short");
   await page.getByRole("button", { name: "Save password" }).click();
+  await expect(password).toBeFocused();
   await expect(password).toHaveAccessibleDescription(
     /Use at least 12 characters\./,
   );
@@ -69,6 +72,9 @@ test("a token Better Auth rejects says so after Save password", async ({
   await password.fill("a long enough new password");
   await page.getByRole("button", { name: "Save password" }).click();
   await expect(page.getByText(EXPIRED)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Get a new link" }),
+  ).toBeFocused();
 });
 
 test("after a reset, log in confirms the new password", async ({ page }) => {

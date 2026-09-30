@@ -2,12 +2,16 @@
 
 import { ArrowRight } from "@carbon/icons-react";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import { flushSync } from "react-dom";
 import { Button, Checkbox, PasswordInput, TextInput } from "@/components/ui";
 import type { Provider } from "@convex/lib/auth/providers";
 import { authClient } from "@/lib/account/auth-client";
 import { startAccount } from "@/lib/account/start";
 import { AuthAlternatives } from "./AuthAlternatives";
+
+const DEMO_REFUSAL =
+  "Demo accounts are made by the seed. Use the persona switch.";
 
 type Errors = Partial<Record<"name" | "email" | "password" | "form", string>>;
 
@@ -28,19 +32,28 @@ function signUpErrors(error: {
     case "PASSWORD_TOO_LONG":
       return { password: "Use 128 characters or fewer." };
   }
-  // 403 carries our own sentence (the demo address refusal in convex/auth.ts).
+  // The demo address refusal in convex/auth.ts is the only 403 with its own sentence.
   return {
     form:
-      error.status === 403 && error.message
-        ? error.message
+      error.status === 403 && error.message === DEMO_REFUSAL
+        ? DEMO_REFUSAL
         : "We couldn't create your account. Try again.",
   };
+}
+
+/** Focus the first invalid field so its description is read. False if none. */
+function focusFirst(errors: Errors) {
+  const first = (["name", "email", "password"] as const).find((k) => errors[k]);
+  if (first) document.getElementById(`signup-${first}`)?.focus();
+  return first !== undefined;
 }
 
 export function SignUpForm({ providers }: { providers: Provider[] }) {
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [pending, startTransition] = useTransition();
+  // signUp worked but startAccount failed: retry must not sign up twice.
+  const signedUp = useRef(false);
 
   function submit(form: FormData) {
     const name = String(form.get("name")).trim();
@@ -50,18 +63,23 @@ export function SignUpForm({ providers }: { providers: Provider[] }) {
     if (!name) found.name = "Enter your full name.";
     if (!email) found.email = "Enter your work email.";
     if (password.length < 12) found.password = "Use at least 12 characters.";
-    setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    flushSync(() => setErrors(found));
+    if (focusFirst(found)) return;
 
     startTransition(async () => {
-      const { error } = await authClient.signUp.email({
-        name,
-        email,
-        password,
-      });
-      if (error) {
-        setErrors(signUpErrors(error));
-        return;
+      if (!signedUp.current) {
+        const { error } = await authClient.signUp.email({
+          name,
+          email,
+          password,
+        });
+        if (error) {
+          const next = signUpErrors(error);
+          flushSync(() => setErrors(next));
+          focusFirst(next);
+          return;
+        }
+        signedUp.current = true;
       }
       const started = await startAccount(true);
       if ("error" in started) {

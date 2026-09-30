@@ -77,10 +77,21 @@ test.describe("sign up", () => {
       .check();
     await page.getByRole("button", { name: "Create account" }).click();
     await expect(password).toHaveAttribute("aria-invalid", "true");
+    await expect(password).toBeFocused();
     await expect(password).toHaveAccessibleDescription(
       /Use at least 12 characters\./,
     );
     await expect(page).toHaveURL("/signup");
+  });
+
+  test("an empty submit focuses the first invalid field", async ({ page }) => {
+    await page
+      .getByLabel("I agree to the terms of use and privacy notice.")
+      .check();
+    await page.getByRole("button", { name: "Create account" }).click();
+    const name = page.getByLabel("Full name");
+    await expect(name).toBeFocused();
+    await expect(name).toHaveAccessibleDescription("Enter your full name.");
   });
 
   test("a demo address can't sign up", async ({ page }) => {
@@ -187,10 +198,17 @@ test.describe("log in", () => {
     await logIn.click();
     await expect(message).toHaveCount(1);
     await expect(password).toHaveAttribute("aria-invalid", "true");
+    await expect(password).toBeFocused();
+    await expect(password).toHaveAccessibleDescription(
+      "Check your email and password and try again.",
+    );
     await expect(email).not.toHaveAttribute("aria-invalid", "true");
 
+    // The message is cleared on submit, so it reappears only after the reply.
     await email.fill(`nobody-${Date.now()}@example.com`);
+    const reply = page.waitForResponse("**/sign-in/email");
     await logIn.click();
+    await reply;
     await expect(message).toHaveCount(1);
     await expect(page).toHaveURL("/login");
   });
@@ -215,6 +233,9 @@ test("social buttons match the providers Convex has on", async ({ page }) => {
   const on = JSON.parse(convex(["run", "authMethods:enabled"])) as string[];
   for (const path of ["/signup", "/login"]) {
     await page.goto(path);
+    await expect(
+      page.getByRole("button", { name: /with single sign-on$/ }),
+    ).toBeVisible();
     for (const [key, name] of PROVIDERS) {
       await expect(
         page.getByRole("button", { name: `Continue with ${name}` }),

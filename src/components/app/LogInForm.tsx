@@ -3,6 +3,7 @@
 import { ArrowRight } from "@carbon/icons-react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
+import { flushSync } from "react-dom";
 import {
   Button,
   InlineNotification,
@@ -27,16 +28,16 @@ export function LogInForm({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const email = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
 
   // R10 and 02b: the same answer whether or not the account exists.
   function forgot() {
-    const address = email.current?.value.trim() ?? "";
+    const address = emailRef.current?.value.trim() ?? "";
     if (!address) {
       setEmailError("Enter your work email first.");
-      email.current?.focus();
+      emailRef.current?.focus();
       return;
     }
     setEmailError(null);
@@ -50,12 +51,15 @@ export function LogInForm({
   }
 
   function submit(form: FormData) {
+    setError(null);
     const email = String(form.get("email")).trim();
     const password = String(form.get("password"));
     startTransition(async () => {
       const { error } = await authClient.signIn.email({ email, password });
       if (error) {
-        setError(NEUTRAL);
+        // Flush so the description is on the field before focus reads it.
+        flushSync(() => setError(NEUTRAL));
+        document.getElementById("login-password")?.focus();
         return;
       }
       window.location.assign(next ?? "/home");
@@ -88,7 +92,7 @@ export function LogInForm({
           type="email"
           label="Work email"
           autoComplete="email"
-          ref={email}
+          ref={emailRef}
           error={emailError ?? undefined}
         />
         <PasswordInput
@@ -101,6 +105,7 @@ export function LogInForm({
               type="button"
               className="text-label-01 text-link underline hover:text-link-hover"
               onClick={forgot}
+              disabled={pending}
             >
               Forgot your password?
             </button>
