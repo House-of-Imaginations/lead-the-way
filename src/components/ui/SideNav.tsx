@@ -87,9 +87,12 @@ function subscribe(listener: () => void) {
 }
 
 function getSnapshot(): string {
-  cached ??=
-    document.cookie.match(new RegExp(`(?:^|; )${NAV_COOKIE}=([^;]*)`))?.[1] ??
-    "";
+  if (cached === undefined) {
+    const raw =
+      document.cookie.match(new RegExp(`(?:^|; )${NAV_COOKIE}=([^;]*)`))?.[1] ??
+      "";
+    cached = parseNav(raw) ? raw : ""; // junk counts as nothing saved
+  }
   // Nothing saved: below 1056px the rail is the default (DESIGN.md, Responsive behaviour).
   if (cached === "" && window.matchMedia(NARROW).matches) return "rail";
   return cached;
@@ -266,6 +269,7 @@ export function SideNav({
               <ProgressBar
                 label="Sprint progress"
                 hideLabel
+                valueText={status.heading ?? undefined}
                 value={status.progress.value}
                 max={status.progress.max}
               />
@@ -315,6 +319,7 @@ export function SideNav({
             type="button"
             className="ltw-sn-tg"
             aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
             title={collapsed ? "Expand navigation" : undefined}
             onClick={toggle}
           >

@@ -12,11 +12,12 @@ const css = readFileSync(
   "utf8",
 );
 
-function block(theme: "light" | "dark") {
-  return theme === "light"
-    ? css.slice(0, css.indexOf("@media"))
-    : css.slice(css.indexOf(':root[data-theme="dark"]'));
-}
+const dataDark = css.indexOf(':root[data-theme="dark"]');
+// Light, then both dark blocks: the OS preference and the explicit choice.
+const BLOCKS = {
+  light: [css.slice(0, css.indexOf("@media"))],
+  dark: [css.slice(css.indexOf("@media"), dataDark), css.slice(dataDark)],
+};
 
 function rgb(hex: string) {
   const n = parseInt(hex.slice(1), 16);
@@ -30,10 +31,12 @@ test("the e2e TOKENS match tokens.css in both themes", () => {
   for (const theme of ["light", "dark"] as const) {
     for (const [name, value] of Object.entries(TOKENS[theme])) {
       const re = new RegExp(`--${kebab(name)}:\\s*(#[0-9a-fA-F]{6})`);
-      // The dark block only restates what changes; the rest is light's.
-      const hex = (re.exec(block(theme)) ?? re.exec(block("light")))?.[1];
-      expect(hex, `${theme} ${name}`).toBeDefined();
-      expect(value, `${theme} ${name}`).toBe(rgb(hex!));
+      // A dark block only restates what changes; the rest is light's.
+      for (const blk of BLOCKS[theme]) {
+        const hex = (re.exec(blk) ?? re.exec(BLOCKS.light[0]))?.[1];
+        expect(hex, `${theme} ${name}`).toBeDefined();
+        expect(value, `${theme} ${name}`).toBe(rgb(hex!));
+      }
     }
   }
 });

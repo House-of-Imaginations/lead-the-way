@@ -287,6 +287,13 @@ for (const theme of THEMES) {
       await expect(
         page.locator("#overlays").getByLabel("Work email"),
       ).toBeFocused();
+      // Dismissed another way, focus goes back to the trigger.
+      const trigger = page
+        .locator("#overlays")
+        .getByRole("button", { name: "Open dialog" });
+      await trigger.click();
+      await page.keyboard.press("Escape");
+      await expect(trigger).toBeFocused();
     });
 
     test("a form in the body submits from the primary button", async ({
@@ -297,9 +304,14 @@ for (const theme of THEMES) {
         .getByRole("button", { name: "Rename team" })
         .click();
       const dialog = page.getByRole("dialog", { name: "Rename team" });
+      // A form modal starts on its first field, not the primary.
+      await expect(dialog.getByLabel("Team name")).toBeFocused();
       await dialog.getByLabel("Team name").fill("Client Services");
       await dialog.getByRole("button", { name: "Save name" }).click();
       await expect(dialog).toBeHidden();
+      await expect(
+        page.locator("#overlays").getByRole("button", { name: "Rename team" }),
+      ).toBeFocused();
       await expect(
         page.getByText("Last action: Saved Client Services"),
       ).toBeVisible();

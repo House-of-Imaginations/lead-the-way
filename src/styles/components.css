@@ -1092,6 +1092,9 @@ button.ltw-sn-acct:hover {
   letter-spacing: 0.32px;
   color: var(--text-secondary);
 }
+.ltw-sn-st .ltw-pb {
+  margin: 4px 0 8px;
+}
 .ltw-sn-st + .ltw-sn-tg {
   margin-top: 0;
 }

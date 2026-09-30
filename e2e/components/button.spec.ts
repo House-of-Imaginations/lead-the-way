@@ -85,6 +85,11 @@ for (const theme of THEMES) {
         .getByRole("button", { name: "Log in with single sign-on" });
       await expect(sso).toHaveCSS("background-color", TOKENS[theme].background);
       await expect(sso).toHaveCSS("border-radius", "0px");
+      await expect(sso).toHaveCSS("border-top-width", "1px");
+      await expect(sso).toHaveCSS(
+        "border-top-color",
+        TOKENS[theme].borderStrong,
+      );
       const icon = (await sso.locator("svg").boundingBox())!;
       const text = (await sso
         .getByText("Log in with single sign-on")

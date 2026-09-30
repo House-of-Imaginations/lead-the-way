@@ -209,6 +209,21 @@ test.describe("side nav", () => {
     await expect(nav(page)).toHaveCSS("width", "256px");
   });
 
+  test("a junk cookie falls back to the default, the rail below 1056px", async ({
+    page,
+    context,
+  }) => {
+    await context.addCookies([
+      { name: "ltw-sidenav", value: "junk", url: page.url() },
+    ]);
+    await page.setViewportSize({ width: 900, height: 800 });
+    await page.reload();
+    await expect(nav(page)).toHaveCSS("width", "48px");
+    await expect(
+      nav(page).getByRole("button", { name: "Expand navigation" }),
+    ).toBeVisible();
+  });
+
   test("the checklist marks done, current and todo steps", async ({ page }) => {
     const list = nav(page).getByRole("list");
     await expect(list.getByRole("link")).toHaveText([
@@ -249,7 +264,7 @@ test.describe("side nav", () => {
       .boundingBox())!;
     const hour = (await n.getByText("Wed 16 Sep, 2:00 PM").boundingBox())!;
     expect(listBox.y).toBeGreaterThan(hour.y);
-    expect(collapse.y - (listBox.y + listBox.height)).toBeLessThan(1);
+    expect(Math.abs(collapse.y - (listBox.y + listBox.height))).toBeLessThan(1);
     const heading = n.getByText("Sprint setup");
     await expect(heading).toHaveCSS("color", TOKENS.light.textPrimary);
     await expect(heading).toHaveCSS("font-size", "14px");

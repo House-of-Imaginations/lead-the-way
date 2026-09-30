@@ -53,11 +53,19 @@ export function Modal({
             className="ltw-modal"
             // Radix links the description itself; without one, say so explicitly.
             {...(description ? {} : { "aria-describedby": undefined })}
-            // Carbon: the primary action takes focus. Close does when there is none.
+            // Carbon: a form modal starts on its first field, else the primary
+            // action takes focus. Close does when there is neither.
             onOpenAutoFocus={(e) => {
-              if (primary.current && !primary.current.disabled) {
+              const field = formId
+                ? document
+                    .getElementById(formId)
+                    ?.querySelector<HTMLElement>("input, textarea, select")
+                : null;
+              const target =
+                field ?? (primary.current?.disabled ? null : primary.current);
+              if (target) {
                 e.preventDefault();
-                primary.current.focus();
+                target.focus();
               }
             }}
             onCloseAutoFocus={onCloseAutoFocus}

@@ -33,6 +33,7 @@
   --color-highlight: var(--highlight);
   --color-support-info: var(--support-info);
   --color-support-success: var(--support-success);
+  --color-support-success-inverse: var(--support-success-inverse);
   --color-support-success-bg: var(--support-success-bg);
   --color-support-error: var(--support-error);
   --color-support-warning: var(--support-warning);

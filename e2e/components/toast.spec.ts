@@ -33,6 +33,10 @@ for (const theme of THEMES) {
         "background-color",
         TOKENS[theme].layerInverse,
       );
+      await expect(toast.locator(".ltw-i").first()).toHaveCSS(
+        "color",
+        TOKENS[theme].supportSuccessInverse,
+      );
       await toast.getByRole("button", { name: "Close" }).click();
       await expect(toast).toHaveCount(0);
     });
