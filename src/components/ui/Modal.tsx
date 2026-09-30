@@ -22,6 +22,8 @@ export type ModalProps = {
   onPrimary?: () => void;
   primaryDisabled?: boolean;
   secondaryText?: string;
+  /** The secondary runs this instead of closing; control `open` to close. */
+  onSecondary?: () => void;
   /** The primary submits this form (in the body) instead of calling onPrimary. */
   formId?: string;
   /** Focus something other than the trigger on close: call e.preventDefault(), then focus it. */
@@ -40,6 +42,7 @@ export function Modal({
   onPrimary,
   primaryDisabled,
   secondaryText = "Cancel",
+  onSecondary,
   formId,
   onCloseAutoFocus,
 }: ModalProps) {
@@ -89,9 +92,15 @@ export function Modal({
             </div>
             {primaryText && (
               <div className="ltw-modal-f">
-                <Dialog.Close asChild>
-                  <Button kind="secondary">{secondaryText}</Button>
-                </Dialog.Close>
+                {onSecondary ? (
+                  <Button kind="secondary" onClick={onSecondary}>
+                    {secondaryText}
+                  </Button>
+                ) : (
+                  <Dialog.Close asChild>
+                    <Button kind="secondary">{secondaryText}</Button>
+                  </Dialog.Close>
+                )}
                 <Button
                   ref={primary}
                   type={formId ? "submit" : "button"}

@@ -6,7 +6,10 @@ import type { Doc } from "../_generated/dataModel";
  * 2:00 PM when daylight saving starts mid-sprint.
  */
 
-type HourOf = Pick<Doc<"sprints">, "startDate" | "timeZone" | "protectedHour">;
+export type HourOf = Pick<
+  Doc<"sprints">,
+  "startDate" | "timeZone" | "protectedHour"
+>;
 
 function parts(
   at: number,
