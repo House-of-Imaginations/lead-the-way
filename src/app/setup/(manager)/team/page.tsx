@@ -1,13 +1,8 @@
-import { redirect } from "next/navigation";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
-import { getShell } from "@/lib/account/queries";
-import { SETUP_STEPS } from "../steps";
+import { SETUP_STEPS } from "../../steps";
 
-// ponytail: P3 shell page, P4/P5/P6 fill the body
-export default async function SetupTeamPage() {
-  const shell = await getShell();
-  if (!shell) redirect("/setup/start");
-  if (shell.area !== "manager") redirect(shell.home);
+// ponytail: P3 shell page; Task 9 builds the form under the (manager) guard
+export default function SetupTeamPage() {
   return (
     <>
       <ProgressSteps label="Sprint setup" steps={SETUP_STEPS} current={0} />

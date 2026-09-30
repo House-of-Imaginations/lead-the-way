@@ -10,7 +10,7 @@ export default async function SetupStartPage() {
   const [shell, profile] = await Promise.all([getShell(), getProfile()]);
   if (shell) redirect(shell.home);
   return (
-    <div className="flex flex-col gap-07">
+    <div className="mx-auto flex w-full max-w-setup-column flex-col gap-07 pb-07">
       <div className="flex flex-col gap-04">
         <h1 className="text-display-03">Before you start</h1>
         <p className="max-w-[65ch] text-body-01 text-text-secondary">

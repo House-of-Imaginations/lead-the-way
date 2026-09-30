@@ -2,7 +2,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { Shell } from "../../../convex/lib/shell";
-import { AppShell, useExpectOrgId } from "../../../src/components/app/AppShell";
+import { AppShell } from "../../../src/components/app/AppShell";
+import { useExpectOrgId } from "../../../src/components/app/ExpectOrgId";
 
 let live: Shell | undefined;
 vi.mock("convex-helpers/react/cache", () => ({ useQuery: () => live }));
@@ -54,4 +55,10 @@ test("the same workspace shows no notice", () => {
   const html = render();
   expect(html).toContain("id:org1");
   expect(html).not.toContain("another tab");
+});
+
+test("useExpectOrgId needs a provider", () => {
+  expect(() => renderToStaticMarkup(<Probe />)).toThrow(
+    "useExpectOrgId needs a workspace page above it.",
+  );
 });
