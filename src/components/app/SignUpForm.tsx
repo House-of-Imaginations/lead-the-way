@@ -52,8 +52,9 @@ export function SignUpForm({ providers }: { providers: Provider[] }) {
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [pending, startTransition] = useTransition();
-  // signUp worked but startAccount failed: retry must not sign up twice.
-  const signedUp = useRef(false);
+  // signUp worked but startAccount failed: retry must not sign up twice,
+  // unless the email changed.
+  const signedUpAs = useRef<string | null>(null);
 
   function submit(form: FormData) {
     const name = String(form.get("name")).trim();
@@ -67,7 +68,7 @@ export function SignUpForm({ providers }: { providers: Provider[] }) {
     if (focusFirst(found)) return;
 
     startTransition(async () => {
-      if (!signedUp.current) {
+      if (signedUpAs.current !== email) {
         const { error } = await authClient.signUp.email({
           name,
           email,
@@ -79,7 +80,7 @@ export function SignUpForm({ providers }: { providers: Provider[] }) {
           focusFirst(next);
           return;
         }
-        signedUp.current = true;
+        signedUpAs.current = email;
       }
       const started = await startAccount(true);
       if ("error" in started) {

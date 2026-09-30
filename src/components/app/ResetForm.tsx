@@ -7,7 +7,9 @@ import { flushSync } from "react-dom";
 import { Button, InlineNotification, PasswordInput } from "@/components/ui";
 import { authClient } from "@/lib/account/auth-client";
 
-export function ResetForm({ token }: { token: string | null }) {
+export function ResetForm({ token: fromUrl }: { token: string | null }) {
+  // Held in state: after the address bar drops it, a refetch renders with null.
+  const [token] = useState(fromUrl);
   const [expired, setExpired] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
