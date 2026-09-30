@@ -135,13 +135,14 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     // and a reset reuses the accounts as they are. So only the seed may make a
     // demo user or give one a login, demo on or off and whatever the path
     // (email sign-up, a first social sign-in, linking): the seed's
-    // `auth.api.signUpEmail` call has no `request`, while anything from a
-    // browser does. Real accounts pass untouched.
+    // `auth.api.signUpEmail` call has a context but no `request`, while
+    // anything from a browser has one. No context at all (a failed lookup)
+    // refuses too. Real accounts pass untouched.
     databaseHooks: {
       user: {
         create: {
           before: async (user, endpoint) => {
-            if (endpoint?.request && isDemoAddress(user.email))
+            if ((!endpoint || endpoint.request) && isDemoAddress(user.email))
               throw seedOnly();
           },
         },
@@ -149,7 +150,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
       account: {
         create: {
           before: async (account, endpoint) => {
-            if (!endpoint?.request) return;
+            if (endpoint && !endpoint.request) return;
             const owner = await authComponent.getAnyUserById(
               ctx,
               account.userId,

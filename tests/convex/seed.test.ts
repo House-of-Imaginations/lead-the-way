@@ -385,6 +385,11 @@ test("no request makes a demo user or links an account to one; the seed still do
     await expect(
       createAccount(link(accounts.priya!), browser),
     ).rejects.toMatchObject(refusal);
+    // No context at all (a failed lookup) is not the seed either.
+    await expect(createUser(omar, null)).rejects.toMatchObject(refusal);
+    await expect(
+      createAccount(link(accounts.priya!), null),
+    ).rejects.toMatchObject(refusal);
     // Real accounts pass.
     await expect(
       createUser({ ...omar, email: "omar@example.com" }, browser),

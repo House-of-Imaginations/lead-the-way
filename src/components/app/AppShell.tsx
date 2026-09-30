@@ -16,7 +16,13 @@ import {
 import { useConvex, useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache";
 import { usePathname } from "next/navigation";
-import { Suspense, createContext, useContext, type ReactNode } from "react";
+import {
+  Suspense,
+  createContext,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   InlineNotification,
   SideNav,
@@ -74,6 +80,8 @@ export function AppShell({
   const live = useQuery(api.viewer.shell, {});
   const switched = !!live && live.expectOrgId !== initial.expectOrgId;
   const shell = (!switched && live) || initial;
+  // A switch made in this tab is not news: no notice while the page leaves.
+  const [leaving, setLeaving] = useState(false);
   const pathname = usePathname();
   const convex = useConvex();
   const setActiveOrg = useMutation(api.profiles.setActiveOrg);
@@ -109,13 +117,15 @@ export function AppShell({
       .map((w) => ({
         label: `Switch to ${w.name}`,
         // Home either way: a refused switch lands on the workspace still open.
-        onSelect: () =>
+        onSelect: () => {
+          setLeaving(true);
           void setActiveOrg({ orgId: w.id })
             .catch(() => null)
             .then(() =>
               // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
               window.location.assign("/home"),
-            ),
+            );
+        },
       })),
     // Ruling 18: the employee's disabled item waits for P7's settings pages.
     ...(shell.area === "manager"
@@ -180,7 +190,7 @@ export function AppShell({
           <SideNav {...nav} initialState={navState} />
         </div>
         <main className="flex min-w-0 flex-1 flex-col gap-07 overflow-y-auto p-05 md:p-07">
-          {switched && (
+          {switched && !leaving && (
             <div role="status">
               <InlineNotification>
                 You switched workspace in another tab. Reload the page to

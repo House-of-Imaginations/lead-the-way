@@ -14,9 +14,6 @@ export default function AppError() {
       <Button icon={Renew} onClick={() => window.location.reload()}>
         Reload page
       </Button>
-      <p className="text-label-01 text-text-helper">
-        Concept prototype. Not an official IBM product.
-      </p>
     </div>
   );
 }
