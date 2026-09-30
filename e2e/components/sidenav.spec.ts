@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures";
-import { THEMES, gallery } from "./helpers";
+import { THEMES, TOKENS, gallery } from "./helpers";
 
 const nav = (page: Page) =>
   page.locator("#sidenav").getByRole("navigation", { name: "Main" });
@@ -235,6 +235,49 @@ test.describe("side nav", () => {
     await expect(nav(page).getByText("Week 2 of 4")).toBeVisible();
     await expect(nav(page).getByText("Next protected hour")).toBeVisible();
     await expect(nav(page).getByText("Wed 16 Sep, 2:00 PM")).toBeVisible();
+  });
+
+  test("the checklist sits above Collapse and reads as on 05 and 08", async ({
+    page,
+  }) => {
+    const n = nav(page);
+    const list = n.getByRole("list");
+    // Pinned to the bottom slot: after the status block, directly above Collapse.
+    const listBox = (await list.boundingBox())!;
+    const collapse = (await n
+      .getByRole("button", { name: "Collapse" })
+      .boundingBox())!;
+    const hour = (await n.getByText("Wed 16 Sep, 2:00 PM").boundingBox())!;
+    expect(listBox.y).toBeGreaterThan(hour.y);
+    expect(collapse.y - (listBox.y + listBox.height)).toBeLessThan(1);
+    const heading = n.getByText("Sprint setup");
+    await expect(heading).toHaveCSS("color", TOKENS.light.textPrimary);
+    await expect(heading).toHaveCSS("font-size", "14px");
+    await expect(heading).toHaveCSS("font-weight", "600");
+    const row = (name: string) => list.getByRole("link", { name });
+    await expect(row("Team agreement")).toHaveCSS("font-weight", "400");
+    await expect(row("Team agreement")).toHaveCSS(
+      "color",
+      TOKENS.light.textPrimary,
+    );
+    await expect(row("Manager pathway")).toHaveCSS("font-weight", "600");
+    for (const lit of ["Protected hour", "Manager pathway"])
+      await expect(row(lit).locator("svg")).toHaveCSS(
+        "color",
+        TOKENS.light.interactive,
+      );
+    // 08: a quiet "Sprint" caption on the heading's line, at the right.
+    const caption = n
+      .locator(".ltw-sn-st")
+      .getByText("Sprint", { exact: true });
+    await expect(caption).toHaveCSS("font-size", "12px");
+    // The heading row holds both: the week at the left, the caption at its right edge.
+    const line = (await n.getByText("Week 2 of 4").boundingBox())!;
+    const cap = (await caption.boundingBox())!;
+    expect(cap.y).toBeGreaterThanOrEqual(line.y);
+    expect(cap.y + cap.height).toBeLessThanOrEqual(line.y + line.height);
+    expect(cap.x + cap.width).toBeCloseTo(line.x + line.width, 0);
+    expect(cap.x).toBeGreaterThan(line.x + 100);
   });
 
   test("the account menu opens upward and the org block switches", async ({

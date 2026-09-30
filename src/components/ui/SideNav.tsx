@@ -254,12 +254,37 @@ export function SideNav({
             ))}
           </Fragment>
         ))}
+        {status && (
+          <div className="ltw-sn-st ltw-sn-x">
+            {status.heading && (
+              <span className="ltw-sn-sh">
+                {status.heading}
+                <span className="ltw-sn-shc">Sprint</span>
+              </span>
+            )}
+            {status.progress && (
+              <ProgressBar
+                label="Sprint progress"
+                hideLabel
+                value={status.progress.value}
+                max={status.progress.max}
+              />
+            )}
+            <span>{status.label}</span>
+            <span className="ltw-sn-v">{status.value}</span>
+            {status.note && (
+              <span className="ltw-sn-note">
+                <Locked className="ltw-i" aria-hidden="true" />
+                {status.note}
+              </span>
+            )}
+          </div>
+        )}
+        {/* 05: the setup checklist takes the bottom slot, directly above Collapse. */}
         {checklist && (
-          <>
-            <div className="ltw-sn-h">
-              <span className="ltw-sn-t">{checklist.title}</span>
-            </div>
-            <ol className="ltw-sn-ck">
+          <div className="ltw-sn-ck">
+            <span className="ltw-sn-ckh ltw-sn-x">{checklist.title}</span>
+            <ol>
               {checklist.items.map(({ label, href, state }) => {
                 const Icon = STEP_ICONS[state];
                 return (
@@ -283,29 +308,6 @@ export function SideNav({
                 );
               })}
             </ol>
-          </>
-        )}
-        {status && (
-          <div className="ltw-sn-st ltw-sn-x">
-            {status.heading && (
-              <span className="ltw-sn-sh">{status.heading}</span>
-            )}
-            {status.progress && (
-              <ProgressBar
-                label="Sprint progress"
-                hideLabel
-                value={status.progress.value}
-                max={status.progress.max}
-              />
-            )}
-            <span>{status.label}</span>
-            <span className="ltw-sn-v">{status.value}</span>
-            {status.note && (
-              <span className="ltw-sn-note">
-                <Locked className="ltw-i" aria-hidden="true" />
-                {status.note}
-              </span>
-            )}
           </div>
         )}
         {resizable && (

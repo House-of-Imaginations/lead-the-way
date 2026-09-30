@@ -1204,24 +1204,70 @@ button.ltw-sn-acct:hover {
   }
 }
 
-/* SideNav checklist and status block (P3) */
+/* SideNav checklist (05) and status block (08) (P3). The checklist takes the
+   bottom slot above Collapse; after the status block when both show. */
 .ltw-sn-ck {
+  margin-top: auto;
+}
+.ltw-sn-st + .ltw-sn-ck,
+.ltw-sn-ck + .ltw-sn-tg {
+  margin-top: 0;
+}
+.ltw-sn-col .ltw-sn-st + .ltw-sn-ck {
+  margin-top: auto;
+}
+.ltw-sn-ckh {
+  display: block;
+  margin: 0 16px;
+  padding: 16px 0 4px;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.16px;
+  font-weight: 600;
+}
+.ltw-sn-ck ol {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 8px;
 }
-.ltw-sn-a[data-state="done"] .ltw-i {
-  color: var(--support-success);
+.ltw-sn-ck .ltw-sn-a {
+  gap: 8px;
+  color: var(--text-primary);
+  font-weight: 400;
 }
-.ltw-sn-a[data-state="current"] .ltw-i {
+.ltw-sn-ck .ltw-sn-a[aria-current="step"] {
+  font-weight: 600;
+}
+.ltw-sn-ck .ltw-i {
+  color: var(--text-secondary);
+}
+/* Done and current in interactive, as in the progress steps. */
+.ltw-sn-ck [data-state="done"] .ltw-i,
+.ltw-sn-ck [data-state="current"] .ltw-i {
   color: var(--interactive);
 }
-.ltw-sn-sh,
+.ltw-sn-sh {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.16px;
+  font-weight: 600;
+}
+.ltw-sn-shc {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.32px;
+  font-weight: 400;
+}
 .ltw-sn-v {
   color: var(--text-primary);
-}
-.ltw-sn-sh {
-  font-weight: 600;
 }
 .ltw-sn-note {
   display: flex;
@@ -1261,7 +1307,8 @@ button.ltw-sn-acct:hover {
   .ltw-sn-auto .ltw-sn-tg svg {
     transform: rotate(180deg);
   }
-  .ltw-sn-auto .ltw-sn-st + .ltw-sn-tg {
+  .ltw-sn-auto .ltw-sn-st + .ltw-sn-tg,
+  .ltw-sn-auto .ltw-sn-st + .ltw-sn-ck {
     margin-top: auto;
   }
 }
