@@ -48,15 +48,16 @@ export function AuthSplit({
         <p className="max-w-[40ch] text-body-01 text-text-secondary">
           {panelBody}
         </p>
-        {/* The stair blocks and the working week, Wednesday in blue. Widths
-            and heights measured from 02a at 1440 by 900; the week grid scales
-            with its block (cqw) so it never overflows at 1024. */}
+        {/* The stair blocks and the working week, Wednesday in blue. Heights
+            measured from 02a at 1440 by 900; the widths keep 02a's ratio but
+            span the whole panel. The week grid scales with its block (cqw) so
+            it never overflows at 1024. */}
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 flex h-2/3 items-end justify-end"
+          className="absolute inset-x-0 bottom-0 flex h-2/3 items-end"
         >
-          <div className="h-[46.67%] w-[26.67%] bg-tag-blue-bg" />
-          <div className="@container flex h-[73.33%] w-[30%] justify-center bg-text-primary">
+          <div className="h-[46.67%] w-1/3 bg-tag-blue-bg" />
+          <div className="@container flex h-[73.33%] w-[37.5%] justify-center bg-text-primary">
             <div className="mt-[27.78cqw] grid h-fit grid-cols-5 gap-[4.63cqw]">
               {WEEKS.flatMap((week) =>
                 DAYS.map((day) => (
@@ -72,12 +73,8 @@ export function AuthSplit({
               )}
             </div>
           </div>
-          <div className="h-full w-[23.33%] bg-interactive" />
+          <div className="h-full flex-1 bg-interactive" />
         </div>
-        {/* After the blocks so it stays on top where they meet it, near 1024px. */}
-        <p className="absolute bottom-09 left-09 max-w-[14ch] text-label-01 text-text-secondary">
-          Mon to Fri, four sprint weeks. Wednesday is protected.
-        </p>
       </aside>
     </div>
   );
