@@ -17,12 +17,13 @@ test("every table is cleared with its workspace or belongs to the org layer", ()
 type RunCtx = Parameters<Parameters<ReturnType<typeof harness>["run"]>[0]>[0];
 
 async function fill(ctx: RunCtx, orgId: Id<"orgs">) {
-  const teamId = await ctx.db.insert("teams", {
-    orgId,
-    name: "Client Services team",
-    challenges: [],
-    createdAt: 0,
-  });
+  // createWorkspace already made the one team (spec 4.2).
+  const team = await ctx.db
+    .query("teams")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .unique();
+  const teamId = team!._id;
+  await ctx.db.patch(teamId, { name: "Client Services team" });
   const sprintId = await ctx.db.insert("sprints", {
     orgId,
     teamId,
@@ -96,7 +97,7 @@ test("deleting a workspace clears its product rows and nobody else's", async () 
     ),
   }));
   expect(left).toEqual({
-    teams: [kept, kept],
+    teams: [kept],
     sprints: [kept],
     events: [kept],
     demoScript: [kept],

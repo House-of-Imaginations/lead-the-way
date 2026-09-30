@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, components, internal } from "../../convex/_generated/api";
 import { isDemoAddress } from "../../convex/lib/demo/cast";
 import { DEMO_NOW, SCHEDULE } from "../../convex/lib/demo/schedule";
-import { resend, sendEmail, type EmailCtx } from "../../convex/lib/email/send";
+import { sendEmail, type EmailCtx } from "../../convex/lib/email/send";
 import { personFields, seedDemoAccounts } from "./testHelpers";
 import { harness, workspace, type T } from "./workspace/helpers";
 
@@ -381,23 +381,4 @@ test("any persona in the demo can reset it, Dan included", async () => {
   expect(await dan.query(api.orgs.active, {})).toBeNull();
   const priya = t.withIdentity({ subject: accounts.priya });
   expect((await priya.query(api.orgs.active, {}))?.org._id).not.toBe(demoId);
-});
-
-test("a reset request for a demo address sends nothing", async () => {
-  vi.stubEnv("RESEND_API_KEY", "re_test_key");
-  vi.stubEnv("RESEND_FROM", "Lead the Way <hello@example.com>");
-  const send = vi.spyOn(resend, "sendEmail");
-  try {
-    const t = harness();
-    await seedDemoAccounts(t, ["dan"]);
-    await t.action(internal.seed.accounts, {});
-    const res = await post(t, "/request-password-reset", {
-      email: "dan.okafor@calderlane.com.au",
-      redirectTo: "/reset-password",
-    });
-    expect(res.status).toBe(200);
-    expect(send).not.toHaveBeenCalled();
-  } finally {
-    send.mockRestore();
-  }
 });

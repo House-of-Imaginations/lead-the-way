@@ -1,5 +1,11 @@
 import { expect, test } from "vitest";
-import { hourLabel, hourStart, spanLabel } from "../../convex/lib/sprintTime";
+import {
+  hourLabel,
+  hourStart,
+  spanLabel,
+  sprintStatus,
+} from "../../convex/lib/sprintTime";
+import type { Doc } from "../../convex/_generated/dataModel";
 
 const MEL = "Australia/Melbourne";
 const sprint = (startDate: string) => ({
@@ -49,4 +55,59 @@ test("labels read the way the screens write them", () => {
       MEL,
     ),
   ).toBe("16 December 2026 to 6 January 2027");
+});
+
+test("noon and midnight read as 12 PM and 12 AM", () => {
+  expect(hourLabel(Date.parse("2026-09-16T12:00:00+10:00"), MEL)).toBe(
+    "Wed 16 Sep, 12:00 PM",
+  );
+  expect(hourLabel(Date.parse("2026-09-16T00:00:00+10:00"), MEL)).toBe(
+    "Wed 16 Sep, 12:00 AM",
+  );
+});
+
+test("during the hour itself, that hour is still the next one", () => {
+  const launched = {
+    ...sprint("2026-09-09"),
+    weeks: 4,
+    launchedAt: 1,
+  } as Doc<"sprints">;
+  const during = Date.parse("2026-09-16T14:30:00+10:00");
+  expect(sprintStatus(launched, during, true)).toMatchObject({
+    heading: "Week 2 of 4",
+    value: "Wed 16 Sep, 2:00 PM",
+  });
+  expect(
+    sprintStatus(launched, Date.parse("2026-09-16T15:00:00+10:00"), true),
+  ).toMatchObject({ heading: "Week 3 of 4" });
+});
+
+test("employees in week 4 and after completion", () => {
+  const launched = {
+    ...sprint("2026-09-09"),
+    weeks: 4,
+    launchedAt: 1,
+  } as Doc<"sprints">;
+  expect(
+    sprintStatus(launched, Date.parse("2026-09-24T10:00:00+10:00"), false),
+  ).toEqual({
+    heading: null,
+    progress: null,
+    label: "Show and tell",
+    value: "Wed 30 Sep, 2:00 PM",
+    note: "Your learning activity is private.",
+  });
+  expect(
+    sprintStatus(
+      { ...launched, completedAt: 2 },
+      Date.parse("2026-09-24T10:00:00+10:00"),
+      false,
+    ),
+  ).toEqual({
+    heading: null,
+    progress: null,
+    label: "Sprint complete",
+    value: "9 to 30 September 2026",
+    note: null,
+  });
 });

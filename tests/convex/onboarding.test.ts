@@ -10,11 +10,11 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-async function account(t: T, name: string, email: string) {
+async function account(t: T, name: string, email: string, verified = false) {
   const { subject } = await seedAuthUser(t, {
     name,
     email,
-    emailVerified: false,
+    emailVerified: verified,
   });
   return t.withIdentity({ subject });
 }
@@ -79,22 +79,9 @@ test("two people with the same first name get two web addresses", async () => {
   ]);
 });
 
-test("a blank display name makes a workspace named My workspace", async () => {
+test("a user with no name makes a workspace named My workspace", async () => {
   const t = harness();
-  const { subject } = await seedAuthUser(t, {
-    name: "Pat Doe",
-    email: "pat@example.com",
-    emailVerified: false,
-  });
-  // Only a direct write can blank it; every writer falls back to a name.
-  await t.run((ctx) =>
-    ctx.db.insert("profiles", {
-      userId: subject,
-      displayName: "   ",
-      createdAt: Date.now(),
-    }),
-  );
-  const pat = t.withIdentity({ subject });
+  const pat = await account(t, "  ", "pat@example.com");
 
   expect(await pat.mutation(api.onboarding.start, { acceptTerms: true })).toBe(
     "/setup/team",
@@ -114,12 +101,59 @@ test("an invited address goes to its invitation and makes no workspace", async (
     roleId,
     email: "Sam@Example.com",
   });
-  const sam = await account(t, "Sam Ito", "sam@example.com");
+  const sam = await account(t, "Sam Ito", "sam@example.com", true);
 
   expect(await sam.mutation(api.onboarding.start, { acceptTerms: true })).toBe(
     `/join/${token}`,
   );
   expect(await orgsOf(t)).toHaveLength(1);
+});
+
+test("an unverified address never learns the invitation token", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roles = await owner.query(api.orgRoles.list, { orgId });
+  const roleId = roles.find((r) => r.name === "Employee")!._id;
+  const { token } = await owner.mutation(api.invites.create, {
+    orgId,
+    roleId,
+    email: "sam@example.com",
+  });
+  const eve = await account(t, "Eve", "sam@example.com", false);
+
+  const to = await eve.mutation(api.onboarding.start, { acceptTerms: true });
+  expect(to).toBe("/setup/team");
+  expect(to).not.toContain(token);
+  expect(await orgsOf(t)).toHaveLength(2);
+});
+
+test.each(["revoked", "accepted"] as const)(
+  "a %s invitation doesn't hold a verified account back",
+  async (status) => {
+    const t = harness();
+    const { owner, orgId } = await workspace(t);
+    const roles = await owner.query(api.orgRoles.list, { orgId });
+    const roleId = roles.find((r) => r.name === "Employee")!._id;
+    const { inviteId } = await owner.mutation(api.invites.create, {
+      orgId,
+      roleId,
+      email: "sam@example.com",
+    });
+    await t.run((ctx) => ctx.db.patch(inviteId, { status }));
+    const sam = await account(t, "Sam Ito", "sam@example.com", true);
+
+    expect(
+      await sam.mutation(api.onboarding.start, { acceptTerms: true }),
+    ).toBe("/setup/team");
+  },
+);
+
+test("a seated account that never agreed to the terms is asked to", async () => {
+  const t = harness();
+  const { owner } = await workspace(t);
+  await expect(
+    owner.mutation(api.onboarding.start, { acceptTerms: false }),
+  ).rejects.toMatchObject({ data: { code: "TERMS_REQUIRED" } });
 });
 
 test("an expired invitation doesn't hold a new account back", async () => {
@@ -149,4 +183,19 @@ test("a demo persona can't start a workspace of its own", async () => {
     dan.mutation(api.onboarding.start, { acceptTerms: true }),
   ).rejects.toMatchObject({ data: { code: "DEMO_ACCOUNT_CREATE" } });
   expect(await orgsOf(t)).toEqual([]);
+});
+
+test("a long name cut on a hyphen still gets a clean second address", async () => {
+  const t = harness();
+  const first = `${"a".repeat(44)}-b`;
+  await (
+    await account(t, `${first} One`, "one@example.com")
+  ).mutation(api.onboarding.start, { acceptTerms: true });
+  await (
+    await account(t, `${first} Two`, "two@example.com")
+  ).mutation(api.onboarding.start, { acceptTerms: true });
+  const slugs = (await orgsOf(t)).map((o) => o.slug);
+  expect(slugs).toHaveLength(2);
+  expect(slugs).toHaveLength(2);
+  for (const slug of slugs) expect(slug).not.toContain("--");
 });

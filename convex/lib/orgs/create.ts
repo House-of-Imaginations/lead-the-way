@@ -40,7 +40,7 @@ async function slugTaken(ctx: MutationCtx, slug: string) {
 async function freeSlug(ctx: MutationCtx, base: string): Promise<string> {
   if (!(await slugTaken(ctx, base))) return base;
   for (let n = 2; n <= 50; n++) {
-    const slug = `${base.slice(0, MAX_SLUG_LENGTH - 3)}-${n}`;
+    const slug = `${base.slice(0, MAX_SLUG_LENGTH - 3).replace(/-+$/, "")}-${n}`;
     if (!(await slugTaken(ctx, slug))) return slug;
   }
   throwUserError("SLUG_TAKEN", "A workspace with that name already exists.");

@@ -105,9 +105,13 @@ async function sprintOf(ctx: QueryCtx, viewer: Viewer) {
 }
 
 /** Where this viewer belongs (R4). */
-export async function homeOf(ctx: QueryCtx, viewer: Viewer): Promise<string> {
+export async function homeOf(
+  ctx: QueryCtx,
+  viewer: Viewer,
+  known?: Awaited<ReturnType<typeof teamOf>>,
+): Promise<string> {
   if (!isManager(viewer)) return "/me";
-  const team = await teamOf(ctx, viewer);
+  const team = known === undefined ? await teamOf(ctx, viewer) : known;
   return team?.savedAt === undefined ? "/setup/team" : "/manager";
 }
 
@@ -268,7 +272,7 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
     expectOrgId: viewer.org._id,
     isDemo,
     area: manager ? "manager" : "employee",
-    home: await homeOf(ctx, viewer),
+    home: await homeOf(ctx, viewer, team),
     greeting: greetingOf(viewer, now),
     user: {
       name: viewer.person.name,
