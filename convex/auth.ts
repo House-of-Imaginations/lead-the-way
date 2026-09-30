@@ -86,7 +86,10 @@ const DEMO_ALLOWED = new Set([
   "/error",
 ]);
 
-export const createAuth = (ctx: GenericCtx<DataModel>) =>
+export const createAuth = (
+  ctx: GenericCtx<DataModel>,
+  { seed = false }: { seed?: boolean } = {},
+) =>
   betterAuth({
     baseURL: siteUrl,
     database: authComponent.adapter(ctx),
@@ -134,23 +137,22 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     // The demo accounts are shared: every tester holds the one demo password,
     // and a reset reuses the accounts as they are. So only the seed may make a
     // demo user or give one a login, demo on or off and whatever the path
-    // (email sign-up, a first social sign-in, linking): the seed's
-    // `auth.api.signUpEmail` call has a context but no `request`, while
-    // anything from a browser has one. No context at all (a failed lookup)
-    // refuses too. Real accounts pass untouched.
+    // (email sign-up, a first social sign-in, linking). Only the seed builds
+    // auth with `{ seed: true }`, and it is reached only from internal
+    // functions; the request context is not consulted. Real accounts pass
+    // untouched.
     databaseHooks: {
       user: {
         create: {
-          before: async (user, endpoint) => {
-            if ((!endpoint || endpoint.request) && isDemoAddress(user.email))
-              throw seedOnly();
+          before: async (user) => {
+            if (!seed && isDemoAddress(user.email)) throw seedOnly();
           },
         },
       },
       account: {
         create: {
-          before: async (account, endpoint) => {
-            if (endpoint && !endpoint.request) return;
+          before: async (account) => {
+            if (seed) return;
             const owner = await authComponent.getAnyUserById(
               ctx,
               account.userId,

@@ -354,8 +354,7 @@ test("no request makes a demo user or links an account to one; the seed still do
   });
   // Loaded here, after the env stubs: convex/auth.ts reads SITE_URL on load.
   const { createAuth } = await import("../../convex/auth");
-  // What a browser's call carries (a first social sign-in, a link); the
-  // seed's own sign-up has no request.
+  // What a browser's call carries (a first social sign-in, a link).
   const browser = { request: new Request(SITE) } as never;
   const now = new Date();
   const omar = {
@@ -378,24 +377,37 @@ test("no request makes a demo user or links an account to one; the seed still do
     message: "Demo accounts are made by the seed. Use the persona switch.",
   };
   await t.run(async (ctx) => {
-    const hooks = createAuth(ctx).options.databaseHooks!;
-    const createUser = hooks.user!.create!.before!;
-    const createAccount = hooks.account!.create!.before!;
-    await expect(createUser(omar, browser)).rejects.toMatchObject(refusal);
+    // The hooks take no endpoint; the extra argument proves it is ignored.
+    type Hook<T> = (row: T, endpoint?: unknown) => Promise<unknown>;
+    const hooksOf = (seed?: boolean) => {
+      const h = createAuth(ctx, { seed }).options.databaseHooks!;
+      return {
+        createUser: h.user!.create!.before as Hook<typeof omar>,
+        createAccount: h.account!.create!.before as Hook<
+          ReturnType<typeof link>
+        >,
+      };
+    };
+    const { createUser, createAccount } = hooksOf();
+    // Whatever the endpoint: none, one without a request, one with.
+    for (const endpoint of [null, {}, browser]) {
+      await expect(createUser(omar, endpoint)).rejects.toMatchObject(refusal);
+      await expect(
+        createAccount(link(accounts.priya!), endpoint),
+      ).rejects.toMatchObject(refusal);
+      // Real accounts pass.
+      await expect(
+        createUser({ ...omar, email: "omar@example.com" }, endpoint),
+      ).resolves.toBeUndefined();
+      await expect(
+        createAccount(link(bec.subject), endpoint),
+      ).resolves.toBeUndefined();
+    }
+    // Only the seed's own auth lets a demo user or login through.
+    const seeded = hooksOf(true);
+    await expect(seeded.createUser(omar, null)).resolves.toBeUndefined();
     await expect(
-      createAccount(link(accounts.priya!), browser),
-    ).rejects.toMatchObject(refusal);
-    // No context at all (a failed lookup) is not the seed either.
-    await expect(createUser(omar, null)).rejects.toMatchObject(refusal);
-    await expect(
-      createAccount(link(accounts.priya!), null),
-    ).rejects.toMatchObject(refusal);
-    // Real accounts pass.
-    await expect(
-      createUser({ ...omar, email: "omar@example.com" }, browser),
-    ).resolves.toBeUndefined();
-    await expect(
-      createAccount(link(bec.subject), browser),
+      seeded.createAccount(link(accounts.priya!), null),
     ).resolves.toBeUndefined();
   });
 

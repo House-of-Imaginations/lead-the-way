@@ -48,7 +48,7 @@ async function ensureDemoAccounts(
   // Built only when something needs signing up, so a reseed of an intact
   // demo never constructs the auth instance.
   if (missing.length > 0) {
-    const auth = createAuth(ctx);
+    const auth = createAuth(ctx, { seed: true });
     for (const person of missing) {
       const { user } = await auth.api.signUpEmail({
         body: { name: person.name, email: person.email, password },
