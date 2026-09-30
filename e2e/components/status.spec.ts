@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures";
-import { THEMES, gallery } from "./helpers";
+import { THEMES, TOKENS, gallery } from "./helpers";
 
 const TAGS = {
   light: {
@@ -122,3 +122,43 @@ for (const theme of THEMES) {
     });
   });
 }
+
+for (const theme of THEMES) {
+  test(`the demo banner is a flat status strip, ${theme}`, async ({
+    page,
+    expectAxeClean,
+  }) => {
+    await page.goto(gallery(theme));
+    const banner = page
+      .locator("#status")
+      .getByRole("status")
+      .filter({ hasText: "Demo workspace." });
+    await expect(banner).toHaveText(
+      "Demo workspace. Calder Lane is sample data for trying Lead the Way. It can be reset at any time.",
+    );
+    await expect(banner).toHaveCSS("background-color", TOKENS[theme].highlight);
+    await expect(banner).toHaveCSS(
+      "border-bottom",
+      `1px solid ${TOKENS[theme].borderSubtle}`,
+    );
+    await expect(banner).toHaveCSS("border-radius", "0px");
+    await expect(banner).toHaveCSS("box-shadow", "none");
+    await expect(banner).toHaveCSS("height", "32px");
+    await expect(banner.locator("strong")).toHaveCSS("font-weight", "600");
+    await expect(banner.locator("svg")).toHaveAttribute("width", "16");
+    await expect(banner.locator("a, button, [tabindex]")).toHaveCount(0);
+    await expectAxeClean(page, "#status");
+  });
+}
+
+test("the demo banner is at least 48px high on a phone @mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(gallery("light"));
+  const banner = page
+    .locator("#status")
+    .getByRole("status")
+    .filter({ hasText: "Demo workspace." });
+  expect((await banner.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+});

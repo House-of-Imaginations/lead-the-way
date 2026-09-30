@@ -15,6 +15,8 @@ export const TOKENS = {
     layer01: "rgb(244, 244, 244)",
     layerHover: "rgb(232, 232, 232)",
     layerInverse: "rgb(57, 57, 57)",
+    highlight: "rgb(237, 245, 255)",
+    borderSubtle: "rgb(224, 224, 224)",
   },
   dark: {
     focus: "rgb(255, 255, 255)",
@@ -26,6 +28,8 @@ export const TOKENS = {
     layer01: "rgb(38, 38, 38)",
     layerHover: "rgb(51, 51, 51)",
     layerInverse: "rgb(244, 244, 244)",
+    highlight: "rgb(0, 29, 108)",
+    borderSubtle: "rgb(57, 57, 57)",
   },
 } as const;
 

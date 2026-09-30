@@ -1203,3 +1203,100 @@ button.ltw-sn-acct:hover {
     transform: translate(-50%, -50%);
   }
 }
+
+/* SideNav checklist and status block (P3) */
+.ltw-sn-ck {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ltw-sn-a[data-state="done"] .ltw-i {
+  color: var(--support-success);
+}
+.ltw-sn-a[data-state="current"] .ltw-i {
+  color: var(--interactive);
+}
+.ltw-sn-sh,
+.ltw-sn-v {
+  color: var(--text-primary);
+}
+.ltw-sn-sh {
+  font-weight: 600;
+}
+.ltw-sn-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Nothing saved yet: below 1056px the server paints the rail before any script runs.
+   Mirrors every .ltw-sn-col rule above. */
+@media (max-width: 1055px) {
+  .ltw-sn-auto {
+    width: var(--size-sidenav-rail);
+  }
+  .ltw-sn-auto .ltw-sn-t,
+  .ltw-sn-auto .ltw-sn-x {
+    display: none;
+  }
+  .ltw-sn-auto .ltw-sn-h {
+    height: 1px;
+    padding: 0;
+    margin: 12px 8px;
+    background: var(--border-subtle);
+    font-size: 0;
+    overflow: hidden;
+  }
+  .ltw-sn-auto .ltw-sn-brand {
+    padding: 0 12px;
+  }
+  .ltw-sn-auto .ltw-sn-org {
+    margin: 0 8px 4px;
+    padding: 0;
+    background: transparent;
+  }
+  .ltw-sn-auto .ltw-sn-acct {
+    padding: 8px;
+  }
+  .ltw-sn-auto .ltw-sn-tg svg {
+    transform: rotate(180deg);
+  }
+  .ltw-sn-auto .ltw-sn-st + .ltw-sn-tg {
+    margin-top: auto;
+  }
+}
+
+/* Demo banner (R11): flat, full width, above everything, not sticky */
+.ltw-demo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 16px;
+  background: var(--highlight);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.16px;
+}
+.ltw-demo p {
+  margin: 0;
+}
+.ltw-demo strong {
+  font-weight: 600;
+}
+.ltw-demo .ltw-i {
+  flex: none;
+  color: var(--support-info);
+}
+@media (max-width: 671px) {
+  .ltw-demo {
+    align-items: flex-start;
+    min-height: 48px;
+    padding: 13px 16px;
+  }
+  .ltw-demo .ltw-i {
+    margin-top: 2px;
+  }
+}

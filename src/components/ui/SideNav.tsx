@@ -1,8 +1,12 @@
 "use client";
 
 import {
+  CheckmarkOutline,
   ChevronLeft,
   ChevronSort,
+  Locked,
+  RadioButton,
+  RadioButtonChecked,
   type CarbonIconType,
 } from "@carbon/icons-react";
 import clsx from "clsx";
@@ -14,11 +18,19 @@ import {
   useSyncExternalStore,
   type KeyboardEvent,
   type PointerEvent,
-  type ReactNode,
 } from "react";
+import {
+  NAV,
+  NAV_COOKIE,
+  clampWidth,
+  parseNav,
+  serializeNav,
+  type NavState,
+} from "@/lib/navState";
 import { Avatar } from "./Avatar";
 import { Logo } from "./Logo";
 import { Menu, type MenuItem } from "./Menu";
+import { ProgressBar } from "./ProgressBar";
 
 export type SideNavLink = {
   label: string;
@@ -26,94 +38,74 @@ export type SideNavLink = {
   icon: CarbonIconType;
   current?: boolean;
 };
-export type SideNavSection = { title: string; links: SideNavLink[] };
+/** A null title is an untitled group (the employee nav on 11). */
+export type SideNavSection = { title: string | null; links: SideNavLink[] };
+export type SideNavChecklist = {
+  title: string;
+  items: { label: string; href: string; state: "done" | "current" | "todo" }[];
+};
+export type SideNavStatus = {
+  heading: string | null;
+  progress: { value: number; max: number } | null;
+  label: string;
+  value: string;
+  note: string | null;
+};
 export type SideNavProps = {
   homeHref: string;
   org: { initials: string; name: string; team: string };
   orgMenu?: MenuItem[];
   sections: SideNavSection[];
-  status?: ReactNode;
+  checklist?: SideNavChecklist | null;
+  status?: SideNavStatus | null;
   user: { initials: string; name: string; role: string };
   accountMenu: MenuItem[];
   resizable?: boolean;
+  /** The saved state as the server read it from the cookie: the first paint matches. */
+  initialState?: NavState | null;
 };
 
-const KEY = "ltw:sidenav";
-const RAIL = 48;
-const MIN = 200;
-const MAX = 400;
-const DEFAULT = 256;
 const SNAP = 140;
 const STEP = 16;
 const NARROW = "(max-width: 1055px)"; // below DESIGN.md's 1056px (lg) breakpoint
-
-type NavState = { width: number; collapsed: boolean };
+const STEP_ICONS = {
+  done: CheckmarkOutline,
+  current: RadioButtonChecked,
+  todo: RadioButton,
+} as const;
 
 // ponytail: one module-level store, because the app renders one resizable side nav.
-// The cache keeps the page working when storage throws (private windows, blocked site data).
-let cached: string | null = null;
+// No cross-tab sync: a cookie has no change event (Ruling 10).
+let cached: string | undefined;
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void) {
-  const onStorage = (e: StorageEvent) => {
-    if (e.key !== KEY) return;
-    cached = null;
-    listener();
-  };
   listeners.add(listener);
-  window.addEventListener("storage", onStorage);
   return () => {
     listeners.delete(listener);
-    window.removeEventListener("storage", onStorage);
   };
 }
 
 function getSnapshot(): string {
-  if (cached === null) {
-    try {
-      cached = localStorage.getItem(KEY) ?? "";
-    } catch {
-      cached = "";
-    }
-  }
-  // Nothing stored: below 1056px the rail is the default (DESIGN.md, Responsive behaviour).
-  // ponytail: read once per render, not on resize; the next stored choice wins anyway.
+  cached ??=
+    document.cookie.match(new RegExp(`(?:^|; )${NAV_COOKIE}=([^;]*)`))?.[1] ??
+    "";
+  // Nothing saved: below 1056px the rail is the default (DESIGN.md, Responsive behaviour).
   if (cached === "" && window.matchMedia(NARROW).matches) return "rail";
   return cached;
 }
 
-const getServerSnapshot = () => "";
-
 function save(state: NavState) {
-  cached = JSON.stringify(state);
-  try {
-    localStorage.setItem(KEY, cached);
-  } catch {
-    // Storage blocked: the choice lasts for this page only.
-  }
+  cached = serializeNav(state);
+  document.cookie = `${NAV_COOKIE}=${cached}; path=/; max-age=31536000; samesite=lax`;
   listeners.forEach((l) => l());
 }
 
-const clamp = (width: number) =>
-  Math.min(MAX, Math.max(MIN, Math.round(width)));
+const never = () => () => {};
 
-function parse(raw: string): NavState {
-  if (raw === "rail") return { width: DEFAULT, collapsed: true };
-  try {
-    const v: unknown = JSON.parse(raw);
-    if (
-      typeof v === "object" &&
-      v !== null &&
-      "width" in v &&
-      "collapsed" in v &&
-      typeof v.width === "number" &&
-      typeof v.collapsed === "boolean"
-    )
-      return { width: clamp(v.width), collapsed: v.collapsed };
-  } catch {
-    // Empty or malformed: fall through to the default.
-  }
-  return { width: DEFAULT, collapsed: false };
+function stateOf(raw: string): NavState {
+  if (raw === "rail") return { width: NAV.default, collapsed: true };
+  return parseNav(raw) ?? { width: NAV.default, collapsed: false };
 }
 
 export function SideNav({
@@ -121,18 +113,30 @@ export function SideNav({
   org,
   orgMenu,
   sections,
+  checklist,
   status,
   user,
   accountMenu,
   resizable = true,
+  initialState = null,
 }: SideNavProps) {
-  const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const stored = resizable ? parse(raw) : { width: DEFAULT, collapsed: false };
+  const serverRaw = initialState ? serializeNav(initialState) : "";
+  const raw = useSyncExternalStore(subscribe, getSnapshot, () => serverRaw);
+  const mounted = useSyncExternalStore(
+    never,
+    () => true,
+    () => false,
+  );
+  const stored = resizable
+    ? stateOf(raw)
+    : { width: NAV.default, collapsed: false };
+  // Nothing saved and not yet mounted: CSS picks expanded or rail by width.
+  const auto = resizable && !mounted && raw === "";
   const [drag, setDrag] = useState<number | null>(null);
   const start = useRef<{ x: number; width: number } | null>(null);
 
   const collapsed = drag === null ? stored.collapsed : drag < SNAP;
-  const width = drag === null ? stored.width : clamp(drag);
+  const width = drag === null ? stored.width : clampWidth(drag);
   const toggle = () => save({ ...stored, collapsed: !stored.collapsed });
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
@@ -146,7 +150,9 @@ export function SideNav({
         return;
       }
       save({
-        width: clamp(stored.width + (e.key === "ArrowRight" ? STEP : -STEP)),
+        width: clampWidth(
+          stored.width + (e.key === "ArrowRight" ? STEP : -STEP),
+        ),
         collapsed: false,
       });
     }
@@ -157,7 +163,7 @@ export function SideNav({
     e.currentTarget.setPointerCapture(e.pointerId);
     start.current = {
       x: e.clientX,
-      width: stored.collapsed ? RAIL : stored.width,
+      width: stored.collapsed ? NAV.rail : stored.width,
     };
   }
 
@@ -172,7 +178,7 @@ export function SideNav({
       save(
         drag < SNAP
           ? { width: stored.width, collapsed: true }
-          : { width: clamp(drag), collapsed: false },
+          : { width: clampWidth(drag), collapsed: false },
       );
     start.current = null;
     setDrag(null);
@@ -192,10 +198,15 @@ export function SideNav({
   return (
     <nav
       aria-label="Main"
-      className={clsx("ltw-sn", collapsed && "ltw-sn-col")}
+      className={clsx(
+        "ltw-sn",
+        collapsed && "ltw-sn-col",
+        auto && "ltw-sn-auto",
+      )}
       style={{
-        width: !resizable || collapsed ? undefined : width,
-        transition: drag === null ? undefined : "none",
+        width: !resizable || collapsed || auto ? undefined : width,
+        // No animation on the first paint or while dragging.
+        transition: mounted && drag === null ? undefined : "none",
       }}
     >
       <div className="ltw-sn-in">
@@ -222,11 +233,13 @@ export function SideNav({
             {orgBlock}
           </div>
         )}
-        {sections.map((section) => (
-          <Fragment key={section.title}>
-            <div className="ltw-sn-h">
-              <span className="ltw-sn-t">{section.title}</span>
-            </div>
+        {sections.map((section, i) => (
+          <Fragment key={section.title ?? i}>
+            {section.title && (
+              <div className="ltw-sn-h">
+                <span className="ltw-sn-t">{section.title}</span>
+              </div>
+            )}
             {section.links.map(({ label, href, icon: Icon, current }) => (
               <Link
                 key={label}
@@ -241,7 +254,60 @@ export function SideNav({
             ))}
           </Fragment>
         ))}
-        {status && <div className="ltw-sn-st ltw-sn-x">{status}</div>}
+        {checklist && (
+          <>
+            <div className="ltw-sn-h">
+              <span className="ltw-sn-t">{checklist.title}</span>
+            </div>
+            <ol className="ltw-sn-ck">
+              {checklist.items.map(({ label, href, state }) => {
+                const Icon = STEP_ICONS[state];
+                return (
+                  <li key={label}>
+                    <Link
+                      className="ltw-sn-a"
+                      href={href}
+                      title={label}
+                      data-state={state}
+                      aria-current={state === "current" ? "step" : undefined}
+                    >
+                      <Icon className="ltw-i" aria-hidden="true" />
+                      <span className="ltw-sn-t">
+                        {state === "done" && (
+                          <span className="sr-only">Done: </span>
+                        )}
+                        {label}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+          </>
+        )}
+        {status && (
+          <div className="ltw-sn-st ltw-sn-x">
+            {status.heading && (
+              <span className="ltw-sn-sh">{status.heading}</span>
+            )}
+            {status.progress && (
+              <ProgressBar
+                label="Sprint progress"
+                hideLabel
+                value={status.progress.value}
+                max={status.progress.max}
+              />
+            )}
+            <span>{status.label}</span>
+            <span className="ltw-sn-v">{status.value}</span>
+            {status.note && (
+              <span className="ltw-sn-note">
+                <Locked className="ltw-i" aria-hidden="true" />
+                {status.note}
+              </span>
+            )}
+          </div>
+        )}
         {resizable && (
           <button
             type="button"
@@ -284,9 +350,9 @@ export function SideNav({
           role="separator"
           aria-orientation="vertical"
           aria-label="Resize navigation"
-          aria-valuemin={RAIL}
-          aria-valuemax={MAX}
-          aria-valuenow={collapsed ? RAIL : width}
+          aria-valuemin={NAV.rail}
+          aria-valuemax={NAV.max}
+          aria-valuenow={collapsed ? NAV.rail : width}
           tabIndex={0}
           onKeyDown={onKeyDown}
           onPointerDown={onPointerDown}

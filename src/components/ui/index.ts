@@ -47,8 +47,11 @@ export { Modal, type ModalProps } from "./Modal";
 export { Menu, type MenuItem, type MenuProps } from "./Menu";
 export {
   SideNav,
+  type SideNavChecklist,
   type SideNavLink,
   type SideNavProps,
   type SideNavSection,
+  type SideNavStatus,
 } from "./SideNav";
+export { DemoBanner } from "./DemoBanner";
 export { TopBar, type TopBarProps } from "./TopBar";

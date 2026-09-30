@@ -4,6 +4,7 @@ import { Locked } from "@carbon/icons-react";
 import { useState } from "react";
 import {
   Avatar,
+  DemoBanner,
   InlineNotification,
   ProgressBar,
   Skeleton,
@@ -16,6 +17,7 @@ export function StatusSection() {
   const [tools, setTools] = useState(["Copilot", "Gemini"]);
   return (
     <Section id="status" title="Tags, avatars, notifications and stats">
+      <DemoBanner workspace="Calder Lane" />
       <div className="flex flex-wrap gap-03">
         <Tag>Draft</Tag>
         <Tag color="blue">Active</Tag>

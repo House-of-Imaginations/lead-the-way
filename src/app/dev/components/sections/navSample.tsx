@@ -41,13 +41,22 @@ export function sampleNav(onAction: (label: string) => void): SideNavProps {
         ],
       },
     ],
-    status: (
-      <>
-        <span className="ltw-sn-name text-text-primary">Week 2 of 4</span>
-        <span>Next protected hour</span>
-        <span className="text-text-primary">Wed 16 Sep, 2:00 PM</span>
-      </>
-    ),
+    checklist: {
+      title: "Sprint setup",
+      items: [
+        { label: "Protected hour", href: HREF, state: "done" },
+        { label: "Manager pathway", href: HREF, state: "current" },
+        { label: "Team agreement", href: HREF, state: "todo" },
+        { label: "Invite team", href: HREF, state: "todo" },
+      ],
+    },
+    status: {
+      heading: "Week 2 of 4",
+      progress: { value: 2, max: 4 },
+      label: "Next protected hour",
+      value: "Wed 16 Sep, 2:00 PM",
+      note: null,
+    },
     user: { initials: "PR", name: "Priya Raman", role: "Team manager" },
     accountMenu: [
       { label: "Settings", href: HREF },

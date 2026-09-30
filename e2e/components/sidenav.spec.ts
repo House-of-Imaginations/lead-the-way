@@ -22,10 +22,9 @@ async function drag(page: Page, dx: number) {
 }
 
 test.describe("side nav", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, context }) => {
+    await context.clearCookies();
     await page.goto(gallery("light"));
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
   });
 
   test("renders the shell in order with the current page marked", async ({
@@ -165,41 +164,77 @@ test.describe("side nav", () => {
     await expect(nav(page)).toHaveCSS("width", "48px");
   });
 
-  test("a stored rail hydrates without errors", async ({ page }) => {
+  test("a saved rail hydrates without errors", async ({ page, context }) => {
     const errors: string[] = [];
     page.on("console", (m) => {
       if (m.type() === "error") errors.push(m.text());
     });
-    await page.evaluate(() =>
-      localStorage.setItem(
-        "ltw:sidenav",
-        JSON.stringify({ width: 300, collapsed: true }),
-      ),
-    );
+    await context.addCookies([
+      { name: "ltw-sidenav", value: "c300", url: "http://localhost:3000" },
+    ]);
     await page.reload();
     await expect(nav(page)).toHaveCSS("width", "48px");
+    await nav(page).getByRole("button", { name: "Expand navigation" }).click();
+    await expect(nav(page)).toHaveCSS("width", "300px");
     expect(errors.filter((e) => /hydrat/i.test(e))).toEqual([]);
   });
 
-  test("works when storage is blocked", async ({ page }) => {
-    await page.addInitScript(() => {
-      Object.defineProperty(window, "localStorage", {
-        get() {
-          throw new Error("Storage is blocked");
-        },
-      });
-    });
-    await page.reload();
-    await nav(page).getByRole("button", { name: "Collapse" }).click();
-    await expect(nav(page)).toHaveCSS("width", "48px");
+  test("the choice is saved in a cookie the server can read", async ({
+    page,
+    context,
+  }) => {
+    await handle(page).focus();
+    await page.keyboard.press("ArrowRight");
+    const cookie = (await context.cookies()).find(
+      (c) => c.name === "ltw-sidenav",
+    );
+    expect(cookie?.value).toBe("w272");
+    expect(cookie?.path).toBe("/");
+    expect(cookie?.sameSite).toBe("Lax");
   });
 
-  test("defaults to the rail below 1056px when nothing is stored", async ({
+  test("below 1056px with nothing saved, the first paint is already the rail", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1000, height: 800 });
+    // With scripts off, only the server HTML and CSS decide the width.
+    await page.route("**/*.js", (route) => route.abort());
     await page.reload();
     await expect(nav(page)).toHaveCSS("width", "48px");
+    await expect(nav(page).getByText("Calder Lane")).toBeHidden();
+    await page.unroute("**/*.js");
+    await page.reload();
+    await expect(nav(page)).toHaveCSS("width", "48px");
+    await nav(page).getByRole("button", { name: "Expand navigation" }).click();
+    await expect(nav(page)).toHaveCSS("width", "256px");
+  });
+
+  test("the checklist marks done, current and todo steps", async ({ page }) => {
+    const list = nav(page).getByRole("list");
+    await expect(list.getByRole("link")).toHaveText([
+      "Done: Protected hour",
+      "Manager pathway",
+      "Team agreement",
+      "Invite team",
+    ]);
+    await expect(
+      list.getByRole("link", { name: "Manager pathway" }),
+    ).toHaveAttribute("aria-current", "step");
+    await expect(
+      list.getByRole("link", { name: "Team agreement" }),
+    ).not.toHaveAttribute("aria-current");
+    await expect(nav(page).getByText("Sprint setup")).toBeVisible();
+  });
+
+  test("the status block reads the week, the hour and its progress", async ({
+    page,
+  }) => {
+    const bar = nav(page).getByRole("progressbar", { name: "Sprint progress" });
+    await expect(bar).toHaveAttribute("aria-valuenow", "2");
+    await expect(bar).toHaveAttribute("aria-valuemax", "4");
+    await expect(nav(page).getByText("Week 2 of 4")).toBeVisible();
+    await expect(nav(page).getByText("Next protected hour")).toBeVisible();
+    await expect(nav(page).getByText("Wed 16 Sep, 2:00 PM")).toBeVisible();
   });
 
   test("the account menu opens upward and the org block switches", async ({
@@ -233,11 +268,11 @@ test.describe("side nav", () => {
 for (const theme of THEMES) {
   test(`side nav passes axe expanded and in the rail, ${theme}`, async ({
     page,
+    context,
     expectAxeClean,
   }) => {
+    await context.clearCookies();
     await page.goto(gallery(theme));
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
     await expectAxeClean(page, "#sidenav");
     await nav(page).getByRole("button", { name: "Collapse" }).click();
     await expect(nav(page)).toHaveCSS("width", "48px");
