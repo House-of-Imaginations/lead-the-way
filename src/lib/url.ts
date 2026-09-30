@@ -12,3 +12,14 @@ export function withParams(
   const query = params.toString();
   return query ? `${pathname}?${query}` : pathname;
 }
+
+/**
+ * `next` from a query string, if it stays on this site; else null. Only a
+ * path: one leading "/", not "//" or "/\" (browsers read both as another
+ * host), and no control characters (browsers drop a tab or newline, which
+ * turns "/\t/evil.example" into "//evil.example").
+ */
+export function safeNext(next: string | null | undefined): string | null {
+  if (!next || !/^\/(?![/\\])/.test(next)) return null;
+  return /[\u0000-\u001f\u007f]/.test(next) ? null : next;
+}

@@ -1358,6 +1358,15 @@ button.ltw-sn-acct:hover {
   justify-content: space-between;
   gap: 16px;
 }
+/* local: on phones the action is a 48px touch target (DESIGN.md, Responsive behaviour). */
+@media (max-width: 671px) {
+  .ltw-fld-h {
+    align-items: center;
+  }
+  .ltw-fld-h > :is(a, button) {
+    min-height: 48px;
+  }
+}
 
 /* Single sign-on and social buttons: white with a hairline, icon then label (DESIGN.md, Buttons) */
 .ltw-btn-sso {
