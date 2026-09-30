@@ -261,13 +261,12 @@ test("below 1024px the panel hides and the form fills the width @mobile", async 
 });
 
 // Group C carry: a field's label action ("Forgot your password?" on 02b) is a
-// 48px touch target on phones. /login gets that control in Task 9; the
-// gallery renders the same Field today.
+// 48px touch target on phones, checked on the real /login control.
 test("a label action is a 48px touch target on phones @mobile", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/dev/components?theme=light");
+  await page.goto("/login");
   const forgot = (await page
     .getByRole("button", { name: "Forgot your password?" })
     .boundingBox())!;

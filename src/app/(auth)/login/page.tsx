@@ -10,7 +10,7 @@ export default async function LogInPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const [providers, { next }] = await Promise.all([
+  const [providers, { next, reset }] = await Promise.all([
     getAuthMethods(),
     searchParams,
   ]);
@@ -24,6 +24,7 @@ export default async function LogInPage({
       <LogInForm
         providers={providers}
         next={safeNext(typeof next === "string" ? next : null)}
+        reset={reset === "1"}
       />
     </AuthSplit>
   );
