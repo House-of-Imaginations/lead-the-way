@@ -117,6 +117,32 @@ test("setProtectedHour moves week one with the weekday", async () => {
   expect((await sprintOf(t, orgId)).committedAt).toBeUndefined();
 });
 
+test("a draft's week one follows the clock (Ruling 17)", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  await priya.mutation(api.sprints.setProtectedHour, {
+    weekday: 4,
+    start: "10:00",
+    expectOrgId: orgId,
+  });
+  // Three weeks on (Tuesday 22 September), the draft is revisited.
+  await t.run(async (ctx) => {
+    const org = (await ctx.db.get(orgId))!;
+    await ctx.db.patch(orgId, { demoNow: org.demoNow! + 21 * 86_400_000 });
+  });
+  expect(await priya.query(api.sprints.current, {})).toMatchObject({
+    startDate: "2026-10-01",
+    weekOneMonday: "2026-09-28",
+  });
+  // A launched sprint keeps the dates it launched with.
+  const { _id } = await sprintOf(t, orgId);
+  await t.run((ctx) => ctx.db.patch(_id, { launchedAt: Date.now() }));
+  expect(await priya.query(api.sprints.current, {})).toMatchObject({
+    startDate: "2026-09-10",
+    weekOneMonday: "2026-09-07",
+  });
+});
+
 test("commit logs hour.committed once", async () => {
   const { t, orgId, as } = await calderLane();
   const priya = as("priya");

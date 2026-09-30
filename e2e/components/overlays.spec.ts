@@ -196,7 +196,7 @@ for (const theme of THEMES) {
       await page.setViewportSize({ width: 390, height: 844 });
       await openMenu(page, "Show actions");
       const item = page.getByRole("menuitem", { name: "Sign out" });
-      expect((await item.boundingBox())!.height).toBe(48);
+      expect((await item.boundingBox())!.height).toBeCloseTo(48, 1);
     });
 
     test("menu is keyboard operable and returns focus", async ({

@@ -38,7 +38,7 @@ export default function PartnerEmailPage() {
     <div className="flex min-h-dvh flex-col bg-layer-01">
       <header className="flex min-h-control-lg flex-wrap items-center justify-between gap-x-05 border-b border-border-subtle bg-background px-06 max-md:px-05">
         <span className="flex items-center gap-04">
-          <Email size={20} aria-hidden="true" />
+          <Email size={16} aria-hidden="true" />
           Inbox
         </span>
         <p className="text-label-01 text-text-secondary">

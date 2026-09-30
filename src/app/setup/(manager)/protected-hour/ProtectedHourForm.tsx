@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useRouter } from "next/navigation";
-import { Fragment, useState, useTransition, type FormEvent } from "react";
+import { Fragment, useState, useTransition, type SubmitEvent } from "react";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import {
   Button,
@@ -65,6 +65,8 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
   const commit = useMutation(api.sprints.commit);
   const [weekday, setWeekday] = useState(initial.weekday);
   const [start, setStart] = useState(initial.start);
+  // The saved commitment changes only through Protect or Not ready; Save and
+  // exit saves the hour and leaves it as it was, ticked or not.
   const [ticked, setTicked] = useState(initial.committed);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -79,11 +81,9 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
   };
   const block = `Learn ${timeLabel(start).replace(":00", "")}`;
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  function onSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
-    const exit =
-      (e.nativeEvent as SubmitEvent).submitter?.getAttribute("value") ===
-      "exit";
+    const exit = e.nativeEvent.submitter?.getAttribute("value") === "exit";
     setError(null);
     startTransition(async () => {
       try {

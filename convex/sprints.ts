@@ -88,8 +88,15 @@ export const current = viewerQuery("sprint:manage")({
     if (!sprint) return null;
     const team = await currentTeam(ctx, viewer.org._id);
     const band = team?.sizeBand;
+    // A draft's week one is worked out now, as setProtectedHour and commit
+    // would save it, so a draft revisited later never shows past weeks
+    // (Ruling 17). A launched sprint keeps its dates.
+    const startDate =
+      sprint.launchedAt === undefined
+        ? weekOneDate(sprint.protectedHour.weekday, viewer.now, sprint.timeZone)
+        : sprint.startDate;
     // `startDate` is week one's hour day; its week starts on the Monday before.
-    const day = new Date(`${sprint.startDate}T00:00:00Z`).getUTCDay();
+    const day = new Date(`${startDate}T00:00:00Z`).getUTCDay();
     return {
       sprintId: sprint._id,
       weekday: sprint.protectedHour.weekday,
@@ -97,8 +104,8 @@ export const current = viewerQuery("sprint:manage")({
       durationMinutes: sprint.protectedHour.durationMinutes,
       weeks: sprint.weeks,
       timeZone: sprint.timeZone,
-      startDate: sprint.startDate,
-      weekOneMonday: addDays(sprint.startDate, -((day + 6) % 7)),
+      startDate,
+      weekOneMonday: addDays(startDate, -((day + 6) % 7)),
       committed: sprint.committedAt !== undefined,
       notReady: sprint.notReady !== undefined,
       launched: sprint.launchedAt !== undefined,

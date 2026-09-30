@@ -27,6 +27,8 @@ export function NotReadyDialog() {
   const [pending, setPending] = useState(false);
 
   async function record(choice: "keepExploring" | "backToScheduling") {
+    // A double click would log hour.notReady twice.
+    if (pending) return;
     setError(null);
     setPending(true);
     try {

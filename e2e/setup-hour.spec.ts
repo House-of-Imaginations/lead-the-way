@@ -213,6 +213,24 @@ test("Keep exploring records not ready and opens /manager/learning", async ({
   await expect(commitment(page)).not.toBeChecked();
 });
 
+test("a double click on Keep exploring records not ready once", async ({
+  page,
+}) => {
+  // Each call is one Mutation frame on the Convex socket.
+  const calls: string[] = [];
+  page.on("websocket", (ws) =>
+    ws.on("framesent", ({ payload }) => {
+      if (String(payload).includes('"sprints:notReady"'))
+        calls.push(String(payload));
+    }),
+  );
+  await page.goto("/setup/protected-hour");
+  await notReady(page).click();
+  await dialog(page).getByRole("button", { name: "Keep exploring" }).dblclick();
+  await expect(page).toHaveURL("/manager/learning");
+  expect(calls).toHaveLength(1);
+});
+
 test("Back to scheduling closes the dialog", async ({ page }) => {
   await page.goto("/setup/protected-hour");
   await notReady(page).click();
@@ -359,7 +377,7 @@ test("the preview stacks under the form below 900px", async ({ page }) => {
   await page.goto("/setup/protected-hour");
   const form = await commitment(page).boundingBox();
   const box = await preview(page).boundingBox();
-  expect(box!.y).toBeGreaterThan(form!.y);
+  expect(box!.y).toBeGreaterThan(form!.y + form!.height);
 });
 
 for (const scheme of ["light", "dark"] as const) {

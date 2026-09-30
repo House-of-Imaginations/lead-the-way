@@ -10,11 +10,14 @@ const HOUR: CalendarHour = {
   weeks: 4,
 };
 
+// When the file is made: Tuesday 1 September, 9:30 AM in Melbourne.
+const NOW = Date.UTC(2026, 8, 0, 23, 30);
+
 const starts = (ics: string) =>
   [...ics.matchAll(/DTSTART:(\w+)/g)].map((m) => m[1]);
 
 test("icsFor has four weekly events in UTC", () => {
-  const ics = icsFor(HOUR);
+  const ics = icsFor(HOUR, NOW);
   expect(ics.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
   expect(ics.endsWith("END:VCALENDAR\r\n")).toBe(true);
   // CRLF only: no bare line feed or carriage return anywhere.
@@ -34,23 +37,30 @@ test("icsFor has four weekly events in UTC", () => {
     "20260930T050000Z",
   ]);
   expect([...ics.matchAll(/UID:(\S+)/g)].map((m) => m[1])).toEqual([
-    "ltw-2026-09-09-1@lead-the-way",
-    "ltw-2026-09-09-2@lead-the-way",
-    "ltw-2026-09-09-3@lead-the-way",
-    "ltw-2026-09-09-4@lead-the-way",
+    "ltw-2026-09-09-14:00-1@lead-the-way",
+    "ltw-2026-09-09-14:00-2@lead-the-way",
+    "ltw-2026-09-09-14:00-3@lead-the-way",
+    "ltw-2026-09-09-14:00-4@lead-the-way",
   ]);
+  // Stamped when the file is made, not when the hour starts.
+  expect([...ics.matchAll(/DTSTAMP:(\w+)/g)].map((m) => m[1])).toEqual(
+    Array(4).fill("20260831T233000Z"),
+  );
   expect(ics).toContain("SUMMARY:Protected learning hour\r\n");
 
   // Still 2:00 PM on the wall once daylight saving starts (Sunday 4 October).
-  expect(starts(icsFor({ ...HOUR, startDate: "2026-09-30" }))).toEqual([
+  expect(starts(icsFor({ ...HOUR, startDate: "2026-09-30" }, NOW))).toEqual([
     "20260930T040000Z",
     "20261007T030000Z",
     "20261014T030000Z",
     "20261021T030000Z",
   ]);
-  // Text values are escaped.
-  expect(icsFor({ ...HOUR, title: "Learn, try; share" })).toContain(
+  // Text values are escaped, line breaks of any kind included.
+  expect(icsFor({ ...HOUR, title: "Learn, try; share" }, NOW)).toContain(
     "SUMMARY:Learn\\, try\\; share\r\n",
+  );
+  expect(icsFor({ ...HOUR, title: "a\rb\r\nc\nd" }, NOW)).toContain(
+    "SUMMARY:a\\nb\\nc\\nd\r\n",
   );
 });
 

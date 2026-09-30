@@ -10,8 +10,8 @@ function download(ics: string) {
   a.href = url;
   a.download = "lead-the-way-protected-hour.ics";
   a.click();
-  // A tick later, so the browser has started the download first.
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  // A second later: Safari can cancel a download whose URL is revoked sooner.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /** Ruling 21: the hour as a real file, or as a recurring Google event in a new tab. */

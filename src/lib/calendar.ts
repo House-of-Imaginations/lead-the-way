@@ -14,17 +14,19 @@ function span(hour: CalendarHour, week: number): [string, string] {
   return [utc(start), utc(start + hour.protectedHour.durationMinutes * 60_000)];
 }
 
-/** RFC 5545 text: backslash, semicolon and comma escaped, newlines as \n. */
+/** RFC 5545 text: backslash, semicolon and comma escaped, any line break as \n. */
 function text(value: string): string {
-  return value.replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\n/g, "\\n");
+  return value.replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\r\n?|\n/g, "\\n");
 }
 
 /**
  * One VEVENT per week, each in UTC from `hourStart`, so no VTIMEZONE is needed
- * and a daylight saving change mid-sprint keeps the wall-clock hour.
- * ponytail: DTSTAMP is the event's start, so the same hour always makes the same file.
+ * and a daylight saving change mid-sprint keeps the wall-clock hour. The UID
+ * carries the date and the time, so a changed hour imports as new events.
+ * DTSTAMP is `now`, when the file is made.
  */
-export function icsFor(hour: CalendarHour): string {
+export function icsFor(hour: CalendarHour, now = Date.now()): string {
+  const stamp = utc(now);
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -36,8 +38,8 @@ export function icsFor(hour: CalendarHour): string {
     const [start, end] = span(hour, week);
     lines.push(
       "BEGIN:VEVENT",
-      `UID:ltw-${hour.startDate}-${week}@lead-the-way`,
-      `DTSTAMP:${start}`,
+      `UID:ltw-${hour.startDate}-${hour.protectedHour.start}-${week}@lead-the-way`,
+      `DTSTAMP:${stamp}`,
       `DTSTART:${start}`,
       `DTEND:${end}`,
       `SUMMARY:${text(hour.title)}`,

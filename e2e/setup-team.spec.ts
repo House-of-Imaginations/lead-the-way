@@ -247,6 +247,9 @@ test("Back goes to / on page 1 and to page 1 on page 2", async ({ page }) => {
 });
 
 test("a stale workspace refuses the save", async ({ page }) => {
+  // The refusal is caught and shown, never left uncaught for the dev overlay.
+  const uncaught: string[] = [];
+  page.on("pageerror", (e) => uncaught.push(e.message));
   await page.goto("/setup/team");
   await expect(
     page.getByRole("heading", { level: 1, name: "Tell us about your team" }),
@@ -255,9 +258,11 @@ test("a stale workspace refuses the save", async ({ page }) => {
   // just as a switch in another tab would: the page's expectOrgId is stale.
   resetDemo("setup");
   await next(page).click();
-  // exact: the dev overlay also quotes the Convex error.
-  await expect(page.getByText(STALE, { exact: true })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: STALE })).toHaveText(
+    STALE,
+  );
   await expect(page).toHaveURL("/setup/team");
+  expect(uncaught).toEqual([]);
 });
 
 /** Counts submit events on the form: Enter must cause none, and so no save. */
@@ -276,6 +281,9 @@ test("Enter never triggers Save and exit", async ({ page }) => {
   await page.goto("/setup/team");
   await countSubmits(page);
   await aiUse(page).getByRole("radio", { name: "Not using AI" }).press("Enter");
+  expect(await submits(page)).toBe(0);
+  // Chromium submits on Enter in a select too.
+  await page.getByRole("combobox", { name: "Industry" }).press("Enter");
   expect(await submits(page)).toBe(0);
 
   await page.goto("/setup/team?page=2");

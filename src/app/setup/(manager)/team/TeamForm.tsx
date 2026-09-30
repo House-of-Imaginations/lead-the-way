@@ -4,7 +4,7 @@ import { ArrowRight } from "@carbon/icons-react";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type FormEvent } from "react";
+import { useState, useTransition, type SubmitEvent } from "react";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import {
   Button,
@@ -63,11 +63,9 @@ export function TeamForm({ page, initial }: { page: 1 | 2; initial: Team }) {
       on ? [...list, challenge] : list.filter((c) => c !== challenge),
     );
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  function onSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
-    const exit =
-      (e.nativeEvent as SubmitEvent).submitter?.getAttribute("value") ===
-      "exit";
+    const exit = e.nativeEvent.submitter?.getAttribute("value") === "exit";
     setError(null);
     startTransition(async () => {
       try {
@@ -102,15 +100,20 @@ export function TeamForm({ page, initial }: { page: 1 | 2; initial: Team }) {
     <form
       id="setup-form"
       onSubmit={onSubmit}
-      // Enter in an input would click the header's Save and exit, the form's
-      // first submit button in tree order. Continue is a click.
+      // Enter in an input, or a select in Chromium, would click the header's
+      // Save and exit, the form's first submit button in tree order.
+      // Continue is a click.
       onKeyDown={(e) => {
-        if (e.key === "Enter" && e.target instanceof HTMLInputElement)
+        if (
+          e.key === "Enter" &&
+          (e.target instanceof HTMLInputElement ||
+            e.target instanceof HTMLSelectElement)
+        )
           e.preventDefault();
       }}
       className="flex flex-1 flex-col gap-07"
     >
-      <div className="grid grid-cols-[360px_minmax(0,720px)] gap-10 max-[900px]:grid-cols-1">
+      <div className="grid grid-cols-[360px_minmax(0,720px)] gap-10 max-[900px]:grid-cols-1 max-[900px]:gap-07">
         <div className="flex flex-col gap-04 pt-03">
           <h1 className="text-display-03">
             {page === 1 ? "Tell us about your team" : "What gets in the way?"}
