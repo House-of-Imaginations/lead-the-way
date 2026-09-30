@@ -3,8 +3,7 @@ import type { ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import { ExpectOrgIdProvider } from "@/components/app/ExpectOrgId";
 import { fetchAuthQuery } from "@/lib/account/auth-server";
-import { getShell, openOrHome } from "@/lib/account/queries";
-import { errorCode } from "@/lib/errors";
+import { getShell, managerRead } from "@/lib/account/queries";
 import { withParams } from "@/lib/url";
 
 /**
@@ -23,14 +22,11 @@ export default async function ManagerSetupLayout({
   if (!shell) redirect("/setup/start");
   if (shell.area !== "manager")
     redirect(withParams(shell.home, "", { moved: "1" }));
-  const sprint = await openOrHome(() =>
+  // A custom role with team:insights but not sprint:manage is in the manager
+  // area but can't set up: `managerRead` sends it to /manager.
+  const sprint = await managerRead(() =>
     fetchAuthQuery(api.sprints.current, {}),
-  ).catch((error: unknown) => {
-    // A custom role with team:insights but not sprint:manage is in the manager
-    // area but can't set up. Its home may be /setup/team, so home would loop.
-    if (errorCode(error) === "FORBIDDEN") redirect("/manager");
-    throw error;
-  });
+  );
   if (sprint?.launched) redirect("/manager");
   return (
     <ExpectOrgIdProvider value={shell.expectOrgId}>

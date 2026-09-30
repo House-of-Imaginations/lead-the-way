@@ -1,6 +1,7 @@
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import type { EventType, ProjectCategory } from "../../tables/sprint";
+import { latestAgreement, latestSaved } from "../agreement";
 import { throwUserError } from "../errors";
 import { logEvent } from "../events";
 import { insertInvite, inviteRoleOf } from "../orgs/invites";
@@ -262,26 +263,6 @@ async function projectOf(
       q.eq("personId", person._id).eq("sprintId", sprintId),
     )
     .first();
-}
-
-async function latestAgreement(ctx: MutationCtx, teamId: Id<"teams">) {
-  return await ctx.db
-    .query("agreements")
-    .withIndex("by_team_and_version", (q) => q.eq("teamId", teamId))
-    .order("desc")
-    .first();
-}
-
-/** The newest saved version, or null. A newer draft on top doesn't count. */
-async function latestSaved(ctx: MutationCtx, teamId: Id<"teams">) {
-  const versions = ctx.db
-    .query("agreements")
-    .withIndex("by_team_and_version", (q) => q.eq("teamId", teamId))
-    .order("desc");
-  for await (const version of versions) {
-    if (version.status === "saved") return version;
-  }
-  return null;
 }
 
 async function log(

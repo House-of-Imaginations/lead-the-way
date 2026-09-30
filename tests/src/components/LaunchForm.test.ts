@@ -3,9 +3,24 @@ import { expect, test } from "vitest";
 import {
   copyLinks,
   launchedToast,
+  sendReason,
 } from "../../../src/app/(app)/manager/sprint/launch/LaunchForm";
 
 const link = (email: string, token: string) => ({ email, token });
+
+test("a role without members:manage is told who can send", () => {
+  const gate = { committed: true, pathwayDone: true, agreementSaved: true };
+  expect(sendReason({ canInvite: false, gate }, 2)).toBe(
+    "Ask a workspace admin to send invitations.",
+  );
+  expect(sendReason({ canInvite: true, gate }, 2)).toBeNull();
+  expect(sendReason({ canInvite: true, gate }, 0)).toBe(
+    "Add at least one email address.",
+  );
+  expect(
+    sendReason({ canInvite: true, gate: { ...gate, pathwayDone: false } }, 2),
+  ).toBe("Protect the hour, finish the pathway and save the agreement first.");
+});
 
 test("links launch returned are kept when launchPage has none (email on)", () => {
   const links = copyLinks(null, [link("a@calderlane.com.au", "t1")]);

@@ -1,5 +1,6 @@
 import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { agreementSaved, dayMonth, latestSaved } from "./lib/agreement";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
@@ -26,6 +27,7 @@ import { reserveRateLimit } from "./lib/rateLimits";
 import {
   HOUR_STARTS,
   isOneOf,
+  MAX_DETAIL,
   NOT_READY_REASONS,
   TEAM_HOURS,
   TEAM_SIZES,
@@ -47,9 +49,6 @@ import {
   weekOneDate,
 } from "./lib/sprintTime";
 import type { Viewer } from "./lib/viewer";
-
-/** "Something else" words in the not ready dialog. */
-const MAX_DETAIL = 500;
 
 /** "6 to 10 people, client service": 04's team line. Acronyms stay ("HR"). */
 function summaryOf(sizeBand?: string, teamFunction?: string): string | null {
@@ -254,6 +253,8 @@ export const launchPage = viewerQuery("sprint:manage")({
     v.null(),
     v.object({
       launched: v.boolean(),
+      /** `launch` also needs members:manage. */
+      canInvite: v.boolean(),
       gate: v.object({
         committed: v.boolean(),
         pathwayDone: v.boolean(),
@@ -294,17 +295,25 @@ export const launchPage = viewerQuery("sprint:manage")({
       .query("orgInvites")
       .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
       .take(INVITES_READ);
-    const mine = rows.flatMap((i) =>
-      i.sprintId === sprint._id && i.email ? [{ ...i, email: i.email }] : [],
-    );
+    // The newest row per address: one withdrawn or lapsed and sent again
+    // is one person on 07.
+    const newest = new Map<string, Doc<"orgInvites"> & { email: string }>();
+    for (const i of rows) {
+      if (i.sprintId !== sprint._id || !i.email) continue;
+      const had = newest.get(i.email);
+      if (!had || i._creationTime > had._creationTime) {
+        newest.set(i.email, { ...i, email: i.email });
+      }
+    }
+    const mine = [...newest.values()];
     // Tokens only to whoever may hand them out, and only when nothing was
     // mailed (Ruling 30). ponytail: a demo address in a real workspace that
     // sent nothing gets its link from `launch`'s return, not from here.
-    const showLinks =
-      viewer.permissions.includes("members:manage") &&
-      (isDemo || !inviteEmailOn());
+    const canInvite = viewer.permissions.includes("members:manage");
+    const showLinks = canInvite && (isDemo || !inviteEmailOn());
     return {
       launched: sprint.launchedAt !== undefined,
+      canInvite,
       gate: {
         committed: sprint.committedAt !== undefined,
         pathwayDone: await requiredDone(ctx, viewer.person._id),

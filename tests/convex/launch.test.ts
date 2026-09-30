@@ -547,12 +547,41 @@ test("links need members:manage", async () => {
   expect(links).toEqual([{ email: "ana@example.com", token: invite?.token }]);
   expect((await owner.query(api.sprints.launchPage, {}))?.links).toEqual(links);
   expect((await lead.query(api.sprints.launchPage, {}))?.links).toBeNull();
+  // 07 says why the lead can't send, instead of a button that is refused.
+  expect((await lead.query(api.sprints.launchPage, {}))?.canInvite).toBe(false);
+  expect((await owner.query(api.sprints.launchPage, {}))?.canInvite).toBe(true);
   expect((await lead.query(api.sprints.launchPage, {}))?.invited).toEqual([
     { email: "ana@example.com", status: "pending" },
   ]);
   // With email on, the page hands out no links: the invitations were mailed.
   vi.stubEnv("RESEND_FROM", "Lead the Way <hello@example.com>");
   expect((await owner.query(api.sprints.launchPage, {}))?.links).toBeNull();
+});
+
+test("launchPage lists an address once, as its newest invitation", async () => {
+  const { t, owner, orgId, launch } = await manager();
+  await ready(t, orgId);
+  await launch(["ana@example.com", "ben@example.com"]);
+  const [first] = await invitesOf(t, orgId);
+  // Ana's was withdrawn and sent again for the same sprint.
+  await t.run(async (ctx) => {
+    await ctx.db.patch(first!._id, { status: "revoked" });
+    const { orgId, roleId, email, sprintId, invitedBy, expiresAt } = first!;
+    await ctx.db.insert("orgInvites", {
+      ...{ orgId, roleId, email, sprintId, invitedBy, expiresAt },
+      token: "again",
+      status: "pending",
+      createdAt: Date.now(),
+    });
+  });
+  const invited = (await owner.query(api.sprints.launchPage, {}))?.invited;
+  expect(invited).toHaveLength(2);
+  expect(invited).toEqual(
+    expect.arrayContaining([
+      { email: "ana@example.com", status: "pending" },
+      { email: "ben@example.com", status: "pending" },
+    ]),
+  );
 });
 
 test("the Sprint nav points to /manager after launch", async () => {

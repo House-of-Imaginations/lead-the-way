@@ -7,7 +7,7 @@ import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import { Button, Modal, Select, TextArea } from "@/components/ui";
 import { userMessage } from "@/lib/errors";
 import { api } from "@convex/_generated/api";
-import { NOT_READY_REASONS } from "@convex/lib/setupOptions";
+import { MAX_DETAIL, NOT_READY_REASONS } from "@convex/lib/setupOptions";
 
 const SOMETHING_ELSE = "Something else";
 
@@ -97,7 +97,7 @@ export function NotReadyDialog() {
           <TextArea
             id="not-ready-detail"
             label="Tell us more"
-            maxLength={500}
+            maxLength={MAX_DETAIL}
             value={detail}
             onChange={(e) => setDetail(e.currentTarget.value)}
             className="bg-background"

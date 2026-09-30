@@ -75,6 +75,9 @@ export const NOT_READY_REASONS = [
   "Something else",
 ] as const;
 
+/** "Something else" words in the not ready dialog. */
+export const MAX_DETAIL = 500;
+
 /** 04's "hrs paid time a week, team total": one hour a head, near the band's middle. */
 export const TEAM_HOURS: Record<TeamSize, number> = {
   "2 to 5": 4,

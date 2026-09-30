@@ -32,6 +32,7 @@ type InviteLink = { email: string; token: string };
 
 const GATE_REASON =
   "Protect the hour, finish the pathway and save the agreement first.";
+const NO_INVITE = "Ask a workspace admin to send invitations.";
 const BAD_EMAIL = "Enter an email address like name@example.com.";
 const LAUNCHED = "Your sprint has already launched.";
 const STATUS = {
@@ -68,6 +69,17 @@ export function launchedToast({
         ? `${invitations(invited)} sent.`
         : `${invitations(invited)} ready. Copy each link below.`;
   return { title: "Sprint launched", body };
+}
+
+/** Why "Send invitations" is off, or null when it is on. */
+export function sendReason(
+  { canInvite, gate }: Pick<LaunchPage, "canInvite" | "gate">,
+  count: number,
+): string | null {
+  if (!canInvite) return NO_INVITE;
+  if (!(gate.committed && gate.pathwayDone && gate.agreementSaved))
+    return GATE_REASON;
+  return count === 0 ? "Add at least one email address." : null;
 }
 
 /** Moves focus to the invited list's heading once this tab has launched. */
@@ -170,13 +182,7 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
   const [sentLinks, setSentLinks] = useState<InviteLink[]>([]);
   const [copyError, setCopyError] = useState<string | null>(null);
 
-  const ready =
-    data.gate.committed && data.gate.pathwayDone && data.gate.agreementSaved;
-  const reason = !ready
-    ? GATE_REASON
-    : emails.length === 0
-      ? "Add at least one email address."
-      : null;
+  const reason = sendReason(data, emails.length);
   const links = copyLinks(data.links, sentLinks);
 
   // Its own form, so Enter in "Add by email" adds the address and can never
