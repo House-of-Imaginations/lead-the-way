@@ -2,14 +2,16 @@ import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { throwUserError } from "../errors";
 import { takeDueSnapshots } from "../snapshots";
+import { currentSprint } from "../sprint";
 import { DEMO_TARGETS, type DemoTarget } from "./schedule";
 import { STEPS, isStepKey } from "./script";
 
 /**
  * Jump the demo clock forward and play every step it passes, in order, once,
- * then freeze the team totals of every week whose hour has now ended (Ruling
- * 2). Shared by `demo.setClock` (the guide) and `seed.clock` (e2e and local
- * runs). The caller has checked DEMO_MODE and that `org` is the demo.
+ * freezing the team totals of each week whose hour has ended as the steps
+ * pass it (Ruling 2). Shared by `demo.setClock` (the guide) and `seed.clock`
+ * (e2e and local runs). The caller has checked DEMO_MODE and that `org` is
+ * the demo.
  */
 export async function moveClock(
   ctx: MutationCtx,
@@ -33,11 +35,21 @@ export async function moveClock(
   const applied: string[] = [];
   for (const row of due) {
     if (row.appliedAt !== undefined || !isStepKey(row.key)) continue;
+    // Before a step, every week whose hour ended before it: a jump past
+    // several weeks freezes each as of its own hour, not as of the jump. A
+    // step at the hour's end (the session) still counts. The sprint is read
+    // each time, as a step may launch it.
+    await takeDueSnapshots(
+      ctx,
+      org,
+      await currentSprint(ctx, org._id),
+      to,
+      row.at - 1,
+    );
     await STEPS[row.key]({ ctx, orgId: org._id, at: row.at });
     await ctx.db.patch(row._id, { appliedAt: Date.now() });
     applied.push(row.key);
   }
-  // After the steps, so a week's totals include what its session wrote.
-  await takeDueSnapshots(ctx, org, to);
+  await takeDueSnapshots(ctx, org, await currentSprint(ctx, org._id), to);
   return { demoNow: to, applied };
 }

@@ -199,7 +199,13 @@ async function checklistOf(
   team: Doc<"teams"> | null,
   sprint: Doc<"sprints"> | null,
 ): Promise<Shell["checklist"]> {
-  if (!isManager(viewer) || sprint?.launchedAt !== undefined) return null;
+  // Without sprint:manage every step's page would send them back to /manager.
+  if (
+    !viewer.permissions.includes("sprint:manage") ||
+    sprint?.launchedAt !== undefined
+  ) {
+    return null;
+  }
   const gate = await setupGate(ctx, viewer, team, sprint);
   const done = [
     gate.teamSaved,

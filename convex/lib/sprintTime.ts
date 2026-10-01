@@ -11,7 +11,8 @@ export type HourOf = Pick<
   "startDate" | "timeZone" | "protectedHour"
 >;
 
-function parts(
+/** `at`'s date parts in `timeZone`, by part type ("day", "month", "weekday"). */
+export function parts(
   at: number,
   timeZone: string,
   options: Intl.DateTimeFormatOptions,
@@ -149,6 +150,22 @@ export function startDateOf(
     : sprint.startDate;
 }
 
+/**
+ * The next protected hour that hasn't ended: at the end of week 2's hour it
+ * moves to week 3's. Null once the last has ended.
+ */
+export function nextHour(
+  sprint: HourOf & Pick<Doc<"sprints">, "weeks">,
+  now: number,
+): { week: number; start: number } | null {
+  for (let week = 1; week <= sprint.weeks; week++) {
+    if (hourEnd(sprint, week) > now) {
+      return { week, start: hourStart(sprint, week) };
+    }
+  }
+  return null;
+}
+
 export type SprintPhase = "draft" | "scheduled" | "active" | "complete";
 
 /**
@@ -278,14 +295,13 @@ export function sprintStatus(
     };
   }
   const week = weekOf(sprint, now);
-  // Active means the last hour hasn't ended, so this stops by `weeks`.
-  let next = week;
-  while (hourEnd(sprint, next) <= now) next++;
+  // Active means the last hour hasn't ended, so there is a next one.
+  const next = nextHour(sprint, now)!;
   return {
     heading: manager ? `Week ${week} of ${sprint.weeks}` : null,
     progress: manager ? { value: week, max: sprint.weeks } : null,
-    label: next === sprint.weeks ? "Show and tell" : "Next protected hour",
-    value: hourLabel(hourStart(sprint, next), tz),
+    label: next.week === sprint.weeks ? "Show and tell" : "Next protected hour",
+    value: hourLabel(next.start, tz),
     note,
   };
 }

@@ -4,9 +4,9 @@ import type { Doc } from "./_generated/dataModel";
 import { dayMonth, latestSaved } from "./lib/agreement";
 import { viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
-import { MAX_MEMBERS_PER_ORG, permissionsOf } from "./lib/orgs/membership";
+import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
 import { PATHWAY_MODULES, coachingPercent } from "./lib/pathway";
-import { thresholdOf, type Aggregate } from "./lib/privacy";
+import { loadSeated, thresholdOf, type Aggregate } from "./lib/privacy";
 import { isManager } from "./lib/shell";
 import { latestSnapshot } from "./lib/snapshots";
 import {
@@ -20,6 +20,8 @@ import {
   hourLabel,
   hourLong,
   hourStart,
+  nextHour,
+  parts,
   sprintPhase,
   startDateOf,
   weekOf,
@@ -93,14 +95,7 @@ const TAGS: Record<SprintPhase, Tag> = {
 
 /** "9 Sep", as its day and month. */
 function dayMon(at: number, timeZone: string): [string, string] {
-  const p: Record<string, string> = {};
-  for (const part of new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    day: "numeric",
-    month: "short",
-  }).formatToParts(at)) {
-    p[part.type] = part.value;
-  }
+  const p = parts(at, timeZone, { day: "numeric", month: "short" });
   return [p.day!, p.month!];
 }
 
@@ -205,16 +200,12 @@ export const overview = viewerQuery()({
 
     let intro = `Your sprint starts ${hourLong(first, tz)}.`;
     if (phase === "complete") {
-      const weekday = new Intl.DateTimeFormat("en-US", {
-        timeZone: tz,
-        weekday: "long",
-      }).format(last);
+      const { weekday } = parts(last, tz, { weekday: "long" });
       intro = `Your sprint finished on ${weekday} ${dayMonth(last, tz)}.`;
     } else if (phase === "active") {
-      // The next hour that hasn't ended: at 3:00 PM it moves to next week's.
-      let next = 1;
-      while (next < sprint.weeks && hourEnd(dated, next) <= now) next++;
-      intro = `Your team is in week ${week}. The next protected hour is ${hourLong(hourStart(dated, next), tz)}.`;
+      // Active means the last hour hasn't ended, so there is a next one.
+      const next = nextHour(dated, now)!;
+      intro = `Your team is in week ${week}. The next protected hour is ${hourLong(next.start, tz)}.`;
     }
 
     // One row per module (writer contract 5).
@@ -243,25 +234,14 @@ export const overview = viewerQuery()({
         )
         .take(MAX_MEMBERS_PER_ORG);
       const signedBy = new Set(signatures.map((s) => s.personId));
-      // Over the whole seated team, opted out or not: an opt-out must never
-      // flip this title. Held back below the threshold (Ruling 15), so it
-      // can't single out who hasn't signed. Not a `Countable`: no number
-      // leaves here, only "everyone".
-      const people = await ctx.db
-        .query("people")
-        .withIndex("by_org", (q) => q.eq("orgId", org._id))
-        .take(MAX_MEMBERS_PER_ORG);
-      let seated = 0;
-      let everyone = true;
-      for (const person of people) {
-        if (person._id === viewer.person._id) continue;
-        const role = await ctx.db.get(person.roleId);
-        if (!role || role.orgId !== org._id) continue;
-        if (permissionsOf(role).includes("team:insights")) continue;
-        seated++;
-        if (!signedBy.has(person._id)) everyone = false;
-      }
-      everyone &&= seated >= thresholdOf(org);
+      // Over the whole seated team, opted out or not, the viewer too: an
+      // opt-out must never flip this title, nor who is looking. Held back
+      // below the threshold (Ruling 15), so it can't single out who hasn't
+      // signed. No number leaves here, only "everyone".
+      const seated = await loadSeated(ctx, org);
+      const everyone =
+        seated.length >= thresholdOf(org) &&
+        seated.every((person) => signedBy.has(person._id));
       agreement = {
         title: everyone ? "Signed by the team" : "Saved",
         tag: everyone

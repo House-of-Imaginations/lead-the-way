@@ -168,3 +168,27 @@ test("survey answers are read by question only through the privacy layer", () =>
     [],
   );
 });
+
+/**
+ * The files that may call the privacy layer's `count` and `aggregate`: its
+ * own, and the weekly snapshot writer. A manager query reads `teamSnapshots`
+ * instead of counting live (see lib/privacy.ts), so a later phase that needs
+ * a live count has to add its file here on purpose.
+ */
+const PRIVATE_COUNT_FILES = ["lib/privacy.ts", "lib/snapshots.ts"];
+
+test("private activity is counted only where the allowlist says", () => {
+  const dir = new URL("../../convex/", import.meta.url);
+  // A bare call, not a method such as `.count(`, or a renamed import.
+  const calls = /(?<![\w.$])(?:count|aggregate)\(|\b(?:count|aggregate) as\b/;
+  const found: string[] = [];
+  for (const file of readdirSync(dir, { recursive: true }) as string[]) {
+    if (!file.endsWith(".ts") || file.startsWith("_generated")) continue;
+    if (calls.test(readFileSync(new URL(file, dir), "utf8"))) found.push(file);
+  }
+  // Nothing found would pass vacuously; the snapshot writer must be seen.
+  expect(found).toContain("lib/snapshots.ts");
+  expect(found.filter((file) => !PRIVATE_COUNT_FILES.includes(file))).toEqual(
+    [],
+  );
+});

@@ -183,6 +183,15 @@ test("the checklist follows setup and goes once the sprint launches", async () =
   expect((await as("priya").query(api.viewer.shell, {}))?.checklist).toBeNull();
 });
 
+test("a manager without sprint:manage gets no setup checklist", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  expect((await owner.query(api.viewer.shell, {}))?.checklist).not.toBeNull();
+  // Its links would only bounce them back to /manager.
+  const insights = await seat(t, orgId, "user_insights", ["team:insights"]);
+  expect((await insights.as.query(api.viewer.shell, {}))?.checklist).toBeNull();
+});
+
 test("home is /manager once the sprint launched, team profile or not", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);

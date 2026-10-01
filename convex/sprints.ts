@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { MutationCtx } from "./_generated/server";
 import { dayMonth, latestSaved } from "./lib/agreement";
+import { virtualClock } from "./lib/clock";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { DEMO_CAST } from "./lib/demo/cast";
 import { INVITE_MESSAGE } from "./lib/demo/script";
@@ -427,24 +428,24 @@ export const launch = viewerMutation(
       type: "sprint.launched",
       at: now,
     });
-    // Each week's team totals are frozen when its hour ends (Ruling 2). The
-    // demo's clock is virtual, so a real `runAt` would fire at once there;
-    // `moveClock` takes the demo's instead. Each run makes good a missed
-    // earlier one; the last week has nothing after it, so one more run a day
-    // later backs it up.
-    if (!viewer.org.isDemo) {
+    // Each week's team totals are frozen when its hour ends (Ruling 2). On a
+    // virtual clock a real `runAt` would fire at once, so `moveClock` takes
+    // them instead. Each run makes good a missed earlier one; the last week
+    // has nothing after it, so one more run a day later backs it up.
+    if (!virtualClock(viewer.org)) {
       const stored = { ...sprint, startDate: startDateOf(sprint, now) };
+      const args = { orgId, sprintId: sprint._id };
       for (let week = 1; week <= sprint.weeks; week++) {
         await ctx.scheduler.runAt(
           hourEnd(stored, week),
           internal.snapshots.take,
-          { orgId },
+          args,
         );
       }
       await ctx.scheduler.runAt(
         hourEnd(stored, sprint.weeks) + 86_400_000,
         internal.snapshots.take,
-        { orgId },
+        args,
       );
     }
 

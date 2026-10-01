@@ -51,12 +51,12 @@ async function optOut(t: T, orgId: Id<"orgs">, personId: Id<"people">) {
 
 /** Launched on 8 September, week one on Wednesday the 9th. */
 async function launchedSprint(t: T, orgId: Id<"orgs">) {
-  await t.run(async (ctx) => {
+  return await t.run(async (ctx) => {
     const team = (await ctx.db
       .query("teams")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .unique())!;
-    await ctx.db.insert("sprints", {
+    return await ctx.db.insert("sprints", {
       orgId,
       teamId: team._id,
       startDate: "2026-09-09",
@@ -138,8 +138,8 @@ test("a team below the threshold sees hidden totals", async () => {
   for (const subject of ["user_a", "user_b", "user_c", "user_d"]) {
     await seat(t, orgId, subject, []);
   }
-  await launchedSprint(t, orgId);
-  await t.mutation(internal.snapshots.take, { orgId });
+  const sprintId = await launchedSprint(t, orgId);
+  await t.mutation(internal.snapshots.take, { orgId, sprintId });
   const hidden = { kind: "hidden", helper: "Hidden until 5 responses" };
   expect(await owner.query(api.manager.overview, {})).toMatchObject({
     phase: "active",
@@ -158,8 +158,8 @@ test("a snapshot taken under a lower threshold hides once it is raised", async (
   for (const subject of ["a", "b", "c", "d", "e", "f"]) {
     await seat(t, orgId, `user_${subject}`, []);
   }
-  await launchedSprint(t, orgId);
-  await t.mutation(internal.snapshots.take, { orgId });
+  const sprintId = await launchedSprint(t, orgId);
+  await t.mutation(internal.snapshots.take, { orgId, sprintId });
   const shownAt5 = (await owner.query(api.manager.overview, {}))!;
   expect(shownAt5.team?.sessionDone.stat).toEqual(shown(0, 6));
 
@@ -190,6 +190,52 @@ test("an opt-out never flips the agreement to signed by the team", async () => {
   // Dan opts out of team totals: the title must not give that away.
   await optOut(t, orgId, dan);
   expect(await title()).toBe("Saved");
+});
+
+test("a planner who hasn't signed sees Saved, the same as the owner", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  const { as: planner } = await seat(t, orgId, "user_planner", [
+    "sprint:manage",
+  ]);
+  // The title doesn't depend on who is looking.
+  for (const viewer of [planner, as("priya")]) {
+    expect(
+      (await viewer.query(api.manager.overview, {}))!.agreement,
+    ).toMatchObject({ title: "Saved", tag: { label: "Saved", kind: "green" } });
+  }
+});
+
+test("a real sprint launched before week one's Monday reads as scheduled", async () => {
+  // Sunday 6 September, the day before week one's Monday.
+  vi.setSystemTime(mel("2026-09-06T09:00"));
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const sprintId = await launchedSprint(t, orgId);
+  await t.run((ctx) =>
+    ctx.db.patch(sprintId, { launchedAt: mel("2026-09-05T10:00") }),
+  );
+  const overview = (await owner.query(api.manager.overview, {}))!;
+  expect(overview).toMatchObject({
+    phase: "scheduled",
+    intro: "Your sprint starts Wednesday 9 September at 2:00 PM.",
+    sprint: {
+      title: "Starts 9 Sep",
+      tag: { label: "Scheduled", kind: "gray" },
+      projects: PENDING,
+    },
+    team: {
+      sessionDone: { label: "Week 1 session done", stat: PENDING },
+      tasksUnderway: { label: "Real tasks underway", stat: PENDING },
+    },
+  });
+  expect(overview.timeline.map((c) => [c.label, c.state])).toEqual([
+    ["Setup, 1 to 8 Sep", "done"],
+    ["Week 1, 9 Sep", "todo"],
+    ["Week 2, 16 Sep", "todo"],
+    ["Week 3, 23 Sep", "todo"],
+    ["Week 4, 30 Sep", "todo"],
+  ]);
 });
 
 test("a declined invitation still counts as invited", async () => {

@@ -78,12 +78,12 @@ async function optOut(t: T, orgId: Id<"orgs">, personId: Id<"people">) {
 
 /** Launched on 8 September, week one on Wednesday the 9th. */
 async function launchedSprint(t: T, orgId: Id<"orgs">) {
-  await t.run(async (ctx) => {
+  return await t.run(async (ctx) => {
     const team = (await ctx.db
       .query("teams")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .unique())!;
-    await ctx.db.insert("sprints", {
+    return await ctx.db.insert("sprints", {
       orgId,
       teamId: team._id,
       startDate: "2026-09-09",
@@ -193,6 +193,27 @@ test("moveClock takes each due snapshot once", async () => {
   ]);
 });
 
+test("a straight jump freezes the same totals as stepping through every target", async () => {
+  const totals = async ({ t, orgId }: { t: T; orgId: Id<"orgs"> }) =>
+    (await snapshotsOf(t, orgId)).map(
+      ({ week, sessionDone, tasksUnderway }) => ({
+        week,
+        sessionDone,
+        tasksUnderway,
+      }),
+    );
+  const direct = await calderLane();
+  await move(direct.t, "complete");
+  const staged = await calderLane();
+  for (const target of Object.keys(DEMO_TARGETS) as DemoTarget[]) {
+    await move(staged.t, target);
+  }
+  const stepped = await totals(staged);
+  expect(stepped.map((row) => row.week)).toEqual([1, 2, 3, 4]);
+  // Each week as of its own hour's end, not as of the jump (week 1 is 6 of 7).
+  expect(await totals(direct)).toEqual(stepped);
+});
+
 test("an opt-out after the snapshot leaves it unchanged", async () => {
   const { t, orgId } = await calderLane();
   await move(t, "week2");
@@ -220,14 +241,14 @@ test("a team below the threshold stores hidden totals, from the end of the hour"
   for (const subject of ["user_a", "user_b", "user_c", "user_d"]) {
     await seat(t, orgId, subject, []);
   }
-  await launchedSprint(t, orgId);
+  const sprintId = await launchedSprint(t, orgId);
 
-  await t.mutation(internal.snapshots.take, { orgId });
+  await t.mutation(internal.snapshots.take, { orgId, sprintId });
   expect(await snapshotsOf(t, orgId)).toEqual([]);
 
   vi.setSystemTime(mel("2026-09-09T15:00"));
-  await t.mutation(internal.snapshots.take, { orgId });
-  await t.mutation(internal.snapshots.take, { orgId });
+  await t.mutation(internal.snapshots.take, { orgId, sprintId });
+  await t.mutation(internal.snapshots.take, { orgId, sprintId });
   expect(await snapshotsOf(t, orgId)).toEqual([
     {
       week: 1,
@@ -257,16 +278,33 @@ test("a real launch schedules one snapshot per week, at each hour's end, and a b
     message: "",
     expectOrgId: orgId,
   });
+  const { sprintId } = (await owner.query(api.sprints.current, {}))!;
+  const args = [{ orgId, sprintId }];
   expect(await scheduled(t)).toEqual([
     // 3:00 PM AEST, UTC+10.
-    { at: "2026-09-23T05:00:00.000Z", args: [{ orgId }] },
-    { at: "2026-09-30T05:00:00.000Z", args: [{ orgId }] },
+    { at: "2026-09-23T05:00:00.000Z", args },
+    { at: "2026-09-30T05:00:00.000Z", args },
     // 3:00 PM AEDT, UTC+11.
-    { at: "2026-10-07T04:00:00.000Z", args: [{ orgId }] },
-    { at: "2026-10-14T04:00:00.000Z", args: [{ orgId }] },
+    { at: "2026-10-07T04:00:00.000Z", args },
+    { at: "2026-10-14T04:00:00.000Z", args },
     // A day later, backing up the last week.
-    { at: "2026-10-15T04:00:00.000Z", args: [{ orgId }] },
+    { at: "2026-10-15T04:00:00.000Z", args },
   ]);
+});
+
+test("a run for a sprint that has gone does nothing, even with a new one launched", async () => {
+  vi.setSystemTime(mel("2026-09-10T09:00"));
+  const t = harness();
+  const { orgId } = await workspace(t);
+  for (const subject of ["a", "b", "c", "d", "e"]) {
+    await seat(t, orgId, `user_${subject}`, []);
+  }
+  const gone = await launchedSprint(t, orgId);
+  await t.run((ctx) => ctx.db.delete(gone));
+  // The team's next sprint (P7), its week 1 hour also over.
+  await launchedSprint(t, orgId);
+  await t.mutation(internal.snapshots.take, { orgId, sprintId: gone });
+  expect(await snapshotsOf(t, orgId)).toEqual([]);
 });
 
 test("a demo launch schedules nothing: the demo clock takes them", async () => {
@@ -284,4 +322,24 @@ test("a demo launch schedules nothing: the demo clock takes them", async () => {
     expectOrgId: orgId,
   });
   expect(await scheduled(t)).toEqual([]);
+});
+
+test("the demo launched with DEMO_MODE off runs on real time, so it schedules", async () => {
+  vi.useFakeTimers({ toFake: ["Date", "setTimeout"] });
+  vi.setSystemTime(mel("2026-09-01T09:30"));
+  const { t, orgId, as } = await calderLane();
+  vi.stubEnv("DEMO_MODE", "off");
+  const priya = as("priya");
+  await priya.mutation(api.sprints.commit, {
+    weekday: 3,
+    start: "14:00",
+    expectOrgId: orgId,
+  });
+  await readyToLaunch(t, orgId);
+  await priya.mutation(api.sprints.launch, {
+    emails: [castOf("dan").email],
+    message: "",
+    expectOrgId: orgId,
+  });
+  expect(await scheduled(t)).toHaveLength(5);
 });
