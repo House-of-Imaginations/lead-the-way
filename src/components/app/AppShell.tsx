@@ -16,13 +16,7 @@ import {
 import { useConvex, useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache";
 import { usePathname } from "next/navigation";
-import {
-  Suspense,
-  createContext,
-  useContext,
-  useState,
-  type ReactNode,
-} from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import {
   InlineNotification,
   SideNav,
@@ -35,6 +29,7 @@ import type { Shell } from "@convex/lib/shell";
 import { authClient } from "@/lib/account/auth-client";
 import type { NavState } from "@/lib/navState";
 import { MovedToast } from "./MovedToast";
+import { ExpectOrgIdProvider } from "./ExpectOrgId";
 
 type NavIcon = Shell["nav"][number]["links"][number]["icon"];
 // Type-only import of Shell: no Convex server code reaches the client bundle.
@@ -50,19 +45,6 @@ const ICONS: Record<NavIcon, CarbonIconType> = {
   PresentationFile,
   Certificate,
 };
-
-const ExpectOrgId = createContext<Shell["expectOrgId"] | null>(null);
-
-/**
- * The workspace this page was rendered for (R6). Product forms echo it on
- * every mutation. It never follows the live shell: a switch in another tab
- * must make a stale form fail, not quietly aim it at the other workspace.
- */
-export function useExpectOrgId() {
-  const id = useContext(ExpectOrgId);
-  if (!id) throw new Error("useExpectOrgId needs the AppShell above it.");
-  return id;
-}
 
 /** The signed-in shell. The (app) layout renders the demo banner above it. */
 export function AppShell({
@@ -198,7 +180,9 @@ export function AppShell({
               </InlineNotification>
             </div>
           )}
-          <ExpectOrgId value={initial.expectOrgId}>{children}</ExpectOrgId>
+          <ExpectOrgIdProvider value={initial.expectOrgId}>
+            {children}
+          </ExpectOrgIdProvider>
           {/* The disclaimer must be on every surface. The expanded nav carries it; the rail hides
               every label, so here it shows on phones (no side nav) and beside the rail. */}
           <p className="mt-auto text-label-01 text-text-helper md:hidden md:group-has-[.ltw-sn-col]/shell:block">

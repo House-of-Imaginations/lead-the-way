@@ -154,6 +154,67 @@ for (const theme of THEMES) {
       );
     });
 
+    test("tile group is a radio group with arrow keys", async ({ page }) => {
+      const group = page.locator("#choices").getByRole("group", {
+        name: "How does your team use AI today?",
+      });
+      await expect(group.getByRole("radio")).toHaveCount(4);
+      await expect(group.getByRole("radio", { checked: true })).toHaveCount(0);
+      const first = group.getByRole("radio", {
+        name: "Not using AI",
+        exact: true,
+      });
+      // The name is the title alone; the line under it is the description.
+      await expect(first).toHaveAccessibleDescription("Little or no use yet");
+      await first.check();
+      await first.press("ArrowRight");
+      const next = group.getByRole("radio", {
+        name: "Exploring occasionally",
+        exact: true,
+      });
+      await expect(next).toBeChecked();
+      await expect(next).toBeFocused();
+      await expect(first).not.toBeChecked();
+      // The ring sits on the whole tile, not on the 16px dot.
+      const ring = await next.evaluate((el) => {
+        const s = getComputedStyle(el.closest("label")!);
+        return {
+          outline: `${s.outlineWidth} ${s.outlineStyle} ${s.outlineColor}`,
+          offset: s.outlineOffset,
+          boxShadow: s.boxShadow,
+        };
+      });
+      const { outline, offset, boxShadow } = expectedRing(theme);
+      expect(ring).toEqual({ outline, offset, boxShadow });
+    });
+
+    test("selected tile shows the ink outline and dot in both themes", async ({
+      page,
+    }) => {
+      const tile = page
+        .locator("#choices .ltw-tile-radio")
+        .filter({ hasText: "Using AI regularly" });
+      const radio = tile.getByRole("radio");
+      await expect(tile).toHaveCSS("background-color", TOKENS[theme].layer01);
+      await expect(tile).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
+      await radio.check();
+      await expect(tile).toHaveCSS(
+        "border-top-color",
+        TOKENS[theme].textPrimary,
+      );
+      await expect(tile).toHaveCSS("border-top-left-radius", "0px");
+      // The dot: an ink disc inside a ring of page background, fully round.
+      await expect(radio).toHaveCSS(
+        "background-color",
+        TOKENS[theme].textPrimary,
+      );
+      await expect(radio).toHaveCSS(
+        "box-shadow",
+        `${TOKENS[theme].background} 0px 0px 0px 3px inset`,
+      );
+      await expect(radio).toHaveCSS("border-top-left-radius", "50%");
+    });
+
     test("choices pass axe", async ({ page, expectAxeClean }) => {
       await expectAxeClean(page, "#choices");
     });

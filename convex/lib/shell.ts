@@ -3,11 +3,13 @@ import { v, type Infer } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { flagOn } from "../app";
+import { agreementSaved } from "./agreement";
 import { castOf } from "./demo/cast";
 import { MAX_MEMBERS_PER_ORG, seatsOfUser } from "./orgs/membership";
 import { initialsOf } from "./orgs/people";
-import { PATHWAY_MODULES } from "./pathway";
+import { requiredDone } from "./pathway";
 import { SETUP_STEPS } from "./setupSteps";
+import { currentSprint, currentTeam } from "./sprint";
 import { sprintStatus } from "./sprintTime";
 import type { Viewer } from "./viewer";
 
@@ -89,31 +91,24 @@ export const isManager = (viewer: Viewer) =>
   viewer.permissions.includes("team:insights") ||
   viewer.permissions.includes("sprint:manage");
 
-async function teamOf(ctx: QueryCtx, viewer: Viewer) {
-  return await ctx.db
-    .query("teams")
-    .withIndex("by_org", (q) => q.eq("orgId", viewer.org._id))
-    .first();
-}
-
-async function sprintOf(ctx: QueryCtx, viewer: Viewer) {
-  // The newest sprint is the current one (P7 may add another).
-  return await ctx.db
-    .query("sprints")
-    .withIndex("by_org", (q) => q.eq("orgId", viewer.org._id))
-    .order("desc")
-    .first();
-}
-
-/** Where this viewer belongs (R4). */
+/**
+ * Where this viewer belongs (R4). Launch doesn't need the team profile, and
+ * setup closes at launch, so a launched sprint is home at /manager either way.
+ */
 export async function homeOf(
   ctx: QueryCtx,
   viewer: Viewer,
-  known?: Awaited<ReturnType<typeof teamOf>>,
+  known?: { team: Doc<"teams"> | null; sprint: Doc<"sprints"> | null },
 ): Promise<string> {
   if (!isManager(viewer)) return "/me";
-  const team = known === undefined ? await teamOf(ctx, viewer) : known;
-  return team?.savedAt === undefined ? "/setup/team" : "/manager";
+  const orgId = viewer.org._id;
+  const { team, sprint } = known ?? {
+    team: await currentTeam(ctx, orgId),
+    sprint: await currentSprint(ctx, orgId),
+  };
+  return team?.savedAt === undefined && sprint?.launchedAt === undefined
+    ? "/setup/team"
+    : "/manager";
 }
 
 const link = (label: string, href: string, icon: Icon) => ({
@@ -141,6 +136,14 @@ const MANAGER_NAV = [
   },
 ];
 
+/** Once the sprint launches, Sprint opens the overview (spec 4.1). */
+const LAUNCHED_NAV = MANAGER_NAV.map((group) => ({
+  ...group,
+  links: group.links.map((l) =>
+    l.label === "Sprint" ? { ...l, href: "/manager" } : l,
+  ),
+}));
+
 const EMPLOYEE_NAV = [
   {
     title: null,
@@ -155,29 +158,6 @@ const EMPLOYEE_NAV = [
   },
 ];
 
-async function pathwayDone(ctx: QueryCtx, person: Doc<"people">) {
-  for (const m of PATHWAY_MODULES) {
-    if (m.pathway !== "required") continue;
-    const row = await ctx.db
-      .query("pathwayProgress")
-      .withIndex("by_person_and_module", (q) =>
-        q.eq("personId", person._id).eq("moduleKey", m.key),
-      )
-      .unique();
-    if (row?.completedAt === undefined) return false;
-  }
-  return true;
-}
-
-async function agreementSaved(ctx: QueryCtx, team: Doc<"teams">) {
-  // ponytail: every version of one team's agreement, a handful of rows.
-  const versions = await ctx.db
-    .query("agreements")
-    .withIndex("by_team_and_version", (q) => q.eq("teamId", team._id))
-    .collect();
-  return versions.some((a) => a.status === "saved");
-}
-
 /** The 03 steps, until launch. The first step not done is current. */
 async function checklistOf(
   ctx: QueryCtx,
@@ -189,7 +169,7 @@ async function checklistOf(
   const done = [
     team?.savedAt !== undefined,
     sprint?.committedAt !== undefined,
-    await pathwayDone(ctx, viewer.person),
+    await requiredDone(ctx, viewer.person._id),
     team !== null && (await agreementSaved(ctx, team)),
     false, // Invite team is done when the sprint launches, and then the list goes.
   ];
@@ -249,8 +229,8 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
   const manager = isManager(viewer);
   const isDemo = viewer.org.isDemo && flagOn("demo");
   const [team, sprint] = await Promise.all([
-    teamOf(ctx, viewer),
-    sprintOf(ctx, viewer),
+    currentTeam(ctx, viewer.org._id),
+    currentSprint(ctx, viewer.org._id),
   ]);
   const workspaces: Shell["workspaces"] = [];
   for (const seat of await seatsOfUser(ctx, viewer.userId)) {
@@ -266,7 +246,7 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
     expectOrgId: viewer.org._id,
     isDemo,
     area: manager ? "manager" : "employee",
-    home: await homeOf(ctx, viewer, team),
+    home: await homeOf(ctx, viewer, { team, sprint }),
     greeting: greetingOf(viewer, now),
     user: {
       name: viewer.person.name,
@@ -279,7 +259,11 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
       team: team?.name ?? "",
     },
     workspaces,
-    nav: manager ? MANAGER_NAV : EMPLOYEE_NAV,
+    nav: manager
+      ? sprint?.launchedAt === undefined
+        ? MANAGER_NAV
+        : LAUNCHED_NAV
+      : EMPLOYEE_NAV,
     checklist: await checklistOf(ctx, viewer, team, sprint),
     status: sprint ? sprintStatus(sprint, now, manager) : null,
     switchTo: await switchToOf(ctx, viewer, isDemo),

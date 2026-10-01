@@ -1,5 +1,6 @@
 import { components } from "../../_generated/api";
 import type { ActionCtx, MutationCtx } from "../../_generated/server";
+import { normalEmail } from "../inviteRules";
 
 /**
  * The Calder Lane cast (`docs/design/data-model.md`). Everyone but Omar has an
@@ -86,7 +87,7 @@ export function castOf(key: CastKey) {
 
 /** Demo addresses can't receive mail, so nothing is ever sent to one. */
 export const isDemoAddress = (email: string) =>
-  email.trim().toLowerCase().endsWith(`@${DEMO_DOMAIN}`);
+  normalEmail(email).endsWith(`@${DEMO_DOMAIN}`);
 
 /** The auth user id for an address, or null. */
 export async function demoUserId(

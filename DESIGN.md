@@ -584,7 +584,7 @@ The reference implementation for every component is `docs/design/design-system/c
 - **Toggle.** 48 by 24, green when on, grey when off; for settings that apply immediately only, never inside a form with Save.
 - **Tabs.** 48px line tabs; selected is `text-primary`, weight 600, with a 2px `interactive` underline.
 - **Content switcher.** Ink-outlined segmented control, 40px, selected segment filled with `layer-inverse`.
-- **Selectable tile.** `layer-01`, 16px padding, selected shows a 1px ink outline and a filled check icon at the right.
+- **Selectable tile.** `layer-01`, 16px padding, selected shows a 1px ink outline and a filled check icon at the right. A single-choice group (one answer, native radios in a fieldset) shows a 16px radio dot on the left instead of the check.
 - **Inline notification.** Info on `highlight` with a 3px `support-info` left rule; success on `support-success-bg` with a 3px `support-success` rule. Bold lead words, one sentence. This is where the privacy promise lives.
 - **Toast.** 320px on `layer-inverse`, 3px green left rule, top-right, `shadow-float`. Only for confirming an action just taken.
 - **Progress bar.** 4px `interactive` fill on a `border-subtle` track, label and count above ("5 of 8 teammates"), never a named person's percentage.

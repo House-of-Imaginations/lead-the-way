@@ -19,6 +19,8 @@ type Invite = {
   roleName: string;
   inviterName: string;
   link: string;
+  /** The manager's own words. `renderEmail` escapes it, like every paragraph. */
+  message?: string;
 };
 
 /**
@@ -34,6 +36,9 @@ export function inviteEmail(invite: Invite) {
       heading: `Join ${invite.orgName} on Lead the Way`,
       paragraphs: [
         `${invite.inviterName} invited you to join ${invite.orgName} as ${invite.roleName}.`,
+        ...(invite.message
+          ? [`${invite.inviterName} wrote: "${invite.message}"`]
+          : []),
         `Open the invitation with this email address (${invite.to}). If you do not have an account yet, you can create one on the way.`,
       ],
       action: { label: "Accept invitation", url: invite.link },

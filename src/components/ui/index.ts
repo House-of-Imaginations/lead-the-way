@@ -35,6 +35,10 @@ export { Checkbox, type CheckboxProps } from "./Checkbox";
 export { Toggle, type ToggleProps } from "./Toggle";
 export { ContentSwitcher, type ContentSwitcherProps } from "./ContentSwitcher";
 export { SelectableTile, type SelectableTileProps } from "./SelectableTile";
+export {
+  SelectableTileGroup,
+  type SelectableTileGroupProps,
+} from "./SelectableTileGroup";
 export { LikertScale, type LikertScaleProps } from "./LikertScale";
 export { Tabs, type TabItem, type TabsProps } from "./Tabs";
 export { Disclosure, type DisclosureProps } from "./Disclosure";
@@ -47,6 +51,7 @@ export {
 export { ToastProvider, useToast, type ToastInput } from "./Toast";
 export { Modal, type ModalProps } from "./Modal";
 export { Menu, type MenuItem, type MenuProps } from "./Menu";
+export { VideoPlayer, type VideoPlayerProps } from "./VideoPlayer";
 export {
   SideNav,
   type SideNavChecklist,

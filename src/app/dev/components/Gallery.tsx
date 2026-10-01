@@ -4,6 +4,7 @@ import { ButtonsSection } from "./sections/ButtonsSection";
 import { ChoicesSection } from "./sections/ChoicesSection";
 import { FieldsSection } from "./sections/FieldsSection";
 import { LogoSection } from "./sections/LogoSection";
+import { MediaSection } from "./sections/MediaSection";
 import { OverlaysSection } from "./sections/OverlaysSection";
 import { SideNavSection } from "./sections/SideNavSection";
 import { StatusSection } from "./sections/StatusSection";
@@ -37,6 +38,7 @@ export function Gallery() {
         <TabsProgressSection />
         <ToastSection />
         <OverlaysSection />
+        <MediaSection />
         <SideNavSection />
         <TopBarSection />
       </main>

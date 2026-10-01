@@ -5,6 +5,7 @@ import {
   ContentSwitcher,
   LikertScale,
   SelectableTile,
+  SelectableTileGroup,
   Toggle,
 } from "@/components/ui";
 import { Section } from "./Section";
@@ -23,11 +24,22 @@ const TILES = [
     description: "Actions and decisions from recurring meetings.",
   },
 ];
+// 03's four answers, as the team page will use them.
+const AI_USE = [
+  ["Not using AI", "Little or no use yet"],
+  ["Exploring occasionally", "A few people try it now and then"],
+  ["Using AI regularly", "Part of some weekly tasks"],
+  [
+    "Advanced users, inconsistent practices",
+    "Heavy use, but everyone does it differently",
+  ],
+].map(([title, description]) => ({ value: title, title, description }));
 
 export function ChoicesSection() {
   const [reminder, setReminder] = useState(false);
   const [day, setDay] = useState("wed");
   const [tiles, setTiles] = useState<string[]>([]);
+  const [aiUse, setAiUse] = useState<string | null>(null);
   const [confidence, setConfidence] = useState<number | null>(null);
   return (
     <Section id="choices" title="Toggles, switchers, tiles and scales">
@@ -68,6 +80,15 @@ export function ChoicesSection() {
             }
           />
         ))}
+      </div>
+      <div className="max-w-[720px]">
+        <SelectableTileGroup
+          legend="How does your team use AI today?"
+          name="ai-use"
+          options={AI_USE}
+          value={aiUse}
+          onChange={setAiUse}
+        />
       </div>
       <div className="max-w-[480px]">
         <LikertScale

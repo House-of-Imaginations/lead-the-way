@@ -6,6 +6,7 @@
    - .ltw-cs width, max-width and its phone media block;
    - .ltw-toast max-width;
    - .ltw-modal max-height and .ltw-modal-b overflow;
+   - .ltw-btn-ghost:hover colour, link-hover so the label keeps 4.5:1 on layer-hover;
    - the Lead the Way additions at the end, including the drawer close, the side nav scroll area, the modal
      scrim layer and the 48px phone touch targets.
    To see every edit: pnpm exec prettier docs/design/design-system/components/bundle.css | diff - src/styles/components.css
@@ -118,6 +119,8 @@
 }
 .ltw-btn-ghost:hover {
   background: var(--layer-hover);
+  /* local: link on layer-hover is 4.1:1; link-hover keeps it above 4.5:1, as Carbon does. */
+  color: var(--link-hover);
 }
 .ltw-btn-danger {
   background: transparent;
@@ -508,6 +511,29 @@ textarea.ltw-field {
 .ltw-step .ltw-i {
   margin-top: 2px;
 }
+/* Below md (672px) five labels don't fit: only the current step keeps its
+   text on screen. The others stay in the accessibility tree, visually hidden. */
+@media (max-width: 671px) {
+  .ltw-steps {
+    display: flex;
+  }
+  .ltw-step {
+    position: relative;
+    flex: 0 0 32px;
+    min-width: 0;
+  }
+  .ltw-step-current {
+    flex: 1;
+  }
+  .ltw-step:not(.ltw-step-current) .ltw-step-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
 
 /* Stat tile */
 .ltw-stat {
@@ -874,6 +900,58 @@ textarea.ltw-field {
 .ltw-tile-title,
 .ltw-tile-desc {
   display: block;
+}
+
+/* SelectableTileGroup: one choice as tiles (03). The native radio is drawn as a 16px dot; the chosen tile gets
+   the 1px ink outline, and the focus ring sits on the whole tile. Two columns, one on phones. */
+.ltw-tiles {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ltw-tiles legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+.ltw-tiles-o {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+}
+@media (max-width: 671px) {
+  .ltw-tiles-o {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.ltw-tile-radio input {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  flex-shrink: 0;
+  border: 1px solid var(--text-primary);
+  border-radius: var(--radius-round);
+  background: var(--background);
+  cursor: pointer;
+}
+.ltw-tile-radio input:checked {
+  background: var(--text-primary);
+  box-shadow: inset 0 0 0 3px var(--background);
+}
+.ltw-tile-radio:has(input:checked) {
+  border-color: var(--border-inverse);
+}
+.ltw-tile-radio input:focus-visible {
+  outline: none;
+}
+.ltw-tile-radio:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 3px var(--background);
 }
 
 /* LikertScale: five 48px segments; the chosen one fills like a pressed content switcher segment */
@@ -1415,4 +1493,15 @@ button.ltw-sn-acct:hover {
 }
 .ltw-btn-sso:hover {
   background: var(--layer-hover);
+}
+
+/* VideoPlayer: a square layer-01 frame at 16:9 around the native player (05). Letterboxing shows the frame. */
+.ltw-video {
+  aspect-ratio: 16 / 9;
+  background: var(--layer-01);
+}
+.ltw-video video {
+  display: block;
+  width: 100%;
+  height: 100%;
 }

@@ -49,7 +49,12 @@ export const PROJECT_CATEGORIES = [
 export const projectCategoryValidator = literals(...PROJECT_CATEGORIES);
 export type ProjectCategory = (typeof PROJECT_CATEGORIES)[number];
 
-const toggle = v.object({ label: v.string(), on: v.boolean() });
+export const toggleValidator = v.object({ label: v.string(), on: v.boolean() });
+/** Who to ask: a member, or one of `CONTACT_LABELS` (`lib/agreement.ts`). */
+export const contactValidator = v.union(
+  v.object({ kind: v.literal("person"), personId }),
+  v.object({ kind: v.literal("label"), label: v.string() }),
+);
 
 export const sprintTables = {
   /** One per workspace. `sizeBand` is stored as shown: "6 to 10". */
@@ -117,13 +122,10 @@ export const sprintTables = {
     version: v.number(),
     status: literals("draft", "saved"),
     tools: v.array(v.string()),
-    neverIn: v.array(toggle),
-    checks: v.array(toggle),
+    neverIn: v.array(toggleValidator),
+    checks: v.array(toggleValidator),
     escalation: v.string(),
-    contact: v.union(
-      v.object({ kind: v.literal("person"), personId }),
-      v.object({ kind: v.literal("label"), label: v.string() }),
-    ),
+    contact: contactValidator,
     savedAt: v.optional(v.number()),
     savedBy: v.optional(personId),
   })

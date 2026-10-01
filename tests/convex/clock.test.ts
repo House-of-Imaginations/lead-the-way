@@ -26,13 +26,12 @@ const ALLOWED: {
   {
     file: "invites.ts",
     line: "const expiresAt = Date.now() + INVITE_WINDOW_MS",
-    reason: "a link lapses in real time, judged by the org's clock",
-    uses: 2, // create and resend
+    reason: "a resent link lapses in real time, judged by the org's clock",
   },
   {
-    file: "lib/demo/script.ts",
-    line: "expiresAt: Date.now() + INVITE_WINDOW_MS",
-    reason: "the script's invitations lapse like any other link",
+    file: "lib/orgs/invites.ts",
+    line: "const expiresAt = Date.now() + INVITE_WINDOW_MS",
+    reason: "every new link lapses in real time, the script's included",
   },
   {
     file: "lib/demo/moveClock.ts",

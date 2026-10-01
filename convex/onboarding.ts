@@ -18,9 +18,11 @@ import { getViewer } from "./lib/viewer";
  *  - "/setup/team" after making a fresh workspace and team.
  * The terms box is asked once and stored on the profile.
  *
- * A demo persona never reaches a real workspace here: `invites.create`
- * refuses demo addresses, so no invitation matches, and `createWorkspace`
- * refuses demo accounts.
+ * A demo persona never reaches a real workspace here: an invitation from the
+ * demo workspace never counts (above), a real workspace's invitation refuses
+ * a demo account (`DEMO_ACCOUNT_JOIN`), and `createWorkspace` refuses demo
+ * accounts. Nothing refuses a demo ADDRESS when inviting; `sendEmail` only
+ * skips mailing one.
  */
 export const start = authenticatedMutation({
   args: { acceptTerms: v.boolean() },

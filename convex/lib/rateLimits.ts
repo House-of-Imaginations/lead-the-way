@@ -1,4 +1,5 @@
 import {
+  HOUR,
   MINUTE,
   RateLimiter,
   type RateLimitError,
@@ -15,6 +16,9 @@ const limits = {
   // Creating an invitation, per account: the email goes out under this
   // product's sending domain, which is the reputation at risk.
   orgInvite: { kind: "token bucket", rate: 10, period: MINUTE, capacity: 10 },
+  // Invitation emails that really go out, per account (Ruling 5). Spent in
+  // `sendInvite` only, so the demo and email-off deployments never spend one.
+  inviteEmail: { kind: "token bucket", rate: 50, period: HOUR, capacity: 50 },
 } as const;
 
 export const rateLimiter = new RateLimiter(components.rateLimiter, limits);

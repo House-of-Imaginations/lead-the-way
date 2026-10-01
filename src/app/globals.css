@@ -68,3 +68,46 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Download PDF (Ruling 28): print only [data-print], ink on white, on A4. */
+@media print {
+  @page {
+    size: A4;
+    margin: 16mm;
+  }
+  /* Everything that neither is, holds nor sits inside the printed block goes. */
+  body :not([data-print], [data-print] *, :has([data-print])) {
+    display: none !important;
+  }
+  /* Its ancestors become plain blocks, so the shell's grid, padding and widths drop away. */
+  html,
+  body,
+  body :has([data-print]) {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: #ffffff !important;
+  }
+  /* Paper is always light. These are the White theme values from tokens.css,
+     the one place raw hex is allowed outside it: the screen theme may be dark. */
+  [data-print] {
+    --background: #ffffff;
+    --layer-01: #f4f4f4;
+    --border-subtle: #e0e0e0;
+    --border-strong: #8d8d8d;
+    --text-primary: #161616;
+    --text-secondary: #525252;
+    --highlight: #edf5ff;
+    --tag-gray-bg: #e0e0e0;
+    --tag-gray-text: #161616;
+    color: var(--text-primary);
+    print-color-adjust: exact;
+  }
+}

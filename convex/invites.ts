@@ -10,13 +10,19 @@ import {
 } from "./lib/customFunctions";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { setActiveOrgOf } from "./lib/account/ensureProfile";
 import { nowFor } from "./lib/clock";
 import { profileOf } from "./lib/account/profile";
 import { emailConfigured } from "./lib/email/send";
 import { throwUserError, type ErrorCode } from "./lib/errors";
+import { MAX_MESSAGE } from "./lib/inviteRules";
 import { sendInvite } from "./lib/orgs/email";
-import { INVITE_WINDOW_MS, mintToken } from "./lib/orgs/invites";
+import {
+  INVITE_WINDOW_MS,
+  MAX_INVITES_PER_ORG,
+  insertInvite,
+  livePending,
+} from "./lib/orgs/invites";
+import { joinByInvite } from "./lib/orgs/join";
 import {
   MAX_MEMBERS_PER_ORG,
   assertCanJoin,
@@ -24,7 +30,7 @@ import {
   permissionsOf,
   requireWithin,
 } from "./lib/orgs/membership";
-import { insertPerson, isDemoAccount } from "./lib/orgs/people";
+import { isDemoAccount } from "./lib/orgs/people";
 import { reserveRateLimit } from "./lib/rateLimits";
 
 /**
@@ -43,9 +49,7 @@ import { reserveRateLimit } from "./lib/rateLimits";
  * email address" tells the holder only that this account is not the one.
  */
 
-const MAX_INVITES_PER_ORG = 100;
 const MAX_NAME = 80;
-const MAX_MESSAGE = 500;
 
 const REFUSALS = {
   INVITE_INVALID: "That invitation is no longer valid.",
@@ -80,17 +84,6 @@ async function nameOf(ctx: QueryCtx | MutationCtx, userId: string) {
 async function nowIn(ctx: QueryCtx | MutationCtx, orgId: Id<"orgs">) {
   const org = await ctx.db.get(orgId);
   return org ? nowFor(org) : Date.now();
-}
-
-/** Live pending invitations, up to the cap. Lapsed rows are outside the range. */
-async function livePending(ctx: QueryCtx | MutationCtx, orgId: Id<"orgs">) {
-  const now = await nowIn(ctx, orgId);
-  return await ctx.db
-    .query("orgInvites")
-    .withIndex("by_org_status_and_expiresAt", (q) =>
-      q.eq("orgId", orgId).eq("status", "pending").gt("expiresAt", now),
-    )
-    .take(MAX_INVITES_PER_ORG);
 }
 
 async function byToken(ctx: QueryCtx | MutationCtx, token: string) {
@@ -196,7 +189,11 @@ export const list = orgQuery("members:manage")({
       ).reverse();
     const accepted = await newest("accepted", MAX_MEMBERS_PER_ORG);
     const declined = await newest("declined", MAX_INVITES_PER_ORG);
-    const pending = await livePending(ctx, ctx.orgId);
+    const pending = await livePending(
+      ctx,
+      ctx.orgId,
+      await nowIn(ctx, ctx.orgId),
+    );
 
     const rows = [];
     for (const invite of [...accepted, ...declined, ...pending]) {
@@ -274,45 +271,47 @@ export const create = orgMutation("members:manage")({
     }
 
     const now = await nowIn(ctx, ctx.orgId);
-    const expiresAt = Date.now() + INVITE_WINDOW_MS;
 
     // The cap counts live pending invitations only. Lapsed ones stay in the
     // table (spec 5) but `list` hides them, so counting them would brick
     // `create` with nothing visible to revoke.
-    if ((await livePending(ctx, ctx.orgId)).length >= MAX_INVITES_PER_ORG) {
+    if (
+      (await livePending(ctx, ctx.orgId, now)).length >= MAX_INVITES_PER_ORG
+    ) {
       throwUserError(
         "FIELD_REQUIRED",
         "There are too many invitations open. Revoke some first.",
       );
     }
 
-    const token = mintToken();
     const to = email?.trim().toLowerCase() || undefined;
-    const inviteId = await ctx.db.insert("orgInvites", {
+    const { inviteId, token, expiresAt } = await insertInvite(ctx, {
       orgId: ctx.orgId,
       roleId,
-      token,
       email: to,
       name: who,
       sprintId,
       message: note,
-      status: "pending",
       invitedBy: ctx.userId,
-      expiresAt,
-      createdAt: now,
+      at: now,
     });
 
-    // Only when an address was named. A shareable link has nowhere to go.
+    // Only when an address was named. A shareable link has nowhere to go,
+    // and the demo workspace never sends: its links are copied instead.
     let emailed = false;
     if (to) {
       const org = await ctx.db.get(ctx.orgId);
-      emailed = await sendInvite(ctx, {
-        to,
-        orgName: org?.name ?? "a workspace",
-        roleName: role.name,
-        inviterName: await nameOf(ctx, ctx.userId),
-        token,
-      });
+      if (org && !org.isDemo) {
+        emailed = await sendInvite(ctx, {
+          to,
+          orgName: org.name,
+          roleName: role.name,
+          inviterName: await nameOf(ctx, ctx.userId),
+          token,
+          message: note,
+          senderId: ctx.userId,
+        });
+      }
       if (emailed) await ctx.db.patch(inviteId, { sentAt: now });
     }
 
@@ -358,13 +357,19 @@ export const resend = orgMutation("members:manage")({
     const expiresAt = Date.now() + INVITE_WINDOW_MS;
     await ctx.db.patch(invite._id, { expiresAt });
     const org = await ctx.db.get(ctx.orgId);
-    const emailed = await sendInvite(ctx, {
-      to: invite.email,
-      orgName: org?.name ?? "a workspace",
-      roleName: role.name,
-      inviterName: await nameOf(ctx, ctx.userId),
-      token: invite.token,
-    });
+    // The demo workspace never sends.
+    const emailed =
+      org !== null &&
+      !org.isDemo &&
+      (await sendInvite(ctx, {
+        to: invite.email,
+        orgName: org.name,
+        roleName: role.name,
+        inviterName: await nameOf(ctx, ctx.userId),
+        token: invite.token,
+        message: invite.message,
+        senderId: ctx.userId,
+      }));
     if (emailed) await ctx.db.patch(invite._id, { sentAt: now });
     return { emailed };
   },
@@ -508,20 +513,7 @@ export const accept = authenticatedMutation({
     // The only door into a workspace, so the only place the ceilings are held.
     await assertCanJoin(ctx, ctx.userId, invite.orgId);
 
-    const now = nowFor(org);
-    const person = await insertPerson(
-      ctx,
-      ctx.userId,
-      invite.orgId,
-      invite.roleId,
-      now,
-    );
-    await ctx.db.patch(invite._id, {
-      status: "accepted",
-      personId: person._id,
-      respondedAt: now,
-    });
-    await setActiveOrgOf(ctx, ctx.userId, invite.orgId);
+    await joinByInvite(ctx, invite, ctx.userId, nowFor(org));
     return { slug: org.slug, orgId: invite.orgId };
   },
 });

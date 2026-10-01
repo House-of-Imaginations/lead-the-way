@@ -26,6 +26,20 @@ export async function openOrHome<T>(read: () => Promise<T>): Promise<T> {
   }
 }
 
+/**
+ * A manager page's read. A role in the manager area without the permission
+ * the read needs (team:insights but not sprint:manage) goes to /manager, never
+ * to an error page, and never to its home, which may be /setup/team.
+ */
+export async function managerRead<T>(read: () => Promise<T>): Promise<T> {
+  try {
+    return await openOrHome(read);
+  } catch (error) {
+    if (errorCode(error) === "FORBIDDEN") redirect("/manager");
+    throw error;
+  }
+}
+
 // One read per request, however many layouts and pages ask.
 export const getAuthMethods = cache(() =>
   openOrHome(() => fetchAuthQuery(api.authMethods.enabled, {})),

@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { inviteEmail } from "../../convex/lib/email/messages";
 import { escapeHtml, renderEmail } from "../../convex/lib/email/template";
 
 /**
@@ -68,4 +69,28 @@ test("the text part is not escaped, and the html part is", () => {
   });
   expect(text).toContain("Bob & Co");
   expect(html).toContain("Bob &amp; Co");
+});
+
+test("the invitation email escapes the manager's message", () => {
+  const invite = {
+    to: "ana@example.com",
+    orgName: "Aster Network",
+    roleName: "Employee",
+    inviterName: "Priya",
+    link: "https://example.com/join/tok",
+  };
+  // No message, no quote paragraph.
+  expect(inviteEmail(invite).content.paragraphs).toHaveLength(2);
+
+  const message = '"><img src=x onerror=alert(1)> <b>hi</b>';
+  const { html, text } = renderEmail(
+    inviteEmail({ ...invite, message }).content,
+  );
+  expect(html).not.toContain("<img");
+  expect(html).not.toContain("<b>hi</b>");
+  expect(html).toContain(
+    "Priya wrote: &quot;&quot;&gt;&lt;img src=x onerror=alert(1)&gt; &lt;b&gt;hi&lt;/b&gt;&quot;",
+  );
+  // The plain-text part carries the words as typed.
+  expect(text).toContain(`Priya wrote: "${message}"`);
 });
