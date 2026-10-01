@@ -593,7 +593,6 @@ export const STEPS: Record<StepKey, Step> = {
     if (sprint.launchedAt === undefined) {
       await ctx.db.patch(sprint._id, {
         launchedAt: at,
-        status: sprint.status === "draft" ? "scheduled" : sprint.status,
         inviteMessage: sprint.inviteMessage ?? INVITE_MESSAGE,
       });
       await log(step, "sprint.launched");
@@ -665,13 +664,6 @@ export const STEPS: Record<StepKey, Step> = {
   // Dan signs late too, after the week 1 target, so a tester playing Dan can
   // sign first (spec 6: "Dan signs only if the tester hasn't").
   "team.signLate": (step) => sign(step, ["dan"]),
-
-  "sprint.start": async ({ ctx, orgId }) => {
-    const sprint = await sprintOf(ctx, orgId);
-    if (sprint.status === "draft" || sprint.status === "scheduled") {
-      await ctx.db.patch(sprint._id, { status: "active" });
-    }
-  },
 
   "week1.session": async (step) => {
     await session(step, 1, ["dan", "sarah", "mei", "tomas", "aisha", "luca"]);
@@ -752,11 +744,8 @@ export const STEPS: Record<StepKey, Step> = {
   // Due at 3:01 PM, just after the week 4 hour ends.
   "sprint.complete": async ({ ctx, orgId, at }) => {
     const sprint = await sprintOf(ctx, orgId);
-    if (sprint.status === "complete") return;
-    await ctx.db.patch(sprint._id, {
-      status: "complete",
-      completedAt: sprint.completedAt ?? at,
-    });
+    if (sprint.completedAt !== undefined) return;
+    await ctx.db.patch(sprint._id, { completedAt: at });
   },
 
   "week4.after": (step) => checkIn(step, "after", JOINED),

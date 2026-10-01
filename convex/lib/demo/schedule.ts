@@ -49,7 +49,6 @@ export const SCHEDULE = {
   "team.sign": mel("2026-09-09T09:00"),
   "team.beforeLate": mel("2026-09-09T13:30"),
   "team.signLate": mel("2026-09-09T13:45"),
-  "sprint.start": mel("2026-09-09T14:00"),
   "week1.session": mel("2026-09-09T15:00"),
   "priya.coaching": mel("2026-09-15T11:00"),
   "week2.progress": mel("2026-09-15T17:00"),

@@ -1,6 +1,8 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { agreementSaved } from "./agreement";
 import { throwUserError } from "./errors";
+import { requiredDone } from "./pathway";
 import { weekOneDate } from "./sprintTime";
 import type { Viewer } from "./viewer";
 
@@ -50,7 +52,6 @@ export async function ensureSprint(
   const id = await ctx.db.insert("sprints", {
     orgId,
     teamId: team._id,
-    status: "draft",
     startDate: weekOneDate(3, now, timeZone),
     timeZone,
     weeks: 4,
@@ -62,6 +63,32 @@ export async function ensureSprint(
   if (!sprint) throw new Error("just-inserted sprint is missing");
   return sprint;
 }
+
+/** Where setup stands: the 03 checklist and the 07 launch gate read these. */
+export type SetupGate = {
+  teamSaved: boolean;
+  committed: boolean;
+  pathwayDone: boolean;
+  agreementSaved: boolean;
+};
+
+export async function setupGate(
+  ctx: QueryCtx,
+  viewer: Viewer,
+  team: Doc<"teams"> | null,
+  sprint: Doc<"sprints"> | null,
+): Promise<SetupGate> {
+  return {
+    teamSaved: team?.savedAt !== undefined,
+    committed: sprint?.committedAt !== undefined,
+    pathwayDone: await requiredDone(ctx, viewer.person._id),
+    agreementSaved: team !== null && (await agreementSaved(ctx, team)),
+  };
+}
+
+/** Launch's condition. It never asks for the team profile. */
+export const gateOpen = (g: SetupGate) =>
+  g.committed && g.pathwayDone && g.agreementSaved;
 
 /** Setup edits stop at launch (spec 3.3, "soft order, hard launch"). */
 export function requireDraft(sprint: Doc<"sprints">): void {

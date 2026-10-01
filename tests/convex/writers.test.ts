@@ -143,13 +143,14 @@ test("ensureSprint makes one draft and reuses it", async () => {
   const first = await run();
   expect(first).toMatchObject({
     orgId,
-    status: "draft",
     weeks: 4,
     protectedHour: { weekday: 3, start: "14:00", durationMinutes: 60 },
     courseTitle: DEFAULT_COURSE,
     createdAt: mel("2026-09-01T09:30"),
   });
   expect(first.launchedAt).toBeUndefined();
+  // Nothing writes `status` (Ruling 11); `sprintPhase` says "draft".
+  expect(first.status).toBeUndefined();
   const second = await run();
   expect(second._id).toBe(first._id);
   const all = await t.run((ctx) =>

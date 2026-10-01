@@ -99,7 +99,6 @@ export async function writeCalderLane(
   await ctx.db.insert("sprints", {
     orgId,
     teamId,
-    status: "draft",
     startDate: "2026-09-09",
     timeZone: DEMO_TIME_ZONE,
     weeks: 4,

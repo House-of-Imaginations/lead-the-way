@@ -133,7 +133,6 @@ test("writeCalderLane seeds Calder Lane on Tuesday 1 September", async () => {
   });
   expect(state.team?.savedAt).toBeUndefined();
   expect(state.sprint).toMatchObject({
-    status: "draft",
     startDate: "2026-09-09",
     timeZone: "Australia/Melbourne",
     weeks: 4,
@@ -141,6 +140,7 @@ test("writeCalderLane seeds Calder Lane on Tuesday 1 September", async () => {
     courseTitle: "AI Productivity Fundamentals",
   });
   expect(state.sprint?.committedAt).toBeUndefined();
+  expect(state.sprint?.status).toBeUndefined();
   expect(state.script.map((row) => row.key)).toEqual(Object.keys(SCHEDULE));
   expect(state.script.every((row) => row.appliedAt === undefined)).toBe(true);
 

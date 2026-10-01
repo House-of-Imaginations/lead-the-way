@@ -3,13 +3,11 @@ import { v, type Infer } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { flagOn } from "../app";
-import { agreementSaved } from "./agreement";
 import { castOf } from "./demo/cast";
 import { MAX_MEMBERS_PER_ORG, seatsOfUser } from "./orgs/membership";
 import { initialsOf } from "./orgs/people";
-import { requiredDone } from "./pathway";
 import { SETUP_STEPS } from "./setupSteps";
-import { currentSprint, currentTeam } from "./sprint";
+import { currentSprint, currentTeam, setupGate } from "./sprint";
 import { sprintStatus } from "./sprintTime";
 import type { Viewer } from "./viewer";
 
@@ -166,11 +164,12 @@ async function checklistOf(
   sprint: Doc<"sprints"> | null,
 ): Promise<Shell["checklist"]> {
   if (!isManager(viewer) || sprint?.launchedAt !== undefined) return null;
+  const gate = await setupGate(ctx, viewer, team, sprint);
   const done = [
-    team?.savedAt !== undefined,
-    sprint?.committedAt !== undefined,
-    await requiredDone(ctx, viewer.person._id),
-    team !== null && (await agreementSaved(ctx, team)),
+    gate.teamSaved,
+    gate.committed,
+    gate.pathwayDone,
+    gate.agreementSaved,
     false, // Invite team is done when the sprint launches, and then the list goes.
   ];
   const current = done.indexOf(false);

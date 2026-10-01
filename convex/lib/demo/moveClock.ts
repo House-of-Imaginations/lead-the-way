@@ -23,7 +23,7 @@ export async function moveClock(
   }
   await ctx.db.patch(org._id, { demoNow: to });
 
-  // One row per scripted step (23), so the due range fits in one read.
+  // One row per scripted step (22), so the due range fits in one read.
   const due = await ctx.db
     .query("demoScript")
     .withIndex("by_org_and_at", (q) => q.eq("orgId", org._id).lte("at", to))

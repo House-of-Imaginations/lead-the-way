@@ -75,12 +75,13 @@ export const sprintTables = {
    * The four-week sprint. `startDate` is a Melbourne calendar date
    * ("2026-09-09"), not an instant, because "Wednesday 2:00 PM" means the same
    * wall-clock hour every week. `weekday` follows `Date#getDay` (3 is
-   * Wednesday).
+   * Wednesday). `status` is no longer written or read (P5 Ruling 11): the
+   * phase comes from `sprintPhase`. It stays optional so older rows validate.
    */
   sprints: defineTable({
     orgId: v.id("orgs"),
     teamId: v.id("teams"),
-    status: literals("draft", "scheduled", "active", "complete"),
+    status: v.optional(literals("draft", "scheduled", "active", "complete")),
     startDate: v.string(),
     timeZone: v.string(),
     weeks: v.number(),
@@ -236,5 +237,7 @@ export const sprintTables = {
     meta: v.optional(
       v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
     ),
-  }).index("by_org", ["orgId"]),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_sprint_and_type", ["sprintId", "type"]),
 };

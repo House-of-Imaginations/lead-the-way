@@ -284,7 +284,8 @@ test("the sprint completes automatically when the clock passes the end of the we
     expectOrgId: orgId,
   });
   const during = await sprintOf(t, orgId);
-  expect(during.status).toBe("active");
+  // Nothing writes `status` (Ruling 11): the phase comes from the clock.
+  expect(during.status).toBeUndefined();
   expect(during.completedAt).toBeUndefined();
 
   // The week 4 hour is Wednesday 30 September, 2:00 to 3:00 PM.
@@ -296,10 +297,9 @@ test("the sprint completes automatically when the clock passes the end of the we
     target: "complete",
     expectOrgId: orgId,
   });
-  expect(await sprintOf(t, orgId)).toMatchObject({
-    status: "complete",
-    completedAt: SCHEDULE["sprint.complete"],
-  });
+  const done = await sprintOf(t, orgId);
+  expect(done.completedAt).toBe(SCHEDULE["sprint.complete"]);
+  expect(done.status).toBeUndefined();
 });
 
 test("an employee can move the demo clock", async () => {
