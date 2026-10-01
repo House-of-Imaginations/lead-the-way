@@ -105,6 +105,20 @@ test.describe("week 2", () => {
     ).toHaveCount(0);
   });
 
+  test("only main scrolls: the page itself never does", async ({ page }) => {
+    // Absolutely placed sr-only text once escaped main's clip and made the
+    // whole page scroll, leaving a blank strip under the shell.
+    await signInAs(page, "priya");
+    await page.setViewportSize({ width: 1440, height: 820 });
+    await page.goto("/manager");
+    await expect(page.getByRole("heading", { name: "Resources" })).toBeVisible();
+    const page_ = await page.evaluate(() => ({
+      scroll: document.documentElement.scrollHeight,
+      view: window.innerHeight,
+    }));
+    expect(page_.scroll).toBeLessThanOrEqual(page_.view);
+  });
+
   test("the org menu offers workspace settings to the manager", async ({
     page,
   }) => {
