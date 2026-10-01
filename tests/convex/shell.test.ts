@@ -5,6 +5,7 @@ import {
   mel,
   type DemoTarget,
 } from "../../convex/lib/demo/schedule";
+import type { Shell } from "../../convex/lib/shell";
 import {
   calderLane,
   harness,
@@ -327,4 +328,53 @@ test("the workspace list marks the open one", async () => {
     ["Aster Network", false],
     ["Birch Studio", true],
   ]);
+});
+
+const navOf = (shell: Shell | null) =>
+  shell?.nav.map((group) => [group.title, group.links.map((l) => l.label)]);
+
+test("the nav shows a manager only what their permissions open (Ruling 13)", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  // The owner holds every permission: all six.
+  expect(navOf(await owner.query(api.viewer.shell, {}))).toEqual([
+    ["Team", ["Overview", "Sprint", "Team agreement", "Outcomes"]],
+    ["You", ["My learning", "Resources"]],
+  ]);
+  const insights = await seat(t, orgId, "user_insights", ["team:insights"]);
+  expect(navOf(await insights.as.query(api.viewer.shell, {}))).toEqual([
+    ["Team", ["Overview", "Outcomes"]],
+    ["You", ["Resources"]],
+  ]);
+  // Review Focus 4: sprint:manage alone never sees Outcomes.
+  const sprint = await seat(t, orgId, "user_sprint", ["sprint:manage"]);
+  expect(navOf(await sprint.as.query(api.viewer.shell, {}))).toEqual([
+    ["Team", ["Overview", "Sprint", "Team agreement"]],
+    ["You", ["My learning", "Resources"]],
+  ]);
+});
+
+test("a new hour re-reads the status across the end of the hour (Review Focus 3)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await clock(t, "week2");
+  // The server sends `hour`; a new value is a new query, so Convex reads the clock again.
+  const statusAt = async (local: string) => {
+    const now = mel(local);
+    await t.run((ctx) => ctx.db.patch(orgId, { demoNow: now }));
+    const shell = await as("priya").query(api.viewer.shell, {
+      hour: Math.floor(now / 3_600_000),
+    });
+    return shell?.status;
+  };
+  expect(await statusAt("2026-09-16T14:30")).toEqual({
+    heading: "Week 2 of 4",
+    progress: { value: 2, max: 4 },
+    ...next("Wed 16 Sep, 2:00 PM"),
+  });
+  // The hour has ended: still week 2, but the next hour is the 23rd.
+  expect(await statusAt("2026-09-16T15:01")).toEqual({
+    heading: "Week 2 of 4",
+    progress: { value: 2, max: 4 },
+    ...next("Wed 23 Sep, 2:00 PM"),
+  });
 });

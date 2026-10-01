@@ -333,3 +333,22 @@ test("marketing and auth pages have no demo banner", async ({ page }) => {
     await expect(banner(page)).toHaveCount(0);
   }
 });
+
+test("the app re-reads the server at the top of the hour (Ruling 14)", async ({
+  page,
+}) => {
+  await page.clock.install();
+  await signInAs(page, "priya");
+  await page.goto("/manager");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const now = await page.evaluate(() => Date.now());
+  // router.refresh() refetches the page's server components (an RSC request, not a prefetch).
+  const refresh = page.waitForRequest(
+    (r) =>
+      new URL(r.url()).pathname === "/manager" &&
+      r.headers()["rsc"] === "1" &&
+      r.headers()["next-router-prefetch"] === undefined,
+  );
+  await page.clock.fastForward(3_600_000 - (now % 3_600_000) + 60_000);
+  await refresh;
+});

@@ -49,17 +49,20 @@ const ICONS: Record<NavIcon, CarbonIconType> = {
 /** The signed-in shell. The (app) layout renders the demo banner above it. */
 export function AppShell({
   initial,
+  hour,
   navState,
   children,
 }: {
   initial: Shell;
+  /** The server read's `hour`. A refresh brings a new one and a fresh subscription (P5 Ruling 14). */
+  hour: number;
   navState: NavState | null;
   children: ReactNode;
 }) {
   // Ruling 17: live, starting from the server's copy (and kept through a
   // sign-out). A live shell for another workspace (switched in another tab)
   // is not shown: the page stays the one it was rendered for.
-  const live = useQuery(api.viewer.shell, {});
+  const live = useQuery(api.viewer.shell, { hour });
   const switched = !!live && live.expectOrgId !== initial.expectOrgId;
   const shell = (!switched && live) || initial;
   // A switch made in this tab is not news: no notice while the page leaves.

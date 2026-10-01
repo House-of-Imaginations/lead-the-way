@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { api } from "@convex/_generated/api";
 import { errorCode } from "@/lib/errors";
+import { hourOf } from "@/lib/hour";
 import { fetchAuthQuery } from "./auth-server";
 
 /**
@@ -47,8 +48,10 @@ export const getAuthMethods = cache(() =>
 export const getHome = cache(() =>
   openOrHome(() => fetchAuthQuery(api.viewer.home, {})),
 );
+/** Ruling 14: one `hour` per request, shared by the layout, the shell and the page. */
+export const currentHour = cache(() => hourOf(Date.now()));
 export const getShell = cache(() =>
-  openOrHome(() => fetchAuthQuery(api.viewer.shell, {})),
+  openOrHome(() => fetchAuthQuery(api.viewer.shell, { hour: currentHour() })),
 );
 export const getProfile = cache(() =>
   openOrHome(() => fetchAuthQuery(api.profiles.me, {})),

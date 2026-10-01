@@ -34,7 +34,7 @@ const shell = {
 const Probe = () => <i>id:{useExpectOrgId()}</i>;
 const render = () =>
   renderToStaticMarkup(
-    <AppShell initial={shell} navState={null}>
+    <AppShell initial={shell} hour={0} navState={null}>
       <Probe />
     </AppShell>,
   );

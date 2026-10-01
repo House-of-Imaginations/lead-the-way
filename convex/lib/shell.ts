@@ -5,6 +5,7 @@ import type { QueryCtx } from "../_generated/server";
 import { flagOn } from "../app";
 import { castOf } from "./demo/cast";
 import { MAX_MEMBERS_PER_ORG, seatsOfUser } from "./orgs/membership";
+import type { Permission } from "./orgs/permissions";
 import { initialsOf } from "./orgs/people";
 import { SETUP_STEPS } from "./setupSteps";
 import { currentSprint, currentTeam, setupGate } from "./sprint";
@@ -115,20 +116,41 @@ const link = (label: string, href: string, icon: Icon) => ({
   icon,
 });
 
-const MANAGER_NAV = [
+type Link = ReturnType<typeof link>;
+
+/**
+ * Ruling 13: a link with `need` shows only to a viewer who holds it. Overview
+ * and Resources have none, so every manager has a home and the resources.
+ */
+const MANAGER_NAV: {
+  title: string;
+  links: (Link & { need?: Permission })[];
+}[] = [
   {
     title: "Team",
     links: [
       link("Overview", "/manager", "Dashboard"),
-      link("Sprint", "/manager/sprint/launch", "Calendar"),
-      link("Team agreement", "/manager/agreement", "DocumentTasks"),
-      link("Outcomes", "/manager/outcomes", "ChartColumn"),
+      {
+        ...link("Sprint", "/manager/sprint/launch", "Calendar"),
+        need: "sprint:manage",
+      },
+      {
+        ...link("Team agreement", "/manager/agreement", "DocumentTasks"),
+        need: "sprint:manage",
+      },
+      {
+        ...link("Outcomes", "/manager/outcomes", "ChartColumn"),
+        need: "team:insights",
+      },
     ],
   },
   {
     title: "You",
     links: [
-      link("My learning", "/manager/learning", "Education"),
+      {
+        ...link("My learning", "/manager/learning", "Education"),
+        need: "sprint:manage",
+      },
       link("Resources", "/manager#resources", "Catalog"),
     ],
   },
@@ -141,6 +163,20 @@ const LAUNCHED_NAV = MANAGER_NAV.map((group) => ({
     l.label === "Sprint" ? { ...l, href: "/manager" } : l,
   ),
 }));
+
+/** The links this viewer may open, without `need` (the validator has no such field). */
+function navFor(viewer: Viewer, groups: typeof MANAGER_NAV): Shell["nav"] {
+  return groups
+    .map((group) => ({
+      title: group.title,
+      links: group.links
+        .filter(
+          (l) => l.need === undefined || viewer.permissions.includes(l.need),
+        )
+        .map(({ label, href, icon }) => ({ label, href, icon })),
+    }))
+    .filter((group) => group.links.length > 0);
+}
 
 const EMPLOYEE_NAV = [
   {
@@ -259,9 +295,10 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
     },
     workspaces,
     nav: manager
-      ? sprint?.launchedAt === undefined
-        ? MANAGER_NAV
-        : LAUNCHED_NAV
+      ? navFor(
+          viewer,
+          sprint?.launchedAt === undefined ? MANAGER_NAV : LAUNCHED_NAV,
+        )
       : EMPLOYEE_NAV,
     checklist: await checklistOf(ctx, viewer, team, sprint),
     status: sprint ? sprintStatus(sprint, now, manager) : null,
