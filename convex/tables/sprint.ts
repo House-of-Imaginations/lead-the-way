@@ -1,6 +1,7 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 import { literals } from "convex-helpers/validators";
+import { aggregateValidator } from "../lib/privacy";
 
 /**
  * The product: one team per workspace, its sprint, and what people do in it.
@@ -240,4 +241,19 @@ export const sprintTables = {
   })
     .index("by_org", ["orgId"])
     .index("by_sprint_and_type", ["sprintId", "type"]),
+
+  /**
+   * Team totals, frozen when each week's hour ends (Rulings 1 and 2). One row
+   * per (sprint, week), never rewritten. Aggregates only: no person id.
+   */
+  teamSnapshots: defineTable({
+    orgId: v.id("orgs"),
+    sprintId: v.id("sprints"),
+    week: v.number(),
+    takenAt: v.number(),
+    sessionDone: aggregateValidator,
+    tasksUnderway: aggregateValidator,
+  })
+    .index("by_org", ["orgId"])
+    .index("by_sprint_and_week", ["sprintId", "week"]),
 };

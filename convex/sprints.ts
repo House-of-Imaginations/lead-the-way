@@ -1,5 +1,6 @@
 import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { dayMonth, latestSaved } from "./lib/agreement";
@@ -42,6 +43,7 @@ import {
 import {
   addDays,
   dayOf,
+  hourEnd,
   hourPattern,
   hourStart,
   spanLabel,
@@ -443,6 +445,19 @@ export const launch = viewerMutation(
       type: "sprint.launched",
       at: now,
     });
+    // Each week's team totals are frozen when its hour ends (Ruling 2). The
+    // demo's clock is virtual, so a real `runAt` would fire at once there;
+    // `moveClock` takes the demo's instead.
+    if (!viewer.org.isDemo) {
+      const stored = { ...sprint, startDate: startDateOf(sprint, now) };
+      for (let week = 1; week <= sprint.weeks; week++) {
+        await ctx.scheduler.runAt(
+          hourEnd(stored, week),
+          internal.snapshots.take,
+          { orgId },
+        );
+      }
+    }
 
     let invited = 0;
     let emailed = 0;

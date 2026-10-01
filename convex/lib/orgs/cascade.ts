@@ -18,6 +18,7 @@ export const ORG_TABLES = [
   "surveyResponses",
   "settings",
   "events",
+  "teamSnapshots",
   "demoScript",
 ] as const;
 

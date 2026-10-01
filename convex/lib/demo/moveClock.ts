@@ -1,13 +1,15 @@
 import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { throwUserError } from "../errors";
+import { takeDueSnapshots } from "../snapshots";
 import { DEMO_TARGETS, type DemoTarget } from "./schedule";
 import { STEPS, isStepKey } from "./script";
 
 /**
- * Jump the demo clock forward and play every step it passes, in order, once.
- * Shared by `demo.setClock` (the guide) and `seed.clock` (e2e and local runs).
- * The caller has checked DEMO_MODE and that `org` is the demo.
+ * Jump the demo clock forward and play every step it passes, in order, once,
+ * then freeze the team totals of every week whose hour has now ended (Ruling
+ * 2). Shared by `demo.setClock` (the guide) and `seed.clock` (e2e and local
+ * runs). The caller has checked DEMO_MODE and that `org` is the demo.
  */
 export async function moveClock(
   ctx: MutationCtx,
@@ -35,5 +37,7 @@ export async function moveClock(
     await ctx.db.patch(row._id, { appliedAt: Date.now() });
     applied.push(row.key);
   }
+  // After the steps, so a week's totals include what its session wrote.
+  await takeDueSnapshots(ctx, org, to);
   return { demoNow: to, applied };
 }
