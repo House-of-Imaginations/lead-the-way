@@ -1,18 +1,20 @@
-import { InlineNotification } from "@/components/ui/InlineNotification";
-import { getShell } from "@/lib/account/queries";
+import type { Metadata } from "next";
+import { api } from "@convex/_generated/api";
+import { preloadAuthQuery } from "@/lib/account/auth-server";
+import { currentHour, getShell, openOrHome } from "@/lib/account/queries";
+import { Overview } from "./Overview";
 
-// ponytail: P3 shell page, P4/P5/P6 fill the body
+export const metadata: Metadata = { title: "Overview · Lead the Way" };
+
 export default async function ManagerOverviewPage() {
+  // The manager layout redirects everyone else; the page renders in parallel,
+  // so it must not ask a manager-only query for them.
   const shell = await getShell();
-  return (
-    <div className="flex max-w-content-max flex-col gap-07">
-      <h1 className="text-heading-01">{shell?.greeting}</h1>
-      {/* Spec 7.1, empty overview: only before launch, while the setup checklist shows. */}
-      {shell?.checklist ? (
-        <InlineNotification>
-          Your team&apos;s totals appear here after you launch the sprint.
-        </InlineNotification>
-      ) : null}
-    </div>
+  if (shell?.area !== "manager") return null;
+  // openOrHome, not managerRead: any manager may read the overview (Ruling 6),
+  // and managerRead's FORBIDDEN redirect would send /manager to itself.
+  const preloaded = await openOrHome(() =>
+    preloadAuthQuery(api.manager.overview, { hour: currentHour() }),
   );
+  return <Overview preloaded={preloaded} greeting={shell.greeting} />;
 }
