@@ -230,6 +230,22 @@ test("Continue to agreement without a rating saves nothing", async ({
   );
 });
 
+test("after launch the panel goes to the overview (Ruling 16)", async ({
+  page,
+}) => {
+  // The demo's week 1: the pathway is done and the sprint has launched.
+  resetDemo("week1");
+  await open(page);
+  await expect(
+    page.getByRole("heading", { name: "Ready to launch?" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Continue to agreement" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Go to overview" }).click();
+  await expect(page).toHaveURL("/manager");
+});
+
 test("the coaching path lists four modules and its percent", async ({
   page,
 }) => {

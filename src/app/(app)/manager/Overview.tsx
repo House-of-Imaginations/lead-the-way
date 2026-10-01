@@ -11,15 +11,19 @@ import {
 import clsx from "clsx";
 import { usePreloadedQuery, type Preloaded } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import {
+  Button,
   ButtonLink,
+  Disclosure,
   InlineNotification,
   ProgressBar,
   StatTile,
   Tag,
+  useToast,
 } from "@/components/ui";
+import { RESOURCES } from "@/content/resources";
 
 type Data = NonNullable<FunctionReturnType<typeof api.manager.overview>>;
 type Column = Data["timeline"][number];
@@ -158,6 +162,57 @@ function Card({
           {action}
         </ButtonLink>
       </div>
+    </section>
+  );
+}
+
+const SIMULATED = "Simulated in this prototype.";
+
+/**
+ * Spec 3.3: the nav's Resources (/manager#resources) lands here with focus.
+ * Next focuses a hash target on a client navigation; this covers a full load
+ * and a hash typed into the address bar.
+ */
+function Resources() {
+  const toast = useToast();
+  useEffect(() => {
+    const focus = () => {
+      if (window.location.hash === "#resources")
+        document.getElementById("resources")?.focus();
+    };
+    focus();
+    window.addEventListener("hashchange", focus);
+    return () => window.removeEventListener("hashchange", focus);
+  }, []);
+  return (
+    <section
+      id="resources"
+      tabIndex={-1}
+      aria-labelledby="resources-title"
+      className="flex scroll-mt-07 flex-col gap-05"
+    >
+      <h2 id="resources-title" className="text-heading-03">
+        Resources
+      </h2>
+      <ul className="border-t border-border-subtle">
+        {RESOURCES.map((r) => (
+          <li
+            key={r.title}
+            className="flex items-center justify-between gap-05 border-b border-border-subtle py-03 pl-05"
+          >
+            <div className="flex min-w-0 flex-col gap-02">
+              <p className="text-body-02">{r.title}</p>
+              <p className="text-label-01 text-text-secondary">
+                {r.description}
+              </p>
+            </div>
+            <Button kind="ghost" onClick={() => toast({ title: SIMULATED })}>
+              {r.action}
+              <span className="sr-only"> {r.title}</span>
+            </Button>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -322,7 +377,13 @@ export function Overview({
               </li>
             </ul>
           )}
+          <Disclosure summary="Why can't I see individual progress?">
+            Lead the Way shows you team totals only. Individual course activity,
+            time spent and scores stay private to each person, so learning feels
+            safe. Projects appear only when their owner chooses to present them.
+          </Disclosure>
         </section>
+        <Resources />
       </div>
     </div>
   );

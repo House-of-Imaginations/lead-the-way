@@ -152,13 +152,18 @@ export function PathwayView({ initial }: { initial: Pathway }) {
     }
   }
 
-  async function continueToAgreement() {
+  // P5 Ruling 16: once the sprint has launched, the panel leads to the overview.
+  const next = data.launched
+    ? { label: "Go to overview", href: "/manager" }
+    : { label: "Continue to agreement", href: "/manager/agreement" };
+
+  async function continueOn() {
     setPending(true);
     setRateError(null);
     try {
       // No score is a skip, and a skip is recorded by writing nothing (Ruling 4).
       if (score !== null) await rateConfidence({ expectOrgId, score });
-      router.push("/manager/agreement");
+      router.push(next.href);
     } catch (error) {
       setRateError(userMessage(error, SAVE_FAILED));
       setPending(false);
@@ -271,10 +276,10 @@ export function PathwayView({ initial }: { initial: Pathway }) {
               <Button
                 icon={ArrowRight}
                 disabled={pending}
-                onClick={continueToAgreement}
+                onClick={continueOn}
                 className="self-start"
               >
-                Continue to agreement
+                {next.label}
               </Button>
               {rateError ? (
                 <p role="alert" className="text-label-01 text-support-error">

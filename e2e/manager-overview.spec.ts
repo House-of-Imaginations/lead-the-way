@@ -37,6 +37,13 @@ const totals = (page: Page) =>
 const tile = (page: Page, label: string) =>
   totals(page).getByRole("listitem").filter({ hasText: label });
 
+const resources = (page: Page) => region(page, "Resources");
+const nav = (page: Page) => page.getByRole("navigation", { name: "Main" });
+const SIMULATED = "Simulated in this prototype.";
+const WHY = "Why can't I see individual progress?";
+const WHY_TEXT =
+  "Lead the Way shows you team totals only. Individual course activity, time spent and scores stay private to each person, so learning feels safe. Projects appear only when their owner chooses to present them.";
+
 async function open(page: Page) {
   await signInAs(page, "priya");
   await page.goto("/manager");
@@ -157,6 +164,75 @@ test.describe("week 2", () => {
     // Never a name beside a number: the only name is Priya's, in her greeting.
     const text = await main(page).innerText();
     for (const name of NAMES) expect(text, name).not.toContain(name);
+  });
+
+  test("Resources lists the four and confirms with a toast", async ({
+    page,
+  }) => {
+    await open(page);
+    const rows = resources(page).getByRole("listitem");
+    await expect(rows).toHaveCount(4);
+    await expect(rows.nth(0)).toContainText("Inclusive facilitation guide");
+    await expect(rows.nth(0)).toContainText(
+      "For part-time, CALD and neurodivergent staff",
+    );
+    await expect(rows.nth(1)).toContainText(
+      "Approved tools, de-identified data, human review",
+    );
+    await expect(rows.nth(2)).toContainText("A 30-minute format for week 4");
+    await expect(rows.nth(3)).toContainText(
+      "With an IBM volunteer, through Month of Impact",
+    );
+    await expect(resources(page).getByRole("button")).toHaveText([
+      "Open Inclusive facilitation guide",
+      "Open Responsible AI checklist",
+      "Open Show and tell run sheet",
+      "Book 15-minute mentor call",
+    ]);
+
+    await resources(page)
+      .getByRole("button", { name: "Open Responsible AI checklist" })
+      .click();
+    await expect(page.getByText(SIMULATED, { exact: true })).toBeVisible();
+    await expect(page).toHaveURL("/manager");
+
+    // A fresh load, so the first toast is gone.
+    await page.reload();
+    await resources(page)
+      .getByRole("button", { name: "Book 15-minute mentor call" })
+      .click();
+    await expect(page.getByText(SIMULATED, { exact: true })).toBeVisible();
+  });
+
+  test("/manager#resources focuses the resources", async ({ page }) => {
+    await signInAs(page, "priya");
+    // A full load with the hash.
+    await page.goto("/manager#resources");
+    await expect(resources(page)).toBeFocused();
+
+    // The nav link from the overview itself: a hash-only navigation.
+    await page.goto("/manager");
+    await expect(resources(page)).not.toBeFocused();
+    await nav(page).getByRole("link", { name: "Resources" }).click();
+    await expect(page).toHaveURL("/manager#resources");
+    await expect(resources(page)).toBeFocused();
+
+    // And from another page.
+    await page.goto("/manager/learning");
+    await nav(page).getByRole("link", { name: "Resources" }).click();
+    await expect(page).toHaveURL("/manager#resources");
+    await expect(resources(page)).toBeFocused();
+  });
+
+  test("the disclosure says why there are no individual numbers", async ({
+    page,
+    expectAxeClean,
+  }) => {
+    await open(page);
+    await expect(page.getByText(WHY_TEXT, { exact: true })).toBeHidden();
+    await page.getByText(WHY, { exact: true }).click();
+    await expect(page.getByText(WHY_TEXT, { exact: true })).toBeVisible();
+    await expectAxeClean(page);
   });
 
   for (const scheme of ["light", "dark"] as const) {
