@@ -71,10 +71,11 @@ export function AppShell({
   const convex = useConvex();
   const setActiveOrg = useMutation(api.profiles.setActiveOrg);
 
-  // Exact path, first match: "/manager" and "/manager#resources" share a path.
-  const currentHref = shell.nav
+  // Exact path, first match: "/manager" and "/manager#resources" share a path,
+  // and after launch Sprint opens "/manager" too. Labels are unique, hrefs aren't.
+  const currentLabel = shell.nav
     .flatMap((section) => section.links)
-    .find((l) => l.href.split("#")[0] === pathname)?.href;
+    .find((l) => l.href.split("#")[0] === pathname)?.label;
 
   // Switching persona or workspace and signing out all end in a full load, on
   // purpose: the server layout reads the new session and paints its shell and banner.
@@ -154,7 +155,7 @@ export function AppShell({
         label: l.label,
         href: l.href,
         icon: ICONS[l.icon],
-        current: l.href === currentHref,
+        current: l.label === currentLabel,
       })),
     })),
     checklist: shell.checklist,
