@@ -151,6 +151,64 @@ test("a team below the threshold sees hidden totals", async () => {
   });
 });
 
+test("a snapshot taken under a lower threshold hides once it is raised", async () => {
+  vi.setSystemTime(mel("2026-09-10T09:00"));
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  for (const subject of ["a", "b", "c", "d", "e", "f"]) {
+    await seat(t, orgId, `user_${subject}`, []);
+  }
+  await launchedSprint(t, orgId);
+  await t.mutation(internal.snapshots.take, { orgId });
+  const shownAt5 = (await owner.query(api.manager.overview, {}))!;
+  expect(shownAt5.team?.sessionDone.stat).toEqual(shown(0, 6));
+
+  await t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold: 10 }));
+  const hidden = { kind: "hidden", helper: "Hidden until 10 responses" };
+  expect(await owner.query(api.manager.overview, {})).toMatchObject({
+    sprint: { projects: hidden },
+    team: { sessionDone: { stat: hidden }, tasksUnderway: { stat: hidden } },
+  });
+});
+
+test("an opt-out never flips the agreement to signed by the team", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  await move(t, "week2");
+  const title = async () =>
+    (await priya.query(api.manager.overview, {}))!.agreement.title;
+  expect(await title()).toBe("Signed by the team");
+
+  // Everyone but Dan has signed.
+  const dan = await personOf(t, orgId, "dan");
+  await t.run(async (ctx) => {
+    for (const s of await ctx.db.query("agreementSignatures").collect()) {
+      if (s.personId === dan) await ctx.db.delete(s._id);
+    }
+  });
+  expect(await title()).toBe("Saved");
+  // Dan opts out of team totals: the title must not give that away.
+  await optOut(t, orgId, dan);
+  expect(await title()).toBe("Saved");
+});
+
+test("a declined invitation still counts as invited", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  await t.run(async (ctx) => {
+    const invites = await ctx.db
+      .query("orgInvites")
+      .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
+      .collect();
+    const open = invites.find((i) => i.status !== "accepted")!;
+    await ctx.db.patch(open._id, { status: "declined" });
+  });
+  // Ruling 3: invited means asked; only a revoked row drops.
+  expect(
+    (await as("priya").query(api.manager.overview, {}))!.sprint,
+  ).toMatchObject({ invited: 8, joined: 7 });
+});
+
 test("the week we're in stays current after its hour, until Monday", async () => {
   vi.setSystemTime(mel("2026-09-09T16:00"));
   const t = harness();

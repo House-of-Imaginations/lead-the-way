@@ -429,7 +429,9 @@ export const launch = viewerMutation(
     });
     // Each week's team totals are frozen when its hour ends (Ruling 2). The
     // demo's clock is virtual, so a real `runAt` would fire at once there;
-    // `moveClock` takes the demo's instead.
+    // `moveClock` takes the demo's instead. Each run makes good a missed
+    // earlier one; the last week has nothing after it, so one more run a day
+    // later backs it up.
     if (!viewer.org.isDemo) {
       const stored = { ...sprint, startDate: startDateOf(sprint, now) };
       for (let week = 1; week <= sprint.weeks; week++) {
@@ -439,6 +441,11 @@ export const launch = viewerMutation(
           { orgId },
         );
       }
+      await ctx.scheduler.runAt(
+        hourEnd(stored, sprint.weeks) + 86_400_000,
+        internal.snapshots.take,
+        { orgId },
+      );
     }
 
     let invited = 0;

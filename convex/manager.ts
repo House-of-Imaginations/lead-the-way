@@ -4,14 +4,9 @@ import type { Doc } from "./_generated/dataModel";
 import { dayMonth, latestSaved } from "./lib/agreement";
 import { viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
-import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
+import { MAX_MEMBERS_PER_ORG, permissionsOf } from "./lib/orgs/membership";
 import { PATHWAY_MODULES, coachingPercent } from "./lib/pathway";
-import {
-  count,
-  loadCountable,
-  thresholdOf,
-  type Aggregate,
-} from "./lib/privacy";
+import { thresholdOf, type Aggregate } from "./lib/privacy";
 import { isManager } from "./lib/shell";
 import { latestSnapshot } from "./lib/snapshots";
 import {
@@ -117,7 +112,8 @@ function statOf(
   org: Doc<"orgs">,
 ): Stat {
   if (!total) return { kind: "pending", helper: pending };
-  if (total.hidden) {
+  // Checked again on read: the threshold may have been raised since.
+  if (total.hidden || total.n < thresholdOf(org)) {
     return { kind: "hidden", helper: `Hidden until ${thresholdOf(org)} responses` };
   }
   return { kind: "shown", value: total.value, of: total.n };
@@ -238,14 +234,25 @@ export const overview = viewerQuery()({
         )
         .take(MAX_MEMBERS_PER_ORG);
       const signedBy = new Set(signatures.map((s) => s.personId));
-      // Counted like any team total (Ruling 15), so it can't single out
-      // who hasn't signed.
-      const signed = count(
-        await loadCountable(ctx, org, viewer.person._id),
-        (p) => signedBy.has(p._id),
-        org,
-      );
-      const everyone = !signed.hidden && signed.value === signed.n;
+      // Over the whole seated team, opted out or not: an opt-out must never
+      // flip this title. Held back below the threshold (Ruling 15), so it
+      // can't single out who hasn't signed. Not a `Countable`: no number
+      // leaves here, only "everyone".
+      const people = await ctx.db
+        .query("people")
+        .withIndex("by_org", (q) => q.eq("orgId", org._id))
+        .take(MAX_MEMBERS_PER_ORG);
+      let seated = 0;
+      let everyone = true;
+      for (const person of people) {
+        if (person._id === viewer.person._id) continue;
+        const role = await ctx.db.get(person.roleId);
+        if (!role || role.orgId !== org._id) continue;
+        if (permissionsOf(role).includes("team:insights")) continue;
+        seated++;
+        if (!signedBy.has(person._id)) everyone = false;
+      }
+      everyone &&= seated >= thresholdOf(org);
       agreement = {
         title: everyone ? "Signed by the team" : "Saved",
         tag: everyone

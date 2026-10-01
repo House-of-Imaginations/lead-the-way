@@ -238,7 +238,7 @@ test("a team below the threshold stores hidden totals, from the end of the hour"
   ]);
 });
 
-test("a real launch schedules one snapshot per week, at each hour's end", async () => {
+test("a real launch schedules one snapshot per week, at each hour's end, and a backstop", async () => {
   // Sunday 20 September: week one is Wednesday the 23rd, and the sprint
   // crosses daylight saving on 4 October (Review Focus 5). Timers stay fake,
   // so no scheduled run fires during the test.
@@ -264,6 +264,8 @@ test("a real launch schedules one snapshot per week, at each hour's end", async 
     // 3:00 PM AEDT, UTC+11.
     { at: "2026-10-07T04:00:00.000Z", args: [{ orgId }] },
     { at: "2026-10-14T04:00:00.000Z", args: [{ orgId }] },
+    // A day later, backing up the last week.
+    { at: "2026-10-15T04:00:00.000Z", args: [{ orgId }] },
   ]);
 });
 

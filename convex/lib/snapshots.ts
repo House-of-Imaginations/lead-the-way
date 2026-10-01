@@ -13,8 +13,9 @@ import { hourEnd } from "./sprintTime";
  *
  * One writer, two triggers: `moveClock` for the demo, and
  * `internal.snapshots.take`, which `sprints.launch` schedules at each hour's
- * end for a real workspace. Either takes every due week that has no row, so
- * a late or missed run is made good by the next.
+ * end for a real workspace, plus once a day after the last. Either takes
+ * every due week that has no row, so a late or missed run is made good by
+ * the next, and the extra run backs up the last week.
  */
 export async function takeDueSnapshots(
   ctx: MutationCtx,

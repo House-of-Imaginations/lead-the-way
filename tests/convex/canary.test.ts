@@ -36,10 +36,12 @@ test("the canary's detector finds the sentinel and nothing else", () => {
 
 test("no public query hands Dan's private values to a manager", async () => {
   const { t, orgId, as } = await calderLane();
-  await t.mutation(internal.seed.clock, { target: "complete" });
+  await t.mutation(internal.seed.clock, { target: "week4" });
 
-  // Dan's own rows take the sentinel; the ids are real Calder Lane ones, so
-  // each call's arguments reach the data it would read.
+  // Dan's own rows take the sentinel before week 4's hour ends, so its
+  // snapshot is taken over them; the ids are real Calder Lane ones, so each
+  // call's arguments reach the data it would read. The complete steps keep
+  // them: progress only rises, and a private draft is never presented.
   const ids = await t.run(async (ctx) => {
     const people = await ctx.db
       .query("people")
@@ -93,6 +95,18 @@ test("no public query hands Dan's private values to a manager", async () => {
       inviteId: invites.find((i) => i.email === castOf("omar").email)!._id,
       storageId: await ctx.storage.store(new Blob(["x"])),
     };
+  });
+  await t.mutation(internal.seed.clock, { target: "complete" });
+  // Still there after the complete steps, and week 4's snapshot is in.
+  await t.run(async (ctx) => {
+    const progress = await ctx.db
+      .query("learningProgress")
+      .withIndex("by_person_and_sprint", (q) => q.eq("personId", ids.personId))
+      .unique();
+    expect(progress?.sessionsDone).toBe(SENTINEL);
+    expect(
+      (await ctx.db.query("teamSnapshots").collect()).map((s) => s.week),
+    ).toContain(4);
   });
   const { as: lead } = await seat(t, orgId, "user_lead", ["team:insights"]);
   const calls: Record<string, Record<string, unknown>> = {
