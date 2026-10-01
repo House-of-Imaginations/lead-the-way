@@ -257,9 +257,9 @@ test("sprint:manage without team:insights gets team: null", async () => {
 test("an employee can't read the overview", async () => {
   const { t, as } = await calderLane();
   await move(t, "week1");
-  await expect(
-    as("dan").query(api.manager.overview, {}),
-  ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  await expect(as("dan").query(api.manager.overview, {})).rejects.toMatchObject(
+    { data: { code: "FORBIDDEN" } },
+  );
 });
 
 test("no sprint yet reads as null", async () => {

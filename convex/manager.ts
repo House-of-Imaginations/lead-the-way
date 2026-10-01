@@ -49,7 +49,11 @@ export const overviewValidator = v.object({
     }),
   ),
   /** The viewer's own coaching path: "Leading AI at Work", "Sprint coaching modules", 65. */
-  learning: v.object({ title: v.string(), label: v.string(), percent: v.number() }),
+  learning: v.object({
+    title: v.string(),
+    label: v.string(),
+    percent: v.number(),
+  }),
   sprint: v.object({
     title: v.string(), // "Week 2 of 4", "Starts 9 Sep", "Sprint complete"
     tag: tagValidator,
@@ -114,7 +118,10 @@ function statOf(
   if (!total) return { kind: "pending", helper: pending };
   // Checked again on read: the threshold may have been raised since.
   if (total.hidden || total.n < thresholdOf(org)) {
-    return { kind: "hidden", helper: `Hidden until ${thresholdOf(org)} responses` };
+    return {
+      kind: "hidden",
+      helper: `Hidden until ${thresholdOf(org)} responses`,
+    };
   }
   return { kind: "shown", value: total.value, of: total.n };
 }
