@@ -87,36 +87,49 @@ test("no public function reads another workspace's ids", async () => {
   const before = await rowsOf(t, ids.orgId);
 
   const leaked: string[] = [];
+  const wrong: string[] = [];
   let swept = 0;
   let reached = 0;
   for (const fn of publicFunctions()) {
     const fixed = calls[fn.name];
     if (!fixed) continue;
     let args = fixed;
+    // Otherwise the only foreign id is `expectOrgId`: the workspace check
+    // itself must refuse the victim's (R6).
+    let expected = "WORKSPACE_CHANGED";
     if (holdsId(fixed, theirs)) {
       // A foreign id inside the args: echo the attacker's own workspace, so
       // the call gets past the workspace check and the handler's own
       // `getInOrg` is what must refuse it.
       if ("expectOrgId" in fixed) args = { ...fixed, expectOrgId: attackerOrg };
+      // An org-layer call names the victim's workspace and stops at the seat
+      // check, whose NOT_A_MEMBER also covers "no such org" (errors.ts).
+      expected = "orgId" in fixed ? "NOT_A_MEMBER" : "NOT_FOUND";
       reached++;
     } else if (fixed.expectOrgId !== ids.orgId) {
       continue;
     }
-    // Otherwise the only foreign id is `expectOrgId`: the workspace check
-    // itself must refuse the victim's.
     swept++;
-    try {
-      const answer = await call(attacker, fn, args);
+    const outcome = await call(attacker, fn, args).then(
+      (answer: unknown) => ({ answered: true as const, answer }),
+      (error: unknown) => ({ answered: false as const, error }),
+    );
+    if (outcome.answered) {
       // A mutation that resolves at all got past the tenant check, even
       // when it returns null on success.
-      if (fn.kind !== "query" || answer !== null) {
+      if (fn.kind !== "query" || outcome.answer !== null) {
         leaked.push(`${fn.name} answered`);
       }
-    } catch {
-      // Refused, as it should be.
+      continue;
     }
+    // Refused: by the gate that should, not by an accident on the way.
+    const code =
+      (outcome.error as { data?: { code?: string } } | null)?.data?.code ??
+      "an internal error";
+    if (code !== expected) wrong.push(`${fn.name}: ${code}, not ${expected}`);
   }
   expect(leaked).toEqual([]);
+  expect(wrong).toEqual([]);
   expect(await rowsOf(t, ids.orgId)).toEqual(before);
   // The sweep reached every function that takes an id (21 before P4, 29
   // after Task 5), and 20 of them hold one past the workspace check. Raise
