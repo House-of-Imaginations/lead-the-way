@@ -55,6 +55,7 @@ import type * as lib_sprintTime from "../lib/sprintTime.js";
 import type * as lib_surveys from "../lib/surveys.js";
 import type * as lib_tenant from "../lib/tenant.js";
 import type * as lib_viewer from "../lib/viewer.js";
+import type * as manager from "../manager.js";
 import type * as members from "../members.js";
 import type * as onboarding from "../onboarding.js";
 import type * as orgRoles from "../orgRoles.js";
@@ -125,6 +126,7 @@ declare const fullApi: ApiFromModules<{
   "lib/surveys": typeof lib_surveys;
   "lib/tenant": typeof lib_tenant;
   "lib/viewer": typeof lib_viewer;
+  manager: typeof manager;
   members: typeof members;
   onboarding: typeof onboarding;
   orgRoles: typeof orgRoles;

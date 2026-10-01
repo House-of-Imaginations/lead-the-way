@@ -105,7 +105,8 @@ export function hourEnd(sprint: HourOf, week: number): number {
  * in the sprint's time zone: week 1 starts at 00:00 on the Monday of the
  * first hour's week. 0 before that; not clamped after the last week.
  * Counted in calendar days, so a week that loses an hour to daylight saving
- * still turns over at midnight on Monday.
+ * still turns over at midnight on Monday. A draft's stored `startDate` is
+ * stale: pass a launched sprint, or `{ ...sprint, startDate: startDateOf(sprint, now) }`.
  */
 export function weekOf(sprint: HourOf, now: number): number {
   const first = hourDate(sprint, 1);

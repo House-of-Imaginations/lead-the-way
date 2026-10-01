@@ -1,7 +1,6 @@
 import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { dayMonth, latestSaved } from "./lib/agreement";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
@@ -39,6 +38,7 @@ import {
   gateOpen,
   requireDraft,
   setupGate,
+  sprintInvites,
 } from "./lib/sprint";
 import {
   addDays,
@@ -239,10 +239,6 @@ export const notReady = viewerMutation("sprint:manage")({
   },
 });
 
-// ponytail: one workspace's invitations, up to 100 open plus a sprint's worth
-// answered. Past 500, page this read.
-const INVITES_READ = 500;
-
 const linkValidator = v.object({ email: v.string(), token: v.string() });
 
 /** 07: the gate, the invitation list and the summary. Null before a sprint. */
@@ -291,21 +287,7 @@ export const launchPage = viewerQuery("sprint:manage")({
     const last = hourStart(dated, sprint.weeks);
     const savedAt = (await latestSaved(ctx, team._id))?.savedAt;
     const gate = await setupGate(ctx, viewer, team, sprint);
-    const rows = await ctx.db
-      .query("orgInvites")
-      .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
-      .take(INVITES_READ);
-    // The newest row per address: one withdrawn or lapsed and sent again
-    // is one person on 07.
-    const newest = new Map<string, Doc<"orgInvites"> & { email: string }>();
-    for (const i of rows) {
-      if (i.sprintId !== sprint._id || !i.email) continue;
-      const had = newest.get(i.email);
-      if (!had || i._creationTime > had._creationTime) {
-        newest.set(i.email, { ...i, email: i.email });
-      }
-    }
-    const mine = [...newest.values()];
+    const mine = await sprintInvites(ctx, orgId, sprint._id);
     // Tokens only to whoever may hand them out, and only when nothing was
     // mailed (Ruling 30). ponytail: a demo address in a real workspace that
     // sent nothing gets its link from `launch`'s return, not from here.

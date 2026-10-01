@@ -96,3 +96,31 @@ export function requireDraft(sprint: Doc<"sprints">): void {
     throwUserError("SPRINT_LAUNCHED", "Your sprint has already launched.");
   }
 }
+
+// ponytail: one workspace's invitations, up to 100 open plus a sprint's worth
+// answered. Past 500, page this read.
+const INVITES_READ = 500;
+
+/**
+ * The sprint's invitations, the newest row per address: one withdrawn or
+ * lapsed and sent again is one person (07, and 08's invited and joined).
+ */
+export async function sprintInvites(
+  ctx: QueryCtx,
+  orgId: Id<"orgs">,
+  sprintId: Id<"sprints">,
+): Promise<(Doc<"orgInvites"> & { email: string })[]> {
+  const rows = await ctx.db
+    .query("orgInvites")
+    .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
+    .take(INVITES_READ);
+  const newest = new Map<string, Doc<"orgInvites"> & { email: string }>();
+  for (const i of rows) {
+    if (i.sprintId !== sprintId || !i.email) continue;
+    const had = newest.get(i.email);
+    if (!had || i._creationTime > had._creationTime) {
+      newest.set(i.email, { ...i, email: i.email });
+    }
+  }
+  return [...newest.values()];
+}
