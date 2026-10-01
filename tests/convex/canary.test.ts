@@ -181,10 +181,14 @@ test("private activity is counted only where the allowlist says", () => {
   const dir = new URL("../../convex/", import.meta.url);
   // A bare call, not a method such as `.count(`, or a renamed import.
   const calls = /(?<![\w.$])(?:count|aggregate)\(|\b(?:count|aggregate) as\b/;
+  // Any import of them, named, renamed or destructured, or the whole module.
+  const imports =
+    /import\s*\{[^}]*\b(?:count|aggregate)\b[^}]*\}\s*from\s*["'][^"']*privacy["']|import\s*\*\s*as\s+\w+\s+from\s*["'][^"']*privacy["']/;
   const found: string[] = [];
   for (const file of readdirSync(dir, { recursive: true }) as string[]) {
     if (!file.endsWith(".ts") || file.startsWith("_generated")) continue;
-    if (calls.test(readFileSync(new URL(file, dir), "utf8"))) found.push(file);
+    const source = readFileSync(new URL(file, dir), "utf8");
+    if (calls.test(source) || imports.test(source)) found.push(file);
   }
   // Nothing found would pass vacuously; the snapshot writer must be seen.
   expect(found).toContain("lib/snapshots.ts");

@@ -210,7 +210,8 @@ test("a straight jump freezes the same totals as stepping through every target",
   }
   const stepped = await totals(staged);
   expect(stepped.map((row) => row.week)).toEqual([1, 2, 3, 4]);
-  // Each week as of its own hour's end, not as of the jump (week 1 is 6 of 7).
+  // Each week as of its own hour's end, not as of the jump.
+  expect(stepped[0].sessionDone).toMatchObject({ n: 7, value: 6 });
   expect(await totals(direct)).toEqual(stepped);
 });
 
@@ -305,6 +306,20 @@ test("a run for a sprint that has gone does nothing, even with a new one launche
   await launchedSprint(t, orgId);
   await t.mutation(internal.snapshots.take, { orgId, sprintId: gone });
   expect(await snapshotsOf(t, orgId)).toEqual([]);
+});
+
+test("a run never takes another workspace's sprint", async () => {
+  vi.setSystemTime(mel("2026-09-10T09:00"));
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const other = await workspace(t, "Birch Row");
+  for (const subject of ["a", "b", "c", "d", "e"]) {
+    await seat(t, other.orgId, `user_${subject}`, []);
+  }
+  const theirs = await launchedSprint(t, other.orgId);
+  await t.mutation(internal.snapshots.take, { orgId, sprintId: theirs });
+  expect(await snapshotsOf(t, orgId)).toEqual([]);
+  expect(await snapshotsOf(t, other.orgId)).toEqual([]);
 });
 
 test("a demo launch schedules nothing: the demo clock takes them", async () => {
