@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
-import { DEMO_TARGETS, type DemoTarget } from "../../convex/lib/demo/schedule";
+import {
+  DEMO_TARGETS,
+  mel,
+  type DemoTarget,
+} from "../../convex/lib/demo/schedule";
 import {
   calderLane,
   harness,
@@ -73,6 +77,25 @@ test("Priya's status reads right at every demo target", async () => {
     const shell = await as("priya").query(api.viewer.shell, {});
     expect(shell?.status, target).toEqual(PRIYA_STATUS[target]);
   }
+});
+
+test("a launched sprint says when it starts until week one's Monday", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.run(async (ctx) => {
+    const sprint = await ctx.db
+      .query("sprints")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .unique();
+    await ctx.db.patch(sprint!._id, { launchedAt: DEMO_TARGETS.setup });
+  });
+  const statusAt = async (local: string) => {
+    await t.run((ctx) => ctx.db.patch(orgId, { demoNow: mel(local) }));
+    return (await as("priya").query(api.viewer.shell, {}))?.status;
+  };
+  // Sunday 6 September, evening: launched, but week one is tomorrow.
+  expect(await statusAt("2026-09-06T20:00")).toEqual(PRIYA_STATUS.setup);
+  // Monday 7 September: week 1, two days before its hour.
+  expect(await statusAt("2026-09-07T09:00")).toEqual(PRIYA_STATUS.week1);
 });
 
 test("Priya at setup: her home, greeting, nav and first checklist step", async () => {
