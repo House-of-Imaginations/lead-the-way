@@ -153,9 +153,13 @@ export function PathwayView({ initial }: { initial: Pathway }) {
   }
 
   // P5 Ruling 16: once the sprint has launched, the panel leads to the overview.
-  const next = data.launched
-    ? { label: "Go to overview", href: "/manager" }
-    : { label: "Continue to agreement", href: "/manager/agreement" };
+  const after = data.launched
+    ? { heading: "Sprint launched", label: "Go to overview", href: "/manager" }
+    : {
+        heading: "Ready to launch?",
+        label: "Continue to agreement",
+        href: "/manager/agreement",
+      };
 
   async function continueOn() {
     setPending(true);
@@ -163,7 +167,7 @@ export function PathwayView({ initial }: { initial: Pathway }) {
     try {
       // No score is a skip, and a skip is recorded by writing nothing (Ruling 4).
       if (score !== null) await rateConfidence({ expectOrgId, score });
-      router.push(next.href);
+      router.push(after.href);
     } catch (error) {
       setRateError(userMessage(error, SAVE_FAILED));
       setPending(false);
@@ -253,14 +257,15 @@ export function PathwayView({ initial }: { initial: Pathway }) {
           </section>
         </div>
 
-        <div className="flex flex-col gap-05">
+        {/* Side by side, the pane stays put while the lists scroll (main is the scroller). */}
+        <div className="flex flex-col gap-05 min-[901px]:sticky min-[901px]:top-0 min-[901px]:max-h-[calc(100dvh-64px)] min-[901px]:overflow-y-auto">
           {ready ? (
             <section
               aria-labelledby="ready-title"
               className="flex flex-col gap-05 border-b border-border-subtle pb-07"
             >
               <h2 id="ready-title" className="text-heading-02">
-                Ready to launch?
+                {after.heading}
               </h2>
               <InlineNotification kind="success">
                 You&apos;ve finished the manager pathway.
@@ -279,7 +284,7 @@ export function PathwayView({ initial }: { initial: Pathway }) {
                 onClick={continueOn}
                 className="self-start"
               >
-                {next.label}
+                {after.label}
               </Button>
               {rateError ? (
                 <p role="alert" className="text-label-01 text-support-error">

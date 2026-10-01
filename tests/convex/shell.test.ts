@@ -354,10 +354,11 @@ test("the nav shows a manager only what their permissions open (Ruling 13)", asy
   ]);
 });
 
-test("a new hour re-reads the status across the end of the hour (Review Focus 3)", async () => {
+test("the status follows the clock across the end of the hour, and accepts hour (Review Focus 3)", async () => {
   const { t, orgId, as } = await calderLane();
   await clock(t, "week2");
-  // The server sends `hour`; a new value is a new query, so Convex reads the clock again.
+  // convex-test has no query cache, so this shows the status reads the clock
+  // and takes `hour`, not that a new `hour` busts a cached answer.
   const statusAt = async (local: string) => {
     const now = mel(local);
     await t.run((ctx) => ctx.db.patch(orgId, { demoNow: now }));

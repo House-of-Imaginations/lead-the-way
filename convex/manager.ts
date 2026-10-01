@@ -38,6 +38,8 @@ const statValidator = v.union(
 );
 export const overviewValidator = v.object({
   phase: literals("draft", "scheduled", "active", "complete"),
+  /** Holds `sprint:manage`: the header buttons and card links lead to its pages. */
+  canManage: v.boolean(),
   /** "Your team is in week 2. The next protected hour is Wednesday 16 September at 2:00 PM." */
   intro: v.string(),
   /** Setup, then one column per week. */
@@ -271,6 +273,7 @@ export const overview = viewerQuery()({
 
     return {
       phase,
+      canManage: viewer.permissions.includes("sprint:manage"),
       intro,
       timeline,
       learning: {

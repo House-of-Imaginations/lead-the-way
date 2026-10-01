@@ -232,9 +232,17 @@ test("a custom role with team:insights sees aggregates only", async () => {
   const theirs = (await lead.query(api.manager.overview, {}))!;
   const priyas = (await as("priya").query(api.manager.overview, {}))!;
   expect(theirs.team).not.toBeNull();
-  // The same team totals as the owner's; only their own learning differs.
-  expect({ ...theirs, learning: null }).toEqual({ ...priyas, learning: null });
+  // The same team totals as the owner's; only their own learning and what
+  // they may manage differ.
+  expect({ ...theirs, learning: null, canManage: null }).toEqual({
+    ...priyas,
+    learning: null,
+    canManage: null,
+  });
   expect(theirs.learning.percent).toBe(0);
+  // No sprint:manage, so 08 hides the links that would bounce them back.
+  expect(theirs.canManage).toBe(false);
+  expect(priyas.canManage).toBe(true);
 });
 
 test("sprint:manage without team:insights gets team: null", async () => {
@@ -285,6 +293,7 @@ test("the overview's words at each demo target", async () => {
   });
   expect(await priya.query(api.manager.overview, {})).toEqual({
     phase: "draft",
+    canManage: true,
     intro: "Your sprint starts Wednesday 9 September at 2:00 PM.",
     timeline: [
       {

@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { resetDemo, signInAs } from "./demo";
 
@@ -237,8 +237,11 @@ test("after launch the panel goes to the overview (Ruling 16)", async ({
   resetDemo("week1");
   await open(page);
   await expect(
-    page.getByRole("heading", { name: "Ready to launch?" }),
+    page.getByRole("heading", { name: "Sprint launched" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Ready to launch?" }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Continue to agreement" }),
   ).toHaveCount(0);
@@ -264,6 +267,26 @@ test("the coaching path lists four modules and its percent", async ({
     "aria-valuetext",
     "0 of 3 complete",
   );
+});
+
+test("the right pane stays in view while the lists scroll", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page);
+  const heading = page.getByRole("heading", { level: 2, name: REQUIRED[0] });
+  await expect(heading).toBeVisible();
+  const main = page.getByRole("main");
+  await main.evaluate((m) => m.scrollBy(0, 600));
+  // The page is short enough that the heading might stay in view anyway, so
+  // also check the pane is pinned: its top never rises above main's.
+  const top = (l: Locator) =>
+    l.evaluate((e) => Math.round(e.getBoundingClientRect().top));
+  expect(await main.evaluate((m) => m.scrollTop)).toBeGreaterThan(0);
+  expect(
+    await top(page.locator("div:has(> #module-player)")),
+  ).toBeGreaterThanOrEqual(await top(main));
+  await expect(heading).toBeInViewport();
 });
 
 for (const scheme of ["light", "dark"] as const) {

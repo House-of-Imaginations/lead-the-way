@@ -99,7 +99,7 @@ function TimelineColumn({ column }: { column: Column }) {
                 size={16}
                 aria-hidden="true"
                 className={clsx(
-                  "mt-[2px] shrink-0",
+                  "mt-01 shrink-0",
                   item.done || current
                     ? "text-interactive"
                     : "text-text-secondary",
@@ -117,7 +117,10 @@ function TimelineColumn({ column }: { column: Column }) {
   );
 }
 
-/** A summary card: label, title, optional tag, body, and a full-width link row. */
+/**
+ * A summary card: label, title, optional tag, body, and a full-width link row.
+ * Without `linked` (no sprint:manage) the row would only bounce back here.
+ */
 function Card({
   id,
   label,
@@ -125,6 +128,7 @@ function Card({
   tag,
   href,
   action,
+  linked,
   children,
 }: {
   id: string;
@@ -133,6 +137,7 @@ function Card({
   tag?: Data["sprint"]["tag"];
   href: string;
   action: string;
+  linked: boolean;
   children?: ReactNode;
 }) {
   return (
@@ -152,16 +157,18 @@ function Card({
         </div>
         {children}
       </div>
-      <div className="border-t border-border-subtle">
-        <ButtonLink
-          href={href}
-          kind="ghost"
-          icon={ArrowRight}
-          className="w-full justify-between"
-        >
-          {action}
-        </ButtonLink>
-      </div>
+      {linked ? (
+        <div className="border-t border-border-subtle">
+          <ButtonLink
+            href={href}
+            kind="ghost"
+            icon={ArrowRight}
+            className="w-full justify-between"
+          >
+            {action}
+          </ButtonLink>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -169,9 +176,12 @@ function Card({
 const SIMULATED = "Simulated in this prototype.";
 
 /**
- * Spec 3.3: the nav's Resources (/manager#resources) lands here with focus.
- * Next focuses a hash target on a client navigation; this covers a full load
- * and a hash typed into the address bar.
+ * Spec 3.3: the nav's Resources (/manager#resources) lands here with focus:
+ * on mount (a full load, or a client navigation from another page), and on
+ * a hash-only change. Next's <Link> makes that change with pushState, which
+ * fires no hashchange, so we listen to the Navigation API's entry change.
+ * Next pushes inside React's commit, and React then puts focus back on the
+ * clicked link, so that focus waits for the commit to end.
  */
 function Resources() {
   const toast = useToast();
@@ -180,16 +190,24 @@ function Resources() {
       if (window.location.hash === "#resources")
         document.getElementById("resources")?.focus();
     };
+    const afterCommit = () => setTimeout(focus);
     focus();
+    // ponytail: without the Navigation API (older browsers), a hash-only
+    // click still scrolls here, just without focus.
+    const navigation = (window as { navigation?: EventTarget }).navigation;
+    navigation?.addEventListener("currententrychange", afterCommit);
     window.addEventListener("hashchange", focus);
-    return () => window.removeEventListener("hashchange", focus);
+    return () => {
+      navigation?.removeEventListener("currententrychange", afterCommit);
+      window.removeEventListener("hashchange", focus);
+    };
   }, []);
   return (
     <section
       id="resources"
       tabIndex={-1}
       aria-labelledby="resources-title"
-      className="flex scroll-mt-07 flex-col gap-05"
+      className="flex scroll-mt-07 flex-col gap-05 focus:outline-none"
     >
       <h2 id="resources-title" className="text-heading-03">
         Resources
@@ -233,6 +251,7 @@ export function Overview({
         <InlineNotification>
           Your team&apos;s totals appear here after you launch the sprint.
         </InlineNotification>
+        <Resources />
       </div>
     );
   }
@@ -250,22 +269,24 @@ export function Overview({
           <h1 className="text-heading-01">{greeting}</h1>
           <p className="text-body-01 text-text-secondary">{data.intro}</p>
         </div>
-        <div className="flex shrink-0 max-[672px]:w-full max-[672px]:flex-col">
-          <ButtonLink
-            href="/join/preview"
-            kind="tertiary"
-            className="max-[672px]:w-full"
-          >
-            Preview team view
-          </ButtonLink>
-          <ButtonLink
-            href="/manager/sprint/launch"
-            icon={Add}
-            className="max-[672px]:w-full"
-          >
-            Invite member
-          </ButtonLink>
-        </div>
+        {data.canManage ? (
+          <div className="flex shrink-0 max-[672px]:w-full max-[672px]:flex-col">
+            <ButtonLink
+              href="/join/preview"
+              kind="tertiary"
+              className="max-[672px]:w-full"
+            >
+              Preview team view
+            </ButtonLink>
+            <ButtonLink
+              href="/manager/sprint/launch"
+              icon={Add}
+              className="max-[672px]:w-full"
+            >
+              Invite member
+            </ButtonLink>
+          </div>
+        ) : null}
       </header>
 
       <InlineNotification icon={Locked} title="Aggregate progress only.">
@@ -293,6 +314,7 @@ export function Overview({
           title={data.learning.title}
           href="/manager/learning"
           action="Continue pathway"
+          linked={data.canManage}
         >
           <ProgressBar
             label={data.learning.label}
@@ -307,6 +329,7 @@ export function Overview({
           tag={sprint.tag}
           href="/manager/sprint/launch"
           action="View sprint"
+          linked={data.canManage}
         >
           <dl className="grid grid-cols-3 gap-05">
             {facts.map(([term, value]) => (
@@ -324,6 +347,7 @@ export function Overview({
           tag={data.agreement.tag}
           href="/manager/agreement"
           action="Review agreement"
+          linked={data.canManage}
         >
           {data.agreement.body ? (
             <p className="text-body-02">{data.agreement.body}</p>
