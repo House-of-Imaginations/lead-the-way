@@ -31,10 +31,12 @@ export const DEFAULT_CHECKS = CHECK_LABELS.map((label, i) => ({
   on: i < 4,
 }));
 
-export const MAX_TOOLS = 10;
-export const MAX_NEVER_IN = 12;
-export const MAX_LABEL = 60;
-export const MAX_ESCALATION = 500;
+export {
+  MAX_ESCALATION,
+  MAX_LABEL,
+  MAX_NEVER_IN,
+  MAX_TOOLS,
+} from "./agreementLimits";
 
 export const DEFAULT_ESCALATION =
   "Escalate uncertainty when AI output may affect a client decision, sensitive data may be involved, or an approved-tool boundary is unclear.";
