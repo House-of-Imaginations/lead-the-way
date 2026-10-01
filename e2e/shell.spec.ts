@@ -111,7 +111,9 @@ test.describe("week 2", () => {
     await signInAs(page, "priya");
     await page.setViewportSize({ width: 1440, height: 820 });
     await page.goto("/manager");
-    await expect(page.getByRole("heading", { name: "Resources" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Resources" }),
+    ).toBeVisible();
     const page_ = await page.evaluate(() => ({
       scroll: document.documentElement.scrollHeight,
       view: window.innerHeight,
