@@ -7,6 +7,7 @@
    - .ltw-toast max-width;
    - .ltw-modal max-height and .ltw-modal-b overflow;
    - .ltw-btn-ghost:hover colour, link-hover so the label keeps 4.5:1 on layer-hover;
+   - the select's open list, styled as a menu where the browser supports appearance: base-select;
    - the Lead the Way additions at the end, including the drawer close, the side nav scroll area, the modal
      scrim layer and the 48px phone touch targets.
    To see every edit: pnpm exec prettier docs/design/design-system/components/bundle.css | diff - src/styles/components.css
@@ -248,6 +249,64 @@ textarea.ltw-field {
   right: 12px;
   top: 12px;
   pointer-events: none;
+}
+/* local: where the browser lets a select be styled (appearance: base-select), its list is drawn like the
+   menu: a floating layer-01 panel, 40px rows, layer-hover on hover, the chosen row on layer-selected with
+   a check at the right. Elsewhere the browser's own list stays; the field above is the same either way. */
+@supports (appearance: base-select) {
+  .ltw-sel select.ltw-field,
+  .ltw-sel select.ltw-field::picker(select) {
+    appearance: base-select;
+  }
+  .ltw-sel select.ltw-field {
+    align-items: center;
+  }
+  .ltw-sel select.ltw-field::picker-icon {
+    display: none;
+  }
+  .ltw-sel select.ltw-field::picker(select) {
+    margin: 0;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--layer-01);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-float);
+  }
+  .ltw-sel option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 16px;
+    font: 400 14px/20px var(--font-sans);
+    letter-spacing: 0.16px;
+    cursor: pointer;
+  }
+  .ltw-sel option:hover {
+    background: var(--layer-hover);
+  }
+  .ltw-sel option:checked {
+    background: var(--layer-selected);
+  }
+  .ltw-sel option:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
+  /* Carbon's Checkmark (32px grid), drawn in currentColor */
+  .ltw-sel option::checkmark {
+    order: 1;
+    margin-left: auto;
+    content: "";
+    width: 16px;
+    height: 16px;
+    background: currentColor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M13 24 4 15l1.414-1.414L13 21.171 26.586 7.586 28 9z'/%3E%3C/svg%3E")
+      center / contain no-repeat;
+  }
+  .ltw-sel:has(select:open) .ltw-i {
+    transform: rotate(180deg);
+  }
 }
 
 /* Checkbox */
