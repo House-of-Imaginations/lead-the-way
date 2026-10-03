@@ -126,6 +126,31 @@ test("/setup/start keeps the narrow column", async ({ page }) => {
   expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(1);
 });
 
+test("/setup/start carries a join link's token, and Log out signs out", async ({
+  page,
+}) => {
+  // A first social sign-in from a join link lands here with `next` (Ruling 19).
+  await signUpWithoutWorkspace(page);
+  await page.goto(
+    `/setup/start?next=${encodeURIComponent("/join/e2e-no-such-token")}`,
+  );
+  await page
+    .getByLabel("I agree to the terms of use and privacy notice.")
+    .check();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL("/join/e2e-no-such-token");
+
+  // Ruling 20: a way out of setup for the wrong account.
+  await page.goto("/setup/start");
+  await page
+    .getByRole("banner")
+    .getByRole("button", { name: "Log out" })
+    .click();
+  await expect(page).toHaveURL("/login");
+  await page.goto("/home");
+  await expect(page).toHaveURL(`/login?next=${encodeURIComponent("/home")}`);
+});
+
 test("a dotted private path shows no private content", async ({ page }) => {
   // Ruling 13: the proxy skips dotted paths, so nothing private may live at one.
   const res = await page.goto("/manager/x.y");

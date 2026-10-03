@@ -8,6 +8,7 @@ import { Button, Checkbox, PasswordInput, TextInput } from "@/components/ui";
 import type { Provider } from "@convex/lib/auth/providers";
 import { authClient } from "@/lib/account/auth-client";
 import { startAccount } from "@/lib/account/start";
+import { withParams } from "@/lib/url";
 import { AuthAlternatives } from "./AuthAlternatives";
 
 const DEMO_REFUSAL =
@@ -48,7 +49,15 @@ function focusFirst(errors: Errors) {
   return first !== undefined;
 }
 
-export function SignUpForm({ providers }: { providers: Provider[] }) {
+export function SignUpForm({
+  providers,
+  invite,
+}: {
+  providers: Provider[];
+  /** The join link's token (`/signup?invite=`): sign-up goes back to it (Ruling 19). */
+  invite?: string;
+}) {
+  const next = invite ? `/join/${encodeURIComponent(invite)}` : null;
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [pending, startTransition] = useTransition();
@@ -82,7 +91,7 @@ export function SignUpForm({ providers }: { providers: Provider[] }) {
         }
         signedUpAs.current = email;
       }
-      const started = await startAccount(true);
+      const started = await startAccount(true, invite);
       if ("error" in started) {
         setErrors({ form: started.error });
         return;
@@ -152,12 +161,12 @@ export function SignUpForm({ providers }: { providers: Provider[] }) {
         providers={providers}
         ssoLabel="Sign up with single sign-on"
         emailId="signup-email"
-        next={null}
+        next={next}
       />
       <p className="text-center text-body-02">
         Already have an account?{" "}
         <Link
-          href="/login"
+          href={next ? withParams("/login", "", { next }) : "/login"}
           className="text-link underline hover:text-link-hover"
         >
           Log in

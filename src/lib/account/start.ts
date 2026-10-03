@@ -6,14 +6,20 @@ import { fetchAuthMutation } from "./auth-server";
 
 /**
  * Finish sign-up (R8): record the terms, then make a workspace or find the
- * invitation. Convex checks the session; this only carries the cookie across.
+ * invitation. A sign-up from a join link passes its token, and goes back to
+ * the link (Ruling 19). Convex checks the session; this only carries the
+ * cookie across.
  */
 export async function startAccount(
   acceptTerms: boolean,
+  token?: string,
 ): Promise<{ next: string } | { error: string }> {
   try {
     return {
-      next: await fetchAuthMutation(api.onboarding.start, { acceptTerms }),
+      next: await fetchAuthMutation(api.onboarding.start, {
+        acceptTerms,
+        token,
+      }),
     };
   } catch (error) {
     return {

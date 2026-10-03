@@ -159,6 +159,32 @@ test.describe("sign up", () => {
   });
 });
 
+test("sign-up from a join link goes back to the link and makes no workspace (Review Focus 1)", async ({
+  page,
+}) => {
+  // Any token, even one that names nothing, ends at its join page (Ruling 3).
+  await page.goto("/signup?invite=e2e-no-such-token");
+  await expect(page.getByRole("link", { name: "Log in" })).toHaveAttribute(
+    "href",
+    "/login?next=%2Fjoin%2Fe2e-no-such-token",
+  );
+  await page.getByLabel("Full name").fill("Omar Test");
+  await page
+    .getByLabel("Work email")
+    .fill(`e2e-invite-${Date.now()}@example.com`);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("a long enough password");
+  await page
+    .getByLabel("I agree to the terms of use and privacy notice.")
+    .check();
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL("/join/e2e-no-such-token");
+  // No workspace was made: home is still the start page.
+  await page.goto("/home");
+  await expect(page).toHaveURL("/setup/start");
+});
+
 test.describe("log in", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/login");

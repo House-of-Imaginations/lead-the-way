@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { Button, Modal } from "@/components/ui";
 import type { Provider } from "@convex/lib/auth/providers";
 import { authClient } from "@/lib/account/auth-client";
+import { withParams } from "@/lib/url";
 
 const NAMES: Record<Provider, string> = {
   google: "Google",
@@ -47,8 +48,11 @@ export function AuthAlternatives({
               void authClient.signIn.social({
                 provider,
                 callbackURL: next ?? "/home",
-                // R8: a first OAuth sign-in accepts the terms, then gets a workspace or its invitation.
-                newUserCallbackURL: "/setup/start",
+                // R8, Ruling 19: a first OAuth sign-in accepts the terms, then
+                // gets a workspace, or goes back to the join link it came from.
+                newUserCallbackURL: next
+                  ? withParams("/setup/start", "", { next })
+                  : "/setup/start",
                 // ponytail: a failed OAuth round trip lands back on log in without a message.
                 errorCallbackURL: "/login",
               })

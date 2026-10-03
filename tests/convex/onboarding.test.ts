@@ -208,7 +208,13 @@ test("a demo persona can't start a workspace of its own", async () => {
   const dan = t.withIdentity({ subject: accounts.dan! });
   await expect(
     dan.mutation(api.onboarding.start, { acceptTerms: true }),
-  ).rejects.toMatchObject({ data: { code: "DEMO_ACCOUNT_CREATE" } });
+  ).rejects.toMatchObject({
+    data: {
+      code: "DEMO_ACCOUNT_CREATE",
+      message:
+        "Demo accounts can't make a workspace. If you were invited, open your invitation link.",
+    },
+  });
   expect(await orgsOf(t)).toEqual([]);
 });
 
@@ -225,4 +231,51 @@ test("a long name cut on a hyphen still gets a clean second address", async () =
   expect(slugs).toHaveLength(2);
   expect(slugs).toHaveLength(2);
   for (const slug of slugs) expect(slug).not.toContain("--");
+});
+
+test.each([
+  ["the address it names", "sam@example.com", false],
+  ["another address", "omar@example.com", false],
+  ["the demo workspace", "sam@example.com", true],
+  ["nothing at all", null, false],
+] as const)(
+  "start with a token never makes a workspace: a link for %s (Review Focus 1)",
+  async (_, pinned, demo) => {
+    const t = harness();
+    const { owner, orgId } = await workspace(t);
+    let token = "no-such-token";
+    if (pinned) {
+      const roles = await owner.query(api.orgRoles.list, { orgId });
+      const roleId = roles.find((r) => r.name === "Employee")!._id;
+      ({ token } = await owner.mutation(api.invites.create, {
+        orgId,
+        roleId,
+        email: pinned,
+      }));
+    }
+    if (demo) await t.run((ctx) => ctx.db.patch(orgId, { isDemo: true }));
+    // Unverified on purpose: holding the link is the proof (spec 5).
+    const sam = await account(t, "Sam Ito", "sam@example.com");
+
+    expect(
+      await sam.mutation(api.onboarding.start, { acceptTerms: true, token }),
+    ).toBe(`/join/${token}`);
+    expect(await orgsOf(t)).toHaveLength(1);
+    expect(await t.run((ctx) => ctx.db.query("people").collect())).toHaveLength(
+      1,
+    );
+    // The terms are kept, and without a token start is as it was.
+    expect(
+      await sam.mutation(api.onboarding.start, { acceptTerms: false }),
+    ).toBe("/setup/team");
+    expect(await orgsOf(t)).toHaveLength(2);
+  },
+);
+
+test("start with a token still asks for the terms", async () => {
+  const t = harness();
+  const sam = await account(t, "Sam Ito", "sam@example.com");
+  await expect(
+    sam.mutation(api.onboarding.start, { acceptTerms: false, token: "x" }),
+  ).rejects.toMatchObject({ data: { code: "TERMS_REQUIRED" } });
 });

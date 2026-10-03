@@ -67,7 +67,7 @@ export async function createWorkspace(
   if (await isDemoAccount(ctx, userId)) {
     throwUserError(
       "DEMO_ACCOUNT_CREATE",
-      "Demo accounts can't make a workspace. Sign up with your own email to make one.",
+      "Demo accounts can't make a workspace. If you were invited, open your invitation link.",
     );
   }
   const trimmed = cleanOrgName(name);
