@@ -135,3 +135,29 @@ export async function loadSeated(
   }
   return seated;
 }
+
+/**
+ * 10's signature count: who signed `agreement`, over the seated team as the
+ * overview counts it (`loadSeated`). Null below the threshold, as the
+ * overview's "Signed by the team" is (manager Ruling 15), so a count can't
+ * single out who hasn't signed.
+ */
+export async function signatureCount(
+  ctx: QueryCtx,
+  org: Doc<"orgs">,
+  agreement: Pick<Doc<"agreements">, "_id" | "version">,
+): Promise<{ signed: number; of: number } | null> {
+  const seated = await loadSeated(ctx, org);
+  if (seated.length < thresholdOf(org)) return null;
+  const signatures = await ctx.db
+    .query("agreementSignatures")
+    .withIndex("by_agreement_version_and_person", (q) =>
+      q.eq("agreementId", agreement._id).eq("version", agreement.version),
+    )
+    .take(MAX_MEMBERS_PER_ORG);
+  const signedBy = new Set(signatures.map((s) => s.personId));
+  return {
+    signed: seated.filter((p) => signedBy.has(p._id)).length,
+    of: seated.length,
+  };
+}

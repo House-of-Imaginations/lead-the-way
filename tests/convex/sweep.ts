@@ -162,6 +162,8 @@ export const callsFor = ({
     contact: { kind: "person", personId },
     expectOrgId: orgId,
   },
+  "agreements:forMe": {},
+  "agreements:sign": { version: 1, expectOrgId: orgId },
   "sprints:launchPage": {},
   "sprints:launch": { emails: [], message: "", expectOrgId: orgId },
   "manager:overview": {},
