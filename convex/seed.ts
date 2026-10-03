@@ -1,3 +1,4 @@
+import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -9,10 +10,14 @@ import {
 import { assertFlag } from "./app";
 import { createAuth } from "./auth";
 import { DEMO_SLUG, writeCalderLane as write } from "./lib/demo/calderLane";
-import { ACCOUNT_HOLDERS, demoUserId } from "./lib/demo/cast";
+import { nowFor } from "./lib/clock";
+import { ACCOUNT_HOLDERS, castOf, demoUserId } from "./lib/demo/cast";
 import { moveClock } from "./lib/demo/moveClock";
 import { demoTargetValidator } from "./lib/demo/schedule";
+import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
+import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
+import { currentSprint } from "./lib/sprint";
 
 /**
  * Seeding the Calder Lane demo. `npx convex run seed:reset` does all of it;
@@ -101,5 +106,58 @@ export const clock = internalMutation({
       );
     }
     return await moveClock(ctx, org, target);
+  },
+});
+
+/**
+ * `pnpm exec convex run seed:invite '{"email":"x@example.com"}'`: a Calder
+ * Lane invitation from Priya, and its token, for e2e. `status` makes a
+ * finished link, so the join page's refusals can be shown.
+ * ponytail: e2e has no other way to hold a token. Demo addresses can't sign
+ * up, and the demo holds no open links. Demo only, like `clock`.
+ */
+export const invite = internalMutation({
+  args: {
+    email: v.optional(v.string()),
+    status: v.optional(literals("revoked", "declined", "accepted")),
+  },
+  returns: v.string(),
+  handler: async (ctx, { email, status }) => {
+    assertFlag("demo", true);
+    const org = await ctx.db
+      .query("orgs")
+      .withIndex("by_slug", (q) => q.eq("slug", DEMO_SLUG))
+      .unique();
+    if (!org?.isDemo) {
+      throwUserError(
+        "DEMO_NOT_SEEDED",
+        "Seed the demo first: pnpm exec convex run seed:reset.",
+      );
+    }
+    // At most nine people in the demo.
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", org._id))
+      .take(20);
+    const priya = people.find((p) => p.email === castOf("priya").email);
+    if (!priya) {
+      throwUserError(
+        "DEMO_NOT_SEEDED",
+        "Seed the demo first: pnpm exec convex run seed:reset.",
+      );
+    }
+    const sprint = await currentSprint(ctx, org._id);
+    const role = await inviteRoleOf(ctx, org._id);
+    const { inviteId, token } = await insertInvite(ctx, {
+      orgId: org._id,
+      roleId: role._id,
+      email,
+      sprintId: sprint?._id,
+      message: sprint?.inviteMessage ?? INVITE_MESSAGE,
+      invitedBy: priya.userId,
+      at: nowFor(org),
+    });
+    if (status) await ctx.db.patch(inviteId, { status });
+    return token;
   },
 });

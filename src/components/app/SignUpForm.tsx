@@ -52,10 +52,13 @@ function focusFirst(errors: Errors) {
 export function SignUpForm({
   providers,
   invite,
+  email,
 }: {
   providers: Provider[];
   /** The join link's token (`/signup?invite=`): sign-up goes back to it (Ruling 19). */
   invite?: string;
+  /** The invitation's pinned address, shown locked (Ruling 2). */
+  email?: string;
 }) {
   const next = invite ? `/join/${encodeURIComponent(invite)}` : null;
   const [agreed, setAgreed] = useState(false);
@@ -124,7 +127,13 @@ export function SignUpForm({
           type="email"
           label="Work email"
           autoComplete="email"
-          helper="Use your work address so your team can find you."
+          readOnly={email !== undefined}
+          defaultValue={email}
+          helper={
+            email
+              ? "Your invitation is for this address."
+              : "Use your work address so your team can find you."
+          }
           error={errors.email}
         />
         <PasswordInput

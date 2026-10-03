@@ -132,3 +132,28 @@ test("teamPreview shows a manager 09 from their own draft sprint", async () => {
     data: { code: "FORBIDDEN" },
   });
 });
+
+test("seed:invite hands e2e a Calder Lane link from Priya", async () => {
+  const { t } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "week1" });
+  const token = await t.mutation(internal.seed.invite, {
+    email: "Ola@Example.com",
+  });
+  expect(await t.query(api.invites.publicPreview, { token })).toMatchObject({
+    orgName: "Calder Lane",
+    email: "ola@example.com",
+    join: CALDER_JOIN,
+  });
+
+  const revoked = await t.mutation(internal.seed.invite, {
+    status: "revoked",
+  });
+  expect(
+    await t.query(api.invites.publicPreview, { token: revoked }),
+  ).toBeNull();
+
+  vi.stubEnv("DEMO_MODE", "");
+  await expect(t.mutation(internal.seed.invite, {})).rejects.toMatchObject({
+    data: { code: "FEATURE_UNAVAILABLE" },
+  });
+});
