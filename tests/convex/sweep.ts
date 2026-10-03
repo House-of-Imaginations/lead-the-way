@@ -168,4 +168,7 @@ export const callsFor = ({
   "sprints:launch": { emails: [], message: "", expectOrgId: orgId },
   "manager:overview": {},
   "surveys:checkIn": { phase: "before", answers: null, expectOrgId: orgId },
+  "me:home": {},
+  "me:sprint": {},
+  "learning:continueSession": { expectOrgId: orgId },
 });

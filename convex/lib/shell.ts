@@ -229,7 +229,8 @@ async function checklistOf(
   };
 }
 
-function greetingOf(viewer: Viewer, now: number): string {
+/** Ruling 23 (P6): in the viewer's own time zone, afternoon ends at 5:00 PM. 11 uses it too. */
+export function greetingOf(viewer: Viewer, now: number): string {
   const hour = Number(
     new Intl.DateTimeFormat("en-US", {
       timeZone: viewer.person.timeZone,
@@ -237,7 +238,7 @@ function greetingOf(viewer: Viewer, now: number): string {
       hourCycle: "h23",
     }).format(now),
   );
-  const part = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+  const part = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
   return `Good ${part}, ${viewer.person.name.split(/\s+/)[0]}`;
 }
 
