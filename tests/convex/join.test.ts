@@ -54,7 +54,7 @@ test("the signed-out preview carries 09's facts and the pinned address", async (
   });
 });
 
-test("the signed-in preview carries the same facts, whatever the state", async () => {
+test("a wrong account still sees the facts the signed-out page shows", async () => {
   const { t, orgId, as } = await calderLane();
   await t.mutation(internal.seed.clock, { target: "week1" });
   const token = await pendingToken(t, orgId, OMAR);
@@ -65,6 +65,21 @@ test("the signed-in preview carries the same facts, whatever the state", async (
     acceptState: "WRONG_ACCOUNT",
     join: CALDER_JOIN,
   });
+});
+
+test("a withdrawn, declined or used link shows no join facts, even signed in", async () => {
+  const { t, as } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "week1" });
+  for (const [status, acceptState] of [
+    ["revoked", "REVOKED"],
+    ["declined", "DECLINED"],
+    ["accepted", "USED"],
+  ] as const) {
+    const token = await t.mutation(internal.seed.invite, { status });
+    expect(await as("dan").query(api.invites.preview, { token })).toMatchObject(
+      { acceptState, join: null },
+    );
+  }
 });
 
 test("a workspace with no sprint previews without join facts", async () => {

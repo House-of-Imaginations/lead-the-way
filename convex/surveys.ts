@@ -36,14 +36,14 @@ export const checkIn = viewerMutation()({
       at: now,
     };
 
+    // At most six rows: two phases of three questions.
+    const mine = await ctx.db
+      .query("surveyResponses")
+      .withIndex("by_person_and_sprint", (q) =>
+        q.eq("personId", viewer.person._id).eq("sprintId", sprint._id),
+      )
+      .take(6);
     if (phase === "before") {
-      // At most six rows: two phases of three questions.
-      const mine = await ctx.db
-        .query("surveyResponses")
-        .withIndex("by_person_and_sprint", (q) =>
-          q.eq("personId", viewer.person._id).eq("sprintId", sprint._id),
-        )
-        .take(6);
       // normsConfidence is the manager's own (05), not this check-in.
       if (
         mine.some(
@@ -65,6 +65,15 @@ export const checkIn = viewerMutation()({
       );
     }
 
+    if (
+      phase === "after" &&
+      mine.some((r) => r.phase === "after" && r.score !== undefined)
+    ) {
+      throwUserError(
+        "CHECK_IN_DONE",
+        "You've already answered the after check-in.",
+      );
+    }
     if (!answers) {
       if (phase === "after") {
         throwUserError("FIELD_REQUIRED", "Answer both questions to save.");

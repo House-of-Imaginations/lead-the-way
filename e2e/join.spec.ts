@@ -126,14 +126,21 @@ test("Review Focus 1: sign up from the link with the locked address, join, answe
   await expect(page).toHaveURL(`/join/${token}`);
   await page.getByRole("button", { name: "Join team sprint" }).click();
 
-  await expect(
-    page.getByRole("heading", { name: "Before you start" }),
-  ).toBeVisible();
+  // The check-in is the page's h1, and focus moves to it from the Join button.
+  const title = page.getByRole("heading", {
+    level: 1,
+    name: "Before you start",
+  });
+  await expect(title).toBeVisible();
+  await expect(title).toBeFocused();
   await expect(
     page.getByText("Two quick questions. Your answers are private to you."),
   ).toBeVisible();
   const save = page.getByRole("button", { name: "Save answers" });
   await expect(save).toBeDisabled();
+  await expect(save).toHaveAccessibleDescription(
+    "Pick a number for both questions to save.",
+  );
   await expect(
     page.getByText("Pick a number for both questions to save."),
   ).toBeVisible();
@@ -243,6 +250,18 @@ test("/join/preview shows Priya the team's view, and only Priya", async ({
   await signInAs(page, "dan");
   await page.goto("/join/preview");
   await expect(page).toHaveURL("/me");
+});
+
+test("/join/preview, signed in with no seat, lands on a home and doesn't loop", async ({
+  page,
+}) => {
+  await signUp(page, fresh());
+  await page.goto("/join/preview");
+  await expect(page).not.toHaveURL(/\/login|\/join\/preview/);
+
+  await page.context().clearCookies();
+  await page.goto("/join/preview");
+  await expect(page).toHaveURL("/login?next=%2Fjoin%2Fpreview");
 });
 
 test("M1: on a phone the invitation stacks and the actions come last @mobile", async ({

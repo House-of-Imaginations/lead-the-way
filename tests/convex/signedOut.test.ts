@@ -25,7 +25,7 @@ const SIGNED_OUT: Record<
   "viewer:home": { args: {}, answer: null },
   // Null when signed out.
   "viewer:shell": { args: {}, answer: null },
-  // The invitation page, before sign-up: what the link invites to, no address.
+  // The invitation page, before sign-up: what the link invites to, and the pinned address on a pending link.
   "invites:publicPreview": {
     args: { token: "tok" },
     answer: {

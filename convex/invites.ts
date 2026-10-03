@@ -558,7 +558,13 @@ export const preview = authenticatedQuery({
             ? ("ALREADY_MEMBER" as const)
             : ("READY" as const),
       emailConfigured: emailConfigured(),
-      join: await joinFacts(ctx, org, invite.invitedBy, invite.message),
+      // A withdrawn link shows no more than the signed-out page does.
+      join:
+        refusal === "INVITE_REVOKED" ||
+        refusal === "INVITE_DECLINED" ||
+        refusal === "INVITE_USED"
+          ? null
+          : await joinFacts(ctx, org, invite.invitedBy, invite.message),
     };
   },
 });

@@ -162,6 +162,15 @@ test("the after check-in opens in week 4 and can't be skipped", async () => {
   expect(await answeredAt(t, orgId, DEMO_TARGETS.week4)).toEqual([
     { phase: "after" },
   ]);
+
+  // Scored once, then done: no second submission overwrites it.
+  await expect(
+    dan.mutation(api.surveys.checkIn, {
+      phase: "after",
+      answers: { aiConfidence: 1, comfortWithManager: 1 },
+      expectOrgId: orgId,
+    }),
+  ).rejects.toMatchObject({ data: { code: "CHECK_IN_DONE" } });
 });
 
 test("scores are whole numbers from 1 to 5", async () => {

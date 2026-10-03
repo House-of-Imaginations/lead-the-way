@@ -232,6 +232,11 @@ textarea.ltw-field {
   outline: 2px solid var(--support-error);
   outline-offset: -2px;
 }
+/* Read-only: the value reads as given, with room for the lock icon. */
+input.ltw-field:read-only:not(:disabled) {
+  padding-right: 40px;
+  color: var(--text-secondary);
+}
 .ltw-field:disabled {
   color: var(--text-disabled);
   border-bottom-color: transparent;

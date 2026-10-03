@@ -122,7 +122,7 @@ function Actions({
       return (
         <>
           <ButtonLink
-            href={`/signup?invite=${token}`}
+            href={`/signup?invite=${encodeURIComponent(token)}`}
             icon={ArrowRight}
             className={WIDE}
           >
@@ -130,7 +130,7 @@ function Actions({
           </ButtonLink>
           <ButtonLink
             kind="tertiary"
-            href={`/login?next=/join/${token}`}
+            href={`/login?next=/join/${encodeURIComponent(token)}`}
             className={WIDE}
           >
             Log in
@@ -244,6 +244,8 @@ export function JoinView({
         <main className="mx-auto w-full max-w-[640px] px-05 py-09">
           <CheckIn
             phase="before"
+            headingLevel={1}
+            autoFocus
             expectOrgId={joined}
             onDone={() => {
               // A full load: the app layout reads the new seat and workspace.

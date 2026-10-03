@@ -204,6 +204,14 @@ test("preview names each accept state", async () => {
   expect(
     await t.query(api.invites.publicPreview, { token: declined.token }),
   ).toBeNull();
+  // A pending, pinned link that has lapsed hides its address too.
+  const lapsed = await create("lapsed@example.com");
+  await t.run(async (ctx) => {
+    await ctx.db.patch(lapsed.inviteId, { expiresAt: Date.now() - 1 });
+  });
+  expect(
+    await t.query(api.invites.publicPreview, { token: lapsed.token }),
+  ).toBeNull();
 });
 
 test("somebody already seated cannot burn an open link by declining it", async () => {

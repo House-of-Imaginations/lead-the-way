@@ -114,9 +114,9 @@ export async function loadCountable(
 /**
  * Everyone seated on the team: each person in the org whose role is the
  * org's and can't read team totals, opted out or not, whoever is asking.
- * Not a `Countable`, so no number about them can be made from it; the
- * agreement's "Signed by the team" reads it, so the title is the same for
- * every viewer and no opt-out flips it.
+ * Not a `Countable`; `signatureCount` is the one sanctioned count made from
+ * it (Rulings 1 and 24). The agreement's "Signed by the team" reads it, so
+ * the title is the same for every viewer and no opt-out flips it.
  */
 export async function loadSeated(
   ctx: QueryCtx,

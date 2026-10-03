@@ -2,7 +2,7 @@ import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
 import { safeNext } from "@/lib/url";
 
-const PRIVATE = /^\/(manager|me|settings|workspace|setup|guide|home)(\/|$)/;
+const PRIVATE = /^\/(manager|me|settings|workspace|setup|guide|home|join\/preview)(\/|$)/;
 const AUTH_PAGES = /^\/(login|signup)\/?$/;
 
 /**
