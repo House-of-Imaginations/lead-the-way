@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, components, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { latestSaved } from "../../convex/lib/agreement";
 import { nowFor } from "../../convex/lib/clock";
 import {
   DEMO_NOW,
@@ -12,6 +13,9 @@ import { INVITE_WINDOW_MS } from "../../convex/lib/orgs/invites";
 import { ORG_TABLES } from "../../convex/lib/orgs/cascade";
 import { castOf } from "../../convex/lib/demo/cast";
 import { aggregate, loadCountable } from "../../convex/lib/privacy";
+import { isPresented } from "../../convex/lib/projects";
+import { DEFAULT_SETTINGS } from "../../convex/lib/settings";
+import { recordSkip, upsertAnswer } from "../../convex/lib/surveys";
 import { getViewer } from "../../convex/lib/viewer";
 import { calderLane, harness, workspace, type T } from "./workspace/helpers";
 
@@ -1151,4 +1155,264 @@ test("the scripted team.join logs through joinByInvite", async () => {
   expect(invites.find((i) => i.personId === dan?.person._id)).toMatchObject({
     respondedAt: joinedAt,
   });
+});
+
+test("a skipped check-in is not a response (Review Focus 3)", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  // Sarah, Mei, Tomás and Aisha have answered; Dan's answer is due at 1:30 PM.
+  await priya.mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
+  const dan = await personId(t, orgId, DAN);
+  const sprint = await sprintOf(t, orgId);
+  const key = { orgId, sprintId: sprint._id, personId: dan };
+  const skippedAt = mel("2026-09-09T13:10");
+  // As Dan, at 1:10 PM: "Skip for now".
+  await t.run((ctx) =>
+    recordSkip(ctx, { ...key, phase: "before", at: skippedAt }),
+  );
+  await priya.mutation(api.demo.setClock, {
+    target: "week2",
+    expectOrgId: orgId,
+  });
+
+  // A row each, so the script left him alone, and no score in either.
+  const rows = await t.run((ctx) =>
+    ctx.db
+      .query("surveyResponses")
+      .withIndex("by_person_and_sprint", (q) =>
+        q.eq("personId", dan).eq("sprintId", sprint._id),
+      )
+      .collect(),
+  );
+  expect(rows.map((r) => [r.phase, r.question, r.score, r.skippedAt])).toEqual(
+    [
+      ["before", "aiConfidence", undefined, skippedAt],
+      ["before", "comfortWithManager", undefined, skippedAt],
+    ],
+  );
+  // 4 answers and a skip is 4 responses, below 5: hidden. `aggregate` needs
+  // no filter, because a skip row's `score` is undefined and `valueOf`
+  // passes that through (`snapshot` reads exactly as P7's outcomes will).
+  expect((await snapshot(t, orgId)).outcomes.before).toEqual([null, null]);
+  expect(
+    (await eventsOf(t, orgId)).filter(
+      (e) => e.type === "survey.answered" && e.meta?.phase === "before",
+    ),
+  ).toHaveLength(4);
+
+  // He answers after all: the answer replaces the skip, and five show.
+  await t.run(async (ctx) => {
+    for (const [question, score] of [
+      ["aiConfidence", 3],
+      ["comfortWithManager", 2],
+    ] as const) {
+      await upsertAnswer(ctx, {
+        ...key,
+        phase: "before",
+        question,
+        score,
+        at: DEMO_TARGETS.week2,
+      });
+    }
+  });
+  expect((await snapshot(t, orgId)).outcomes.before).toEqual([2.8, 2.6]);
+});
+
+test("the script leaves Dan's own choices alone (Review Focus 4)", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  await priya.mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
+  const dan = await personId(t, orgId, DAN);
+  const sprint = await sprintOf(t, orgId);
+  // As Dan at 1:10 PM on 9 September, before the script answers (1:30 PM)
+  // and signs (1:45 PM) for him: he signs, skips the check-in and turns
+  // reflections on his credential off.
+  const at = mel("2026-09-09T13:10");
+  const team = await teamOf(t, orgId);
+  await t.run(async (ctx) => {
+    const agreement = (await latestSaved(ctx, team._id))!;
+    await ctx.db.insert("agreementSignatures", {
+      orgId,
+      agreementId: agreement._id,
+      version: agreement.version,
+      personId: dan,
+      signedAt: at,
+    });
+    await recordSkip(ctx, {
+      orgId,
+      sprintId: sprint._id,
+      personId: dan,
+      phase: "before",
+      at,
+    });
+    await ctx.db.insert("settings", {
+      orgId,
+      personId: dan,
+      ...DEFAULT_SETTINGS,
+      reflectionsOnCredential: false,
+    });
+  });
+  // His project is saved on 29 September, still private. He renames it
+  // before the show and tell.
+  await priya.mutation(api.demo.setClock, {
+    target: "week4",
+    expectOrgId: orgId,
+  });
+  const saved = await projectOf(t, orgId, dan);
+  expect(saved).toMatchObject({ status: "saved", sharing: "private" });
+  await t.run((ctx) => ctx.db.patch(saved._id, { title: "My weekly report" }));
+  await priya.mutation(api.demo.setClock, {
+    target: "complete",
+    expectOrgId: orgId,
+  });
+
+  const own = await t.run(async (ctx) => {
+    const mine = async <R extends { personId: Id<"people"> }>(
+      rows: Promise<R[]>,
+    ) => (await rows).filter((r) => r.personId === dan);
+    return {
+      signatures: await mine(
+        ctx.db
+          .query("agreementSignatures")
+          .withIndex("by_org", (q) => q.eq("orgId", orgId))
+          .collect(),
+      ),
+      progress: await mine(
+        ctx.db
+          .query("learningProgress")
+          .withIndex("by_org", (q) => q.eq("orgId", orgId))
+          .collect(),
+      ),
+      projects: await mine(
+        ctx.db
+          .query("projects")
+          .withIndex("by_org", (q) => q.eq("orgId", orgId))
+          .collect(),
+      ),
+      answers: await mine(
+        ctx.db
+          .query("surveyResponses")
+          .withIndex("by_org", (q) => q.eq("orgId", orgId))
+          .collect(),
+      ),
+      badges: await mine(
+        ctx.db
+          .query("badges")
+          .withIndex("by_org", (q) => q.eq("orgId", orgId))
+          .collect(),
+      ),
+    };
+  });
+  // One row per table, and each says what Dan did.
+  expect(own.signatures.map((s) => s.signedAt)).toEqual([at]);
+  expect(own.progress).toHaveLength(1);
+  expect(own.projects).toHaveLength(1);
+  expect(own.projects[0]).toMatchObject({
+    title: "My weekly report",
+    sharing: "private",
+  });
+  expect(own.projects[0]?.presentedAt).toBeUndefined();
+  expect(own.projects[0]?.learned).toBeUndefined();
+  // The skip stands. The after check-in is a separate answer, which the
+  // script still gives for him at 3:30 PM.
+  expect(
+    own.answers.map((r) => [r.phase, r.question, r.score, r.skippedAt]),
+  ).toEqual([
+    ["before", "aiConfidence", undefined, at],
+    ["before", "comfortWithManager", undefined, at],
+    ["after", "aiConfidence", 4, undefined],
+    ["after", "comfortWithManager", 4, undefined],
+  ]);
+  expect(own.badges).toHaveLength(1);
+  expect(own.badges[0]).toMatchObject({
+    shareSlug: "dan-okafor-ai-fundamentals",
+  });
+  expect(own.badges[0]?.reflectionProjectId).toBeUndefined();
+
+  const events = await eventsOf(t, orgId);
+  expect(
+    events.filter(
+      (e) => e.type === "survey.answered" && e.meta?.phase === "before",
+    ),
+  ).toHaveLength(4);
+  expect(events.filter((e) => e.type === "project.presented")).toHaveLength(5);
+  const end = await snapshot(t, orgId);
+  expect(end.presented).not.toContain("Dan Okafor");
+  // Everybody signed once; Dan's is the one above.
+  expect(end.signatures).toBe(8);
+  expect(end.outcomes).toEqual({ before: [null, null], after: [4, 3.9] });
+});
+
+test("Dan's reflection stays off his badge while his setting is off", async () => {
+  const { t, orgId, as } = await calderLane();
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: orgId,
+  });
+  const dan = await personId(t, orgId, DAN);
+  await t.run((ctx) =>
+    ctx.db.insert("settings", {
+      orgId,
+      personId: dan,
+      ...DEFAULT_SETTINGS,
+      reflectionsOnCredential: false,
+    }),
+  );
+  await as("priya").mutation(api.demo.setClock, {
+    target: "complete",
+    expectOrgId: orgId,
+  });
+  // His canonical project is presented and reflected on; only the link waits.
+  expect(await projectOf(t, orgId, dan)).toMatchObject({
+    sharing: "team",
+    presentedAt: expect.any(Number),
+    learned: expect.any(String),
+  });
+  const badge = await t.run((ctx) =>
+    ctx.db
+      .query("badges")
+      .withIndex("by_person", (q) => q.eq("personId", dan))
+      .unique(),
+  );
+  expect(badge?.shareSlug).toBe("dan-okafor-ai-fundamentals");
+  expect(badge?.reflectionProjectId).toBeUndefined();
+});
+
+test("drafts start private, and the show and tell shares what it presents (Ruling 4)", async () => {
+  const { t, orgId, as } = await calderLane();
+  const projects = () =>
+    t.run((ctx) =>
+      ctx.db
+        .query("projects")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect(),
+    );
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week2",
+    expectOrgId: orgId,
+  });
+  expect((await projects()).map((p) => [p.status, p.sharing])).toEqual(
+    Array(5).fill(["draft", "private"]),
+  );
+  // Saved on the 29th, and still private until presented.
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week4",
+    expectOrgId: orgId,
+  });
+  expect(
+    (await projects()).map((p) => [p.status, p.sharing, p.presentedAt]),
+  ).toEqual(Array(6).fill(["saved", "private", undefined]));
+  await as("priya").mutation(api.demo.setClock, {
+    target: "complete",
+    expectOrgId: orgId,
+  });
+  const end = await projects();
+  expect(end).toHaveLength(6);
+  expect(end.every(isPresented)).toBe(true);
 });

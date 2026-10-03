@@ -7,6 +7,9 @@ import { logEvent } from "../events";
 import { insertInvite, inviteRoleOf } from "../orgs/invites";
 import { joinByInvite } from "../orgs/join";
 import { MAX_MEMBERS_PER_ORG } from "../orgs/membership";
+import { issueBadge } from "../badges";
+import { projectOf } from "../projects";
+import { settingsOf } from "../settings";
 import { PATHWAY_MODULES, type ModuleKey } from "../pathway";
 import { currentSprint, currentTeam } from "../sprint";
 import { upsertAnswer } from "../surveys";
@@ -252,19 +255,6 @@ async function personOf(ctx: MutationCtx, orgId: Id<"orgs">, key: CastKey) {
   return people.find((p) => p.email === email) ?? null;
 }
 
-async function projectOf(
-  ctx: MutationCtx,
-  person: Doc<"people">,
-  sprintId: Id<"sprints">,
-) {
-  return await ctx.db
-    .query("projects")
-    .withIndex("by_person_and_sprint", (q) =>
-      q.eq("personId", person._id).eq("sprintId", sprintId),
-    )
-    .first();
-}
-
 async function log(
   { ctx, orgId, at }: StepCtx,
   type: EventType,
@@ -313,10 +303,19 @@ async function checkIn(
   keys: CastKey[],
 ) {
   const scores = phase === "before" ? BEFORE : AFTER;
+  const sprint = await sprintOf(step.ctx, step.orgId);
   for (const key of keys) {
     const person = await personOf(step.ctx, step.orgId, key);
     const score = scores[key];
     if (!person || !score) continue;
+    // Rule 1: any row for this phase is the tester's, a skip included (Ruling 6).
+    const mine = await step.ctx.db
+      .query("surveyResponses")
+      .withIndex("by_person_and_sprint", (q) =>
+        q.eq("personId", person._id).eq("sprintId", sprint._id),
+      )
+      .take(6);
+    if (mine.some((r) => r.phase === phase)) continue;
     const a = await answer(step, person, phase, "aiConfidence", score[0]);
     const b = await answer(step, person, phase, "comfortWithManager", score[1]);
     if (a || b) await log(step, "survey.answered", { phase });
@@ -434,7 +433,7 @@ async function draft(step: StepCtx, key: ProjectKey, week: number) {
   const person = await personOf(ctx, orgId, key);
   if (!person) return;
   const sprint = await sprintOf(ctx, orgId);
-  if (await projectOf(ctx, person, sprint._id)) return;
+  if (await projectOf(ctx, person._id, sprint._id)) return;
   const canon = PROJECTS[key];
   await ctx.db.insert("projects", {
     orgId,
@@ -450,7 +449,8 @@ async function draft(step: StepCtx, key: ProjectKey, week: number) {
     humanReviewed: false,
     dataSafe: false,
     status: "draft",
-    sharing: "team",
+    // Ruling 4: a draft is private; presenting is what shares.
+    sharing: "private",
     autosavedAt: at,
   });
 }
@@ -468,7 +468,7 @@ function untouched(project: Doc<"projects">, canon: Canon) {
     project.headline === undefined &&
     !project.humanReviewed &&
     !project.dataSafe &&
-    project.sharing === "team" &&
+    project.sharing === "private" &&
     project.screenshotId === undefined &&
     project.learned === undefined &&
     project.howChecked === undefined
@@ -487,7 +487,7 @@ async function save(step: StepCtx, key: ProjectKey) {
   if (!person) return;
   const sprint = await sprintOf(ctx, orgId);
   await draft(step, key, 4);
-  const project = await projectOf(ctx, person, sprint._id);
+  const project = await projectOf(ctx, person._id, sprint._id);
   const canon = PROJECTS[key];
   if (!project || !untouched(project, canon)) return;
   await ctx.db.patch(project._id, {
@@ -688,52 +688,38 @@ export const STEPS: Record<StepKey, Step> = {
   },
 
   "dan.badge": async (step) => {
-    const { ctx, orgId, at } = step;
-    const dan = await personOf(ctx, orgId, "dan");
+    const dan = await personOf(step.ctx, step.orgId, "dan");
     if (!dan) return;
     await progress(step, "dan", 3, 100);
-    const existing = await ctx.db
-      .query("badges")
-      .withIndex("by_person", (q) => q.eq("personId", dan._id))
-      .first();
-    if (existing) return;
-    await ctx.db.insert("badges", {
-      orgId,
-      personId: dan._id,
-      name: "AI Fundamentals",
-      issuer: "IBM SkillsBuild",
-      completedAt: at,
-      skills: [
-        "AI prompting",
-        "Critical evaluation",
-        "Responsible AI",
-        "Workflow improvement",
-      ],
-      shareSlug: "dan-okafor-ai-fundamentals",
-    });
+    // The product's one writer: Dan's slug is dan-okafor-ai-fundamentals.
+    await issueBadge(step.ctx, dan, step.at);
   },
 
   "week4.projects": async (step) => {
     for (const key of PRESENT_ORDER) await save(step, key);
   },
 
+  // Does what "Present to team" does (Ruling 4): sharing and presentedAt
+  // together, for each saved project nobody has presented yet.
   "week4.present": async (step) => {
     const { ctx, orgId, at } = step;
     const sprint = await sprintOf(ctx, orgId);
     let slot = 0;
     for (const key of PRESENT_ORDER) {
       const person = await personOf(ctx, orgId, key);
-      const project = person && (await projectOf(ctx, person, sprint._id));
+      const project =
+        person && (await projectOf(ctx, person._id, sprint._id));
       if (
         !project ||
         project.status !== "saved" ||
-        project.sharing !== "team" ||
         project.presentedAt !== undefined
       ) {
         continue;
       }
+      // Renamed by the tester: it's theirs to present, as in `dan.reflection`.
+      if (key === "dan" && project.title !== PROJECTS.dan.title) continue;
       const when = at + slot * 60_000;
-      await ctx.db.patch(project._id, { presentedAt: when });
+      await ctx.db.patch(project._id, { sharing: "team", presentedAt: when });
       slot += 1;
       await log({ ...step, at: when }, "project.presented");
     }
@@ -755,7 +741,7 @@ export const STEPS: Record<StepKey, Step> = {
     const dan = await personOf(ctx, orgId, "dan");
     if (!dan) return;
     const sprint = await sprintOf(ctx, orgId);
-    const project = await projectOf(ctx, dan, sprint._id);
+    const project = await projectOf(ctx, dan._id, sprint._id);
     // Renamed by the tester: it's their project now, not the canonical one.
     if (
       !project ||
@@ -774,7 +760,12 @@ export const STEPS: Record<StepKey, Step> = {
       .query("badges")
       .withIndex("by_person", (q) => q.eq("personId", dan._id))
       .first();
-    if (badge && badge.reflectionProjectId === undefined) {
+    // Dan's setting decides whether his credential shows it (Ruling 10).
+    if (
+      badge &&
+      badge.reflectionProjectId === undefined &&
+      (await settingsOf(ctx, dan._id)).reflectionsOnCredential
+    ) {
       await ctx.db.patch(badge._id, { reflectionProjectId: project._id });
     }
   },

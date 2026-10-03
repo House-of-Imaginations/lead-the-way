@@ -1,18 +1,21 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import type { Doc, Id } from "../../convex/_generated/dataModel";
+import { COURSE_BADGE, issueBadge } from "../../convex/lib/badges";
 import { mel } from "../../convex/lib/demo/schedule";
 import { logEvent } from "../../convex/lib/events";
 import { insertInvite } from "../../convex/lib/orgs/invites";
 import { joinByInvite } from "../../convex/lib/orgs/join";
+import { isPresented } from "../../convex/lib/projects";
+import { DEFAULT_SETTINGS, settingsOf } from "../../convex/lib/settings";
 import {
   currentSprint,
   DEFAULT_COURSE,
   ensureSprint,
 } from "../../convex/lib/sprint";
-import { upsertAnswer } from "../../convex/lib/surveys";
+import { recordSkip, upsertAnswer } from "../../convex/lib/surveys";
 import { getViewer } from "../../convex/lib/viewer";
-import { harness, OWNER, workspace, type T } from "./workspace/helpers";
+import { harness, OWNER, seat, workspace, type T } from "./workspace/helpers";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -250,4 +253,119 @@ test("upsertAnswer keeps one row per key", async () => {
     ["before", "aiConfidence", 3],
   ]);
   expect(await eventsOf(t, orgId)).toEqual([]);
+});
+
+test("a skip writes a row per question, never over an answer, and an answer replaces it", async () => {
+  vi.setSystemTime(mel("2026-09-01T09:30"));
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const rows = await t.withIdentity(OWNER).run(async (ctx) => {
+    const viewer = (await getViewer(ctx))!;
+    const sprint = await ensureSprint(ctx, viewer);
+    const key = { orgId, sprintId: sprint._id, personId: viewer.person._id };
+    await upsertAnswer(ctx, {
+      ...key,
+      phase: "before",
+      question: "aiConfidence",
+      score: 3,
+      at: 1,
+    });
+    await recordSkip(ctx, { ...key, phase: "before", at: 2 });
+    await recordSkip(ctx, { ...key, phase: "before", at: 3 });
+    await recordSkip(ctx, { ...key, phase: "after", at: 4 });
+    await upsertAnswer(ctx, {
+      ...key,
+      phase: "after",
+      question: "comfortWithManager",
+      score: 5,
+      at: 5,
+    });
+    return await ctx.db
+      .query("surveyResponses")
+      .withIndex("by_person_and_sprint", (q) =>
+        q.eq("personId", viewer.person._id).eq("sprintId", sprint._id),
+      )
+      .collect();
+  });
+  expect(rows.map((r) => [r.phase, r.question, r.score, r.skippedAt])).toEqual(
+    [
+      ["before", "aiConfidence", 3, undefined],
+      ["before", "comfortWithManager", undefined, 2],
+      ["after", "aiConfidence", undefined, 4],
+      ["after", "comfortWithManager", 5, undefined],
+    ],
+  );
+  expect(await eventsOf(t, orgId)).toEqual([]);
+});
+
+test("issueBadge gives a person one badge, on a slug nobody else holds", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const ids: Id<"people">[] = [];
+  for (const subject of ["user_dan1", "user_dan2", "user_dan3"]) {
+    ids.push((await seat(t, orgId, subject, [])).personId);
+  }
+  const at = mel("2026-09-24T10:00");
+  const badges = await t.run(async (ctx) => {
+    const issue = async (id: Id<"people">) => {
+      await ctx.db.patch(id, { name: "Dan Okafor" });
+      return await issueBadge(ctx, (await ctx.db.get(id))!, at);
+    };
+    const first = await issue(ids[0]!);
+    const again = await issue(ids[0]!);
+    return {
+      first,
+      again,
+      second: await issue(ids[1]!),
+      third: await issue(ids[2]!),
+    };
+  });
+  expect(badges.first).toMatchObject({
+    orgId,
+    personId: ids[0],
+    ...COURSE_BADGE,
+    completedAt: at,
+    shareSlug: "dan-okafor-ai-fundamentals",
+  });
+  expect(badges.again._id).toBe(badges.first._id);
+  expect(badges.second.shareSlug).toBe("dan-okafor-ai-fundamentals-2");
+  expect(badges.third.shareSlug).toBe("dan-okafor-ai-fundamentals-3");
+});
+
+test("settingsOf reads a person's row, or the defaults (Ruling 5)", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const { personId } = await seat(t, orgId, "user_dan", []);
+  const read = () => t.run((ctx) => settingsOf(ctx, personId));
+  expect(await read()).toEqual(DEFAULT_SETTINGS);
+  expect(DEFAULT_SETTINGS).toMatchObject({
+    askBeforeSharing: true,
+    reflectionsOnCredential: true,
+    includeInTeamTotals: true,
+    reduceMotion: false,
+  });
+  await t.run((ctx) =>
+    ctx.db.insert("settings", {
+      orgId,
+      personId,
+      ...DEFAULT_SETTINGS,
+      reflectionsOnCredential: false,
+    }),
+  );
+  expect(await read()).toEqual({
+    ...DEFAULT_SETTINGS,
+    reflectionsOnCredential: false,
+  });
+});
+
+test("a project is presented only when saved, shared and given a time (Ruling 4)", () => {
+  const p = {
+    status: "saved",
+    sharing: "team",
+    presentedAt: 1,
+  } as Doc<"projects">;
+  expect(isPresented(p)).toBe(true);
+  expect(isPresented({ ...p, status: "draft" })).toBe(false);
+  expect(isPresented({ ...p, sharing: "private" })).toBe(false);
+  expect(isPresented({ ...p, presentedAt: undefined })).toBe(false);
 });

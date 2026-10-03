@@ -27,18 +27,3 @@ export const AVATAR_TYPES: readonly string[] = [
   "image/webp",
   "image/gif",
 ];
-
-export type AvatarRefusal = "TYPE" | "SIZE" | null;
-
-/**
- * `null` means acceptable. The caller turns a refusal into a sentence, because
- * the sentence belongs to the screen and this belongs to both ends of the wire.
- */
-export function refuseAvatar(file: {
-  type: string;
-  size: number;
-}): AvatarRefusal {
-  if (!AVATAR_TYPES.includes(file.type)) return "TYPE";
-  if (file.size > MAX_AVATAR_BYTES) return "SIZE";
-  return null;
-}
