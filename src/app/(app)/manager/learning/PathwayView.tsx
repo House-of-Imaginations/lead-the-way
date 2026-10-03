@@ -258,7 +258,7 @@ export function PathwayView({ initial }: { initial: Pathway }) {
         </div>
 
         {/* Side by side, the pane stays put while the lists scroll (main is the scroller). */}
-        <div className="flex flex-col gap-05 min-[901px]:sticky min-[901px]:top-0 min-[901px]:max-h-[calc(100dvh-64px)] min-[901px]:overflow-y-auto">
+        <div className="flex flex-col gap-05 min-[901px]:sticky min-[901px]:top-07 min-[901px]:max-h-[calc(100dvh-112px)] min-[901px]:overflow-y-auto">
           {ready ? (
             <section
               aria-labelledby="ready-title"

@@ -265,7 +265,7 @@ export function Overview({
   return (
     <div className="flex max-w-content-max flex-col gap-07">
       <header className="flex items-start justify-between gap-07 max-[900px]:flex-col">
-        <div className="flex max-w-[640px] flex-col gap-03">
+        <div className="flex max-w-[720px] flex-col gap-03">
           <h1 className="text-heading-01">{greeting}</h1>
           <p className="text-body-01 text-text-secondary">{data.intro}</p>
         </div>
