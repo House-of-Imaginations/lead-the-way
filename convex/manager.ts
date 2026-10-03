@@ -2,7 +2,7 @@ import { literals } from "convex-helpers/validators";
 import { v, type Infer } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { dayMonth, latestSaved } from "./lib/agreement";
-import { viewerQuery } from "./lib/customFunctions";
+import { timedViewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
 import { PATHWAY_MODULES, coachingPercent } from "./lib/pathway";
@@ -134,7 +134,7 @@ function statOf(
  * server passes the current hour so the cached answer turns over each hour
  * (Ruling 14).
  */
-export const overview = viewerQuery()({
+export const overview = timedViewerQuery()({
   args: { hour: v.optional(v.number()) },
   returns: v.union(v.null(), overviewValidator),
   handler: async (ctx): Promise<Overview | null> => {

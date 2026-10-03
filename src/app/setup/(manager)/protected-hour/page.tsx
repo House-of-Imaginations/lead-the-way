@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { SETUP_STEPS } from "@/app/setup/steps";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { fetchAuthQuery } from "@/lib/account/auth-server";
-import { openOrHome } from "@/lib/account/queries";
+import { currentHour, openOrHome } from "@/lib/account/queries";
 import { api } from "@convex/_generated/api";
 import { ProtectedHourForm } from "./ProtectedHourForm";
 
@@ -11,7 +11,7 @@ export default async function ProtectedHourPage() {
   // The (manager) layout has checked sprint:manage (Task 7); this read is
   // the same query it made.
   const current = await openOrHome(() =>
-    fetchAuthQuery(api.sprints.current, {}),
+    fetchAuthQuery(api.sprints.current, { hour: currentHour() }),
   );
   // The first save on 03 makes the sprint (Ruling 16).
   if (!current) redirect("/setup/team");

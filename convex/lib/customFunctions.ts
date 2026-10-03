@@ -154,3 +154,20 @@ export const viewerMutation = (...need: Permission[]) =>
       return { ctx: { viewer }, args: {} };
     },
   });
+
+/**
+ * Ruling 16: `viewerQuery` plus `hour`, for a query that reads `viewer.now`.
+ * The client sends the current hour (`useHour`, or `currentHour()` on the
+ * server), so a new hour is a new query and Convex reads the clock again.
+ * The wrapper consumes `hour`, as `viewerMutation` consumes `expectOrgId`, so
+ * a handler never redeclares it. `tests/convex/hour.test.ts` fails on a
+ * query that reads `.now` without it.
+ */
+export const timedViewerQuery = (...need: Permission[]) =>
+  customQuery(query, {
+    args: { hour: v.optional(v.number()) },
+    input: async (ctx: QueryCtx) => {
+      assertAppOpen();
+      return { ctx: { viewer: await requireViewer(ctx, need) }, args: {} };
+    },
+  });

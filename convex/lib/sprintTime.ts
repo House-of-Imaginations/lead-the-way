@@ -212,6 +212,37 @@ export function hourPattern(
   return `${EVERY[weekday]}, ${clockLabel(start)} to ${clockLabel(start, durationMinutes)}`;
 }
 
+/**
+ * The protected hour as a range (Ruling 17): "Wednesday, 2:00 to 3:00 PM"
+ * (long) or "Wed 2:00 to 3:00 PM" (short). One AM or PM when both ends share
+ * it; "11:30 AM to 12:30 PM" keeps both.
+ */
+export function hourRange(
+  hour: { weekday: number; start: string; durationMinutes: number },
+  style: "long" | "short",
+): string {
+  const from = clockLabel(hour.start);
+  const to = clockLabel(hour.start, hour.durationMinutes);
+  const range =
+    from.slice(-2) === to.slice(-2)
+      ? `${from.slice(0, -3)} to ${to}`
+      : `${from} to ${to}`;
+  const day = EVERY[hour.weekday]!.slice(0, -1);
+  return style === "long" ? `${day}, ${range}` : `${day.slice(0, 3)} ${range}`;
+}
+
+/**
+ * ", Melbourne time" when the viewer's zone isn't the sprint's, else "".
+ * Hours are shown in the sprint's zone; this names it (roadmap 9c).
+ */
+export function zoneNote(
+  sprintTimeZone: string,
+  viewerTimeZone: string,
+): string {
+  if (sprintTimeZone === viewerTimeZone) return "";
+  return `, ${sprintTimeZone.split("/").at(-1)!.replaceAll("_", " ")} time`;
+}
+
 /** "Wednesday 16 September at 2:00 PM": the overview's sentences. */
 export function hourLong(at: number, timeZone: string): string {
   const p = parts(at, timeZone, {

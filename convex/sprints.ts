@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import type { MutationCtx } from "./_generated/server";
 import { dayMonth, latestSaved } from "./lib/agreement";
 import { virtualClock } from "./lib/clock";
-import { viewerMutation, viewerQuery } from "./lib/customFunctions";
+import { timedViewerQuery, viewerMutation } from "./lib/customFunctions";
 import { DEMO_CAST } from "./lib/demo/cast";
 import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
@@ -70,7 +70,7 @@ function summaryOf(sizeBand?: string, teamFunction?: string): string | null {
  * Screen 04 (and 07's summary): the current sprint's hour, where setup stands
  * and where the sprint is. Null until the first setup save makes the sprint.
  */
-export const current = viewerQuery("sprint:manage")({
+export const current = timedViewerQuery("sprint:manage")({
   args: {},
   returns: v.union(
     v.null(),
@@ -243,7 +243,7 @@ export const notReady = viewerMutation("sprint:manage")({
 const linkValidator = v.object({ email: v.string(), token: v.string() });
 
 /** 07: the gate, the invitation list and the summary. Null before a sprint. */
-export const launchPage = viewerQuery("sprint:manage")({
+export const launchPage = timedViewerQuery("sprint:manage")({
   args: {},
   returns: v.union(
     v.null(),

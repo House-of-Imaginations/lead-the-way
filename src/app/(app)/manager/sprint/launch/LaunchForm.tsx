@@ -24,6 +24,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { userMessage } from "@/lib/errors";
+import { useHour } from "@/lib/useHour";
 
 type LaunchPage = NonNullable<
   FunctionReturnType<typeof api.sprints.launchPage>
@@ -167,7 +168,8 @@ function Heading({
 
 export function LaunchForm({ initial }: { initial: LaunchPage }) {
   // null only if the team vanished mid-visit; keep showing the last page then.
-  const data = useQuery(api.sprints.launchPage, {}) || initial;
+  const hour = useHour();
+  const data = useQuery(api.sprints.launchPage, { hour }) || initial;
   const expectOrgId = useExpectOrgId();
   const launch = useMutation(api.sprints.launch);
   const toast = useToast();

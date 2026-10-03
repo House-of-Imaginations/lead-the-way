@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import { ExpectOrgIdProvider } from "@/components/app/ExpectOrgId";
 import { fetchAuthQuery } from "@/lib/account/auth-server";
-import { getShell, managerRead } from "@/lib/account/queries";
+import { currentHour, getShell, managerRead } from "@/lib/account/queries";
 import { withParams } from "@/lib/url";
 
 /**
@@ -25,7 +25,7 @@ export default async function ManagerSetupLayout({
   // A custom role with team:insights but not sprint:manage is in the manager
   // area but can't set up: `managerRead` sends it to /manager.
   const sprint = await managerRead(() =>
-    fetchAuthQuery(api.sprints.current, {}),
+    fetchAuthQuery(api.sprints.current, { hour: currentHour() }),
   );
   if (sprint?.launched) redirect("/manager");
   return (

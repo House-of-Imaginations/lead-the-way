@@ -15,7 +15,7 @@ import {
   latestAgreement,
   latestSaved,
 } from "./lib/agreement";
-import { viewerMutation, viewerQuery } from "./lib/customFunctions";
+import { timedViewerQuery, viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
 import { currentSprint, currentTeam } from "./lib/sprint";
@@ -77,7 +77,7 @@ function dedupe<T>(
   return out;
 }
 
-export const current = viewerQuery("sprint:manage")({
+export const current = timedViewerQuery("sprint:manage")({
   args: {},
   returns: v.object({
     status: literals("none", "draft", "saved"),

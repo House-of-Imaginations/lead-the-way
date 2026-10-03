@@ -24,6 +24,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { userMessage } from "@/lib/errors";
+import { useHour } from "@/lib/useHour";
 import { AgreementPreview } from "./AgreementPreview";
 
 type Agreement = FunctionReturnType<typeof api.agreements.current>;
@@ -164,7 +165,8 @@ function Toggles({
 }
 
 export function AgreementBuilder({ initial }: { initial: Agreement }) {
-  const data = useQuery(api.agreements.current, {}) ?? initial;
+  const hour = useHour();
+  const data = useQuery(api.agreements.current, { hour }) ?? initial;
   const expectOrgId = useExpectOrgId();
   const saveAgreement = useMutation(api.agreements.save);
   const toast = useToast();
