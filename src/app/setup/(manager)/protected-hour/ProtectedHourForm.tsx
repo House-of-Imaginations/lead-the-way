@@ -20,7 +20,7 @@ import { userMessage } from "@/lib/errors";
 import { api } from "@convex/_generated/api";
 import { HOUR_STARTS } from "@convex/lib/setupOptions";
 import { addDays, hourPattern } from "@convex/lib/sprintTime";
-import { CalendarMenu } from "./CalendarMenu";
+import { CalendarMenu } from "@/components/app/CalendarMenu";
 import { NotReadyDialog } from "./NotReadyDialog";
 
 type Current = NonNullable<FunctionReturnType<typeof api.sprints.current>>;
