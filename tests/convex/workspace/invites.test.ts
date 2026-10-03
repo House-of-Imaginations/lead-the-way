@@ -30,6 +30,8 @@ test("an invite seats the person and opens the workspace", async () => {
     invitedBy: "Someone",
     name: null,
     message: null,
+    email: null,
+    join: null,
   });
   expect(
     await t.query(api.invites.publicPreview, { token: "nope" }),

@@ -136,6 +136,7 @@ export const callsFor = ({
   "invites:preview": { token: "tok" },
   "invites:accept": { token: "tok" },
   "invites:decline": { token: "tok" },
+  "invites:teamPreview": {},
   "profiles:saveProfile": { displayName: "Pat" },
   "profiles:setActiveOrg": { orgId },
   "teams:current": {},
@@ -164,4 +165,5 @@ export const callsFor = ({
   "sprints:launchPage": {},
   "sprints:launch": { emails: [], message: "", expectOrgId: orgId },
   "manager:overview": {},
+  "surveys:checkIn": { phase: "before", answers: null, expectOrgId: orgId },
 });

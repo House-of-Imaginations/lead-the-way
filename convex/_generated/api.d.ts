@@ -70,6 +70,7 @@ import type * as profiles from "../profiles.js";
 import type * as seed from "../seed.js";
 import type * as snapshots from "../snapshots.js";
 import type * as sprints from "../sprints.js";
+import type * as surveys from "../surveys.js";
 import type * as tables_demo from "../tables/demo.js";
 import type * as tables_orgs from "../tables/orgs.js";
 import type * as tables_profiles from "../tables/profiles.js";
@@ -146,6 +147,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   snapshots: typeof snapshots;
   sprints: typeof sprints;
+  surveys: typeof surveys;
   "tables/demo": typeof tables_demo;
   "tables/orgs": typeof tables_orgs;
   "tables/profiles": typeof tables_profiles;

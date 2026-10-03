@@ -35,6 +35,8 @@ const SIGNED_OUT: Record<
       invitedBy: "Someone",
       name: null,
       message: null,
+      email: null,
+      join: null,
     },
   },
 };
