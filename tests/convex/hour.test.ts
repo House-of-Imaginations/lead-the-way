@@ -14,11 +14,20 @@ const QUERY =
   /^(?:publicQuery|authenticatedQuery|viewerQuery|timedViewerQuery|orgQuery|query)$/;
 
 /**
- * Queries that read the clock inside a helper, so the scan can't see it.
- * `viewer.shell` reads `viewer.now` in `shellOf`, and answers null signed
- * out, so it stays a publicQuery that declares `hour` itself.
+ * Helpers that read the clock for their caller. Add a new one here when you
+ * write one, or a query calling it will not be caught.
  */
-const INDIRECT: Record<string, string> = { "viewer.ts:shell": "publicQuery" };
+const CLOCK_HELPERS = ["refusalOf", "shellOf", "agreementForViewer"];
+
+/**
+ * Frozen orgQuery functions (their file is not to change), so they cannot take
+ * `hour`: `invites.list` reads the clock through `nowIn`.
+ */
+const FROZEN = ["invites.ts:list"];
+
+const READS_CLOCK = new RegExp(
+  `\\.now\\b|nowIn\\(|nowFor\\(|\\b(?:${CLOCK_HELPERS.join("|")})\\(`,
+);
 
 /** Every `export const x = builder(...)({ ... });` in a top-level module. */
 function exportedQueries() {
@@ -39,20 +48,28 @@ function exportedQueries() {
 }
 
 test("every query that reads the clock takes hour (Ruling 16)", () => {
-  const all = exportedQueries();
-  const timed = all.filter((q) => /\.now\b/.test(q.body));
+  const timed = exportedQueries().filter(
+    (q) => READS_CLOCK.test(q.body) && !FROZEN.includes(q.name),
+  );
   // Nothing found would pass vacuously.
   expect(timed.map((q) => q.name)).toEqual(
-    expect.arrayContaining(["sprints.ts:current", "manager.ts:overview"]),
+    expect.arrayContaining([
+      "sprints.ts:current",
+      "manager.ts:overview",
+      "viewer.ts:shell",
+      "invites.ts:publicPreview",
+      "invites.ts:preview",
+    ]),
   );
   expect(
-    timed.filter((q) => q.builder !== "timedViewerQuery").map((q) => q.name),
+    timed
+      .filter(
+        (q) =>
+          q.builder !== "timedViewerQuery" &&
+          !/hour: v\.optional\(v\.number\(\)\)/.test(q.body),
+      )
+      .map((q) => q.name),
   ).toEqual([]);
-  for (const [name, builder] of Object.entries(INDIRECT)) {
-    const found = all.find((q) => q.name === name);
-    expect(found?.builder, name).toBe(builder);
-    expect(found?.body, name).toMatch(/hour: v\.optional\(v\.number\(\)\)/);
-  }
 });
 
 test("the timed queries take hour and ignore it", async () => {
@@ -69,5 +86,8 @@ test("the timed queries take hour and ignore it", async () => {
   );
   expect(await owner.query(api.manager.overview, { hour: 1 })).toEqual(
     await owner.query(api.manager.overview, {}),
+  );
+  expect(await owner.query(api.invites.preview, { token: "t", hour: 1 })).toBe(
+    null,
   );
 });

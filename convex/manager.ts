@@ -135,7 +135,7 @@ function statOf(
  * (Ruling 14).
  */
 export const overview = timedViewerQuery()({
-  args: { hour: v.optional(v.number()) },
+  args: {},
   returns: v.union(v.null(), overviewValidator),
   handler: async (ctx): Promise<Overview | null> => {
     const { viewer } = ctx;

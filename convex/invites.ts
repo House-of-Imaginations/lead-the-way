@@ -391,7 +391,8 @@ export const revoke = orgMutation("members:manage")({
 
 /** What the signed-out invitation page may show. Pending links only; never the address. */
 export const publicPreview = publicQuery({
-  args: { token: v.string() },
+  // `hour` is never read: a new one makes the cached answer read the clock again (Ruling 16).
+  args: { token: v.string(), hour: v.optional(v.number()) },
   returns: v.union(
     v.null(),
     v.object({
@@ -435,7 +436,8 @@ const STATE_OF_REFUSAL = {
  * show (unknown, expired, or its role gone).
  */
 export const preview = authenticatedQuery({
-  args: { token: v.string() },
+  // `hour` is never read: a new one makes the cached answer read the clock again (Ruling 16).
+  args: { token: v.string(), hour: v.optional(v.number()) },
   returns: v.union(
     v.null(),
     v.object({

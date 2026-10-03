@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { StartForm } from "@/components/app/StartForm";
+import { joinTokenOf } from "./joinToken";
 import { getProfile, getShell } from "@/lib/account/queries";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -20,10 +21,7 @@ export default async function SetupStartPage({
     searchParams,
   ]);
   if (shell) redirect(shell.home);
-  const token =
-    typeof next === "string"
-      ? /^\/join\/([^/?#]+)$/.exec(next)?.[1]
-      : undefined;
+  const token = joinTokenOf(next);
   return (
     <div className="mx-auto flex w-full max-w-setup-column flex-col gap-07 pb-07">
       <div className="flex flex-col gap-04">

@@ -84,9 +84,9 @@ export function SignUpForm({
           password,
         });
         if (error) {
-          const next = signUpErrors(error);
-          flushSync(() => setErrors(next));
-          focusFirst(next);
+          const found = signUpErrors(error);
+          flushSync(() => setErrors(found));
+          focusFirst(found);
           return;
         }
         signedUpAs.current = email;

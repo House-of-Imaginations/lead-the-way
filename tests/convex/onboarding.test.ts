@@ -238,19 +238,20 @@ test.each([
   ["another address", "omar@example.com", false],
   ["the demo workspace", "sam@example.com", true],
   ["nothing at all", null, false],
+  ["no address", "", false],
 ] as const)(
   "start with a token never makes a workspace: a link for %s (Review Focus 1)",
   async (_, pinned, demo) => {
     const t = harness();
     const { owner, orgId } = await workspace(t);
     let token = "no-such-token";
-    if (pinned) {
+    if (pinned !== null) {
       const roles = await owner.query(api.orgRoles.list, { orgId });
       const roleId = roles.find((r) => r.name === "Employee")!._id;
       ({ token } = await owner.mutation(api.invites.create, {
         orgId,
         roleId,
-        email: pinned,
+        ...(pinned ? { email: pinned } : {}),
       }));
     }
     if (demo) await t.run((ctx) => ctx.db.patch(orgId, { isDemo: true }));
