@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { ConvexClientProvider } from "@/app/_components/ConvexClientProvider";
 import { AppShell } from "@/components/app/AppShell";
+import { HourlyRefresh } from "@/components/app/HourlyRefresh";
 import { DemoBanner } from "@/components/ui/DemoBanner";
 import { getToken } from "@/lib/account/auth-server";
-import { getHome, getShell } from "@/lib/account/queries";
+import { currentHour, getHome, getShell } from "@/lib/account/queries";
 import { NAV_COOKIE, parseNav } from "@/lib/navState";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -24,11 +25,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <ConvexClientProvider initialToken={token}>
         <AppShell
           initial={shell}
+          hour={currentHour()}
           navState={parseNav(jar.get(NAV_COOKIE)?.value)}
         >
           {children}
         </AppShell>
       </ConvexClientProvider>
+      <HourlyRefresh />
     </div>
   );
 }

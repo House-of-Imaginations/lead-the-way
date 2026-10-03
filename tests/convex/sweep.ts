@@ -163,4 +163,5 @@ export const callsFor = ({
   },
   "sprints:launchPage": {},
   "sprints:launch": { emails: [], message: "", expectOrgId: orgId },
+  "manager:overview": {},
 });

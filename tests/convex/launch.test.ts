@@ -255,12 +255,30 @@ test("launch invites each address once and returns the count", async () => {
   }
   // Launch stores week one as of launch, whatever the draft held.
   expect(sprint).toMatchObject({
-    status: "scheduled",
     startDate: weekOneDate(3, sprint!.launchedAt!, "Australia/Melbourne"),
     inviteMessage: "See you Wednesday.",
   });
   expect(sprint?.launchedAt).toEqual(expect.any(Number));
   expect(await launchedEvents(t, orgId)).toHaveLength(1);
+});
+
+test("neither setup nor launch writes a sprint status (Ruling 11)", async () => {
+  const { t, owner, orgId, launch } = await manager();
+  // A real workspace's first commit makes the draft (`ensureSprint`).
+  await owner.mutation(api.sprints.commit, {
+    weekday: 3,
+    start: "14:00",
+    expectOrgId: orgId,
+  });
+  await finishPathway(t, orgId);
+  await saveAgreement(t, orgId);
+  expect((await sprintOf(t, orgId))?.status).toBeUndefined();
+  await launch(["ana@example.com"]);
+  const sprint = await sprintOf(t, orgId);
+  expect(sprint?.launchedAt).toEqual(expect.any(Number));
+  expect(sprint?.status).toBeUndefined();
+  // Launch stores next week's hour, so the sprint is scheduled until its Monday.
+  expect((await owner.query(api.sprints.current, {}))?.phase).toBe("scheduled");
 });
 
 test("launch lowercases, dedupes and skips members", async () => {
@@ -323,7 +341,6 @@ test("launch moves week one forward when its hour has passed", async () => {
   });
   expect(await sprintOf(t, orgId)).toMatchObject({
     startDate: "2026-09-16",
-    status: "scheduled",
     launchedAt: mel("2026-09-10T09:00"),
   });
 });

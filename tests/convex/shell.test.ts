@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
-import { DEMO_TARGETS, type DemoTarget } from "../../convex/lib/demo/schedule";
+import {
+  DEMO_TARGETS,
+  mel,
+  type DemoTarget,
+} from "../../convex/lib/demo/schedule";
+import type { Shell } from "../../convex/lib/shell";
 import {
   calderLane,
   harness,
@@ -73,6 +78,25 @@ test("Priya's status reads right at every demo target", async () => {
     const shell = await as("priya").query(api.viewer.shell, {});
     expect(shell?.status, target).toEqual(PRIYA_STATUS[target]);
   }
+});
+
+test("a launched sprint says when it starts until week one's Monday", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.run(async (ctx) => {
+    const sprint = await ctx.db
+      .query("sprints")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .unique();
+    await ctx.db.patch(sprint!._id, { launchedAt: DEMO_TARGETS.setup });
+  });
+  const statusAt = async (local: string) => {
+    await t.run((ctx) => ctx.db.patch(orgId, { demoNow: mel(local) }));
+    return (await as("priya").query(api.viewer.shell, {}))?.status;
+  };
+  // Sunday 6 September, evening: launched, but week one is tomorrow.
+  expect(await statusAt("2026-09-06T20:00")).toEqual(PRIYA_STATUS.setup);
+  // Monday 7 September: week 1, two days before its hour.
+  expect(await statusAt("2026-09-07T09:00")).toEqual(PRIYA_STATUS.week1);
 });
 
 test("Priya at setup: her home, greeting, nav and first checklist step", async () => {
@@ -157,6 +181,15 @@ test("the checklist follows setup and goes once the sprint launches", async () =
 
   await clock(t, "week1");
   expect((await as("priya").query(api.viewer.shell, {}))?.checklist).toBeNull();
+});
+
+test("a manager without sprint:manage gets no setup checklist", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  expect((await owner.query(api.viewer.shell, {}))?.checklist).not.toBeNull();
+  // Its links would only bounce them back to /manager.
+  const insights = await seat(t, orgId, "user_insights", ["team:insights"]);
+  expect((await insights.as.query(api.viewer.shell, {}))?.checklist).toBeNull();
 });
 
 test("home is /manager once the sprint launched, team profile or not", async () => {
@@ -304,4 +337,54 @@ test("the workspace list marks the open one", async () => {
     ["Aster Network", false],
     ["Birch Studio", true],
   ]);
+});
+
+const navOf = (shell: Shell | null) =>
+  shell?.nav.map((group) => [group.title, group.links.map((l) => l.label)]);
+
+test("the nav shows a manager only what their permissions open (Ruling 13)", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  // The owner holds every permission: all six.
+  expect(navOf(await owner.query(api.viewer.shell, {}))).toEqual([
+    ["Team", ["Overview", "Sprint", "Team agreement", "Outcomes"]],
+    ["You", ["My learning", "Resources"]],
+  ]);
+  const insights = await seat(t, orgId, "user_insights", ["team:insights"]);
+  expect(navOf(await insights.as.query(api.viewer.shell, {}))).toEqual([
+    ["Team", ["Overview", "Outcomes"]],
+    ["You", ["Resources"]],
+  ]);
+  // Review Focus 4: sprint:manage alone never sees Outcomes.
+  const sprint = await seat(t, orgId, "user_sprint", ["sprint:manage"]);
+  expect(navOf(await sprint.as.query(api.viewer.shell, {}))).toEqual([
+    ["Team", ["Overview", "Sprint", "Team agreement"]],
+    ["You", ["My learning", "Resources"]],
+  ]);
+});
+
+test("the status follows the clock across the end of the hour, and accepts hour (Review Focus 3)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await clock(t, "week2");
+  // convex-test has no query cache, so this shows the status reads the clock
+  // and takes `hour`, not that a new `hour` busts a cached answer.
+  const statusAt = async (local: string) => {
+    const now = mel(local);
+    await t.run((ctx) => ctx.db.patch(orgId, { demoNow: now }));
+    const shell = await as("priya").query(api.viewer.shell, {
+      hour: Math.floor(now / 3_600_000),
+    });
+    return shell?.status;
+  };
+  expect(await statusAt("2026-09-16T14:30")).toEqual({
+    heading: "Week 2 of 4",
+    progress: { value: 2, max: 4 },
+    ...next("Wed 16 Sep, 2:00 PM"),
+  });
+  // The hour has ended: still week 2, but the next hour is the 23rd.
+  expect(await statusAt("2026-09-16T15:01")).toEqual({
+    heading: "Week 2 of 4",
+    progress: { value: 2, max: 4 },
+    ...next("Wed 23 Sep, 2:00 PM"),
+  });
 });

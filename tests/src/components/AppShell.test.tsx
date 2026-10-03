@@ -34,7 +34,7 @@ const shell = {
 const Probe = () => <i>id:{useExpectOrgId()}</i>;
 const render = () =>
   renderToStaticMarkup(
-    <AppShell initial={shell} navState={null}>
+    <AppShell initial={shell} hour={0} navState={null}>
       <Probe />
     </AppShell>,
   );
@@ -55,6 +55,25 @@ test("the same workspace shows no notice", () => {
   const html = render();
   expect(html).toContain("id:org1");
   expect(html).not.toContain("another tab");
+});
+
+test("two links to the same page mark only the first as current", () => {
+  // After launch, Sprint opens the overview: both links go to one page.
+  live = {
+    ...shell,
+    nav: [
+      {
+        title: "Team",
+        links: [
+          { label: "Overview", href: "/home", icon: "Dashboard" },
+          { label: "Sprint", href: "/home", icon: "Calendar" },
+        ],
+      },
+    ],
+  } as Shell;
+  const html = render();
+  expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+  expect(html).toMatch(/aria-current="page"[^>]*>(?:(?!<\/a>).)*Overview/);
 });
 
 test("useExpectOrgId needs a provider", () => {

@@ -185,7 +185,6 @@ test("a real workspace gets its first sprint on save", async () => {
   const sprints = await sprintsOf(t, orgId);
   expect(sprints).toHaveLength(1);
   expect(sprints[0]).toMatchObject({
-    status: "draft",
     startDate: "2026-09-09",
     protectedHour: { weekday: 3, start: "14:00", durationMinutes: 60 },
   });

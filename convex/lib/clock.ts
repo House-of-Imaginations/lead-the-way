@@ -14,7 +14,15 @@ import { flagOn } from "../app";
  * matters, pass `now` in from the client or flip a flag field on a schedule.
  */
 export function nowFor(org: Pick<Doc<"orgs">, "isDemo" | "demoNow">): number {
-  return org.isDemo && org.demoNow !== undefined && flagOn("demo")
-    ? org.demoNow
-    : Date.now();
+  return virtualClock(org) ? org.demoNow! : Date.now();
+}
+
+/**
+ * The demo clock is in charge: the demo, with a clock, while DEMO_MODE is on.
+ * Then `moveClock` takes the snapshots; otherwise `launch` schedules them.
+ */
+export function virtualClock(
+  org: Pick<Doc<"orgs">, "isDemo" | "demoNow">,
+): boolean {
+  return org.isDemo && org.demoNow !== undefined && flagOn("demo");
 }

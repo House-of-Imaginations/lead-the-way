@@ -12,7 +12,7 @@ import {
   MAX_LABEL,
   MAX_NEVER_IN,
   MAX_TOOLS,
-} from "@convex/lib/agreement";
+} from "@convex/lib/agreementLimits";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import {
   Button,

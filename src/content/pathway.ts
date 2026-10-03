@@ -1,4 +1,4 @@
-import { PATHWAY_MODULES, type ModuleKey } from "@convex/lib/pathway";
+import { PATHWAY_MODULES, type ModuleKey } from "@convex/lib/pathwayModules";
 
 export type ModuleContent = {
   title: string;

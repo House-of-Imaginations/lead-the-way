@@ -18,9 +18,13 @@ export const home = publicQuery({
   },
 });
 
-/** Everything the app shell draws (R3). Null signed out or with no workspace. */
+/**
+ * Everything the app shell draws (R3). Null signed out or with no workspace.
+ * `hour` is ignored (Ruling 14). The server passes the current hour, so a new
+ * hour is a new query, and Convex reads the clock again.
+ */
 export const shell = publicQuery({
-  args: {},
+  args: { hour: v.optional(v.number()) },
   returns: v.union(v.null(), shellValidator),
   handler: async (ctx) => {
     if (!ctx.userId) return null;

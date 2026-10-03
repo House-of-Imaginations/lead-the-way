@@ -18,6 +18,16 @@ import { MAX_MEMBERS_PER_ORG, permissionsOf } from "./orgs/membership";
  * Below the threshold the answer carries no value at all, so a hidden number
  * can't leak through a return validator. The threshold is never below 5,
  * whatever a workspace stores, NaN included.
+ *
+ * LIVE OR FROZEN (Rulings 1 to 3). Totals of private activity that a manager
+ * sees come from the weekly `teamSnapshots` rows (lib/snapshots.ts), never
+ * from a live `count` or `aggregate` inside a query: two live looks a minute
+ * apart could be differenced back to the one person who acted. Membership
+ * counts (invited, joined) are live, as they are facts about the invitation,
+ * not activity. A snapshot's totals are checked against the threshold again
+ * when read (`statOf` in manager.ts), as it may have been raised since. The
+ * files that may call `count` and `aggregate` are pinned by a test in
+ * tests/convex/canary.test.ts; extend that list on purpose, never in passing.
  */
 export const MIN_THRESHOLD = 5;
 
@@ -86,16 +96,9 @@ export async function loadCountable(
   org: Doc<"orgs">,
   askerId: Id<"people"> | null,
 ): Promise<Countable> {
-  const people = await ctx.db
-    .query("people")
-    .withIndex("by_org", (q) => q.eq("orgId", org._id))
-    .take(MAX_MEMBERS_PER_ORG);
   const counted: Doc<"people">[] = [];
-  for (const person of people) {
+  for (const person of await loadSeated(ctx, org)) {
     if (person._id === askerId) continue;
-    const role = await ctx.db.get(person.roleId);
-    if (!role || role.orgId !== org._id) continue;
-    if (permissionsOf(role).includes("team:insights")) continue;
     const settings = await ctx.db
       .query("settings")
       .withIndex("by_person", (q) => q.eq("personId", person._id))
@@ -106,4 +109,29 @@ export async function loadCountable(
   }
   // The brand is type-only; this is the one place a Countable is made.
   return counted as unknown as Countable;
+}
+
+/**
+ * Everyone seated on the team: each person in the org whose role is the
+ * org's and can't read team totals, opted out or not, whoever is asking.
+ * Not a `Countable`, so no number about them can be made from it; the
+ * agreement's "Signed by the team" reads it, so the title is the same for
+ * every viewer and no opt-out flips it.
+ */
+export async function loadSeated(
+  ctx: QueryCtx,
+  org: Doc<"orgs">,
+): Promise<Doc<"people">[]> {
+  const people = await ctx.db
+    .query("people")
+    .withIndex("by_org", (q) => q.eq("orgId", org._id))
+    .take(MAX_MEMBERS_PER_ORG);
+  const seated: Doc<"people">[] = [];
+  for (const person of people) {
+    const role = await ctx.db.get(person.roleId);
+    if (!role || role.orgId !== org._id) continue;
+    if (permissionsOf(role).includes("team:insights")) continue;
+    seated.push(person);
+  }
+  return seated;
 }

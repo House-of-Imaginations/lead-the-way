@@ -1,6 +1,7 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 import { literals } from "convex-helpers/validators";
+import { aggregateValidator } from "../lib/privacy";
 
 /**
  * The product: one team per workspace, its sprint, and what people do in it.
@@ -75,12 +76,13 @@ export const sprintTables = {
    * The four-week sprint. `startDate` is a Melbourne calendar date
    * ("2026-09-09"), not an instant, because "Wednesday 2:00 PM" means the same
    * wall-clock hour every week. `weekday` follows `Date#getDay` (3 is
-   * Wednesday).
+   * Wednesday). `status` is no longer written or read (P5 Ruling 11): the
+   * phase comes from `sprintPhase`. It stays optional so older rows validate.
    */
   sprints: defineTable({
     orgId: v.id("orgs"),
     teamId: v.id("teams"),
-    status: literals("draft", "scheduled", "active", "complete"),
+    status: v.optional(literals("draft", "scheduled", "active", "complete")),
     startDate: v.string(),
     timeZone: v.string(),
     weeks: v.number(),
@@ -236,5 +238,22 @@ export const sprintTables = {
     meta: v.optional(
       v.record(v.string(), v.union(v.string(), v.number(), v.boolean())),
     ),
-  }).index("by_org", ["orgId"]),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_sprint_and_type", ["sprintId", "type"]),
+
+  /**
+   * Team totals, frozen when each week's hour ends (Rulings 1 and 2). One row
+   * per (sprint, week), never rewritten. Aggregates only: no person id.
+   */
+  teamSnapshots: defineTable({
+    orgId: v.id("orgs"),
+    sprintId: v.id("sprints"),
+    week: v.number(),
+    takenAt: v.number(),
+    sessionDone: aggregateValidator,
+    tasksUnderway: aggregateValidator,
+  })
+    .index("by_org", ["orgId"])
+    .index("by_sprint_and_week", ["sprintId", "week"]),
 };

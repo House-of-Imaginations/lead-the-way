@@ -231,3 +231,18 @@ test("an employee can't complete a module", async () => {
   }
   expect(await progressOf(t, orgId)).toEqual([]);
 });
+
+test("forViewer says when the sprint has launched (Ruling 16)", async () => {
+  const { owner } = await manager();
+  // A fresh workspace has no launched sprint.
+  expect((await owner.query(api.pathway.forViewer, {})).launched).toBe(false);
+
+  const { t, as } = await calderLane();
+  expect((await as("priya").query(api.pathway.forViewer, {})).launched).toBe(
+    false,
+  );
+  await t.mutation(internal.seed.clock, { target: "week1" });
+  expect((await as("priya").query(api.pathway.forViewer, {})).launched).toBe(
+    true,
+  );
+});

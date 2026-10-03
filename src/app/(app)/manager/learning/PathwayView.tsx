@@ -152,13 +152,22 @@ export function PathwayView({ initial }: { initial: Pathway }) {
     }
   }
 
-  async function continueToAgreement() {
+  // P5 Ruling 16: once the sprint has launched, the panel leads to the overview.
+  const after = data.launched
+    ? { heading: "Sprint launched", label: "Go to overview", href: "/manager" }
+    : {
+        heading: "Ready to launch?",
+        label: "Continue to agreement",
+        href: "/manager/agreement",
+      };
+
+  async function continueOn() {
     setPending(true);
     setRateError(null);
     try {
       // No score is a skip, and a skip is recorded by writing nothing (Ruling 4).
       if (score !== null) await rateConfidence({ expectOrgId, score });
-      router.push("/manager/agreement");
+      router.push(after.href);
     } catch (error) {
       setRateError(userMessage(error, SAVE_FAILED));
       setPending(false);
@@ -248,14 +257,15 @@ export function PathwayView({ initial }: { initial: Pathway }) {
           </section>
         </div>
 
-        <div className="flex flex-col gap-05">
+        {/* Side by side, the pane stays put while the lists scroll (main is the scroller). */}
+        <div className="flex flex-col gap-05 min-[901px]:sticky min-[901px]:top-07 min-[901px]:max-h-[calc(100dvh-112px)] min-[901px]:overflow-y-auto">
           {ready ? (
             <section
               aria-labelledby="ready-title"
               className="flex flex-col gap-05 border-b border-border-subtle pb-07"
             >
               <h2 id="ready-title" className="text-heading-02">
-                Ready to launch?
+                {after.heading}
               </h2>
               <InlineNotification kind="success">
                 You&apos;ve finished the manager pathway.
@@ -271,10 +281,10 @@ export function PathwayView({ initial }: { initial: Pathway }) {
               <Button
                 icon={ArrowRight}
                 disabled={pending}
-                onClick={continueToAgreement}
+                onClick={continueOn}
                 className="self-start"
               >
-                Continue to agreement
+                {after.label}
               </Button>
               {rateError ? (
                 <p role="alert" className="text-label-01 text-support-error">

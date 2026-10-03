@@ -1,8 +1,9 @@
 import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
-import type { Doc } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 import type { MutationCtx } from "./_generated/server";
-import { agreementSaved, dayMonth, latestSaved } from "./lib/agreement";
+import { dayMonth, latestSaved } from "./lib/agreement";
+import { virtualClock } from "./lib/clock";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { DEMO_CAST } from "./lib/demo/cast";
 import { INVITE_MESSAGE } from "./lib/demo/script";
@@ -22,7 +23,6 @@ import {
   livePending,
 } from "./lib/orgs/invites";
 import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
-import { requiredDone } from "./lib/pathway";
 import { reserveRateLimit } from "./lib/rateLimits";
 import {
   HOUR_STARTS,
@@ -36,11 +36,15 @@ import {
   currentSprint,
   currentTeam,
   ensureSprint,
+  gateOpen,
   requireDraft,
+  setupGate,
+  sprintInvites,
 } from "./lib/sprint";
 import {
   addDays,
   dayOf,
+  hourEnd,
   hourPattern,
   hourStart,
   spanLabel,
@@ -165,17 +169,13 @@ export const commit = viewerMutation("sprint:manage")({
     const { viewer } = ctx;
     const { sprint, hour } = await draftFor(ctx, viewer, args);
     // "Keep exploring" clears `committedAt`, so the event is the record of a
-    // first commit. ponytail: `events` only has by_org; add an index on
-    // (orgId, type) if an org's event count ever makes this scan slow.
-    let logged = false;
-    for await (const e of ctx.db
+    // first commit.
+    const logged = await ctx.db
       .query("events")
-      .withIndex("by_org", (q) => q.eq("orgId", viewer.org._id))) {
-      if (e.type === "hour.committed" && e.sprintId === sprint._id) {
-        logged = true;
-        break;
-      }
-    }
+      .withIndex("by_sprint_and_type", (q) =>
+        q.eq("sprintId", sprint._id).eq("type", "hour.committed"),
+      )
+      .first();
     await ctx.db.patch(sprint._id, {
       ...hour,
       committedAt: sprint.committedAt ?? viewer.now,
@@ -240,10 +240,6 @@ export const notReady = viewerMutation("sprint:manage")({
   },
 });
 
-// ponytail: one workspace's invitations, up to 100 open plus a sprint's worth
-// answered. Past 500, page this read.
-const INVITES_READ = 500;
-
 const linkValidator = v.object({ email: v.string(), token: v.string() });
 
 /** 07: the gate, the invitation list and the summary. Null before a sprint. */
@@ -291,21 +287,8 @@ export const launchPage = viewerQuery("sprint:manage")({
     const dated = { ...sprint, startDate: startDateOf(sprint, viewer.now) };
     const last = hourStart(dated, sprint.weeks);
     const savedAt = (await latestSaved(ctx, team._id))?.savedAt;
-    const rows = await ctx.db
-      .query("orgInvites")
-      .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
-      .take(INVITES_READ);
-    // The newest row per address: one withdrawn or lapsed and sent again
-    // is one person on 07.
-    const newest = new Map<string, Doc<"orgInvites"> & { email: string }>();
-    for (const i of rows) {
-      if (i.sprintId !== sprint._id || !i.email) continue;
-      const had = newest.get(i.email);
-      if (!had || i._creationTime > had._creationTime) {
-        newest.set(i.email, { ...i, email: i.email });
-      }
-    }
-    const mine = [...newest.values()];
+    const gate = await setupGate(ctx, viewer, team, sprint);
+    const mine = await sprintInvites(ctx, orgId, sprint._id);
     // Tokens only to whoever may hand them out, and only when nothing was
     // mailed (Ruling 30). ponytail: a demo address in a real workspace that
     // sent nothing gets its link from `launch`'s return, not from here.
@@ -314,10 +297,11 @@ export const launchPage = viewerQuery("sprint:manage")({
     return {
       launched: sprint.launchedAt !== undefined,
       canInvite,
+      // 07 shows three of the four; the team profile isn't a launch step.
       gate: {
-        committed: sprint.committedAt !== undefined,
-        pathwayDone: await requiredDone(ctx, viewer.person._id),
-        agreementSaved: savedAt !== undefined,
+        committed: gate.committed,
+        pathwayDone: gate.pathwayDone,
+        agreementSaved: gate.agreementSaved,
       },
       // The demo's list and message are 07's; a real workspace starts empty.
       suggested: isDemo
@@ -376,9 +360,7 @@ export const launch = viewerMutation(
     if (
       !team ||
       !sprint ||
-      sprint.committedAt === undefined ||
-      !(await requiredDone(ctx, viewer.person._id)) ||
-      !(await agreementSaved(ctx, team))
+      !gateOpen(await setupGate(ctx, viewer, team, sprint))
     ) {
       throwUserError(
         "LAUNCH_NOT_READY",
@@ -438,7 +420,6 @@ export const launch = viewerMutation(
     await ctx.db.patch(sprint._id, {
       startDate: startDateOf(sprint, now),
       launchedAt: now,
-      status: "scheduled",
       inviteMessage: message,
     });
     await logEvent(ctx, {
@@ -447,6 +428,26 @@ export const launch = viewerMutation(
       type: "sprint.launched",
       at: now,
     });
+    // Each week's team totals are frozen when its hour ends (Ruling 2). On a
+    // virtual clock a real `runAt` would fire at once, so `moveClock` takes
+    // them instead. Each run makes good a missed earlier one; the last week
+    // has nothing after it, so one more run a day later backs it up.
+    if (!virtualClock(viewer.org)) {
+      const stored = { ...sprint, startDate: startDateOf(sprint, now) };
+      const args = { orgId, sprintId: sprint._id };
+      for (let week = 1; week <= sprint.weeks; week++) {
+        await ctx.scheduler.runAt(
+          hourEnd(stored, week),
+          internal.snapshots.take,
+          args,
+        );
+      }
+      await ctx.scheduler.runAt(
+        hourEnd(stored, sprint.weeks) + 86_400_000,
+        internal.snapshots.take,
+        args,
+      );
+    }
 
     let invited = 0;
     let emailed = 0;

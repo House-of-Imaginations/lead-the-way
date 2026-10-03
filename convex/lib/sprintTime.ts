@@ -11,7 +11,8 @@ export type HourOf = Pick<
   "startDate" | "timeZone" | "protectedHour"
 >;
 
-function parts(
+/** `at`'s date parts in `timeZone`, by part type ("day", "month", "weekday"). */
+export function parts(
   at: number,
   timeZone: string,
   options: Intl.DateTimeFormatOptions,
@@ -48,6 +49,16 @@ function offsetAt(timeZone: string, at: number): number {
   return wall - (at - (at % 1000));
 }
 
+/** `at`'s calendar date in `timeZone`, as "YYYY-MM-DD". */
+function dateIn(at: number, timeZone: string): string {
+  const p = parts(at, timeZone, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
 /** "2026-09-09" plus `days`, as a date string. */
 export function addDays(date: string, days: number): string {
   const [y, m, d] = date.split("-").map(Number);
@@ -67,12 +78,44 @@ export function dayOf(date: string): number {
   return new Date(`${date}T00:00:00Z`).getUTCDay();
 }
 
-/** When week `week`'s protected hour starts (week 1 is the first). */
-export function hourStart(sprint: HourOf, week: number): number {
+/** Week `week`'s hour day, "YYYY-MM-DD" (week 1 is the first). */
+function hourDate(sprint: HourOf, week: number): string {
   const shift =
     (sprint.protectedHour.weekday - dayOf(sprint.startDate) + 7) % 7;
-  const date = addDays(sprint.startDate, shift + 7 * (week - 1));
-  return zoned(date, sprint.protectedHour.start, sprint.timeZone);
+  return addDays(sprint.startDate, shift + 7 * (week - 1));
+}
+
+/** When week `week`'s protected hour starts (week 1 is the first). */
+export function hourStart(sprint: HourOf, week: number): number {
+  return zoned(
+    hourDate(sprint, week),
+    sprint.protectedHour.start,
+    sprint.timeZone,
+  );
+}
+
+/** When week `week`'s protected hour ends. */
+export function hourEnd(sprint: HourOf, week: number): number {
+  return (
+    hourStart(sprint, week) + sprint.protectedHour.durationMinutes * 60_000
+  );
+}
+
+/**
+ * Which week of the sprint `now` is in (Ruling 10). Weeks are calendar weeks
+ * in the sprint's time zone: week 1 starts at 00:00 on the Monday of the
+ * first hour's week. 0 before that; not clamped after the last week.
+ * Counted in calendar days, so a week that loses an hour to daylight saving
+ * still turns over at midnight on Monday. A draft's stored `startDate` is
+ * stale: pass a launched sprint, or `{ ...sprint, startDate: startDateOf(sprint, now) }`.
+ */
+export function weekOf(sprint: HourOf, now: number): number {
+  const first = hourDate(sprint, 1);
+  const monday = addDays(first, -((dayOf(first) + 6) % 7));
+  const days =
+    (Date.parse(dateIn(now, sprint.timeZone)) - Date.parse(monday)) /
+    86_400_000;
+  return days < 0 ? 0 : Math.floor(days / 7) + 1;
 }
 
 /**
@@ -85,12 +128,7 @@ export function weekOneDate(
   now: number,
   timeZone: string,
 ): string {
-  const p = parts(now, timeZone, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const today = `${p.year}-${p.month}-${p.day}`;
+  const today = dateIn(now, timeZone);
   const toMonday = (8 - dayOf(today)) % 7 || 7;
   return addDays(today, toMonday + weekday - 1);
 }
@@ -112,24 +150,38 @@ export function startDateOf(
     : sprint.startDate;
 }
 
+/**
+ * The next protected hour that hasn't ended: at the end of week 2's hour it
+ * moves to week 3's. Null once the last has ended.
+ */
+export function nextHour(
+  sprint: HourOf & Pick<Doc<"sprints">, "weeks">,
+  now: number,
+): { week: number; start: number } | null {
+  for (let week = 1; week <= sprint.weeks; week++) {
+    if (hourEnd(sprint, week) > now) {
+      return { week, start: hourStart(sprint, week) };
+    }
+  }
+  return null;
+}
+
 export type SprintPhase = "draft" | "scheduled" | "active" | "complete";
 
 /**
- * Where a sprint is, from `launchedAt` and the clock (Ruling 1). The stored
- * `status` is never read: no product writer moves it past "scheduled".
+ * Where a sprint is, from `launchedAt`, `completedAt` and the clock (Ruling
+ * 10). Scheduled until week one's Monday, then active until the last hour
+ * ends.
  */
 export function sprintPhase(sprint: Doc<"sprints">, now: number): SprintPhase {
   if (sprint.launchedAt === undefined) return "draft";
-  const lastHourEnds =
-    hourStart(sprint, sprint.weeks) +
-    sprint.protectedHour.durationMinutes * 60_000;
-  if (sprint.completedAt !== undefined || now >= lastHourEnds) {
+  if (
+    sprint.completedAt !== undefined ||
+    now >= hourEnd(sprint, sprint.weeks)
+  ) {
     return "complete";
   }
-  if (now < zoned(sprint.startDate, "00:00", sprint.timeZone)) {
-    return "scheduled";
-  }
-  return "active";
+  return weekOf(sprint, now) === 0 ? "scheduled" : "active";
 }
 
 const EVERY = [
@@ -158,6 +210,18 @@ export function hourPattern(
   durationMinutes: number,
 ): string {
   return `${EVERY[weekday]}, ${clockLabel(start)} to ${clockLabel(start, durationMinutes)}`;
+}
+
+/** "Wednesday 16 September at 2:00 PM": the overview's sentences. */
+export function hourLong(at: number, timeZone: string): string {
+  const p = parts(at, timeZone, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${p.weekday} ${p.day} ${p.month} at ${p.hour}:${p.minute} ${p.dayPeriod}`;
 }
 
 /** "Wed 16 Sep, 2:00 PM" */
@@ -193,7 +257,9 @@ export type SprintStatus = {
 
 /**
  * The side nav status block (spec 7.1). Managers see the week and a progress
- * bar; employees see only the next hour and the privacy note (11).
+ * bar; employees see only the next hour and the privacy note (11). The week
+ * is `weekOf`; the hour is the next one that hasn't ended, so after
+ * Wednesday's hour it names next Wednesday while the week stays the same.
  */
 export function sprintStatus(
   sprint: Doc<"sprints">,
@@ -201,8 +267,9 @@ export function sprintStatus(
   manager: boolean,
 ): SprintStatus {
   const tz = sprint.timeZone;
-  const first = hourStart(sprint, 1);
-  if (sprint.launchedAt === undefined) {
+  const phase = sprintPhase(sprint, now);
+  const note = manager ? null : "Your learning activity is private.";
+  if (phase === "draft" || phase === "scheduled") {
     return {
       heading: null,
       progress: null,
@@ -211,31 +278,30 @@ export function sprintStatus(
         hourStart({ ...sprint, startDate: startDateOf(sprint, now) }, 1),
         tz,
       ),
-      note: null,
+      note: phase === "draft" ? null : note,
     };
   }
-  const length = sprint.protectedHour.durationMinutes * 60_000;
-  let week = 0;
-  for (let w = 1; w <= sprint.weeks; w++) {
-    if (hourStart(sprint, w) + length > now) {
-      week = w;
-      break;
-    }
-  }
-  if (sprint.completedAt !== undefined || week === 0) {
+  if (phase === "complete") {
     return {
       heading: null,
       progress: null,
       label: "Sprint complete",
-      value: spanLabel(first, hourStart(sprint, sprint.weeks), tz),
+      value: spanLabel(
+        hourStart(sprint, 1),
+        hourStart(sprint, sprint.weeks),
+        tz,
+      ),
       note: null,
     };
   }
+  const week = weekOf(sprint, now);
+  // Active means the last hour hasn't ended, so there is a next one.
+  const next = nextHour(sprint, now)!;
   return {
     heading: manager ? `Week ${week} of ${sprint.weeks}` : null,
     progress: manager ? { value: week, max: sprint.weeks } : null,
-    label: week === sprint.weeks ? "Show and tell" : "Next protected hour",
-    value: hourLabel(hourStart(sprint, week), tz),
-    note: manager ? null : "Your learning activity is private.",
+    label: next.week === sprint.weeks ? "Show and tell" : "Next protected hour",
+    value: hourLabel(next.start, tz),
+    note,
   };
 }

@@ -5,6 +5,35 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    // `src` may import only pure modules from `convex/lib`. A module that also
+    // holds database helpers pulls server code, and whatever it imports, into
+    // the client bundle. `import type` is erased, so types pass.
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "@convex/lib/**",
+                "!@convex/lib/agreementLimits",
+                "!@convex/lib/inviteRules",
+                "!@convex/lib/pathwayModules",
+                "!@convex/lib/setupOptions",
+                "!@convex/lib/setupSteps",
+                "!@convex/lib/sprintTime",
+              ],
+              allowTypeImports: true,
+              message:
+                "src imports only pure convex/lib modules (constants and pure functions, no database helpers). Move the value into a pure module and add it to this allowlist, or use `import type`.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

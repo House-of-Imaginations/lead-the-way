@@ -44,6 +44,8 @@ export const forViewer = viewerQuery("sprint:manage")({
     required: v.object({ done: v.number(), total: v.number() }),
     coachingPercent: v.number(),
     afterConfidence: v.union(v.null(), v.number()),
+    /** Ruling 16: after launch, 05's panel leads to the overview. */
+    launched: v.boolean(),
   }),
   handler: async (ctx) => {
     const { viewer } = ctx;
@@ -87,6 +89,7 @@ export const forViewer = viewerQuery("sprint:manage")({
       },
       coachingPercent: coachingPercent(rows),
       afterConfidence: after?.score ?? null,
+      launched: sprint?.launchedAt !== undefined,
     };
   },
 });

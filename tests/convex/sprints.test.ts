@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { api } from "../../convex/_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { DEMO_NOW } from "../../convex/lib/demo/schedule";
+import {
+  currentSprint,
+  currentTeam,
+  gateOpen,
+  setupGate,
+} from "../../convex/lib/sprint";
+import { getViewer } from "../../convex/lib/viewer";
 import {
   calderLane,
   harness,
@@ -385,12 +392,69 @@ test("committing again after not ready logs hour.committed once", async () => {
   const { t, orgId, as } = await calderLane();
   const priya = as("priya");
   const hour = { weekday: 3, start: "14:00", expectOrgId: orgId };
+  const { _id: sprintId } = await sprintOf(t, orgId);
+  // Read the way `commit` reads it (Ruling 12).
+  const committed = () =>
+    t.run((ctx) =>
+      ctx.db
+        .query("events")
+        .withIndex("by_sprint_and_type", (q) =>
+          q.eq("sprintId", sprintId).eq("type", "hour.committed"),
+        )
+        .collect(),
+    );
   await priya.mutation(api.sprints.commit, hour);
+  expect(await committed()).toHaveLength(1);
   await priya.mutation(api.sprints.notReady, {
     choice: "keepExploring",
     expectOrgId: orgId,
   });
   await priya.mutation(api.sprints.commit, hour);
-  const types = (await eventsOf(t, orgId)).map((e) => e.type);
-  expect(types.filter((x) => x === "hour.committed")).toHaveLength(1);
+  expect(await committed()).toHaveLength(1);
+});
+
+test("setupGate reads the four setup steps; launch needs three", async () => {
+  const { t, orgId, as } = await calderLane();
+  const gate = () =>
+    as("priya").run(async (ctx) =>
+      setupGate(
+        ctx,
+        (await getViewer(ctx))!,
+        await currentTeam(ctx, orgId),
+        await currentSprint(ctx, orgId),
+      ),
+    );
+  expect(await gate()).toEqual({
+    teamSaved: false,
+    committed: false,
+    pathwayDone: false,
+    agreementSaved: false,
+  });
+  // The script saves the team, commits, finishes the pathway and saves the
+  // agreement by the week 1 target.
+  await t.mutation(internal.seed.clock, { target: "week1" });
+  const done = await gate();
+  expect(done).toEqual({
+    teamSaved: true,
+    committed: true,
+    pathwayDone: true,
+    agreementSaved: true,
+  });
+  expect(gateOpen(done)).toBe(true);
+  // Launch never asks for the team profile; it needs each of the other three.
+  expect(gateOpen({ ...done, teamSaved: false })).toBe(true);
+  expect(gateOpen({ ...done, committed: false })).toBe(false);
+  expect(gateOpen({ ...done, pathwayDone: false })).toBe(false);
+  expect(gateOpen({ ...done, agreementSaved: false })).toBe(false);
+  // No team and no sprint: nothing is done but the viewer's own pathway.
+  expect(
+    await as("priya").run(async (ctx) =>
+      setupGate(ctx, (await getViewer(ctx))!, null, null),
+    ),
+  ).toEqual({
+    teamSaved: false,
+    committed: false,
+    pathwayDone: true,
+    agreementSaved: false,
+  });
 });
