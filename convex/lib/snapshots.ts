@@ -1,6 +1,8 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { progressOf } from "./learning";
 import { count, loadCountable } from "./privacy";
+import { projectOf } from "./projects";
 import { hourEnd } from "./sprintTime";
 
 /**
@@ -54,20 +56,9 @@ export async function takeDueSnapshots(
   const sessions = new Map<Id<"people">, number>();
   const underway = new Set<Id<"people">>();
   for (const person of people) {
-    const progress = await ctx.db
-      .query("learningProgress")
-      .withIndex("by_person_and_sprint", (q) =>
-        q.eq("personId", person._id).eq("sprintId", sprint._id),
-      )
-      .unique();
+    const progress = await progressOf(ctx, person._id, sprint._id);
     sessions.set(person._id, progress?.sessionsDone ?? 0);
-    const project = await ctx.db
-      .query("projects")
-      .withIndex("by_person_and_sprint", (q) =>
-        q.eq("personId", person._id).eq("sprintId", sprint._id),
-      )
-      .first();
-    if (project) underway.add(person._id);
+    if (await projectOf(ctx, person._id, sprint._id)) underway.add(person._id);
   }
   for (const week of due) {
     await ctx.db.insert("teamSnapshots", {

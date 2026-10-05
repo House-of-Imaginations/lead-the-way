@@ -1,6 +1,7 @@
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { throwUserError } from "../errors";
+import { normalEmail } from "../inviteRules";
 
 /**
  * The credential on an invitation link, how long it is good for, and the one
@@ -62,8 +63,8 @@ export function mintToken(): string {
 /**
  * The one insert into `orgInvites`: `invites.create`, `sprints.launch` and the
  * script's `priya.launch` all write through here (writer contract rule 6, so
- * the address is lowercased here). `at` is the workspace clock and stamps
- * `createdAt`; `expiresAt` is real time, as the window above says.
+ * the address is normalised here, Ruling 4). `at` is the workspace clock and
+ * stamps `createdAt`; `expiresAt` is real time, as the window above says.
  */
 export async function insertInvite(
   ctx: MutationCtx,
@@ -85,7 +86,7 @@ export async function insertInvite(
     orgId: i.orgId,
     roleId: i.roleId,
     token,
-    email: i.email?.trim().toLowerCase() || undefined,
+    email: normalEmail(i.email ?? "") || undefined,
     name: i.name,
     sprintId: i.sprintId,
     message: i.message,

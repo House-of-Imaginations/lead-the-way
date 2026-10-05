@@ -3,7 +3,13 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { MutationCtx } from "../../convex/_generated/server";
 import type { Permission } from "../../convex/lib/orgs/permissions";
-import { aggregate, count, loadCountable } from "../../convex/lib/privacy";
+import {
+  aggregate,
+  count,
+  countSeated,
+  loadCountable,
+  loadSeated,
+} from "../../convex/lib/privacy";
 import { personFields } from "./testHelpers";
 import { harness, seat, workspace } from "./workspace/helpers";
 
@@ -229,4 +235,42 @@ test("the threshold can't go below 5", async () => {
   expect(result.nan).toEqual({ hidden: true, n: 1 });
   expect(result.six).toEqual({ hidden: true, n: 6 });
   expect(result.seven).toEqual({ hidden: false, n: 7, value: 6 });
+});
+
+test("a sprint manager is not seated and never counts (Ruling 1)", async () => {
+  const t = harness();
+  const result = await t.run(async (ctx) => {
+    const { orgId, org } = await addOrg(ctx);
+    const employees = await addPeople(ctx, orgId, 5);
+    // Runs the sprint without reading team totals: still a manager.
+    await addPeople(ctx, orgId, 1, ["sprint:manage"]);
+    return {
+      employees,
+      seated: (await loadSeated(ctx, org)).map((p) => p._id),
+      counted: (await loadCountable(ctx, org, null)).map((p) => p._id),
+    };
+  });
+  expect(result.seated).toEqual(result.employees);
+  expect(result.counted).toEqual(result.employees);
+});
+
+test("countSeated counts the whole seated team, opted out or not, hidden below the threshold", async () => {
+  const t = harness();
+  const result = await t.run(async (ctx) => {
+    const { orgId, org } = await addOrg(ctx);
+    const people = await addPeople(ctx, orgId, 5);
+    // Presenting is a public act (R-i): an opt-out from totals doesn't hide it.
+    await optOut(ctx, orgId, people[0]);
+    const seated = await loadSeated(ctx, org);
+    const did = (p: { _id: Id<"people"> }) =>
+      p._id === people[0] || p._id === people[1];
+    return {
+      five: countSeated(seated, did, org),
+      four: countSeated(seated.slice(0, 4), did, org),
+      strict: countSeated(seated, did, { privacyThreshold: 7 }),
+    };
+  });
+  expect(result.five).toEqual({ hidden: false, n: 5, value: 2 });
+  expect(result.four).toEqual({ hidden: true, n: 4 });
+  expect(result.strict).toEqual({ hidden: true, n: 5 });
 });

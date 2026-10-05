@@ -492,3 +492,32 @@ test("the signed-out preview never shows the inviter's address", async () => {
       ?.invitedBy,
   ).toBe("Someone");
 });
+
+test("a row stored before Ruling 4, with its trailing dot, still seats its address", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  const dana = await seedAuthUser(t, {
+    name: "Dana",
+    email: "dana@example.com",
+    emailVerified: false,
+  });
+  await t.run((ctx) =>
+    ctx.db.insert("orgInvites", {
+      orgId,
+      roleId,
+      token: "tok-dana",
+      email: "dana@example.com.",
+      status: "pending",
+      invitedBy: "user_owner",
+      expiresAt: Date.now() + 60_000,
+      createdAt: 1,
+    }),
+  );
+  await t
+    .withIdentity(dana)
+    .mutation(api.invites.accept, { token: "tok-dana" });
+  expect(
+    await t.withIdentity(dana).query(api.orgs.myPermissions, { orgId }),
+  ).toEqual(["members:read"]);
+});

@@ -192,7 +192,7 @@ test("an opt-out never flips the agreement to signed by the team", async () => {
   expect(await title()).toBe("Saved");
 });
 
-test("a planner who hasn't signed sees Saved, the same as the owner", async () => {
+test("a planner isn't on the team, so the title never waits for their signature (Ruling 1)", async () => {
   const { t, orgId, as } = await calderLane();
   await move(t, "week2");
   const { as: planner } = await seat(t, orgId, "user_planner", [
@@ -202,7 +202,10 @@ test("a planner who hasn't signed sees Saved, the same as the owner", async () =
   for (const viewer of [planner, as("priya")]) {
     expect(
       (await viewer.query(api.manager.overview, {}))!.agreement,
-    ).toMatchObject({ title: "Saved", tag: { label: "Saved", kind: "green" } });
+    ).toMatchObject({
+      title: "Signed by the team",
+      tag: { label: "Completed", kind: "green" },
+    });
   }
 });
 

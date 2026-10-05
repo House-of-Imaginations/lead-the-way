@@ -15,7 +15,7 @@ import { nowFor } from "./lib/clock";
 import { profileOf } from "./lib/account/profile";
 import { emailConfigured } from "./lib/email/send";
 import { throwUserError, type ErrorCode } from "./lib/errors";
-import { MAX_MESSAGE } from "./lib/inviteRules";
+import { MAX_MESSAGE, normalEmail } from "./lib/inviteRules";
 import { sendInvite } from "./lib/orgs/email";
 import {
   INVITE_WINDOW_MS,
@@ -185,10 +185,11 @@ async function refusalOf(
 
   // Read from the auth component's own row, not the JWT: the claims are
   // whatever the token was minted with. A matching address is enough; a
-  // verified one is not required (spec 5).
+  // verified one is not required (spec 5). Both sides normalised (Ruling 4):
+  // a row stored before it may keep a trailing dot.
   if (invite.email) {
     const user = await authComponent.getAnyUserById(ctx, userId);
-    if (user?.email?.trim().toLowerCase() !== invite.email) {
+    if (normalEmail(user?.email ?? "") !== normalEmail(invite.email)) {
       return no("INVITE_WRONG_ACCOUNT");
     }
   }
@@ -349,7 +350,7 @@ export const create = orgMutation("members:manage")({
       );
     }
 
-    const to = email?.trim().toLowerCase() || undefined;
+    const to = normalEmail(email ?? "") || undefined;
     const { inviteId, token, expiresAt } = await insertInvite(ctx, {
       orgId: ctx.orgId,
       roleId,

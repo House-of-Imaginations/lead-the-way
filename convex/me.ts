@@ -1,11 +1,10 @@
 import { literals } from "convex-helpers/validators";
 import { v, type Infer } from "convex/values";
-import { agreementForViewer } from "./agreements";
 import type { Doc } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
-import { progressOf, sessionOf } from "./learning";
-import { dayMonth } from "./lib/agreement";
+import { agreementForViewer, dayMonth } from "./lib/agreement";
 import { timedViewerQuery } from "./lib/customFunctions";
+import { progressOf, sessionOf } from "./lib/learning";
 import { isPresented, projectOf } from "./lib/projects";
 import { greetingOf } from "./lib/shell";
 import { currentSprint } from "./lib/sprint";

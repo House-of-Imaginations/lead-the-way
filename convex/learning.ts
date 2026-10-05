@@ -1,35 +1,10 @@
 import { v } from "convex/values";
-import type { Doc, Id } from "./_generated/dataModel";
-import type { QueryCtx } from "./_generated/server";
 import { badgeOf, issueBadge } from "./lib/badges";
 import { viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
+import { COURSE_SESSIONS, progressOf, sessionOf } from "./lib/learning";
 import { currentSprint } from "./lib/sprint";
 import { weekOf } from "./lib/sprintTime";
-
-/** AI Productivity Fundamentals: 4 sessions of 15 minutes (spec 7.3). */
-export const COURSE_SESSIONS = 4;
-
-/**
- * The session a week is for. Before week one it is session 1, and after the
- * last week it stays at the last session.
- */
-export const sessionOf = (week: number) =>
-  Math.min(Math.max(week, 1), COURSE_SESSIONS);
-
-/** The person's own course progress: one row per person and sprint (writer contract). */
-export async function progressOf(
-  ctx: QueryCtx,
-  personId: Id<"people">,
-  sprintId: Id<"sprints">,
-): Promise<Doc<"learningProgress"> | null> {
-  return await ctx.db
-    .query("learningProgress")
-    .withIndex("by_person_and_sprint", (q) =>
-      q.eq("personId", personId).eq("sprintId", sprintId),
-    )
-    .unique();
-}
 
 /**
  * 11's "Continue learning" (Ruling 8). The prototype can't reach SkillsBuild,

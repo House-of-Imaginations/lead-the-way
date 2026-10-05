@@ -784,3 +784,24 @@ test("a launch that runs out of inviteEmail tokens writes nothing", async () => 
   expect(await invitesOf(t, orgId)).toEqual([]);
   expect(await launchedEvents(t, orgId)).toEqual([]);
 });
+
+test("an address is compared normalised on both sides at launch (Ruling 4)", async () => {
+  const { t, owner, orgId, launch } = await manager();
+  await ready(t, orgId);
+  const roleId = await employeeRoleId(t, orgId);
+  await owner.mutation(api.invites.create, {
+    orgId,
+    roleId,
+    email: " Omar@Example.com. ",
+  });
+  // A row stored before Ruling 4, with its trailing dot.
+  await pendingInvite(t, orgId, "ben@example.com.", Date.now() + 60_000);
+  expect(
+    await launch(["omar@example.com", "Ben@Example.com", "ana@example.com"]),
+  ).toMatchObject({ invited: 1 });
+  expect((await invitesOf(t, orgId)).map((i) => i.email).sort()).toEqual([
+    "ana@example.com",
+    "ben@example.com.",
+    "omar@example.com",
+  ]);
+});

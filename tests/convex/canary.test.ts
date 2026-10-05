@@ -256,11 +256,11 @@ test("survey answers are read by question only through the privacy layer", () =>
 
 /**
  * The files that may touch `loadSeated` (raw seated people) or
- * `signatureCount` (a live count): the privacy layer, the overview and 10.
- * A new reader of either is a new place a manager could see a number, so it
- * has to be added here on purpose.
+ * `signatureCount` (a live count): the privacy layer, the overview and 10's
+ * `agreementForViewer`. A new reader of either is a new place a manager could
+ * see a number, so it has to be added here on purpose.
  */
-const SEATED_FILES = ["lib/privacy.ts", "manager.ts", "agreements.ts"];
+const SEATED_FILES = ["lib/privacy.ts", "manager.ts", "lib/agreement.ts"];
 
 test("the seated team and the live signature count are read only where the allowlist says", () => {
   const dir = new URL("../../convex/", import.meta.url);
@@ -272,7 +272,7 @@ test("the seated team and the live signature count are read only where the allow
   }
   // Nothing found would pass vacuously; both current readers must be seen.
   expect(found).toEqual(
-    expect.arrayContaining(["manager.ts", "agreements.ts"]),
+    expect.arrayContaining(["manager.ts", "lib/agreement.ts"]),
   );
   expect(found.filter((file) => !SEATED_FILES.includes(file))).toEqual([]);
 });

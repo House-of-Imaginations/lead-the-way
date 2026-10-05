@@ -3,6 +3,7 @@ import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { castOf } from "../../convex/lib/demo/cast";
 import { mel } from "../../convex/lib/demo/schedule";
+import { completedCourse } from "../../convex/lib/learning";
 import {
   calderLane,
   harness,
@@ -133,4 +134,12 @@ test("without a launched sprint there is nothing to continue", async () => {
   await expect(
     as.mutation(api.learning.continueSession, { expectOrgId: orgId }),
   ).rejects.toMatchObject({ data: { code: "NO_SPRINT" } });
+});
+
+test("completing the course means 100 percent, never four sessions or a badge (Ruling 2)", () => {
+  expect(completedCourse(null)).toBe(false);
+  // The demo's dan.badge writes 100 percent with three sessions done.
+  expect(completedCourse({ percent: 100 })).toBe(true);
+  expect(completedCourse({ percent: 99 })).toBe(false);
+  expect(completedCourse({ percent: 0 })).toBe(false);
 });

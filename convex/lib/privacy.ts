@@ -81,11 +81,11 @@ export function count(
 /**
  * The people a manager-facing number may count: the invited team, less anyone
  * who opted out of team totals (spec rule 5). Manager counts are over the
- * invited ("6 of 7 finished week 1"), so nobody who can read team totals
- * counts: not an owner-kind seat (the owner holds every permission), not a
- * custom role with `team:insights`. Nor does the asker: they know their own
- * value, so counting it toward their own threshold would lower the floor by
- * one. `askerId` is required so it cannot be forgotten; an internal caller
+ * invited ("6 of 7 finished week 1"), so nobody who manages the team counts
+ * (`loadSeated`, Ruling 1): not an owner-kind seat (the owner holds every
+ * permission), not a custom role with `team:insights` or `sprint:manage`.
+ * Nor does the asker: they know their own value, so counting it toward their
+ * own threshold would lower the floor by one. `askerId` is required so it cannot be forgotten; an internal caller
  * with nobody asking passes null.
  *
  * A seat whose role is gone is left out: counting it would only raise n.
@@ -114,10 +114,14 @@ export async function loadCountable(
 
 /**
  * Everyone seated on the team: each person in the org whose role is the
- * org's and can't read team totals, opted out or not, whoever is asking.
- * Not a `Countable`; `signatureCount` is the one sanctioned count made from
- * it (Rulings 1 and 24). The agreement's "Signed by the team" reads it, so
- * the title is the same for every viewer and no opt-out flips it.
+ * org's and who doesn't manage the team, opted out or not, whoever is asking.
+ * Ruling 1: a role with `team:insights` or `sprint:manage` is a manager's, and
+ * a manager is in no total. Their pre-launch `normsConfidence` shares its key
+ * with the team's week 4 answer, and they know their own value, so counting
+ * them would lower the floor. Not a `Countable`; `signatureCount` and
+ * `countSeated` are the sanctioned counts made from it (Rulings 1 and 24).
+ * The agreement's "Signed by the team" reads it, so the title is the same for
+ * every viewer and no opt-out flips it.
  */
 export async function loadSeated(
   ctx: QueryCtx,
@@ -131,10 +135,29 @@ export async function loadSeated(
   for (const person of people) {
     const role = await ctx.db.get(person.roleId);
     if (!role || role.orgId !== org._id) continue;
-    if (permissionsOf(role).includes("team:insights")) continue;
+    const held = permissionsOf(role);
+    if (held.includes("team:insights") || held.includes("sprint:manage")) {
+      continue;
+    }
     seated.push(person);
   }
   return seated;
+}
+
+/**
+ * The one count over the seated team (`loadSeated`), for public acts such as
+ * presenting (R-i): opting out of team totals doesn't hide what a person
+ * showed the team. Hidden below the threshold, as `count` is. Takes the
+ * seated list, not a `Countable`, so it can't be handed a filtered few.
+ */
+export function countSeated(
+  seated: readonly Doc<"people">[],
+  did: (person: Doc<"people">) => boolean,
+  org: Pick<Doc<"orgs">, "privacyThreshold">,
+): Aggregate {
+  const n = seated.length;
+  if (n < thresholdOf(org)) return { hidden: true, n };
+  return { hidden: false, n, value: seated.filter(did).length };
 }
 
 /**

@@ -1,6 +1,5 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { agreementSaved } from "./agreement";
 import { throwUserError } from "./errors";
 import { requiredDone } from "./pathway";
 import { weekOneDate } from "./sprintTime";
@@ -72,6 +71,24 @@ export type SetupGate = {
   agreementSaved: boolean;
 };
 
+/**
+ * Any saved version counts, even with a newer draft on top. Read here, not
+ * through lib/agreement's `latestSaved`: lib/agreement imports this file.
+ */
+async function agreementSaved(
+  ctx: QueryCtx,
+  teamId: Id<"teams">,
+): Promise<boolean> {
+  const versions = ctx.db
+    .query("agreements")
+    .withIndex("by_team_and_version", (q) => q.eq("teamId", teamId))
+    .order("desc");
+  for await (const version of versions) {
+    if (version.status === "saved") return true;
+  }
+  return false;
+}
+
 export async function setupGate(
   ctx: QueryCtx,
   viewer: Viewer,
@@ -82,7 +99,7 @@ export async function setupGate(
     teamSaved: team?.savedAt !== undefined,
     committed: sprint?.committedAt !== undefined,
     pathwayDone: await requiredDone(ctx, viewer.person._id),
-    agreementSaved: team !== null && (await agreementSaved(ctx, team)),
+    agreementSaved: team !== null && (await agreementSaved(ctx, team._id)),
   };
 }
 

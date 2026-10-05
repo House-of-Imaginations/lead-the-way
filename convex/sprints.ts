@@ -398,15 +398,18 @@ export const launch = viewerMutation(
     const now = viewer.now;
 
     // Members and live invitations are skipped. A lapsed one isn't: its
-    // address gets a fresh invitation.
+    // address gets a fresh invitation. Both sides normalised (Ruling 4), so a
+    // row stored before it with a trailing dot still matches.
     const skip = new Set<string>();
     const people = await ctx.db
       .query("people")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .take(MAX_MEMBERS_PER_ORG);
-    for (const person of people) skip.add(person.email);
+    for (const person of people) skip.add(normalEmail(person.email));
     const pending = await livePending(ctx, orgId, now);
-    for (const invite of pending) if (invite.email) skip.add(invite.email);
+    for (const invite of pending) {
+      if (invite.email) skip.add(normalEmail(invite.email));
+    }
     const fresh = emails.filter((email) => !skip.has(email));
     // The same cap `invites.create` holds.
     if (pending.length + fresh.length > MAX_INVITES_PER_ORG) {
