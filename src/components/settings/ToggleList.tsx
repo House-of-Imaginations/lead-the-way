@@ -1,18 +1,14 @@
 "use client";
 
 import { useMutation } from "convex/react";
+import type { FunctionArgs } from "convex/server";
 import { useState } from "react";
 import { api } from "@convex/_generated/api";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import { Toggle, useToast } from "@/components/ui";
 import { userMessage } from "@/lib/errors";
 
-export type ToggleKey =
-  | "weeklyReminder"
-  | "showAndTellReminder"
-  | "askBeforeSharing"
-  | "reflectionsOnCredential"
-  | "includeInTeamTotals";
+export type ToggleKey = FunctionArgs<typeof api.settings.setToggle>["key"];
 export type ToggleRow = { key: ToggleKey; label: string; description: string };
 
 /** Notifications on 17 and 19: what `reminders.send` reads. */

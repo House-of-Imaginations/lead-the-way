@@ -237,11 +237,13 @@ export async function dropSeat(
     .withIndex("by_person", (q) => q.eq("personId", person._id))
     .first();
   if (settings) await ctx.db.delete(settings._id);
-  // One row per week of a sprint, so a handful at most.
+  // One row per reminder sent, building up across sprints: four or so a sprint.
+  // ponytail: 500 rows is over a hundred sprints; past it the rest are left
+  // behind, so page or schedule this delete if a seat ever gets near that.
   const reminders = await ctx.db
     .query("reminders")
     .withIndex("by_person", (q) => q.eq("personId", person._id))
-    .collect();
+    .take(500);
   for (const row of reminders) await ctx.db.delete(row._id);
   await ctx.db.delete(person._id);
 }

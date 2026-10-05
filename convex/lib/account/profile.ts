@@ -17,9 +17,6 @@ export async function profileOf(
     .unique();
 }
 
-// Moved to the pure module so the Profile tab reads the same limit (P7b-1).
-export { MAX_DISPLAY_NAME };
-
 /** Validate and trim a display name, then write it to the account's profile. */
 export async function saveDisplayName(
   ctx: MutationCtx,

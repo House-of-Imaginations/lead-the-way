@@ -20,6 +20,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (shell === null) redirect((await getHome()) ?? "/signed-out");
   return (
     <div className="flex h-dvh flex-col">
+      {/* Reduce motion before paint, as the theme does; AppShell keeps it live. */}
+      {shell.reduceMotion && (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.documentElement.setAttribute("data-reduce-motion","")`,
+          }}
+        />
+      )}
       {/* R11: rendered on the server, so its role="status" never announces a change after load. */}
       {shell.isDemo && <DemoBanner workspace={shell.org.name} />}
       <ConvexClientProvider initialToken={token}>
