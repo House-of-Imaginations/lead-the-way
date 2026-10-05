@@ -16,6 +16,8 @@ type Stat = Closed["participation"]["completed"];
 
 /** The 1 to 5 scale; a bar is value / 5 of its track. */
 const SCALE = [1, 2, 3, 4, 5];
+/** Phase label, track, value: one grid for a bar row and the scale under it. */
+const BAR_COLS = "grid-cols-[var(--spacing-09)_minmax(0,1fr)_var(--spacing-09)]";
 
 function statValue(stat: Stat): string {
   return stat.kind === "shown"
@@ -36,7 +38,7 @@ function Total({ label, stat }: { label: string; stat: Stat }) {
 /** A track with the scale's dashed lines and, when shown, the average's bar. */
 function Track({ stat, fill }: { stat: Stat; fill: string }) {
   return (
-    <div className="relative h-05" aria-hidden="true">
+    <div className="relative h-06" aria-hidden="true">
       {SCALE.map((k) => (
         <span
           key={k}
@@ -65,8 +67,11 @@ function Bar({
   after?: boolean;
 }) {
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_48px] items-center gap-x-04 gap-y-02">
+    <li className={clsx("grid items-center gap-x-04 gap-y-02", BAR_COLS)}>
       <span className="sr-only">{label}: </span>
+      <span aria-hidden="true" className="text-label-01 text-text-secondary">
+        {after ? "After" : "Before"}
+      </span>
       <Track stat={stat} fill={after ? "bg-chart-after" : "bg-chart-before"} />
       <span
         className={clsx(
@@ -77,7 +82,7 @@ function Bar({
         {stat.kind === "shown" ? stat.value.toFixed(1) : statValue(stat)}
       </span>
       {stat.kind !== "shown" ? (
-        <span className="col-span-2 text-label-01 text-text-secondary">
+        <span className="col-span-2 col-start-2 text-label-01 text-text-secondary">
           {stat.helper}
         </span>
       ) : null}
@@ -87,17 +92,22 @@ function Bar({
 
 function Header({
   title,
+  tag,
   link,
   children,
 }: {
   title: string;
+  tag?: string;
   link: string;
   children?: ReactNode;
 }) {
   return (
     <header className="flex flex-wrap items-start justify-between gap-05">
-      <div className="flex max-w-[65ch] flex-col gap-03">
-        <h1 className="text-heading-01 text-balance">{title}</h1>
+      <div className="flex flex-col gap-03">
+        <div className="flex flex-wrap items-center gap-x-04 gap-y-03">
+          <h1 className="text-heading-01 text-balance">{title}</h1>
+          {tag ? <Tag color="green">{tag}</Tag> : null}
+        </div>
         {children}
       </div>
       <InviteTeamModal link={link} />
@@ -137,10 +147,7 @@ function ClosedOutcomes({ data }: { data: Closed }) {
   const presented = participation.presented;
   return (
     <div className="flex max-w-content-max flex-col gap-07">
-      <Header title={data.title} link={data.inviteLink}>
-        <div>
-          <Tag color="green">{data.tag}</Tag>
-        </div>
+      <Header title={data.title} tag={data.tag} link={data.inviteLink}>
         <p className="text-body-01 text-text-secondary">{data.intro}</p>
       </Header>
 
@@ -186,11 +193,11 @@ function ClosedOutcomes({ data }: { data: Closed }) {
             className="flex flex-wrap gap-05 text-label-01 text-text-secondary"
           >
             <span className="flex items-center gap-03">
-              <span className="size-03 bg-chart-before" />
+              <span className="size-04 bg-chart-before" />
               {beforeAfter.beforeLabel}
             </span>
             <span className="flex items-center gap-03">
-              <span className="size-03 bg-chart-after" />
+              <span className="size-04 bg-chart-after" />
               {beforeAfter.afterLabel}
             </span>
           </p>
@@ -200,11 +207,11 @@ function ClosedOutcomes({ data }: { data: Closed }) {
               aria-labelledby={`question-${i}`}
               className="flex flex-col gap-03"
             >
-              <h3 id={`question-${i}`} className="text-heading-04">
+              <h3 id={`question-${i}`} className="text-body-emphasis">
                 {q.title}
               </h3>
               {q.quote ? (
-                <p className="text-body-02 text-text-secondary">
+                <p className="text-label-01 text-text-secondary">
                   “{q.quote}”
                 </p>
               ) : null}
@@ -212,24 +219,27 @@ function ClosedOutcomes({ data }: { data: Closed }) {
                 <Bar label={beforeAfter.beforeLabel} stat={q.before} />
                 <Bar label={beforeAfter.afterLabel} stat={q.after} after />
               </ul>
+              <div
+                aria-hidden="true"
+                className={clsx(
+                  "grid gap-x-04 text-label-01 text-text-secondary",
+                  BAR_COLS,
+                )}
+              >
+                <div className="relative col-start-2 h-05">
+                  {SCALE.map((k) => (
+                    <span
+                      key={k}
+                      className="absolute -translate-x-1/2 tabular-nums"
+                      style={{ left: `${k * 20}%` }}
+                    >
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </section>
           ))}
-          <div
-            aria-hidden="true"
-            className="grid grid-cols-[minmax(0,1fr)_48px] gap-x-04 text-label-01 text-text-secondary"
-          >
-            <div className="relative h-05">
-              {SCALE.map((k) => (
-                <span
-                  key={k}
-                  className="absolute -translate-x-1/2 tabular-nums"
-                  style={{ left: `${k * 20}%` }}
-                >
-                  {k}
-                </span>
-              ))}
-            </div>
-          </div>
         </section>
 
         <section

@@ -49,13 +49,16 @@ export function InviteTeamModal({ link }: { link: string }) {
 /** Rendered only while the dialog is open, so `window` is always there. */
 function ShareLink({ link, error }: { link: string; error?: string }) {
   return (
-    <TextInput
-      id="invite-team-link"
-      label="Sign-up link"
-      value={`${window.location.origin}${link}`}
-      readOnly
-      error={error}
-      onFocus={(e) => e.currentTarget.select()}
-    />
+    // The description is the shared Modal's, above this: the gap is ours.
+    <div className="mt-06">
+      <TextInput
+        id="invite-team-link"
+        label="Sign-up link"
+        value={`${window.location.origin}${link}`}
+        readOnly
+        error={error}
+        onFocus={(e) => e.currentTarget.select()}
+      />
+    </div>
   );
 }

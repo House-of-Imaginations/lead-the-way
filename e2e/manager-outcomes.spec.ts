@@ -71,9 +71,9 @@ test.describe("complete", () => {
     ).toBeVisible();
     await expect(invite(page)).toBeVisible();
 
-    await expect(tile(page, "Invited")).toContainText("8");
-    await expect(tile(page, "Completed the sprint")).toContainText("7");
-    await expect(tile(page, "Applied projects presented")).toContainText("6");
+    await expect(tile(page, "Invited")).toHaveText(/^Invited\s*8$/);
+    await expect(tile(page, "Completed the sprint")).toHaveText(/^Completed the sprint\s*7$/);
+    await expect(tile(page, "Applied projects presented")).toHaveText(/^Applied projects presented\s*6$/);
 
     await expect(region(page, "Before and after")).toContainText(
       "Team average on a 1 to 5 scale, 5 responses before and 7 after",
