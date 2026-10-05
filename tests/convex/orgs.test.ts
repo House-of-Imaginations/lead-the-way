@@ -846,10 +846,7 @@ async function pngUpload(t: ReturnType<typeof harness>) {
   return await t.run(async (ctx) => {
     const id = await ctx.storage.store(new Blob(["pretend png"]));
     const writer = ctx.db as unknown as {
-      patch(
-        id: Id<"_storage">,
-        value: { contentType: string },
-      ): Promise<void>;
+      patch(id: Id<"_storage">, value: { contentType: string }): Promise<void>;
     };
     await writer.patch(id, { contentType: "image/png" });
     return id;

@@ -27,20 +27,22 @@ async function personOf(t: T, orgId: Id<"orgs">, key: CastKey) {
 }
 
 async function projectOf(t: T, personId: Id<"people">) {
-  return await t.run(async (ctx) =>
-    (await ctx.db
-      .query("projects")
-      .withIndex("by_person_and_sprint", (q) => q.eq("personId", personId))
-      .unique())!,
+  return await t.run(
+    async (ctx) =>
+      (await ctx.db
+        .query("projects")
+        .withIndex("by_person_and_sprint", (q) => q.eq("personId", personId))
+        .unique())!,
   );
 }
 
 async function badgeOf(t: T, personId: Id<"people">) {
-  return await t.run(async (ctx) =>
-    (await ctx.db
-      .query("badges")
-      .withIndex("by_person", (q) => q.eq("personId", personId))
-      .unique())!,
+  return await t.run(
+    async (ctx) =>
+      (await ctx.db
+        .query("badges")
+        .withIndex("by_person", (q) => q.eq("personId", personId))
+        .unique())!,
   );
 }
 
@@ -95,13 +97,19 @@ test("badges: mine, attachReflection and publicBySlug", async () => {
       reduceMotion: false,
     }),
   );
-  expect(await read()).toEqual({ ...BADGE, holder: "Dan Okafor", reflection: null });
+  expect(await read()).toEqual({
+    ...BADGE,
+    holder: "Dan Okafor",
+    reflection: null,
+  });
   await t.run((ctx) => ctx.db.delete(settingsId));
   expect((await read())!.reflection).toEqual(REFLECTION);
 
   // Linked to somebody else's project: not his to show.
   const mei = await projectOf(t, await personOf(t, orgId, "mei"));
-  await t.run((ctx) => ctx.db.patch(badge._id, { reflectionProjectId: mei._id }));
+  await t.run((ctx) =>
+    ctx.db.patch(badge._id, { reflectionProjectId: mei._id }),
+  );
   expect((await read())!.reflection).toBeNull();
 
   // His own project, but not saved.

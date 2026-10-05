@@ -91,7 +91,12 @@ test.describe.serial("week 2 as Dan", () => {
     ).toHaveAttribute("href", "/me/project#reflect");
 
     await expect(strip(page).getByRole("listitem")).toHaveText(
-      ["Week 1 Done", "Week 2 In progress", "Week 3 23 Sep", "Week 4 Show and tell"],
+      [
+        "Week 1 Done",
+        "Week 2 In progress",
+        "Week 3 23 Sep",
+        "Week 4 Show and tell",
+      ],
       { useInnerText: true },
     );
     await expect(strip(page).locator('li[aria-current="step"]')).toContainText(
@@ -123,8 +128,12 @@ test.describe.serial("week 2 as Dan", () => {
     ).toHaveAttribute("href", "/me/agreement");
 
     // Signed on the 9th, unchanged since; the after check-in waits for week 4.
-    await expect(main(page).getByText("Please review and sign.")).toHaveCount(0);
-    await expect(main(page).getByText(CHECK_IN, { exact: true })).toHaveCount(0);
+    await expect(main(page).getByText("Please review and sign.")).toHaveCount(
+      0,
+    );
+    await expect(main(page).getByText(CHECK_IN, { exact: true })).toHaveCount(
+      0,
+    );
   });
 
   test("13 counts two of eight and names the next session", async ({
@@ -247,7 +256,9 @@ test.describe.serial("week 2 as Dan", () => {
       ]) {
         expect((await target.boundingBox())!.height).toBeGreaterThanOrEqual(48);
       }
-      await expect(card(page, "Learn").getByText("15 min session")).toBeHidden();
+      await expect(
+        card(page, "Learn").getByText("15 min session"),
+      ).toBeHidden();
       await expect(
         card(page, "Learn").getByText("15 min", { exact: true }),
       ).toBeVisible();
@@ -294,11 +305,15 @@ test.describe.serial("week 4 as Dan", () => {
         .check();
     }
     await main(page).getByRole("button", { name: "Save answers" }).click();
-    await expect(main(page).getByText(CHECK_IN, { exact: true })).toHaveCount(0);
+    await expect(main(page).getByText(CHECK_IN, { exact: true })).toHaveCount(
+      0,
+    );
     await page.reload();
     await expect(
       page.getByRole("heading", { level: 1, name: "Good afternoon, Dan" }),
     ).toBeVisible();
-    await expect(main(page).getByText(CHECK_IN, { exact: true })).toHaveCount(0);
+    await expect(main(page).getByText(CHECK_IN, { exact: true })).toHaveCount(
+      0,
+    );
   });
 });

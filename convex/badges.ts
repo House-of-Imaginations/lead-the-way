@@ -46,7 +46,9 @@ type Reflection = Infer<typeof reflectionValidator>;
 /** "24 September 2026" (long) or "30 Sep" (short), in the holder's time zone. */
 function dateLabel(at: number, timeZone: string, month: "long" | "short") {
   const p = parts(at, timeZone, { day: "numeric", month, year: "numeric" });
-  return month === "long" ? `${p.day} ${p.month} ${p.year}` : `${p.day} ${p.month}`;
+  return month === "long"
+    ? `${p.day} ${p.month} ${p.year}`
+    : `${p.day} ${p.month}`;
 }
 
 /** The linked project, only while it is the holder's own saved project in the badge's workspace (Ruling 10). */

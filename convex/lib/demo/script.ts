@@ -715,8 +715,7 @@ export const STEPS: Record<StepKey, Step> = {
     let slot = 0;
     for (const key of PRESENT_ORDER) {
       const person = await personOf(ctx, orgId, key);
-      const project =
-        person && (await projectOf(ctx, person._id, sprint._id));
+      const project = person && (await projectOf(ctx, person._id, sprint._id));
       if (
         !project ||
         project.status !== "saved" ||

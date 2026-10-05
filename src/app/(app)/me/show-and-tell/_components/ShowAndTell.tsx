@@ -141,11 +141,7 @@ function Project({
       </div>
 
       <div className="grid grid-cols-3 max-[672px]:grid-cols-1">
-        <ButtonLink
-          href="/me/project#reflect"
-          kind="ghost"
-          className="w-full"
-        >
+        <ButtonLink href="/me/project#reflect" kind="ghost" className="w-full">
           Edit reflection
         </ButtonLink>
         {mine.onBadge ? (
@@ -290,7 +286,11 @@ export function ShowAndTell({
           <div className="flex min-w-0 flex-col gap-07">
             {board.afterCheckIn ? (
               // Answering turns afterCheckIn false, so the card goes by itself.
-              <CheckIn phase="after" expectOrgId={expectOrgId} onDone={() => {}} />
+              <CheckIn
+                phase="after"
+                expectOrgId={expectOrgId}
+                onDone={() => {}}
+              />
             ) : null}
             {board.mine ? (
               <Project

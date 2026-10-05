@@ -125,10 +125,10 @@ test("Dan's example fills the form, and saving opens Reflect", async ({
   await saveButton(page).click();
   await expect(page.getByText("Project saved", { exact: true })).toBeVisible();
 
-  await expect(
-    reflect.getByRole("heading", { name: "Reflect" }),
-  ).toBeVisible();
-  await expect(reflect).not.toContainText("Save your project to add a reflection.");
+  await expect(reflect.getByRole("heading", { name: "Reflect" })).toBeVisible();
+  await expect(reflect).not.toContainText(
+    "Save your project to add a reflection.",
+  );
   await reflect
     .getByRole("textbox", { name: "What I learned" })
     .fill("Check every figure it produces.");
@@ -198,11 +198,15 @@ test("M3 at 390: one column, a full-width save, no sideways scroll", async ({
   resetDemo("week2");
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page);
-  await expect(page.getByRole("button", { name: "Use Dan's example" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Use Dan's example" }),
+  ).toBeVisible();
   await expect(
     page.getByText("Use approved tools and de-identified data."),
   ).toBeVisible();
-  await expect(page.getByRole("complementary", { name: "Guidance" })).toBeHidden();
+  await expect(
+    page.getByRole("complementary", { name: "Guidance" }),
+  ).toBeHidden();
   await expect(page.getByRole("link", { name: "Cancel" })).toBeHidden();
   const box = (await saveButton(page).boundingBox())!;
   expect(box.width).toBeGreaterThan(340);

@@ -44,7 +44,16 @@ function fieldsOf(project: MyProject["project"]): ProjectFields {
   if (!project) return EMPTY;
   const { title, before, change, after, resultTypes, headline } = project;
   const { humanReviewed, dataSafe } = project;
-  return { title, before, change, after, resultTypes, headline, humanReviewed, dataSafe };
+  return {
+    title,
+    before,
+    change,
+    after,
+    resultTypes,
+    headline,
+    humanReviewed,
+    dataSafe,
+  };
 }
 
 /** One form row: title and helper on the left, fields on the right (12). On phones the left goes to screen readers only, as M3 has it. */
@@ -72,7 +81,10 @@ function Section({
       )}
     >
       <div
-        className={clsx("flex flex-col gap-02", !onPhone && "max-[672px]:sr-only")}
+        className={clsx(
+          "flex flex-col gap-02",
+          !onPhone && "max-[672px]:sr-only",
+        )}
       >
         <h2 id={`${id}-title`} className="text-heading-04">
           {title}
@@ -140,7 +152,10 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
         },
         (e: unknown) =>
           setError(
-            userMessage(e, "Your draft didn't save. It tries again when you type."),
+            userMessage(
+              e,
+              "Your draft didn't save. It tries again when you type.",
+            ),
           ),
       );
     }, 1000);
@@ -191,7 +206,9 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
       await saveReflection({ expectOrgId, ...reflection });
       toast({ title: "Reflection saved" });
     } catch (e) {
-      setReflectError(userMessage(e, "Your reflection didn't save. Try again."));
+      setReflectError(
+        userMessage(e, "Your reflection didn't save. Try again."),
+      );
     } finally {
       setReflecting(false);
     }
@@ -412,7 +429,10 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
             </Button>
           </div>
           {error ? (
-            <p role="alert" className="w-full text-right text-label-01 text-support-error">
+            <p
+              role="alert"
+              className="w-full text-right text-label-01 text-support-error"
+            >
               {error}
             </p>
           ) : null}
@@ -457,7 +477,10 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
                     Save reflection
                   </Button>
                   {reflectError ? (
-                    <p role="alert" className="text-label-01 text-support-error">
+                    <p
+                      role="alert"
+                      className="text-label-01 text-support-error"
+                    >
                       {reflectError}
                     </p>
                   ) : null}

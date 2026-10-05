@@ -64,7 +64,9 @@ test("Dan's sprint, from week 2 to his public credential", async ({
     page.getByRole("heading", { level: 1, name: "Good afternoon, Dan" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Continue learning" }).click();
-  await expect(page.getByText("Session 2 marked done.", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Session 2 marked done.", { exact: true }),
+  ).toBeVisible();
 
   // His draft becomes a saved project. The script leaves a project Dan has
   // touched alone, so he fills in the after and the headline himself.

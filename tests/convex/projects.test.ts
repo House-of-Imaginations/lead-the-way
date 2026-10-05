@@ -335,15 +335,24 @@ test("a file another row already holds is refused and never deleted", async () =
     expectOrgId,
   });
   const own = await upload(t, "image/png");
-  await dan.mutation(api.projects.setScreenshot, { storageId: own, expectOrgId });
+  await dan.mutation(api.projects.setScreenshot, {
+    storageId: own,
+    expectOrgId,
+  });
 
   for (const taken of [logo, meis]) {
     await expect(
-      dan.mutation(api.projects.setScreenshot, { storageId: taken, expectOrgId }),
+      dan.mutation(api.projects.setScreenshot, {
+        storageId: taken,
+        expectOrgId,
+      }),
     ).rejects.toMatchObject({ data: { code: "SCREENSHOT_STALE" } });
   }
   // Setting your own file again is not taking anyone's.
-  await dan.mutation(api.projects.setScreenshot, { storageId: own, expectOrgId });
+  await dan.mutation(api.projects.setScreenshot, {
+    storageId: own,
+    expectOrgId,
+  });
   await dan.mutation(api.projects.setScreenshot, {
     storageId: null,
     expectOrgId,

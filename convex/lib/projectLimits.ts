@@ -6,7 +6,11 @@
  */
 export const SCREENSHOT_TYPES = ["image/png", "image/jpeg"] as const;
 export const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024;
-export const PROJECT_LIMITS = { title: 120, text: 2000, headline: 160 } as const;
+export const PROJECT_LIMITS = {
+  title: 120,
+  text: 2000,
+  headline: 160,
+} as const;
 export const RESULT_TYPES = [
   "Time saved",
   "Quality improvement",
@@ -15,9 +19,15 @@ export const RESULT_TYPES = [
 ] as const;
 
 /** Why a file can't be the screenshot, or null. Called on the File in the browser and on the `_storage` row in `setScreenshot`. */
-export function screenshotProblem(contentType: string | undefined, size: number) {
+export function screenshotProblem(
+  contentType: string | undefined,
+  size: number,
+) {
   if (!(SCREENSHOT_TYPES as readonly string[]).includes(contentType ?? "")) {
-    return { code: "SCREENSHOT_TYPE", message: "Upload a PNG or JPG." } as const;
+    return {
+      code: "SCREENSHOT_TYPE",
+      message: "Upload a PNG or JPG.",
+    } as const;
   }
   if (size > MAX_SCREENSHOT_BYTES) {
     return {

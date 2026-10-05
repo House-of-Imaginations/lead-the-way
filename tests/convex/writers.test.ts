@@ -287,14 +287,12 @@ test("a skip writes a row per question, never over an answer, and an answer repl
       )
       .collect();
   });
-  expect(rows.map((r) => [r.phase, r.question, r.score, r.skippedAt])).toEqual(
-    [
-      ["before", "aiConfidence", 3, undefined],
-      ["before", "comfortWithManager", undefined, 2],
-      ["after", "aiConfidence", undefined, 4],
-      ["after", "comfortWithManager", 5, undefined],
-    ],
-  );
+  expect(rows.map((r) => [r.phase, r.question, r.score, r.skippedAt])).toEqual([
+    ["before", "aiConfidence", 3, undefined],
+    ["before", "comfortWithManager", undefined, 2],
+    ["after", "aiConfidence", undefined, 4],
+    ["after", "comfortWithManager", 5, undefined],
+  ]);
   expect(await eventsOf(t, orgId)).toEqual([]);
 });
 

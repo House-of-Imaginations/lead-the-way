@@ -53,7 +53,9 @@ export function MyAgreement({
       <div className="flex max-w-content-max flex-col gap-05">
         <h1 className="text-heading-01">Our Team AI Agreement</h1>
         <p className="max-w-[65ch] text-body-01 text-text-secondary">
-          {"Your team's agreement isn't ready yet. It appears here once your manager saves it."}
+          {
+            "Your team's agreement isn't ready yet. It appears here once your manager saves it."
+          }
         </p>
       </div>
     );
@@ -61,7 +63,10 @@ export function MyAgreement({
 
   return (
     <div className="grid max-w-content-max grid-cols-[minmax(0,1fr)_320px] items-start gap-09 max-[900px]:grid-cols-1 max-[900px]:gap-07">
-      <article aria-labelledby="agreement-title" className="flex flex-col gap-06">
+      <article
+        aria-labelledby="agreement-title"
+        className="flex flex-col gap-06"
+      >
         <header className="flex flex-col gap-02">
           <p className="text-label-01 text-text-secondary">{a.heading}</p>
           <h1 id="agreement-title" className="text-heading-01">
@@ -99,7 +104,10 @@ export function MyAgreement({
         </blockquote>
       </article>
 
-      <aside aria-labelledby="signatures-title" className="flex flex-col bg-layer-01">
+      <aside
+        aria-labelledby="signatures-title"
+        className="flex flex-col bg-layer-01"
+      >
         <div className="flex flex-col gap-04 p-05">
           <div className="flex items-center justify-between gap-03">
             <h2 id="signatures-title" className="text-heading-03">
@@ -116,7 +124,9 @@ export function MyAgreement({
             </p>
           )}
           <p className="text-body-02 text-text-secondary">
-            {"Signing means you've read it and will follow it. You can raise changes at the week 4 review."}
+            {
+              "Signing means you've read it and will follow it. You can raise changes at the week 4 review."
+            }
           </p>
         </div>
         {a.mine !== "signed" && (
