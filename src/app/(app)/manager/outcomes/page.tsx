@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { api } from "@convex/_generated/api";
 import { preloadAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, getShell, managerRead } from "@/lib/account/queries";
-import { Outcomes } from "./Outcomes";
+import { Outcomes } from "./_components/Outcomes";
 
 export const metadata: Metadata = { title: "Outcomes · Lead the Way" };
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { api } from "@convex/_generated/api";
 import { preloadAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, openOrHome } from "@/lib/account/queries";
-import { ShowAndTell } from "./ShowAndTell";
+import { ShowAndTell } from "./_components/ShowAndTell";
 
 export const metadata: Metadata = { title: "Show and tell · Lead the Way" };
 

@@ -3,7 +3,7 @@ import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { fetchAuthQuery } from "@/lib/account/auth-server";
 import { openOrHome } from "@/lib/account/queries";
 import { api } from "@convex/_generated/api";
-import { TeamForm } from "./TeamForm";
+import { TeamForm } from "./_components/TeamForm";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 

@@ -4,7 +4,7 @@ import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { fetchAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, openOrHome } from "@/lib/account/queries";
 import { api } from "@convex/_generated/api";
-import { ProtectedHourForm } from "./ProtectedHourForm";
+import { ProtectedHourForm } from "./_components/ProtectedHourForm";
 
 /** 04: the protected hour, its commitment, and the not ready dialog. */
 export default async function ProtectedHourPage() {

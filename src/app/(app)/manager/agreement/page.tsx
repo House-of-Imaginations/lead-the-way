@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { api } from "@convex/_generated/api";
 import { fetchAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, getShell, managerRead } from "@/lib/account/queries";
-import { AgreementBuilder } from "./AgreementBuilder";
+import { AgreementBuilder } from "./_components/AgreementBuilder";
 
 export const metadata: Metadata = { title: "Team AI Agreement · Lead the Way" };
 

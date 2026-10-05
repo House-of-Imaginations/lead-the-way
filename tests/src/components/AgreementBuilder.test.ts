@@ -3,7 +3,7 @@ import type { FunctionReturnType } from "convex/server";
 import { expect, test } from "vitest";
 import type { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { contactOptionsOf } from "../../../src/app/(app)/manager/agreement/AgreementBuilder";
+import { contactOptionsOf } from "../../../src/app/(app)/manager/agreement/_components/AgreementBuilder";
 
 type Agreement = FunctionReturnType<typeof api.agreements.current>;
 

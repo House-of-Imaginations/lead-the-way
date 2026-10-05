@@ -3,7 +3,7 @@ import { api } from "@convex/_generated/api";
 import { InlineNotification } from "@/components/ui/InlineNotification";
 import { fetchAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, getShell, openOrHome } from "@/lib/account/queries";
-import { ProjectForm } from "./ProjectForm";
+import { ProjectForm } from "./_components/ProjectForm";
 
 export const metadata: Metadata = { title: "Work project · Lead the Way" };
 

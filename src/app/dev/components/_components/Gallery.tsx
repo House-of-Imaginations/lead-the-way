@@ -1,16 +1,16 @@
 "use client";
 
-import { ButtonsSection } from "./sections/ButtonsSection";
-import { ChoicesSection } from "./sections/ChoicesSection";
-import { FieldsSection } from "./sections/FieldsSection";
-import { LogoSection } from "./sections/LogoSection";
-import { MediaSection } from "./sections/MediaSection";
-import { OverlaysSection } from "./sections/OverlaysSection";
-import { SideNavSection } from "./sections/SideNavSection";
-import { StatusSection } from "./sections/StatusSection";
-import { TabsProgressSection } from "./sections/TabsProgressSection";
-import { ToastSection } from "./sections/ToastSection";
-import { TopBarSection } from "./sections/TopBarSection";
+import { ButtonsSection } from "./ButtonsSection";
+import { ChoicesSection } from "./ChoicesSection";
+import { FieldsSection } from "./FieldsSection";
+import { LogoSection } from "./LogoSection";
+import { MediaSection } from "./MediaSection";
+import { OverlaysSection } from "./OverlaysSection";
+import { SideNavSection } from "./SideNavSection";
+import { StatusSection } from "./StatusSection";
+import { TabsProgressSection } from "./TabsProgressSection";
+import { ToastSection } from "./ToastSection";
+import { TopBarSection } from "./TopBarSection";
 
 export function Gallery() {
   return (

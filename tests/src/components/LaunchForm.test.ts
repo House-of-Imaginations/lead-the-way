@@ -4,7 +4,7 @@ import {
   copyLinks,
   launchedToast,
   sendReason,
-} from "../../../src/app/(app)/manager/sprint/launch/LaunchForm";
+} from "../../../src/app/(app)/manager/sprint/launch/_components/LaunchForm";
 
 const link = (email: string, token: string) => ({ email, token });
 
