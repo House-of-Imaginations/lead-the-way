@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
-import { currentSprint } from "./lib/sprint";
+import { launchedSprint } from "./lib/sprint";
 import { closesAt } from "./lib/sprintTime";
 import {
   afterCheckInOpen,
@@ -31,7 +31,7 @@ export const checkIn = viewerMutation()({
   handler: async (ctx, { phase, answers }): Promise<null> => {
     const { viewer } = ctx;
     const orgId = viewer.org._id;
-    const sprint = await currentSprint(ctx, orgId);
+    const sprint = await launchedSprint(ctx, orgId);
     if (!sprint) throwUserError("NO_SPRINT", "Your team has no sprint yet.");
     const now = viewer.now;
     const row = {

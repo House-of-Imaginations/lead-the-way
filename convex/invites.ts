@@ -122,8 +122,9 @@ export type JoinFacts = Infer<typeof joinFactsValidator>;
  * What 09 says about the sprint a link joins (Rulings 2 and 18): the
  * workspace's current sprint, in the sprint's time zone. No zone note: the
  * reader has no seat here yet, so no time zone of their own. A draft's week
- * one is worked out from the clock (`startDateOf`), as every screen does.
- * Null before the workspace has a sprint.
+ * one is `startDateOf`'s, as every screen has it: the next working week, or
+ * the month a "Run another sprint" clone pinned. Null before the workspace
+ * has a sprint.
  */
 async function joinFacts(
   ctx: QueryCtx,

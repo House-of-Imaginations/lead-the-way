@@ -178,6 +178,7 @@ export const callsFor = ({
   "agreements:sign": { version: 1, expectOrgId: orgId },
   "sprints:launchPage": {},
   "sprints:launch": { emails: [], message: "", expectOrgId: orgId },
+  "sprints:runAnother": { expectOrgId: orgId },
   "manager:overview": {},
   "manager:outcomes": {},
   "surveys:checkIn": { phase: "before", answers: null, expectOrgId: orgId },

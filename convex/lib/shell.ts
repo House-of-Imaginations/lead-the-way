@@ -13,7 +13,12 @@ import {
 } from "./orgs/permissions";
 import { firstNameOf, initialsOf } from "./orgs/people";
 import { SETUP_STEPS } from "./setupSteps";
-import { currentSprint, currentTeam, setupGate } from "./sprint";
+import {
+  currentSprint,
+  currentTeam,
+  launchedSprint,
+  setupGate,
+} from "./sprint";
 import { sprintStatus } from "./sprintTime";
 import type { Viewer } from "./viewer";
 
@@ -282,6 +287,9 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
         current: org._id === viewer.org._id,
       });
   }
+  // A manager's status follows setup, so a clone shows as the draft it is. An
+  // employee's stays on the launched sprint (P7a Ruling 15).
+  const shown = manager ? sprint : await launchedSprint(ctx, viewer.org._id);
   return {
     expectOrgId: viewer.org._id,
     isDemo,
@@ -306,7 +314,7 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
         )
       : EMPLOYEE_NAV,
     checklist: await checklistOf(ctx, viewer, team, sprint),
-    status: sprint ? sprintStatus(sprint, now, manager) : null,
+    status: shown ? sprintStatus(shown, now, manager) : null,
     switchTo: await switchToOf(ctx, viewer, isDemo),
   };
 }

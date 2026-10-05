@@ -1,7 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { throwUserError } from "./errors";
-import { currentSprint } from "./sprint";
+import { launchedSprint } from "./sprint";
 import type { Viewer } from "./viewer";
 
 /**
@@ -27,12 +27,12 @@ export async function projectOf(
     .unique();
 }
 
-/** The viewer's saved project in the current sprint, or PROJECT_NOT_SAVED (Rulings 12, 13 and 15). */
+/** The viewer's saved project in the launched sprint, or PROJECT_NOT_SAVED (Rulings 12, 13 and 15). */
 export async function savedProject(
   ctx: QueryCtx,
   viewer: Viewer,
 ): Promise<Doc<"projects">> {
-  const sprint = await currentSprint(ctx, viewer.org._id);
+  const sprint = await launchedSprint(ctx, viewer.org._id);
   const project = sprint
     ? await projectOf(ctx, viewer.person._id, sprint._id)
     : null;

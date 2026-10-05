@@ -58,6 +58,9 @@ export type ErrorCode =
   // Setup edits after launch, and a launch before setup is done (P4).
   | "SPRINT_LAUNCHED"
   | "LAUNCH_NOT_READY"
+  // Run another sprint (P7a).
+  | "SPRINT_NOT_CLOSED"
+  | "SPRINT_DRAFT_EXISTS"
   // The employee journey (P6).
   | "NO_SPRINT"
   | "CHECK_IN_CLOSED"

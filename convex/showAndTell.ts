@@ -4,7 +4,7 @@ import { timedViewerQuery } from "./lib/customFunctions";
 import { firstNameOf } from "./lib/orgs/people";
 import { isPresented, projectOf } from "./lib/projects";
 import { settingsOf } from "./lib/settings";
-import { currentSprint } from "./lib/sprint";
+import { launchedSprint } from "./lib/sprint";
 import { weekOf } from "./lib/sprintTime";
 import { afterCheckInOpen, answeredAfter } from "./lib/surveys";
 
@@ -49,7 +49,7 @@ export const board = timedViewerQuery()({
     const { viewer } = ctx;
     const orgId = viewer.org._id;
     const personId = viewer.person._id;
-    const sprint = await currentSprint(ctx, orgId);
+    const sprint = await launchedSprint(ctx, orgId);
     if (!sprint) return null;
     const week = weekOf(sprint, viewer.now);
     const [settings, badge, answers, own, rows] = await Promise.all([

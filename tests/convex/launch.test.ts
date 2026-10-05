@@ -85,8 +85,9 @@ async function commitHour(t: T, orgId: Id<"orgs">) {
       orgId,
       teamId: team._id,
       status: "draft",
-      // Never read: a draft's week one is worked out live (Ruling 17).
-      startDate: "2099-01-07",
+      // A past Wednesday: a draft's week one is the later of this and the
+      // next working week (Ruling 17, P7a Ruling 14), so launch works it out.
+      startDate: "2026-01-07",
       timeZone: "Australia/Melbourne",
       weeks: 4,
       protectedHour: { weekday: 3, start: "14:00", durationMinutes: 60 },

@@ -19,7 +19,11 @@ export async function currentTeam(
     .unique();
 }
 
-/** The newest sprint is the current one. P7's "Run another sprint" adds the next. */
+/**
+ * The newest sprint, of any state. Setup, launch and the manager overview read
+ * it, so a clone from "Run another sprint" opens setup as soon as it is made.
+ * Employees read `launchedSprint` instead (P7a Ruling 15).
+ */
 export async function currentSprint(
   ctx: QueryCtx,
   orgId: Id<"orgs">,
@@ -29,6 +33,24 @@ export async function currentSprint(
     .withIndex("by_org", (q) => q.eq("orgId", orgId))
     .order("desc")
     .first();
+}
+
+/**
+ * The newest launched sprint, or null before the first launch (P7a Ruling 15).
+ * Employees, their projects and 16 read it, so a draft clone blanks no page.
+ * At most one draft sits above it (`runAnother` refuses a second), so two rows
+ * are enough.
+ */
+export async function launchedSprint(
+  ctx: QueryCtx,
+  orgId: Id<"orgs">,
+): Promise<Doc<"sprints"> | null> {
+  const newest = await ctx.db
+    .query("sprints")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .order("desc")
+    .take(2);
+  return newest.find((s) => s.launchedAt !== undefined) ?? null;
 }
 
 /**

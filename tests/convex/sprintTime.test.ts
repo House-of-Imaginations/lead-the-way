@@ -6,9 +6,12 @@ import {
   hourPattern,
   hourRange,
   hourStart,
+  mondayOf,
+  nextMonthDate,
   spanLabel,
   sprintPhase,
   sprintStatus,
+  startDateOf,
   weekOf,
   weekOneDate,
   zoneNote,
@@ -266,4 +269,49 @@ test("zoneNote names the sprint's city only when the viewer is elsewhere", () =>
   expect(zoneNote("America/Argentina/Buenos_Aires", "UTC")).toBe(
     ", Buenos Aires time",
   );
+});
+
+test("nextMonthDate is the first such weekday of next month, in the sprint's zone", () => {
+  // Thursday 1 October 2026: the first Wednesday of November.
+  expect(nextMonthDate(3, Date.parse("2026-10-01T16:00:00+10:00"), MEL)).toBe(
+    "2026-11-04",
+  );
+  // December rolls into January.
+  expect(nextMonthDate(3, Date.parse("2026-12-15T12:00:00+11:00"), MEL)).toBe(
+    "2027-01-06",
+  );
+  // A month that starts on the weekday keeps the 1st's week: 1 December is a Tuesday.
+  expect(nextMonthDate(2, Date.parse("2026-11-20T09:00:00+11:00"), MEL)).toBe(
+    "2026-12-01",
+  );
+  // Half past midnight on 1 November in Melbourne is still 31 October in UTC.
+  expect(nextMonthDate(3, Date.parse("2026-11-01T00:30:00+11:00"), MEL)).toBe(
+    "2026-12-02",
+  );
+});
+
+test("mondayOf is the Monday of a date's week", () => {
+  expect(mondayOf("2026-11-04")).toBe("2026-11-02");
+  expect(mondayOf("2026-11-02")).toBe("2026-11-02");
+  expect(mondayOf("2026-11-08")).toBe("2026-11-02");
+});
+
+test("a draft's week one is the later of its stored date and the next working week", () => {
+  const draft = (startDate: string) => ({
+    ...sprint(startDate),
+    launchedAt: undefined,
+  });
+  const oct1 = Date.parse("2026-10-01T16:00:00+10:00");
+  // A pinned month holds (P7a Ruling 14).
+  expect(startDateOf(draft("2026-11-04"), oct1)).toBe("2026-11-04");
+  // A stale date moves to the next working week (P4 Ruling 17).
+  expect(startDateOf(draft("2026-01-07"), oct1)).toBe("2026-10-07");
+  // Once the pinned week has passed, it moves on like any draft.
+  expect(
+    startDateOf(draft("2026-11-04"), Date.parse("2026-11-20T09:00:00+11:00")),
+  ).toBe("2026-11-25");
+  // A launched sprint keeps its date.
+  expect(
+    startDateOf({ ...sprint("2026-09-09"), launchedAt: 1 }, oct1),
+  ).toBe("2026-09-09");
 });

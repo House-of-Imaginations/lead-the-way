@@ -3,7 +3,7 @@ import { badgeOf, issueBadge } from "./lib/badges";
 import { viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { COURSE_SESSIONS, progressOf, sessionOf } from "./lib/learning";
-import { currentSprint } from "./lib/sprint";
+import { launchedSprint } from "./lib/sprint";
 import { weekOf } from "./lib/sprintTime";
 
 /**
@@ -22,8 +22,8 @@ export const continueSession = viewerMutation()({
   }),
   handler: async (ctx) => {
     const { viewer } = ctx;
-    const sprint = await currentSprint(ctx, viewer.org._id);
-    if (!sprint || sprint.launchedAt === undefined) {
+    const sprint = await launchedSprint(ctx, viewer.org._id);
+    if (!sprint) {
       throwUserError("NO_SPRINT", "Your sprint hasn't started yet.");
     }
     // `now` is a getter that reads the clock; read it once.

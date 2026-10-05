@@ -7,7 +7,7 @@ import { timedViewerQuery } from "./lib/customFunctions";
 import { progressOf, sessionOf } from "./lib/learning";
 import { isPresented, projectOf } from "./lib/projects";
 import { greetingOf } from "./lib/shell";
-import { currentSprint } from "./lib/sprint";
+import { launchedSprint } from "./lib/sprint";
 import { afterCheckInOpen, answeredAfter } from "./lib/surveys";
 import {
   hourEnd,
@@ -130,8 +130,8 @@ async function launchedFor(
   ctx: QueryCtx,
   viewer: Viewer,
 ): Promise<Launched | null> {
-  const sprint = await currentSprint(ctx, viewer.org._id);
-  if (!sprint || sprint.launchedAt === undefined) return null;
+  const sprint = await launchedSprint(ctx, viewer.org._id);
+  if (!sprint) return null;
   // `now` is a getter that reads the clock; read it once.
   const now = viewer.now;
   return {

@@ -17,6 +17,7 @@ import { snapshotSeries } from "./lib/snapshots";
 import {
   currentSprint,
   currentTeam,
+  launchedSprint,
   setupGate,
   sprintInvites,
 } from "./lib/sprint";
@@ -403,8 +404,8 @@ export const outcomes = timedViewerQuery("team:insights")({
   handler: async (ctx): Promise<Outcomes | null> => {
     const { viewer } = ctx;
     const org = viewer.org;
-    // Task 6 reads `launchedSprint` here instead (Ruling 15).
-    const sprint = await currentSprint(ctx, org._id);
+    // The newest launched sprint, so a draft clone never blanks 16 (Ruling 15).
+    const sprint = await launchedSprint(ctx, org._id);
     const launchedAt = sprint?.launchedAt;
     if (!sprint || launchedAt === undefined) return null;
     // `now` is a getter that reads the clock; read it once.
@@ -467,8 +468,10 @@ export const outcomes = timedViewerQuery("team:insights")({
       tag: `Finished ${dayMon(hourEnd(sprint, sprint.weeks), tz).join(" ")}`,
       intro:
         "Your team made AI learning part of the working week. Here is what changed, as a team.",
-      // Task 6 adds "and the newest sprint is this one".
-      canRunAnother: viewer.permissions.includes("sprint:manage"),
+      // Off once a clone exists: the newest sprint is then the draft (Ruling 14).
+      canRunAnother:
+        viewer.permissions.includes("sprint:manage") &&
+        (await currentSprint(ctx, org._id))?._id === sprint._id,
       inviteLink,
       participation: {
         invited: invites.length,
