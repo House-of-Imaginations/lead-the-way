@@ -79,6 +79,33 @@ test("two people with the same first name get two web addresses", async () => {
   ]);
 });
 
+test("once -2 to -50 are taken, a random suffix keeps sign-up working", async () => {
+  const t = harness();
+  const taken = [
+    "bec-s-workspace",
+    ...Array.from({ length: 49 }, (_, i) => `bec-s-workspace-${i + 2}`),
+  ];
+  await t.run(async (ctx) => {
+    for (const slug of taken) {
+      await ctx.db.insert("orgs", {
+        name: slug,
+        slug,
+        privacyThreshold: 5,
+        isDemo: false,
+        createdAt: 0,
+      });
+    }
+  });
+  await (
+    await account(t, "Bec Hart", "bec@example.com")
+  ).mutation(api.onboarding.start, { acceptTerms: true });
+  const slugs = (await orgsOf(t)).map((o) => o.slug);
+  expect(slugs).toHaveLength(51);
+  const fresh = slugs.filter((s) => !taken.includes(s));
+  expect(fresh).toHaveLength(1);
+  expect(fresh[0]).toMatch(/^bec-s-workspace-[a-z0-9]{6}$/);
+});
+
 test("a user with no name makes a workspace named My workspace", async () => {
   const t = harness();
   const pat = await account(t, "  ", "pat@example.com");
