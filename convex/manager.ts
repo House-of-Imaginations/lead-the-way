@@ -19,7 +19,7 @@ import {
   currentTeam,
   launchedSprint,
   setupGate,
-  sprintInvites,
+  sprintHeadcount,
 } from "./lib/sprint";
 import {
   closesAt,
@@ -239,9 +239,7 @@ export const overview = timedViewerQuery()({
         q.eq("personId", viewer.person._id),
       )
       .take(PATHWAY_MODULES.length);
-    const invites = (await sprintInvites(ctx, org._id, sprint._id)).filter(
-      (i) => i.status !== "revoked",
-    );
+    const headcount = await sprintHeadcount(ctx, org, sprint);
     // The newest week, as the series lets this viewer read it.
     const series = insights
       ? await snapshotSeries(ctx, sprint, viewer.person._id)
@@ -311,8 +309,7 @@ export const overview = timedViewerQuery()({
               ? `Week ${week} of ${sprint.weeks}`
               : `Starts ${dayMon(first, tz).join(" ")}`,
         tag: TAGS[phase],
-        invited: invites.length,
-        joined: invites.filter((i) => i.status === "accepted").length,
+        ...headcount,
         projects: insights ? tile("tasksUnderway") : null,
       },
       agreement,
@@ -337,7 +334,7 @@ export const overview = timedViewerQuery()({
 export const outcomesValidator = v.union(
   v.object({
     state: v.literal("pending"),
-    title: v.string(), // "Sprint in progress" or "Sprint complete"
+    title: v.string(), // "Starts 4 Nov", "Sprint in progress" or "Sprint complete"
     helper: v.string(), // "Outcomes appear on Thu 1 Oct, the day after the last protected hour."
     canRunAnother: v.literal(false),
     inviteLink: v.string(), // "/signup?ref=calder-lane": the page prefixes window.location.origin
@@ -429,7 +426,9 @@ export const outcomes = timedViewerQuery("team:insights")({
         title:
           sprintPhase(sprint, now) === "complete"
             ? "Sprint complete"
-            : "Sprint in progress",
+            : sprintPhase(sprint, now) === "scheduled"
+              ? `Starts ${dayMon(hourStart(sprint, 1), tz).join(" ")}`
+              : "Sprint in progress",
         helper: `Outcomes appear on ${day.weekday} ${day.day} ${day.month}, the day after the last protected hour.`,
         canRunAnother: false,
         inviteLink,
@@ -440,9 +439,7 @@ export const outcomes = timedViewerQuery("team:insights")({
     // Ruling 7, final: no "next week" on the outcomes row.
     const stat = (total: Aggregate): Stat =>
       comparable ? statOf(total, row.threshold, org, true) : CHANGED;
-    const invites = (await sprintInvites(ctx, org._id, sprint._id)).filter(
-      (i) => i.status !== "revoked",
-    );
+    const { invited } = await sprintHeadcount(ctx, org, sprint);
     const presented = stat(row.presented);
     const questions = row.answers.map((a) => ({
       ...QUESTIONS[a.question],
@@ -473,7 +470,7 @@ export const outcomes = timedViewerQuery("team:insights")({
         (await currentSprint(ctx, org._id))?._id === sprint._id,
       inviteLink,
       participation: {
-        invited: invites.length,
+        invited,
         completed: stat(row.completed),
         presented,
       },

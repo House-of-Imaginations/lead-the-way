@@ -259,8 +259,9 @@ test("survey answers are read by question only through the privacy layer", () =>
 /**
  * The files that may touch `loadSeated` (raw seated people), `signatureCount`
  * (a live count) or `countSeated` (a count over whatever list it is handed):
- * the privacy layer, the overview, 10's `agreementForViewer`, and the outcomes
- * writer (presented counts every seated presenter, R-i). A new reader of any
+ * the privacy layer, the overview, 10's `agreementForViewer`, the outcomes
+ * writer (presented counts every seated presenter, R-i), and `sprintHeadcount`
+ * (08's and 16's joined, a membership fact). A new reader of any
  * of them is a new place a manager could see a number, so it has to be added
  * here on purpose.
  */
@@ -269,6 +270,7 @@ const SEATED_FILES = [
   "manager.ts",
   "lib/agreement.ts",
   "lib/snapshots.ts",
+  "lib/sprint.ts",
 ];
 
 test("the seated team and the live signature count are read only where the allowlist says", () => {

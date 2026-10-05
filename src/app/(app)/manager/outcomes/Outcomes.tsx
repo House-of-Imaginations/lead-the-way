@@ -18,7 +18,8 @@ type Stat = Closed["participation"]["completed"];
 /** The 1 to 5 scale; a bar is value / 5 of its track. */
 const SCALE = [1, 2, 3, 4, 5];
 /** Phase label, track, value: one grid for a bar row and the scale under it. */
-const BAR_COLS = "grid-cols-[var(--spacing-09)_minmax(0,1fr)_var(--spacing-09)]";
+const BAR_COLS =
+  "grid-cols-[var(--spacing-09)_minmax(0,1fr)_var(--spacing-09)]";
 
 function statValue(stat: Stat): string {
   return stat.kind === "shown"
@@ -114,7 +115,7 @@ function Header({
         </div>
         {children}
       </div>
-      <div className="flex flex-wrap justify-end">
+      <div className="flex flex-wrap justify-end max-[672px]:w-full max-[672px]:flex-col">
         <InviteTeamModal link={link} />
         {action}
       </div>
@@ -133,7 +134,9 @@ export function Outcomes({
     return (
       <div className="flex max-w-content-max flex-col gap-07">
         <h1 className="text-heading-01">Outcomes</h1>
-        <InlineNotification>Outcomes appear after your first sprint.</InlineNotification>
+        <InlineNotification>
+          Outcomes appear after your first sprint.
+        </InlineNotification>
       </div>
     );
   }
@@ -178,7 +181,10 @@ function ClosedOutcomes({ data }: { data: Closed }) {
             <StatTile label="Invited" value={String(participation.invited)} />
           </li>
           <li className="grid">
-            <Total label="Completed the sprint" stat={participation.completed} />
+            <Total
+              label="Completed the sprint"
+              stat={participation.completed}
+            />
           </li>
           <li className="grid">
             <Total label="Applied projects presented" stat={presented} />
@@ -223,9 +229,7 @@ function ClosedOutcomes({ data }: { data: Closed }) {
                 {q.title}
               </h3>
               {q.quote ? (
-                <p className="text-label-01 text-text-secondary">
-                  “{q.quote}”
-                </p>
+                <p className="text-label-01 text-text-secondary">“{q.quote}”</p>
               ) : null}
               <ul className="flex flex-col gap-02">
                 <Bar label={beforeAfter.beforeLabel} stat={q.before} />
@@ -290,14 +294,16 @@ function ClosedOutcomes({ data }: { data: Closed }) {
               ))}
             </ul>
           ) : presented.kind !== "shown" ? (
-            <p className="text-body-02 text-text-secondary">{presented.helper}</p>
+            <p className="text-body-02 text-text-secondary">
+              {presented.helper}
+            </p>
           ) : null}
           <InlineNotification
             icon={Locked}
             title="Individual course activity remains private."
           >
-            These are team totals. No names, scores, rankings or time spent
-            are shown.
+            These are team totals. No names, scores, rankings or time spent are
+            shown.
           </InlineNotification>
           <Link
             href="/manager/agreement"

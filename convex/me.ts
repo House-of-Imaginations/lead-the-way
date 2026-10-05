@@ -8,7 +8,12 @@ import { progressOf, sessionOf } from "./lib/learning";
 import { isPresented, projectOf } from "./lib/projects";
 import { greetingOf } from "./lib/shell";
 import { launchedSprint } from "./lib/sprint";
-import { afterCheckInOpen, answeredAfter, answeredBefore } from "./lib/surveys";
+import {
+  afterCheckInOpen,
+  answeredAfter,
+  answeredBefore,
+  beforeCheckInOpen,
+} from "./lib/surveys";
 import {
   hourEnd,
   hourLong,
@@ -193,7 +198,12 @@ function stripOf({ sprint, week, complete }: Launched): Home["weeks"] {
     const names = { name: `Week ${w}`, short: `Wk ${w}` };
     const date = dayShort(hourStart(sprint, w), sprint.timeZone);
     if (complete || w < week) {
-      out.push({ ...names, status: "Done", shortStatus: "Done", state: "done" });
+      out.push({
+        ...names,
+        status: "Done",
+        shortStatus: "Done",
+        state: "done",
+      });
     } else if (w === week) {
       out.push({
         ...names,
@@ -225,7 +235,8 @@ function applyOf(
 ): Activity {
   let state: Activity["state"] = "todo";
   if (past && project && project.startedWeek <= w) state = "done";
-  if (current && project) state = project.status === "saved" ? "done" : "progress";
+  if (current && project)
+    state = project.status === "saved" ? "done" : "progress";
   return {
     label: state === "progress" ? "Apply, in progress" : "Apply",
     state,
@@ -318,7 +329,9 @@ export const home = timedViewerQuery()({
       // Sprint 1 asks at join (P6 Ruling 7). Later sprints have no join, so
       // /me asks until the end of week 1 (P7a Ruling 17).
       beforeCheckIn:
-        first?._id !== sprint._id && week <= 1 && !answeredBefore(answers),
+        first?._id !== sprint._id &&
+        beforeCheckInOpen(sprint, first?._id, now) &&
+        !answeredBefore(answers),
     };
   },
 });

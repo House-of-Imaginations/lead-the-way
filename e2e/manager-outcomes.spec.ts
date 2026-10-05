@@ -62,7 +62,9 @@ test.describe("complete", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Sprint complete" }),
     ).toBeVisible();
-    await expect(main(page).getByText("Finished 30 Sep", { exact: true })).toBeVisible();
+    await expect(
+      main(page).getByText("Finished 30 Sep", { exact: true }),
+    ).toBeVisible();
     await expect(
       main(page).getByText(
         "Your team made AI learning part of the working week. Here is what changed, as a team.",
@@ -72,8 +74,12 @@ test.describe("complete", () => {
     await expect(invite(page)).toBeVisible();
 
     await expect(tile(page, "Invited")).toHaveText(/^Invited\s*8$/);
-    await expect(tile(page, "Completed the sprint")).toHaveText(/^Completed the sprint\s*7$/);
-    await expect(tile(page, "Applied projects presented")).toHaveText(/^Applied projects presented\s*6$/);
+    await expect(tile(page, "Completed the sprint")).toHaveText(
+      /^Completed the sprint\s*7$/,
+    );
+    await expect(tile(page, "Applied projects presented")).toHaveText(
+      /^Applied projects presented\s*6$/,
+    );
 
     await expect(region(page, "Before and after")).toContainText(
       "Team average on a 1 to 5 scale, 5 responses before and 7 after",
@@ -135,7 +141,9 @@ test.describe("complete", () => {
     await copy.click();
     await expect(page.getByText("Link copied.", { exact: true })).toBeVisible();
     await expect(dialog(page)).toBeHidden();
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(LINK);
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      LINK,
+    );
 
     // The footer's Close; the X in the header is also named Close.
     await invite(page).click();
@@ -180,14 +188,36 @@ test.describe("complete", () => {
     const first = await tile(page, "Invited").boundingBox();
     const second = await tile(page, "Completed the sprint").boundingBox();
     expect(second!.y).toBeGreaterThan(first!.y);
-    expect((await invite(page).boundingBox())!.height).toBeGreaterThanOrEqual(48);
+    expect((await invite(page).boundingBox())!.height).toBeGreaterThanOrEqual(
+      48,
+    );
+    // Each header button fills the content width, inside main's padding.
+    const content = await main(page).evaluate((el) => {
+      const s = getComputedStyle(el);
+      return (
+        el.getBoundingClientRect().width -
+        parseFloat(s.paddingLeft) -
+        parseFloat(s.paddingRight)
+      );
+    });
+    const header = main(page).locator("header");
+    const buttons = header.getByRole("button");
+    expect(await buttons.count()).toBeGreaterThan(0);
+    for (const button of await buttons.all()) {
+      expect(
+        Math.abs((await button.boundingBox())!.width - content),
+      ).toBeLessThanOrEqual(1);
+    }
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
     await expectAxeClean(page);
-    await page.screenshot({ path: "output/screens/16-390.png", fullPage: true });
+    await page.screenshot({
+      path: "output/screens/16-390.png",
+      fullPage: true,
+    });
   });
 });
 

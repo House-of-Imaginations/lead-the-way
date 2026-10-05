@@ -24,6 +24,7 @@ import {
 } from "./lib/orgs/invites";
 import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
 import { reserveRateLimit } from "./lib/rateLimits";
+import { takeOutcomes } from "./lib/snapshots";
 import {
   HOUR_STARTS,
   isOneOf,
@@ -37,6 +38,7 @@ import {
   currentTeam,
   ensureSprint,
   gateOpen,
+  isLaterSprint,
   requireDraft,
   setupGate,
   sprintInvites,
@@ -257,6 +259,8 @@ export const launchPage = timedViewerQuery("sprint:manage")({
       launched: v.boolean(),
       /** `launch` also needs members:manage. */
       canInvite: v.boolean(),
+      /** A later sprint carries the team over, so it may launch with no new addresses. */
+      carriesTeam: v.boolean(),
       gate: v.object({
         committed: v.boolean(),
         pathwayDone: v.boolean(),
@@ -303,6 +307,7 @@ export const launchPage = timedViewerQuery("sprint:manage")({
     return {
       launched: sprint.launchedAt !== undefined,
       canInvite,
+      carriesTeam: await isLaterSprint(ctx, orgId, sprint),
       // 07 shows three of the four; the team profile isn't a launch step.
       gate: {
         committed: gate.committed,
@@ -377,7 +382,8 @@ export const launch = viewerMutation(
     // Normalised as `isDemoAddress` reads them, so a trailing dot can't slip
     // a demo address past it.
     const emails = [...new Set(args.emails.map(normalEmail).filter(Boolean))];
-    if (emails.length === 0) {
+    // A later sprint carries its team over, so it may send none.
+    if (emails.length === 0 && !(await isLaterSprint(ctx, orgId, sprint))) {
       throwUserError("FIELD_REQUIRED", "Add at least one email address.");
     }
     if (emails.length > MAX_LAUNCH_INVITES) {
@@ -519,18 +525,14 @@ export const runAnother = viewerMutation("sprint:manage")({
         "Your next sprint is already in setup.",
       );
     }
-    const outcomes = sprint
-      ? await ctx.db
-          .query("sprintOutcomes")
-          .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
-          .unique()
-      : null;
-    if (!sprint || closesAt(sprint) > now || !outcomes) {
+    if (!sprint || closesAt(sprint) > now) {
       throwUserError(
         "SPRINT_NOT_CLOSED",
         "You can run another sprint once this one has closed.",
       );
     }
+    // A missed scheduled run is recovered here.
+    await takeOutcomes(ctx, viewer.org, sprint, now);
     await ctx.db.insert("sprints", {
       orgId,
       teamId: sprint.teamId,

@@ -10,16 +10,32 @@ const link = (email: string, token: string) => ({ email, token });
 
 test("a role without members:manage is told who can send", () => {
   const gate = { committed: true, pathwayDone: true, agreementSaved: true };
-  expect(sendReason({ canInvite: false, gate }, 2)).toBe(
+  expect(sendReason({ canInvite: false, carriesTeam: false, gate }, 2)).toBe(
     "Ask a workspace admin to send invitations.",
   );
-  expect(sendReason({ canInvite: true, gate }, 2)).toBeNull();
-  expect(sendReason({ canInvite: true, gate }, 0)).toBe(
+  expect(
+    sendReason({ canInvite: true, carriesTeam: false, gate }, 2),
+  ).toBeNull();
+  expect(sendReason({ canInvite: true, carriesTeam: false, gate }, 0)).toBe(
     "Add at least one email address.",
   );
   expect(
-    sendReason({ canInvite: true, gate: { ...gate, pathwayDone: false } }, 2),
+    sendReason(
+      {
+        canInvite: true,
+        carriesTeam: false,
+        gate: { ...gate, pathwayDone: false },
+      },
+      2,
+    ),
   ).toBe("Protect the hour, finish the pathway and save the agreement first.");
+});
+
+test("a later sprint may send with no new addresses", () => {
+  const gate = { committed: true, pathwayDone: true, agreementSaved: true };
+  expect(
+    sendReason({ canInvite: true, carriesTeam: true, gate }, 0),
+  ).toBeNull();
 });
 
 test("links launch returned are kept when launchPage has none (email on)", () => {

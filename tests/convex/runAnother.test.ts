@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { DEMO_TARGETS, mel } from "../../convex/lib/demo/schedule";
+import { loadSeated } from "../../convex/lib/privacy";
 import { calderLane, seat, type T } from "./workspace/helpers";
 import {
   clockAt,
@@ -103,17 +104,21 @@ test("runAnother is refused until the sprint has closed", async () => {
     priya.mutation(api.sprints.runAnother, { expectOrgId: orgId }),
   ).rejects.toMatchObject(NOT_CLOSED);
   // Past closesAt (Thursday 1 October, 3:00 PM), but no outcomes row yet:
-  // a patched clock runs no snapshot.
+  // a patched clock runs no snapshot. runAnother writes the missed row itself.
   await clockAt(t, orgId, mel("2026-10-01T15:30"));
-  await expect(
-    priya.mutation(api.sprints.runAnother, { expectOrgId: orgId }),
-  ).rejects.toMatchObject(NOT_CLOSED);
-  expect(await sprintsOf(t, orgId)).toHaveLength(1);
-  // The clock move takes the outcomes row.
-  await move(t, "complete");
+  const outcomeRows = () =>
+    t.run((ctx) => ctx.db.query("sprintOutcomes").collect());
+  const [first] = await sprintsOf(t, orgId);
+  expect(
+    (await outcomeRows()).filter((r) => r.sprintId === first!._id),
+  ).toHaveLength(0);
   expect(
     await priya.mutation(api.sprints.runAnother, { expectOrgId: orgId }),
   ).toEqual({ href: "/setup/protected-hour" });
+  expect(
+    (await outcomeRows()).filter((r) => r.sprintId === first!._id),
+  ).toHaveLength(1);
+  expect(await sprintsOf(t, orgId)).toHaveLength(2);
 });
 
 test("runAnother refuses a second draft", async () => {
@@ -356,4 +361,57 @@ test("the before check-in shows on /me only from sprint 2, in week 1, until answ
       expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "CHECK_IN_DONE" } });
+});
+
+test("a clone launches with no new addresses and counts the carried team", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  await move(t, "complete");
+  await priya.mutation(api.sprints.runAnother, { expectOrgId: orgId });
+  const clone = (await sprintsOf(t, orgId))[1]!;
+  // What 04 does when the hour is committed.
+  await t.run((ctx) =>
+    ctx.db.patch(clone._id, { committedAt: mel("2026-10-01T17:00") }),
+  );
+  await priya.mutation(api.sprints.launch, {
+    emails: [],
+    message: "",
+    expectOrgId: orgId,
+  });
+  const seated = await t.run(
+    async (ctx) => (await loadSeated(ctx, (await ctx.db.get(orgId))!)).length,
+  );
+  expect(seated).toBeGreaterThan(0);
+  const overview = await priya.query(api.manager.overview, {});
+  expect(overview?.sprint).toMatchObject({ invited: seated, joined: seated });
+  // 16 is pending on the scheduled clone, titled as 08 titles it.
+  expect(overview?.phase).toBe("scheduled");
+  expect(await priya.query(api.manager.outcomes, {})).toMatchObject({
+    state: "pending",
+    title: "Starts 4 Nov",
+  });
+});
+
+test("the before check-in closes after week 1 of a later sprint", async () => {
+  const { t, orgId, as } = await calderLane();
+  const dan = as("dan");
+  const mei = as("mei");
+  await move(t, "complete");
+  await as("priya").mutation(api.sprints.runAnother, { expectOrgId: orgId });
+  await launchClone(t, orgId);
+  const answer = (who: typeof dan) =>
+    who.mutation(api.surveys.checkIn, {
+      phase: "before",
+      answers: { aiConfidence: 3, comfortWithManager: 4 },
+      expectOrgId: orgId,
+    });
+  await clockAt(t, orgId, Date.parse("2026-11-09T09:00:00+11:00"));
+  await expect(answer(dan)).rejects.toMatchObject({
+    data: {
+      code: "CHECK_IN_CLOSED",
+      message: "The before check-in has closed.",
+    },
+  });
+  await clockAt(t, orgId, Date.parse("2026-11-04T13:00:00+11:00"));
+  expect(await answer(mei)).toBeNull();
 });

@@ -73,13 +73,17 @@ export function launchedToast({
 
 /** Why "Send invitations" is off, or null when it is on. */
 export function sendReason(
-  { canInvite, gate }: Pick<LaunchPage, "canInvite" | "gate">,
+  {
+    canInvite,
+    carriesTeam,
+    gate,
+  }: Pick<LaunchPage, "canInvite" | "carriesTeam" | "gate">,
   count: number,
 ): string | null {
   if (!canInvite) return NO_INVITE;
   if (!(gate.committed && gate.pathwayDone && gate.agreementSaved))
     return GATE_REASON;
-  return count === 0 ? "Add at least one email address." : null;
+  return count === 0 && !carriesTeam ? "Add at least one email address." : null;
 }
 
 /** Moves focus to the invited list's heading once this tab has launched. */
@@ -340,7 +344,9 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
                 </ul>
               ) : (
                 <p className="text-body-02 text-text-secondary">
-                  Add your team by email.
+                  {data.carriesTeam
+                    ? "Your team carries over. Add emails only for new people."
+                    : "Add your team by email."}
                 </p>
               )}
             </div>

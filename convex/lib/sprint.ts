@@ -2,6 +2,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { throwUserError } from "./errors";
 import { requiredDone } from "./pathway";
+import { loadSeated } from "./privacy";
 import { weekOneDate } from "./sprintTime";
 import type { Viewer } from "./viewer";
 
@@ -162,4 +163,44 @@ export async function sprintInvites(
     }
   }
   return [...newest.values()];
+}
+
+/** A sprint after the org's first: a clone only follows a launched one. */
+export async function isLaterSprint(
+  ctx: QueryCtx,
+  orgId: Id<"orgs">,
+  sprint: Doc<"sprints">,
+): Promise<boolean> {
+  const oldest = await ctx.db
+    .query("sprints")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .first();
+  return oldest !== null && oldest._id !== sprint._id;
+}
+
+/**
+ * 08's and 16's invited and joined. Sprint 1 counts its own invitations. A
+ * later sprint carries the seated team over (managers left out), so joined is
+ * that team and invited adds its open invitations. Membership facts, not
+ * activity: no threshold.
+ */
+export async function sprintHeadcount(
+  ctx: QueryCtx,
+  org: Doc<"orgs">,
+  sprint: Doc<"sprints">,
+): Promise<{ invited: number; joined: number }> {
+  const invites = (await sprintInvites(ctx, org._id, sprint._id)).filter(
+    (i) => i.status !== "revoked",
+  );
+  if (!(await isLaterSprint(ctx, org._id, sprint))) {
+    return {
+      invited: invites.length,
+      joined: invites.filter((i) => i.status === "accepted").length,
+    };
+  }
+  const joined = (await loadSeated(ctx, org)).length;
+  return {
+    invited: joined + invites.filter((i) => i.status === "pending").length,
+    joined,
+  };
 }

@@ -15,6 +15,17 @@ export const afterCheckInOpen = (sprint: Doc<"sprints">, now: number) =>
     weekOf(sprint, now) >= sprint.weeks) &&
   now < closesAt(sprint);
 
+/**
+ * Sprint 1 asks the before check-in at join, with no window. A later sprint has
+ * no join, so it asks until the end of week 1 (P7a Ruling 17). `me.home` shows
+ * the card by this and `surveys.checkIn` refuses by it.
+ */
+export const beforeCheckInOpen = (
+  sprint: Doc<"sprints">,
+  firstId: Id<"sprints"> | undefined,
+  now: number,
+) => firstId === sprint._id || weekOf(sprint, now) <= 1;
+
 /** The after check-in is answered. A skip (no `score`) is not an answer (Ruling 6). */
 export const answeredAfter = (rows: Doc<"surveyResponses">[]) =>
   rows.some((r) => r.phase === "after" && r.score !== undefined);

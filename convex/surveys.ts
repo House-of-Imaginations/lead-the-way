@@ -8,6 +8,7 @@ import {
   afterCheckInOpen,
   answeredAfter,
   answeredBefore,
+  beforeCheckInOpen,
   recordSkip,
   upsertAnswer,
 } from "./lib/surveys";
@@ -51,6 +52,13 @@ export const checkIn = viewerMutation()({
       )
       .take(6);
     if (phase === "before") {
+      const oldest = await ctx.db
+        .query("sprints")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .first();
+      if (!beforeCheckInOpen(sprint, oldest?._id, now)) {
+        throwUserError("CHECK_IN_CLOSED", "The before check-in has closed.");
+      }
       if (answeredBefore(mine)) {
         throwUserError(
           "CHECK_IN_DONE",
