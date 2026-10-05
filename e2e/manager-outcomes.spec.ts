@@ -323,8 +323,9 @@ test.describe("who sees 16", () => {
     expect(res.ok()).toBe(true);
     await page.goto(`/join/${token}`);
     await page.getByRole("button", { name: "Join team sprint" }).click();
-    await page.getByRole("button", { name: "Skip for now" }).click();
+    // Sprint 1 has closed: nothing to answer, straight home (GC-M8).
     await expect(page).toHaveURL("/manager");
+    await expect(page.getByText(MOVED, { exact: true })).toHaveCount(0);
 
     await page.goto("/manager/outcomes");
     await expect(

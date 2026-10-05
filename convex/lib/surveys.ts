@@ -16,15 +16,17 @@ export const afterCheckInOpen = (sprint: Doc<"sprints">, now: number) =>
   now < closesAt(sprint);
 
 /**
- * Sprint 1 asks the before check-in at join, with no window. A later sprint has
- * no join, so it asks until the end of week 1 (P7a Ruling 17). `me.home` shows
- * the card by this and `surveys.checkIn` refuses by it.
+ * Sprint 1 asks the before check-in at join, with no window, until the sprint
+ * closes. Nothing is asked into a finished sprint: a join after it closes,
+ * while the next sprint is still a draft, writes no rows into it (GC-M8). A
+ * later sprint has no join, so it asks until the end of week 1 (P7a Ruling
+ * 17). `me.home`, `joinFacts` and `surveys.checkIn` all read this one rule.
  */
 export const beforeCheckInOpen = (
   sprint: Doc<"sprints">,
   later: boolean,
   now: number,
-) => !later || weekOf(sprint, now) <= 1;
+) => now < closesAt(sprint) && (!later || weekOf(sprint, now) <= 1);
 
 /** The after check-in is answered. A skip (no `score`) is not an answer (Ruling 6). */
 export const answeredAfter = (rows: Doc<"surveyResponses">[]) =>

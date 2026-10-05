@@ -56,6 +56,18 @@ export async function launchedSprint(
 }
 
 /**
+ * The sprint a person joining now lands in, and whose sign-offs count: the
+ * newest launched one, else the one being set up (P7b-1). 09 shows its dates
+ * and `agreements.sign` logs it, so a draft clone never relabels sprint 1.
+ */
+export async function joinedSprint(
+  ctx: QueryCtx,
+  orgId: Id<"orgs">,
+): Promise<Doc<"sprints"> | null> {
+  return (await launchedSprint(ctx, orgId)) ?? (await setupSprint(ctx, orgId));
+}
+
+/**
  * The current sprint, made as a draft the first time setup needs one: a
  * workspace starts with a team and no sprint (`createWorkspace`). Wednesday
  * 2:00 PM for an hour, four weeks, in the manager's time zone, from the next

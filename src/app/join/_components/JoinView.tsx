@@ -18,6 +18,7 @@ import {
 } from "@/components/ui";
 import { authClient } from "@/lib/account/auth-client";
 import { userMessage } from "@/lib/errors";
+import { landingAfterJoin } from "./landing";
 
 export type JoinState =
   | "SIGNED_OUT"
@@ -256,9 +257,9 @@ export function JoinView({
             autoFocus
             expectOrgId={joined}
             onDone={() => {
-              // A full load: the app layout reads the new seat and workspace.
+              // A full load to the person's own home: the app layout reads the new seat and workspace.
               // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
-              window.location.assign("/me");
+              window.location.assign("/home");
             }}
           />
         </main>
@@ -384,12 +385,10 @@ export function JoinView({
               orgName={orgName}
               invitedBy={invitedBy}
               onJoined={(orgId) => {
-                // A later sprint past week 1 has no before check-in to answer.
-                if (join?.askBefore === false) {
-                  // A full load, as CheckIn's onDone does.
-                  // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
-                  window.location.assign("/me");
-                } else setJoined(orgId);
+                const to = landingAfterJoin(join);
+                // A full load, as CheckIn's onDone does.
+                if (to) window.location.assign(to);
+                else setJoined(orgId);
               }}
             />
           </section>

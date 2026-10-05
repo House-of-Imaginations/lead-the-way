@@ -20,7 +20,7 @@ import {
 import { timedViewerQuery, viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
-import { setupSprint, currentTeam } from "./lib/sprint";
+import { setupSprint, currentTeam, joinedSprint } from "./lib/sprint";
 import { hourStart, startDateOf } from "./lib/sprintTime";
 import { getInOrg } from "./lib/tenant";
 import { contactValidator, toggleValidator } from "./tables/sprint";
@@ -131,7 +131,8 @@ export const sign = viewerMutation()({
       personId: viewer.person._id,
       signedAt: viewer.now,
     });
-    const sprint = await setupSprint(ctx, orgId);
+    // The sprint the signer is in, not a draft clone (P7b-1).
+    const sprint = await joinedSprint(ctx, orgId);
     await logEvent(ctx, {
       orgId,
       sprintId: sprint?._id,

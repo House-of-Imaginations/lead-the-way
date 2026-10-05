@@ -33,7 +33,12 @@ import {
 } from "./lib/orgs/membership";
 import { firstNameOf, initialsOf, isDemoAccount } from "./lib/orgs/people";
 import { reserveRateLimit } from "./lib/rateLimits";
-import { setupSprint, isLaterSprint, launchedSprint } from "./lib/sprint";
+import {
+  setupSprint,
+  isLaterSprint,
+  joinedSprint,
+  launchedSprint,
+} from "./lib/sprint";
 import { beforeCheckInOpen } from "./lib/surveys";
 import {
   hourRange,
@@ -128,8 +133,9 @@ export const joinFactsValidator = v.object({
 export type JoinFacts = Infer<typeof joinFactsValidator>;
 
 /**
- * What 09 says about the sprint a link joins (Rulings 2 and 18): the
- * workspace's current sprint, in the sprint's time zone. No zone note: the
+ * What 09 says about the sprint a link joins (Rulings 2 and 18), in the
+ * sprint's time zone. The caller picks the sprint: a real link shows
+ * `joinedSprint`, Priya's preview shows `setupSprint` (P7b-1). No zone note: the
  * reader has no seat here yet, so no time zone of their own. A draft's week
  * one is `startDateOf`'s, as every screen has it: the next working week, or
  * the month a "Run another sprint" clone pinned. Null before the workspace
@@ -138,10 +144,10 @@ export type JoinFacts = Infer<typeof joinFactsValidator>;
 async function joinFacts(
   ctx: QueryCtx,
   org: Doc<"orgs">,
+  found: Doc<"sprints"> | null,
   invitedBy: string,
   message: string | undefined,
 ): Promise<JoinFacts | null> {
-  const found = await setupSprint(ctx, org._id);
   if (!found) return null;
   const sprint = { ...found, startDate: startDateOf(found, nowFor(org)) };
   const tz = sprint.timeZone;
@@ -518,7 +524,13 @@ export const publicPreview = publicQuery({
       name: invite.name ?? null,
       message: invite.message ?? null,
       email: invite.email ?? null,
-      join: await joinFacts(ctx, org, invite.invitedBy, invite.message),
+      join: await joinFacts(
+        ctx,
+        org,
+        await joinedSprint(ctx, org._id),
+        invite.invitedBy,
+        invite.message,
+      ),
     };
   },
 });
@@ -591,7 +603,13 @@ export const preview = authenticatedQuery({
         refusal === "INVITE_DECLINED" ||
         refusal === "INVITE_USED"
           ? null
-          : await joinFacts(ctx, org, invite.invitedBy, invite.message),
+          : await joinFacts(
+              ctx,
+              org,
+              await joinedSprint(ctx, org._id),
+              invite.invitedBy,
+              invite.message,
+            ),
     };
   },
 });
@@ -610,7 +628,13 @@ export const teamPreview = timedViewerQuery("sprint:manage")({
   handler: async (ctx) => {
     const { org, userId } = ctx.viewer;
     const sprint = await setupSprint(ctx, org._id);
-    const join = await joinFacts(ctx, org, userId, sprint?.inviteMessage);
+    const join = await joinFacts(
+      ctx,
+      org,
+      sprint,
+      userId,
+      sprint?.inviteMessage,
+    );
     return join && { orgName: org.name, join };
   },
 });
