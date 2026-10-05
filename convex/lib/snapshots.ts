@@ -179,10 +179,15 @@ export async function takeOutcomes(
   const projects = [...presenters.values()];
   const categories = presented.hidden
     ? []
-    : PROJECT_CATEGORIES.map((label) => ({
-        label,
-        count: projects.filter((p) => p.category === label).length,
-      })).filter((c) => c.count > 0);
+    : [...PROJECT_CATEGORIES, "Other" as const]
+        .map((label) => ({
+          label,
+          // A project saved in the product has no category; it counts as
+          // Other, so the categories still add up to presented.
+          count: projects.filter((p) => (p.category ?? "Other") === label)
+            .length,
+        }))
+        .filter((c) => c.count > 0);
 
   await ctx.db.insert("sprintOutcomes", {
     orgId: org._id,

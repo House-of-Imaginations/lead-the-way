@@ -291,7 +291,11 @@ export const sprintTables = {
     completed: aggregateValidator,
     presented: aggregateValidator,
     categories: v.array(
-      v.object({ label: projectCategoryValidator, count: v.number() }),
+      // "Other" is a presented project with no category: only the demo sets one.
+      v.object({
+        label: v.union(projectCategoryValidator, v.literal("Other")),
+        count: v.number(),
+      }),
     ),
     answers: v.array(
       v.object({

@@ -275,6 +275,30 @@ test("presented counts every seated presenter, opted out or not", async () => {
   });
 });
 
+test("a presented project with no category counts as Other, so the categories add up", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "complete");
+  const { sprintId } = (await outcomesRow(t, orgId))!;
+  // Projects saved in the product carry no category; only the demo sets one.
+  await t.run(async (ctx) => {
+    await ctx.db.delete((await ctx.db.query("sprintOutcomes").unique())!._id);
+    for (const p of await ctx.db.query("projects").collect()) {
+      if (p.category === "Analysis")
+        await ctx.db.patch(p._id, { category: undefined });
+    }
+  });
+  await backstop(t, orgId, sprintId);
+
+  const categories = [
+    ...CATEGORIES.filter((c) => c.label !== "Analysis"),
+    { label: "Other", count: 2 },
+  ];
+  expect((await outcomesRow(t, orgId))!.categories).toEqual(categories);
+  expect(await as("priya").query(api.manager.outcomes, {})).toMatchObject({
+    projects: { caption: "6 projects completed", categories },
+  });
+});
+
 test("outcomes hide averages under the threshold", async () => {
   const { t, orgId, as } = await calderLane();
   // Five answer before and seven after (spec 3.3). At 6 only after shows.
