@@ -3,6 +3,8 @@ import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { DEMO_CAST, castOf, type CastKey } from "../../convex/lib/demo/cast";
 import { mel, type DemoTarget } from "../../convex/lib/demo/schedule";
+import { snapshotSeries } from "../../convex/lib/snapshots";
+import { currentSprint } from "../../convex/lib/sprint";
 import {
   calderLane,
   harness,
@@ -78,9 +80,14 @@ const SAVED_BODY =
   "Last updated 7 September 2026. You'll review it together at the week 4 show and tell.";
 const shown = (value: number, of: number) =>
   ({ kind: "shown", value, of }) as const;
+/** Ruling 6: hidden after a change to who is counted, naming nobody. */
+const CHANGED = {
+  kind: "hidden",
+  helper: "Hidden after a change to who is counted",
+} as const;
 
 test("overview has no per-person fields", async () => {
-  const { t, as } = await calderLane();
+  const { t, orgId, as } = await calderLane();
   await move(t, "complete");
   const overview = await as("priya").query(api.manager.overview, {});
   expect(overview?.team).not.toBeNull();
@@ -97,7 +104,15 @@ test("overview has no per-person fields", async () => {
   };
   walk(overview);
   // `learning.percent` is the viewer's own coaching path, not a teammate's.
-  for (const key of ["personId", "name", "email", "userId", "_id", "people"]) {
+  for (const key of [
+    "personId",
+    "name",
+    "email",
+    "userId",
+    "_id",
+    "people",
+    "counted",
+  ]) {
     expect(keys.has(key), key).toBe(false);
   }
   const text = JSON.stringify(overview);
@@ -106,6 +121,17 @@ test("overview has no per-person fields", async () => {
     expect(text).not.toContain(person.name.split(" ")[0]!);
     expect(text).not.toContain(person.email);
   }
+  // Nor any person's id, which a snapshot's `counted` holds (Ruling 6).
+  const ids = await t.run(async (ctx) =>
+    (
+      await ctx.db
+        .query("people")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect()
+    ).map((p) => p._id),
+  );
+  expect(ids.length).toBeGreaterThan(0);
+  for (const id of ids) expect(text).not.toContain(id);
 });
 
 test("an opt-out leaves invited and joined alone and waits for the next snapshot", async () => {
@@ -123,11 +149,13 @@ test("an opt-out leaves invited and joined alone and waits for the next snapshot
   expect(after.sprint).toMatchObject({
     invited: 8,
     joined: 7,
-    projects: shown(4, 6),
+    projects: CHANGED,
   });
+  // Week 2 counts one person fewer than week 1, so it can't be shown beside
+  // it (Ruling 6).
   expect(after.team).toEqual({
-    sessionDone: { label: "Week 2 session done", stat: shown(6, 6) },
-    tasksUnderway: { label: "Real tasks underway", stat: shown(4, 6) },
+    sessionDone: { label: "Week 2 session done", stat: CHANGED },
+    tasksUnderway: { label: "Real tasks underway", stat: CHANGED },
   });
 });
 
@@ -471,4 +499,170 @@ test("the overview's words at each demo target", async () => {
     ["Week 3, 23 Sep", "done"],
     ["Week 4, 30 Sep", "done"],
   ]);
+});
+
+test("a one-person cohort change hides the later rows, compared with the last row shown", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  await move(t, "week2");
+  // Week 1 counted all seven.
+  expect(
+    (await priya.query(api.manager.overview, {}))!.team?.sessionDone.stat,
+  ).toEqual(shown(6, 7));
+
+  // Dan opts out during week 2, so week 2 counts six (Review Focus 1).
+  await optOut(t, orgId, await personOf(t, orgId, "dan"));
+  await move(t, "week3");
+  const week2 = (await priya.query(api.manager.overview, {}))!;
+  expect(week2.sprint.projects).toEqual(CHANGED);
+  expect(week2.team).toEqual({
+    sessionDone: { label: "Week 2 session done", stat: CHANGED },
+    tasksUnderway: { label: "Real tasks underway", stat: CHANGED },
+  });
+
+  // Week 3 counts the same six as week 2. Week 2 was never shown, so week 3
+  // is compared with week 1, one person apart, and stays hidden too.
+  await move(t, "week4");
+  const week3 = (await priya.query(api.manager.overview, {}))!;
+  expect(week3.team).toEqual({
+    sessionDone: { label: "Week 3 session done", stat: CHANGED },
+    tasksUnderway: { label: "Real tasks underway", stat: CHANGED },
+  });
+
+  const reader = await personOf(t, orgId, "priya");
+  const series = await t.run(async (ctx) => {
+    const org = (await ctx.db.get(orgId))!;
+    const sprint = (await currentSprint(ctx, orgId))!;
+    const { weeks, outcomes } = await snapshotSeries(ctx, sprint, org, reader);
+    return {
+      weeks: weeks.map(({ row, comparable }) => [
+        row.week,
+        row.counted?.length,
+        comparable,
+      ]),
+      outcomes,
+    };
+  });
+  expect(series).toEqual({
+    weeks: [
+      [1, 7, true],
+      [2, 6, false],
+      [3, 6, false],
+    ],
+    outcomes: null,
+  });
+});
+
+test("a reader counted in a row sees it hidden", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  // Mei was counted in week 1. Now she is given a role that reads totals.
+  const mei = await personOf(t, orgId, "mei");
+  await t.run(async (ctx) => {
+    const roleId = await ctx.db.insert("orgRoles", {
+      orgId,
+      kind: "custom",
+      name: "Team lead",
+      permissions: ["team:insights"],
+      createdAt: 0,
+    });
+    await ctx.db.patch(mei, { roleId });
+  });
+  const hers = (await as("mei").query(api.manager.overview, {}))!;
+  expect(hers.sprint.projects).toEqual(CHANGED);
+  expect(hers.team).toEqual({
+    sessionDone: { label: "Week 1 session done", stat: CHANGED },
+    tasksUnderway: { label: "Real tasks underway", stat: CHANGED },
+  });
+  // The same row reads as shown to Priya, whom it never counted.
+  expect(
+    (await as("priya").query(api.manager.overview, {}))!.team?.sessionDone
+      .stat,
+  ).toEqual(shown(6, 7));
+});
+
+test("a row with no stored cohort reads hidden", async () => {
+  vi.setSystemTime(mel("2026-09-10T09:00"));
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  for (const subject of ["a", "b", "c", "d", "e", "f"]) {
+    await seat(t, orgId, `user_${subject}`, []);
+  }
+  const sprintId = await launchedSprint(t, orgId);
+  // Taken before P7a: totals, but no `counted` and no `threshold`.
+  await t.run((ctx) =>
+    ctx.db.insert("teamSnapshots", {
+      orgId,
+      sprintId,
+      week: 1,
+      takenAt: mel("2026-09-09T15:00"),
+      sessionDone: { hidden: false, n: 6, value: 5 },
+      tasksUnderway: { hidden: false, n: 6, value: 4 },
+    }),
+  );
+  expect(await owner.query(api.manager.overview, {})).toMatchObject({
+    sprint: { projects: CHANGED },
+    team: {
+      sessionDone: { label: "Week 1 session done", stat: CHANGED },
+      tasksUnderway: { stat: CHANGED },
+    },
+  });
+});
+
+test("stored rows keep their threshold", async () => {
+  vi.setSystemTime(mel("2026-09-10T09:00"));
+  /** Six employees, and week 1's row taken under `threshold`. */
+  const teamOfSix = async (threshold: number) => {
+    const t = harness();
+    const { owner, orgId } = await workspace(t);
+    await t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold: threshold }));
+    for (const subject of ["a", "b", "c", "d", "e", "f"]) {
+      await seat(t, orgId, `user_${subject}`, []);
+    }
+    const sprintId = await launchedSprint(t, orgId);
+    await t.mutation(internal.snapshots.take, { orgId, sprintId });
+    return {
+      setThreshold: (privacyThreshold: number) =>
+        t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold })),
+      stat: async () =>
+        (await owner.query(api.manager.overview, {}))!.team?.sessionDone.stat,
+      row: () =>
+        t.run(
+          async (ctx) =>
+            (await ctx.db
+              .query("teamSnapshots")
+              .withIndex("by_org", (q) => q.eq("orgId", orgId))
+              .unique())!,
+        ),
+    };
+  };
+
+  // Raised from 5 to 7: a total shown at n 6 hides until 7 respond.
+  const raised = await teamOfSix(5);
+  expect(await raised.stat()).toEqual(shown(0, 6));
+  await raised.setThreshold(7);
+  expect(await raised.stat()).toEqual({
+    kind: "hidden",
+    helper: "Hidden until 7 responses",
+  });
+
+  // Taken at 7 with n 6, so stored without a value. Lowered to 5, n 6 would
+  // clear it, but there is no value to show: it says when there will be one,
+  // never the stale "Hidden until 7 responses".
+  const lowered = await teamOfSix(7);
+  const row = await lowered.row();
+  expect(row).toMatchObject({
+    threshold: 7,
+    sessionDone: { hidden: true, n: 6 },
+  });
+  expect(row.counted).toHaveLength(6);
+  expect(await lowered.stat()).toEqual({
+    kind: "hidden",
+    helper: "Hidden until 7 responses",
+  });
+  await lowered.setThreshold(5);
+  expect(await lowered.stat()).toEqual({
+    kind: "hidden",
+    helper: "Shown from next week's totals",
+  });
 });

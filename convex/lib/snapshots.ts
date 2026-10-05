@@ -1,7 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { progressOf } from "./learning";
-import { count, loadCountable } from "./privacy";
+import { count, loadCountable, thresholdOf } from "./privacy";
 import { projectOf } from "./projects";
 import { hourEnd } from "./sprintTime";
 
@@ -72,19 +72,56 @@ export async function takeDueSnapshots(
         org,
       ),
       tasksUnderway: count(people, (p) => underway.has(p._id), org),
+      counted: people.map((p) => p._id),
+      threshold: thresholdOf(org),
     });
   }
   return due.length;
 }
 
-/** The newest week's totals, which 08 shows. */
-export async function latestSnapshot(
+export type SeriesRow<T> = { row: T; comparable: boolean };
+
+/**
+ * WHAT A READER MAY SET SIDE BY SIDE (Ruling 6, R-e). Two totals over cohorts
+ * one person apart difference back to that person: week 1 counts Mei, week 2
+ * doesn't (she opted out, or now reads totals), so week 1 less week 2 is Mei.
+ * Walking the weeks in order, a row is comparable only when it stored its
+ * cohort, the reader isn't in it (they know their own part), and it differs
+ * from the last row shown by nobody or by at least the threshold. It is
+ * compared with the last row SHOWN, not the row before, so week 3 can't be
+ * read against week 1 once week 2 is hidden. After a small change, totals
+ * stay hidden for the rest of the sprint; the copy says why, naming nobody.
+ *
+ * The one place this is decided, so 08 and 16 can't disagree. `outcomes` is
+ * null for now: the sprint's outcomes row, walked after the weeks, comes with
+ * `sprintOutcomes`.
+ */
+export async function snapshotSeries(
   ctx: QueryCtx,
-  sprintId: Id<"sprints">,
-): Promise<Doc<"teamSnapshots"> | null> {
-  return await ctx.db
+  sprint: Doc<"sprints">,
+  org: Doc<"orgs">,
+  readerId: Id<"people">,
+): Promise<{ weeks: SeriesRow<Doc<"teamSnapshots">>[]; outcomes: null }> {
+  // One row per week (writer contract), so a sprint's weeks bound the read.
+  const rows = await ctx.db
     .query("teamSnapshots")
-    .withIndex("by_sprint_and_week", (q) => q.eq("sprintId", sprintId))
-    .order("desc")
-    .first();
+    .withIndex("by_sprint_and_week", (q) => q.eq("sprintId", sprint._id))
+    .take(sprint.weeks);
+  let last: Set<Id<"people">> | null = null;
+  const comparable = (counted: Id<"people">[] | undefined) => {
+    if (!counted || counted.includes(readerId)) return false;
+    const cohort = new Set(counted);
+    if (last) {
+      let changed = 0;
+      for (const id of cohort) if (!last.has(id)) changed++;
+      for (const id of last) if (!cohort.has(id)) changed++;
+      if (changed > 0 && changed < thresholdOf(org)) return false;
+    }
+    last = cohort;
+    return true;
+  };
+  return {
+    weeks: rows.map((row) => ({ row, comparable: comparable(row.counted) })),
+    outcomes: null,
+  };
 }

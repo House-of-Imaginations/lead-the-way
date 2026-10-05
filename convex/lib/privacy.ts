@@ -25,10 +25,20 @@ import { isManager, type Permission } from "./orgs/permissions";
  * from a live `count` or `aggregate` inside a query: two live looks a minute
  * apart could be differenced back to the one person who acted. Membership
  * counts (invited, joined) are live, as they are facts about the invitation,
- * not activity. A snapshot's totals are checked against the threshold again
- * when read (`statOf` in manager.ts), as it may have been raised since. The
- * files that may call `count` and `aggregate` are pinned by a test in
- * tests/convex/canary.test.ts; extend that list on purpose, never in passing.
+ * not activity. A snapshot's totals are checked again when read (`statOf` in
+ * manager.ts), against the threshold now and the one the row stored (P7a
+ * Ruling 7). The files that may call `count` and `aggregate` are pinned by a
+ * test in tests/convex/canary.test.ts; extend that list on purpose, never in
+ * passing.
+ *
+ * WHO A ROW COUNTED (P7a Ruling 6). Each snapshot stores the ids it counted,
+ * only so `snapshotSeries` (lib/snapshots.ts) can hide a row that differs by
+ * fewer than the threshold from the last row shown, or that counted its
+ * reader. No query returns them.
+ *
+ * LIVE "JOINED" BESIDE A FROZEN "OF N" (P7a Ruling 8). 08 shows the live
+ * joined count next to a snapshot's n. The gap says how many people a total
+ * leaves out (opted out, or managing the team), never who. Accepted.
  */
 export const MIN_THRESHOLD = 5;
 

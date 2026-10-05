@@ -6,9 +6,14 @@ import { timedViewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
 import { PATHWAY_MODULES, coachingPercent } from "./lib/pathway";
-import { loadSeated, thresholdOf, type Aggregate } from "./lib/privacy";
+import {
+  MIN_THRESHOLD,
+  loadSeated,
+  thresholdOf,
+  type Aggregate,
+} from "./lib/privacy";
 import { ROUTE_PERMISSION, isManager } from "./lib/orgs/permissions";
-import { latestSnapshot } from "./lib/snapshots";
+import { snapshotSeries } from "./lib/snapshots";
 import {
   currentSprint,
   currentTeam,
@@ -106,19 +111,31 @@ function spanShort(from: number, to: number, timeZone: string): string {
   return m1 === m2 ? `${d1} to ${d2} ${m2}` : `${d1} ${m1} to ${d2} ${m2}`;
 }
 
-/** A snapshot's total on a tile: not taken yet, hidden below the threshold, or shown. */
+/** Ruling 6's helper: why a total is hidden, naming nobody. */
+const COHORT_CHANGED = "Hidden after a change to who is counted";
+
+/**
+ * A stored total on a tile (Ruling 7), checked against the threshold now and
+ * the one it was taken under (a row with none was taken at 5). A total hidden
+ * under an older, higher threshold has no value stored, so lowering the
+ * threshold can't show it: it says the next row will. Whether the row exists
+ * and may be compared at all (Ruling 6) is the caller's to decide.
+ */
 function statOf(
-  total: Aggregate | undefined,
-  pending: string,
+  total: Aggregate,
+  rowThreshold: number | undefined,
   org: Doc<"orgs">,
 ): Stat {
-  if (!total) return { kind: "pending", helper: pending };
-  // Checked again on read: the threshold may have been raised since.
-  if (total.hidden || total.n < thresholdOf(org)) {
-    return {
-      kind: "hidden",
-      helper: `Hidden until ${thresholdOf(org)} responses`,
-    };
+  const now = thresholdOf(org);
+  if (
+    total.hidden &&
+    total.n >= now &&
+    (rowThreshold ?? MIN_THRESHOLD) > now
+  ) {
+    return { kind: "hidden", helper: "Shown from next week's totals" };
+  }
+  if (total.hidden || total.n < now) {
+    return { kind: "hidden", helper: `Hidden until ${now} responses` };
   }
   return { kind: "shown", value: total.value, of: total.n };
 }
@@ -129,7 +146,8 @@ function statOf(
  *
  * Any manager may read it, so /manager never refuses its own home (Ruling 6).
  * Team totals and the projects count need `team:insights`, and come only from
- * the latest weekly snapshot, never a live count (Ruling 1). Invited and
+ * the newest weekly snapshot, read through `snapshotSeries` (P7a Ruling 6),
+ * never a live count (Ruling 1). Invited and
  * joined are live membership facts (Ruling 3). `hour` is never read: the
  * server passes the current hour so the cached answer turns over each hour
  * (Ruling 14).
@@ -218,7 +236,17 @@ export const overview = timedViewerQuery()({
     const invites = (await sprintInvites(ctx, org._id, sprint._id)).filter(
       (i) => i.status !== "revoked",
     );
-    const snapshot = insights ? await latestSnapshot(ctx, sprint._id) : null;
+    // The newest week, as the series lets this viewer read it.
+    const series = insights
+      ? await snapshotSeries(ctx, sprint, org, viewer.person._id)
+      : null;
+    const latest = series?.weeks.at(-1);
+    const tile = (key: "sessionDone" | "tasksUnderway"): Stat =>
+      !latest
+        ? { kind: "pending", helper: pending }
+        : !latest.comparable
+          ? { kind: "hidden", helper: COHORT_CHANGED }
+          : statOf(latest.row[key], latest.row.threshold, org);
 
     const saved = await latestSaved(ctx, team._id);
     let agreement: Overview["agreement"] = {
@@ -273,21 +301,19 @@ export const overview = timedViewerQuery()({
         tag: TAGS[phase],
         invited: invites.length,
         joined: invites.filter((i) => i.status === "accepted").length,
-        projects: insights
-          ? statOf(snapshot?.tasksUnderway, pending, org)
-          : null,
+        projects: insights ? tile("tasksUnderway") : null,
       },
       agreement,
       team:
         insights && phase !== "draft"
           ? {
               sessionDone: {
-                label: `Week ${snapshot?.week ?? 1} session done`,
-                stat: statOf(snapshot?.sessionDone, pending, org),
+                label: `Week ${latest?.row.week ?? 1} session done`,
+                stat: tile("sessionDone"),
               },
               tasksUnderway: {
                 label: "Real tasks underway",
-                stat: statOf(snapshot?.tasksUnderway, pending, org),
+                stat: tile("tasksUnderway"),
               },
             }
           : null,

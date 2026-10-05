@@ -252,7 +252,11 @@ export const sprintTables = {
 
   /**
    * Team totals, frozen when each week's hour ends (Rulings 1 and 2). One row
-   * per (sprint, week), never rewritten. Aggregates only: no person id.
+   * per (sprint, week), never rewritten. Aggregates only, plus `counted`: the
+   * ids `loadCountable` returned, kept so `snapshotSeries` can hide a row
+   * after a small change to who is counted (P7a Ruling 6). No query returns
+   * it. `threshold` is `thresholdOf(org)` when taken (P7a Ruling 7). Rows
+   * taken before P7a have neither: they read as hidden, and as taken at 5.
    */
   teamSnapshots: defineTable({
     orgId: v.id("orgs"),
@@ -261,6 +265,8 @@ export const sprintTables = {
     takenAt: v.number(),
     sessionDone: aggregateValidator,
     tasksUnderway: aggregateValidator,
+    counted: v.optional(v.array(v.id("people"))),
+    threshold: v.optional(v.number()),
   })
     .index("by_org", ["orgId"])
     .index("by_sprint_and_week", ["sprintId", "week"]),

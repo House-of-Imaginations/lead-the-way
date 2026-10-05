@@ -358,3 +358,22 @@ test("the demo launched with DEMO_MODE off runs on real time, so it schedules", 
   });
   expect(await scheduled(t)).toHaveLength(5);
 });
+
+test("each row stores who it counted and the threshold it was taken under (Ruling 6)", async () => {
+  const { t, orgId } = await calderLane();
+  await t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold: 6 }));
+  await move(t, "week2");
+  const priya = await personOf(t, orgId, "priya");
+  const dan = await personOf(t, orgId, "dan");
+  const [row] = await t.run((ctx) =>
+    ctx.db
+      .query("teamSnapshots")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
+  );
+  expect(row?.threshold).toBe(6);
+  expect(row?.counted).toHaveLength(7);
+  expect(row?.counted).toContain(dan);
+  // The manager reads the totals, so she is never counted.
+  expect(row?.counted).not.toContain(priya);
+});
