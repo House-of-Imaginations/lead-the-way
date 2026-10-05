@@ -473,6 +473,14 @@ test("09 for a link shows the sprint it joins, not a draft clone (P7b-1)", async
   expect(
     (await t.query(api.invites.publicPreview, { token }))?.join,
   ).toMatchObject({ showAndTell: "30 Sep" });
+  // Signed in, a non-member reads the same sprint through `preview`.
+  expect(
+    (
+      await t
+        .withIdentity({ subject: "user_stranger" })
+        .query(api.invites.preview, { token })
+    )?.join?.showAndTell,
+  ).toBe("30 Sep");
   // Priya's own preview is of the clone she is about to launch.
   expect(
     (await as("priya").query(api.invites.teamPreview, {}))?.join.showAndTell,

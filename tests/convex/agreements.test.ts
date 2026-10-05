@@ -595,17 +595,22 @@ test("signing logs the sprint people are in, not a draft clone (P7b-1)", async (
       version: Math.max(...saved.map((a) => a.version)),
     };
   });
+  const signedEvents = () =>
+    t.run(async (ctx) =>
+      (
+        await ctx.db
+          .query("events")
+          .withIndex("by_org", (q) => q.eq("orgId", orgId))
+          .collect()
+      ).filter((e) => e.type === "agreement.signed"),
+    );
+  const before = await signedEvents();
   await as("dan").mutation(api.agreements.sign, {
     version,
     expectOrgId: orgId,
   });
-  const signed = await t.run(async (ctx) =>
-    (
-      await ctx.db
-        .query("events")
-        .withIndex("by_org", (q) => q.eq("orgId", orgId))
-        .collect()
-    ).filter((e) => e.type === "agreement.signed"),
-  );
+  const signed = await signedEvents();
+  // Exactly one new event, so a `sign` that logs nothing fails here.
+  expect(signed).toHaveLength(before.length + 1);
   expect(signed.at(-1)?.sprintId).toBe(first._id);
 });
