@@ -200,3 +200,58 @@ test.describe("settings", () => {
     await expect(page).toHaveURL(/\/manager(\?|$)/);
   });
 });
+
+test.describe("settings, axe and phones", () => {
+  test.beforeAll(() => resetDemo("week2"));
+
+  for (const scheme of ["light", "dark"] as const) {
+    test(`17 passes axe, ${scheme}`, async ({ page, expectAxeClean }) => {
+      await signInAs(page, "priya");
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/settings");
+      await expect(page.getByLabel("Full name")).toBeVisible();
+      await expectAxeClean(page);
+      await page.getByRole("tab", { name: "Privacy" }).click();
+      await expectAxeClean(page);
+    });
+
+    test(`19 passes axe, ${scheme}`, async ({ page, expectAxeClean }) => {
+      await signInAs(page, "dan");
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/me/settings");
+      await expect(
+        page.getByRole("switch", { name: "Include me in team totals" }),
+      ).toBeVisible();
+      await expectAxeClean(page);
+      await page.getByRole("tab", { name: "Profile" }).click();
+      await expectAxeClean(page);
+    });
+
+    test(`19 on a phone fits and passes axe, ${scheme} @mobile`, async ({
+      page,
+      expectAxeClean,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await signInAs(page, "dan");
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/me/settings");
+      await expect(
+        page.getByRole("switch", { name: "Include me in team totals" }),
+      ).toBeVisible();
+      const fits = () =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        );
+      expect(await fits()).toBe(true);
+      await expectAxeClean(page);
+      await page.getByRole("tab", { name: "Profile" }).click();
+      expect(await fits()).toBe(true);
+      // Full-width buttons on phones.
+      const save = (await page
+        .getByRole("button", { name: "Save changes" })
+        .boundingBox())!;
+      expect(save.width).toBeGreaterThan(300);
+      await expectAxeClean(page);
+    });
+  }
+});
