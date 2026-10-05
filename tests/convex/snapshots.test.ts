@@ -8,6 +8,7 @@ import {
   type DemoTarget,
 } from "../../convex/lib/demo/schedule";
 import { PATHWAY_MODULES } from "../../convex/lib/pathway";
+import { snapshotSeries } from "../../convex/lib/snapshots";
 import {
   calderLane,
   harness,
@@ -357,4 +358,164 @@ test("the demo launched with DEMO_MODE off runs on real time, so it schedules", 
     expectOrgId: orgId,
   });
   expect(await scheduled(t)).toHaveLength(5);
+});
+
+test("each row stores who it counted, who was seated and the threshold it was taken under (Ruling FX)", async () => {
+  const { t, orgId } = await calderLane();
+  await t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold: 6 }));
+  await move(t, "week2");
+  const priya = await personOf(t, orgId, "priya");
+  const dan = await personOf(t, orgId, "dan");
+  const [row] = await t.run((ctx) =>
+    ctx.db
+      .query("teamSnapshots")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
+  );
+  expect(row?.threshold).toBe(6);
+  expect(row?.counted).toHaveLength(7);
+  expect(row?.counted).toContain(dan);
+  // The manager reads the totals, so she is never counted.
+  expect(row?.counted).not.toContain(priya);
+  // The public roster: the seven seated, Dan too, never the manager.
+  expect(row?.seated).toHaveLength(7);
+  expect(row?.seated).toContain(dan);
+  expect(row?.seated).not.toContain(priya);
+});
+
+/**
+ * `comparable` for each week of a new sprint, as `reader` reads it. Each row
+ * stores the `counted` and `seated` it is given; the org's threshold is set
+ * to `threshold` before the read.
+ */
+async function walk(
+  t: T,
+  orgId: Id<"orgs">,
+  reader: Id<"people">,
+  rows: { counted: Id<"people">[]; seated?: Id<"people">[] }[],
+  threshold = 5,
+) {
+  const sprintId = await launchedSprint(t, orgId);
+  return await t.run(async (ctx) => {
+    for (const [i, { counted, seated }] of rows.entries()) {
+      const total = { hidden: false, n: counted.length, value: 0 } as const;
+      await ctx.db.insert("teamSnapshots", {
+        orgId,
+        sprintId,
+        week: i + 1,
+        takenAt: mel("2026-09-09T15:00"),
+        sessionDone: total,
+        tasksUnderway: total,
+        counted,
+        seated,
+        threshold: 5,
+      });
+    }
+    await ctx.db.patch(orgId, { privacyThreshold: threshold });
+    const sprint = (await ctx.db.get(sprintId))!;
+    const { weeks } = await snapshotSeries(ctx, sprint, reader);
+    return weeks.map((w) => w.comparable);
+  });
+}
+
+/** `n` employees seated in a new workspace, and a reader of team totals. */
+async function team(n: number) {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const people: Id<"people">[] = [];
+  for (let i = 0; i < n; i++) {
+    people.push((await seat(t, orgId, `user_${i}`, [])).personId);
+  }
+  const { personId: reader } = await seat(t, orgId, "user_reader", [
+    "team:insights",
+  ]);
+  return { t, orgId, people, reader };
+}
+
+test("a row is shown only when it counts and seats the first row's group (Ruling FX)", async () => {
+  const { t, orgId, people: a, reader } = await team(10);
+  const without = (...drop: number[]) => a.filter((_, i) => !drop.includes(i));
+  // One roster throughout, so each change to who is counted is an opt-out.
+  const rows = (...cohorts: Id<"people">[][]) =>
+    cohorts.map((counted) => ({ counted, seated: a }));
+
+  // Any change hides, however large; the same group shows.
+  expect(
+    await walk(t, orgId, reader, rows(a, without(0, 1), without(0, 1), a)),
+  ).toEqual([true, false, false, true]);
+  // Five apart (the threshold) hides too.
+  expect(await walk(t, orgId, reader, rows(a, without(0, 1, 2, 3, 4)))).toEqual(
+    [true, false],
+  );
+  // Back to the first row's group shows; the change between still hides.
+  expect(
+    await walk(t, orgId, reader, rows(a, without(0, 1, 2, 3, 4), a)),
+  ).toEqual([true, false, true]);
+  // The same people listed in another order are the same group.
+  expect(await walk(t, orgId, reader, rows(a, [...a].reverse()))).toEqual([
+    true,
+    true,
+  ]);
+  // The same counted people under another roster (a promotion) hide.
+  expect(
+    await walk(t, orgId, reader, [
+      { counted: without(9), seated: a },
+      { counted: without(9), seated: without(9) },
+    ]),
+  ).toEqual([true, false]);
+});
+
+test("no two shown rows can be combined to single out one person (Ruling FX, attack 1)", async () => {
+  // Mei, then A and B: two disjoint groups of five. Everyone stays seated.
+  const { t, orgId, people, reader } = await team(11);
+  const [mei, ...rest] = people as [Id<"people">, ...Id<"people">[]];
+  const a = rest.slice(0, 5);
+  const b = rest.slice(5);
+  // Pairwise 10, 6 and 6 apart, all at least the threshold: under the old
+  // rule all three showed, and (w1 + w2 - w3) / 2 was Mei.
+  expect(
+    await walk(t, orgId, reader, [
+      { counted: [mei, ...a], seated: people },
+      { counted: [mei, ...b], seated: people },
+      { counted: [...a, ...b], seated: people },
+    ]),
+  ).toEqual([true, false, false]);
+});
+
+test("raising the threshold never lets a later row be read against an earlier one (Ruling FX, attack 4)", async () => {
+  // A is twelve people, Mei among them; all stay seated.
+  const { t, orgId, people: a, reader } = await team(12);
+  const mei = a[11]!;
+  const week2 = a.slice(6);
+  // Week 2 is six apart, shown at 5. Raised to 7, the old rule hid week 2 and
+  // then read week 3 against week 1 alone: seven apart, so it showed, and
+  // week 2 less week 3 was Mei.
+  expect(
+    await walk(
+      t,
+      orgId,
+      reader,
+      [
+        { counted: a, seated: a },
+        { counted: week2, seated: a },
+        { counted: week2.filter((id) => id !== mei), seated: a },
+      ],
+      7,
+    ),
+  ).toEqual([true, false, false]);
+});
+
+test("a row without a stored roster is never comparable, nor is any row after a first row without one", async () => {
+  const { t, orgId, people: a, reader } = await team(6);
+  expect(
+    await walk(t, orgId, reader, [
+      { counted: a, seated: a },
+      { counted: a },
+      { counted: a, seated: a },
+    ]),
+  ).toEqual([true, false, true]);
+  // The first row is the reference: without its roster, nothing compares.
+  expect(
+    await walk(t, orgId, reader, [{ counted: a }, { counted: a, seated: a }]),
+  ).toEqual([false, false]);
 });

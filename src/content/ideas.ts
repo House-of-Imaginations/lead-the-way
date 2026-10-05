@@ -4,7 +4,10 @@
  */
 export const IDEAS: { label: string; short: string }[] = [
   { label: "Improve a client report", short: "Improve a client report" },
-  { label: "Create a reusable prompt template", short: "Reusable prompt template" },
+  {
+    label: "Create a reusable prompt template",
+    short: "Reusable prompt template",
+  },
   { label: "Improve a repetitive email workflow", short: "Email workflow" },
   { label: "Analyse recurring information", short: "Recurring information" },
   { label: "Structure meeting notes", short: "Meeting notes" },

@@ -554,3 +554,14 @@ test("nothing saved, nothing to sign; a team under the threshold gets no count",
     mine: "signed",
   });
 });
+
+test("a sprint manager is not counted in the team's signatures (Ruling 1)", async () => {
+  const { t, orgId, as } = await week1();
+  const dan = as("dan");
+  await dan.mutation(api.agreements.sign, { version: 1, expectOrgId: orgId });
+  await seat(t, orgId, "user_planner", ["sprint:manage"]);
+  // Counted, the planner would make it 7 of 8, waiting on a manager.
+  expect(await dan.query(api.agreements.forMe, {})).toMatchObject({
+    signatures: { signed: 7, of: 7 },
+  });
+});

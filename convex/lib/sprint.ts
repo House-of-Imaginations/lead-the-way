@@ -1,6 +1,5 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { agreementSaved } from "./agreement";
 import { throwUserError } from "./errors";
 import { requiredDone } from "./pathway";
 import { weekOneDate } from "./sprintTime";
@@ -20,7 +19,11 @@ export async function currentTeam(
     .unique();
 }
 
-/** The newest sprint is the current one. P7's "Run another sprint" adds the next. */
+/**
+ * The newest sprint, of any state. Setup, launch and the manager overview read
+ * it, so a clone from "Run another sprint" opens setup as soon as it is made.
+ * Employees read `launchedSprint` instead (P7a Ruling 15).
+ */
 export async function currentSprint(
   ctx: QueryCtx,
   orgId: Id<"orgs">,
@@ -30,6 +33,24 @@ export async function currentSprint(
     .withIndex("by_org", (q) => q.eq("orgId", orgId))
     .order("desc")
     .first();
+}
+
+/**
+ * The newest launched sprint, or null before the first launch (P7a Ruling 15).
+ * Employees, their projects and 16 read it, so a draft clone blanks no page.
+ * At most one draft sits above it (`runAnother` refuses a second), so two rows
+ * are enough.
+ */
+export async function launchedSprint(
+  ctx: QueryCtx,
+  orgId: Id<"orgs">,
+): Promise<Doc<"sprints"> | null> {
+  const newest = await ctx.db
+    .query("sprints")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .order("desc")
+    .take(2);
+  return newest.find((s) => s.launchedAt !== undefined) ?? null;
 }
 
 /**
@@ -72,6 +93,22 @@ export type SetupGate = {
   agreementSaved: boolean;
 };
 
+/**
+ * The newest saved version of the Team AI Agreement. A newer draft on top
+ * doesn't count. Here, not in lib/agreement (which re-exports it), because
+ * lib/agreement imports this file and the setup gate needs it.
+ */
+export async function latestSaved(ctx: QueryCtx, teamId: Id<"teams">) {
+  const versions = ctx.db
+    .query("agreements")
+    .withIndex("by_team_and_version", (q) => q.eq("teamId", teamId))
+    .order("desc");
+  for await (const version of versions) {
+    if (version.status === "saved") return version;
+  }
+  return null;
+}
+
 export async function setupGate(
   ctx: QueryCtx,
   viewer: Viewer,
@@ -82,7 +119,9 @@ export async function setupGate(
     teamSaved: team?.savedAt !== undefined,
     committed: sprint?.committedAt !== undefined,
     pathwayDone: await requiredDone(ctx, viewer.person._id),
-    agreementSaved: team !== null && (await agreementSaved(ctx, team)),
+    // Any saved version counts, even with a newer draft on top.
+    agreementSaved:
+      team !== null && (await latestSaved(ctx, team._id)) !== null,
   };
 }
 
@@ -123,4 +162,21 @@ export async function sprintInvites(
     }
   }
   return [...newest.values()];
+}
+
+/** A sprint after the org's first, which has launched: a clone only follows a launched one. */
+export async function isLaterSprint(
+  ctx: QueryCtx,
+  orgId: Id<"orgs">,
+  sprint: Doc<"sprints">,
+): Promise<boolean> {
+  const oldest = await ctx.db
+    .query("sprints")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .first();
+  return (
+    oldest !== null &&
+    oldest._id !== sprint._id &&
+    oldest.launchedAt !== undefined
+  );
 }

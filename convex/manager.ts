@@ -1,21 +1,30 @@
 import { literals } from "convex-helpers/validators";
 import { v, type Infer } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
 import { dayMonth, latestSaved } from "./lib/agreement";
 import { timedViewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
 import { PATHWAY_MODULES, coachingPercent } from "./lib/pathway";
-import { loadSeated, thresholdOf, type Aggregate } from "./lib/privacy";
-import { isManager } from "./lib/shell";
-import { latestSnapshot } from "./lib/snapshots";
+import {
+  MIN_THRESHOLD,
+  loadSeated,
+  thresholdOf,
+  type Aggregate,
+} from "./lib/privacy";
+import { ROUTE_PERMISSION, isManager } from "./lib/orgs/permissions";
+import { snapshotSeries } from "./lib/snapshots";
 import {
   currentSprint,
   currentTeam,
+  launchedSprint,
   setupGate,
+  isLaterSprint,
   sprintInvites,
 } from "./lib/sprint";
 import {
+  closesAt,
   hourEnd,
   hourLabel,
   hourLong,
@@ -106,19 +115,36 @@ function spanShort(from: number, to: number, timeZone: string): string {
   return m1 === m2 ? `${d1} to ${d2} ${m2}` : `${d1} ${m1} to ${d2} ${m2}`;
 }
 
-/** A snapshot's total on a tile: not taken yet, hidden below the threshold, or shown. */
+/** Ruling FX's helper: why a total is hidden, naming nobody. */
+const COHORT_CHANGED = "Hidden after a change to who is counted";
+
+/**
+ * A stored total on a tile (Ruling 7), checked against the threshold now and
+ * the one it was taken under (a row with none was taken at 5). A total hidden
+ * under an older, higher threshold has no value stored, so lowering the
+ * threshold can't show it: a weekly row says the next row will; the final
+ * row (`final`: the outcomes row, or week 4's) has no next row, so it says
+ * what it was taken under. Whether the row exists and may be compared at all
+ * (Ruling FX) is the caller's to decide.
+ */
 function statOf(
-  total: Aggregate | undefined,
-  pending: string,
+  total: Aggregate,
+  rowThreshold: number | undefined,
   org: Doc<"orgs">,
+  final = false,
 ): Stat {
-  if (!total) return { kind: "pending", helper: pending };
-  // Checked again on read: the threshold may have been raised since.
-  if (total.hidden || total.n < thresholdOf(org)) {
+  const now = thresholdOf(org);
+  const taken = rowThreshold ?? MIN_THRESHOLD;
+  if (total.hidden && total.n >= now && taken > now) {
     return {
       kind: "hidden",
-      helper: `Hidden until ${thresholdOf(org)} responses`,
+      helper: final
+        ? `Hidden until ${taken} responses`
+        : "Shown from next week's totals",
     };
+  }
+  if (total.hidden || total.n < now) {
+    return { kind: "hidden", helper: `Hidden until ${now} responses` };
   }
   return { kind: "shown", value: total.value, of: total.n };
 }
@@ -129,10 +155,10 @@ function statOf(
  *
  * Any manager may read it, so /manager never refuses its own home (Ruling 6).
  * Team totals and the projects count need `team:insights`, and come only from
- * the latest weekly snapshot, never a live count (Ruling 1). Invited and
- * joined are live membership facts (Ruling 3). `hour` is never read: the
- * server passes the current hour so the cached answer turns over each hour
- * (Ruling 14).
+ * the newest weekly snapshot, read through `snapshotSeries` (Ruling FX),
+ * never a live count (Ruling 1). Invited and joined are live membership facts
+ * (Ruling 3). `hour` is never read: the server passes the current hour so the
+ * cached answer turns over each hour (Ruling 14).
  */
 export const overview = timedViewerQuery()({
   args: {},
@@ -215,10 +241,24 @@ export const overview = timedViewerQuery()({
         q.eq("personId", viewer.person._id),
       )
       .take(PATHWAY_MODULES.length);
-    const invites = (await sprintInvites(ctx, org._id, sprint._id)).filter(
-      (i) => i.status !== "revoked",
-    );
-    const snapshot = insights ? await latestSnapshot(ctx, sprint._id) : null;
+    const headcount = await sprintHeadcount(ctx, org, sprint, now);
+    // The newest week, as the series lets this viewer read it.
+    const series = insights
+      ? await snapshotSeries(ctx, sprint, viewer.person._id)
+      : null;
+    const latest = series?.weeks.at(-1);
+    const tile = (key: "sessionDone" | "tasksUnderway"): Stat =>
+      !latest
+        ? { kind: "pending", helper: pending }
+        : !latest.comparable
+          ? { kind: "hidden", helper: COHORT_CHANGED }
+          : statOf(
+              latest.row[key],
+              latest.row.threshold,
+              org,
+              // The last week has no next weekly row to show it (Q-2).
+              latest.row.week === sprint.weeks,
+            );
 
     const saved = await latestSaved(ctx, team._id);
     let agreement: Overview["agreement"] = {
@@ -253,7 +293,9 @@ export const overview = timedViewerQuery()({
 
     return {
       phase,
-      canManage: viewer.permissions.includes("sprint:manage"),
+      canManage: viewer.permissions.includes(
+        ROUTE_PERMISSION["/manager/sprint/launch"],
+      ),
       intro,
       timeline,
       learning: {
@@ -269,26 +311,218 @@ export const overview = timedViewerQuery()({
               ? `Week ${week} of ${sprint.weeks}`
               : `Starts ${dayMon(first, tz).join(" ")}`,
         tag: TAGS[phase],
-        invited: invites.length,
-        joined: invites.filter((i) => i.status === "accepted").length,
-        projects: insights
-          ? statOf(snapshot?.tasksUnderway, pending, org)
-          : null,
+        ...headcount,
+        projects: insights ? tile("tasksUnderway") : null,
       },
       agreement,
       team:
         insights && phase !== "draft"
           ? {
               sessionDone: {
-                label: `Week ${snapshot?.week ?? 1} session done`,
-                stat: statOf(snapshot?.sessionDone, pending, org),
+                label: `Week ${latest?.row.week ?? 1} session done`,
+                stat: tile("sessionDone"),
               },
               tasksUnderway: {
                 label: "Real tasks underway",
-                stat: statOf(snapshot?.tasksUnderway, pending, org),
+                stat: tile("tasksUnderway"),
               },
             }
           : null,
+    };
+  },
+});
+
+/**
+ * 08's and 16's invited and joined. Sprint 1 counts its own invitations. A
+ * later sprint carries the seated team over (managers left out), so joined is
+ * that team and invited adds its open, unexpired invitations. Membership
+ * facts, not activity: no threshold.
+ */
+async function sprintHeadcount(
+  ctx: QueryCtx,
+  org: Doc<"orgs">,
+  sprint: Doc<"sprints">,
+  now: number,
+): Promise<{ invited: number; joined: number }> {
+  const invites = (await sprintInvites(ctx, org._id, sprint._id)).filter(
+    (i) => i.status !== "revoked",
+  );
+  if (!(await isLaterSprint(ctx, org._id, sprint))) {
+    return {
+      invited: invites.length,
+      joined: invites.filter((i) => i.status === "accepted").length,
+    };
+  }
+  const joined = (await loadSeated(ctx, org)).length;
+  const open = invites.filter(
+    (i) => i.status === "pending" && i.expiresAt > now,
+  );
+  return { invited: joined + open.length, joined };
+}
+
+/** 16's answer (Rulings 11 and 12). Every label is made here. */
+export const outcomesValidator = v.union(
+  v.object({
+    state: v.literal("pending"),
+    title: v.string(), // "Starts 4 Nov", "Sprint in progress" or "Sprint complete"
+    helper: v.string(), // "Outcomes appear on Thu 1 Oct, the day after the last protected hour."
+    canRunAnother: v.boolean(), // closed but the row is missing: runAnother writes it
+    inviteLink: v.string(), // "/signup?ref=calder-lane": the page prefixes window.location.origin
+  }),
+  v.object({
+    state: v.literal("closed"),
+    title: v.literal("Sprint complete"),
+    tag: v.string(), // "Finished 30 Sep"
+    intro: v.string(),
+    canRunAnother: v.boolean(), // sprint:manage, and the newest sprint is this one
+    inviteLink: v.string(),
+    participation: v.object({
+      invited: v.number(),
+      completed: statValidator,
+      presented: statValidator,
+    }),
+    beforeAfter: v.object({
+      caption: v.string(), // "Team average on a 1 to 5 scale, 5 responses before and 7 after"
+      beforeLabel: v.string(), // "Before, 8 Sep"
+      afterLabel: v.string(), // "After, 30 Sep"
+      questions: v.array(
+        v.object({
+          title: v.string(),
+          quote: v.union(v.null(), v.string()),
+          before: statValidator,
+          after: statValidator,
+        }),
+      ),
+    }),
+    projects: v.object({
+      caption: v.union(v.null(), v.string()), // "6 projects completed", null when hidden
+      categories: v.array(v.object({ label: v.string(), count: v.number() })),
+    }),
+  }),
+);
+export type Outcomes = Infer<typeof outcomesValidator>;
+
+/** A total on a row that isn't comparable (Ruling FX). It never says who changed. */
+const CHANGED: Stat = { kind: "hidden", helper: COHORT_CHANGED };
+
+/** 16's two questions, as the spec words them (spec 3.3, "Survey"). */
+const QUESTIONS: Record<
+  "aiConfidence" | "comfortWithManager",
+  { title: string; quote: string | null }
+> = {
+  aiConfidence: { title: "Confidence using AI at work", quote: null },
+  comfortWithManager: {
+    title: "Comfort discussing AI with my manager",
+    quote: "I feel comfortable telling my manager how I use AI at work.",
+  },
+};
+
+/**
+ * 16, the sprint's outcomes. Reads only the stored `sprintOutcomes` row,
+ * through `snapshotSeries`, never a live count (R-a; the static test in
+ * tests/convex/outcomes.test.ts keeps `count` and `aggregate` out of this
+ * file). Pending until the sprint closes (Ruling 12), null before launch.
+ * Invited is the live, non-revoked invitation count, as on 08 (Ruling 11).
+ * Dates come from the sprint, never from a response's time.
+ */
+export const outcomes = timedViewerQuery("team:insights")({
+  args: {},
+  returns: v.union(v.null(), outcomesValidator),
+  handler: async (ctx): Promise<Outcomes | null> => {
+    const { viewer } = ctx;
+    const org = viewer.org;
+    // The newest launched sprint, so a draft clone never blanks 16 (Ruling 15).
+    const sprint = await launchedSprint(ctx, org._id);
+    const launchedAt = sprint?.launchedAt;
+    if (!sprint || launchedAt === undefined) return null;
+    // `now` is a getter that reads the clock; read it once.
+    const now = viewer.now;
+    const tz = sprint.timeZone;
+    const inviteLink = `/signup?ref=${org.slug}`;
+    // Off once a clone exists: the newest sprint is then the draft (Ruling 14).
+    const canRunAnother =
+      viewer.permissions.includes("sprint:manage") &&
+      (await currentSprint(ctx, org._id))?._id === sprint._id;
+
+    const { outcomes: final } = await snapshotSeries(
+      ctx,
+      sprint,
+      viewer.person._id,
+    );
+    if (!final) {
+      const day = parts(closesAt(sprint), tz, {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      });
+      return {
+        state: "pending",
+        title:
+          sprintPhase(sprint, now) === "complete"
+            ? "Sprint complete"
+            : sprintPhase(sprint, now) === "scheduled"
+              ? `Starts ${dayMon(hourStart(sprint, 1), tz).join(" ")}`
+              : "Sprint in progress",
+        helper: `Outcomes appear on ${day.weekday} ${day.day} ${day.month}, the day after the last protected hour.`,
+        // Closed with no row: the scheduled write was missed, and the button
+        // is the way back, since runAnother writes the row first (FR-M4).
+        canRunAnother: canRunAnother && closesAt(sprint) <= now,
+        inviteLink,
+      };
+    }
+
+    const { row, comparable } = final;
+    // Ruling 7, final: no "next week" on the outcomes row.
+    const stat = (total: Aggregate): Stat =>
+      comparable ? statOf(total, row.threshold, org, true) : CHANGED;
+    const { invited } = await sprintHeadcount(ctx, org, sprint, now);
+    const presented = stat(row.presented);
+    const questions = row.answers.map((a) => ({
+      ...QUESTIONS[a.question],
+      before: stat(a.before),
+      after: stat(a.after),
+    }));
+    // Each phase's smallest shown n; a phase hidden throughout says nothing.
+    // "responses" once, after the first number: "5 responses before and 7 after".
+    const clauses = (["before", "after"] as const)
+      .flatMap((phase) => {
+        const ns = questions.flatMap((q) => {
+          const s = q[phase];
+          return s.kind === "shown" ? [s.of] : [];
+        });
+        return ns.length ? [{ n: Math.min(...ns), phase }] : [];
+      })
+      .map(({ n, phase }, i) => `${n} ${i === 0 ? "responses " : ""}${phase}`);
+
+    return {
+      state: "closed",
+      title: "Sprint complete",
+      tag: `Finished ${dayMon(hourEnd(sprint, sprint.weeks), tz).join(" ")}`,
+      intro:
+        "Your team made AI learning part of the working week. Here is what changed, as a team.",
+      canRunAnother,
+      inviteLink,
+      participation: {
+        invited,
+        completed: stat(row.completed),
+        presented,
+      },
+      beforeAfter: {
+        caption: ["Team average on a 1 to 5 scale", clauses.join(" and ")]
+          .filter(Boolean)
+          .join(", "),
+        beforeLabel: `Before, ${dayMon(launchedAt, tz).join(" ")}`,
+        afterLabel: `After, ${dayMon(hourStart(sprint, sprint.weeks), tz).join(" ")}`,
+        questions,
+      },
+      // The categories add up to presented, so they go wherever it is hidden.
+      projects:
+        presented.kind === "shown"
+          ? {
+              caption: `${presented.value} ${presented.value === 1 ? "project" : "projects"} completed`,
+              categories: row.categories,
+            }
+          : { caption: null, categories: [] },
     };
   },
 });

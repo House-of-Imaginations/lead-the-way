@@ -240,6 +240,7 @@ test.describe("week 2", () => {
 
     for (const [who, path] of [
       ["priya", "/manager"],
+      ["priya", "/manager/outcomes"],
       ["dan", "/me"],
     ] as const) {
       test(`${path} passes axe, ${scheme}`, async ({

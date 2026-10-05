@@ -2,10 +2,13 @@ import { v } from "convex/values";
 import { viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
-import { currentSprint } from "./lib/sprint";
+import { isLaterSprint, launchedSprint } from "./lib/sprint";
+import { closesAt } from "./lib/sprintTime";
 import {
   afterCheckInOpen,
   answeredAfter,
+  answeredBefore,
+  beforeCheckInOpen,
   recordSkip,
   upsertAnswer,
 } from "./lib/surveys";
@@ -15,7 +18,8 @@ import { phaseValidator } from "./tables/sprint";
  * The two employee check-ins (Ruling 7). Before: once, right after joining,
  * and skippable; a skip writes rows (Ruling 6) so the script leaves it alone,
  * and logs nothing, because a skip is not an answer. After: from week 4 until
- * answered, no skip. Rows are the viewer's own; nobody else reads them here.
+ * answered or the sprint closes, no skip. Rows are the viewer's own; nobody
+ * else reads them here.
  */
 export const checkIn = viewerMutation()({
   args: {
@@ -29,7 +33,7 @@ export const checkIn = viewerMutation()({
   handler: async (ctx, { phase, answers }): Promise<null> => {
     const { viewer } = ctx;
     const orgId = viewer.org._id;
-    const sprint = await currentSprint(ctx, orgId);
+    const sprint = await launchedSprint(ctx, orgId);
     if (!sprint) throwUserError("NO_SPRINT", "Your team has no sprint yet.");
     const now = viewer.now;
     const row = {
@@ -48,12 +52,11 @@ export const checkIn = viewerMutation()({
       )
       .take(6);
     if (phase === "before") {
-      // normsConfidence is the manager's own (05), not this check-in.
-      if (
-        mine.some(
-          (r) => r.phase === "before" && r.question !== "normsConfidence",
-        )
-      ) {
+      const later = await isLaterSprint(ctx, orgId, sprint);
+      if (!beforeCheckInOpen(sprint, later, now)) {
+        throwUserError("CHECK_IN_CLOSED", "The before check-in has closed.");
+      }
+      if (answeredBefore(mine)) {
         throwUserError(
           "CHECK_IN_DONE",
           "You've already answered the before check-in.",
@@ -62,7 +65,9 @@ export const checkIn = viewerMutation()({
     } else if (!afterCheckInOpen(sprint, now)) {
       throwUserError(
         "CHECK_IN_CLOSED",
-        `The after check-in opens in week ${sprint.weeks}.`,
+        now >= closesAt(sprint)
+          ? "The after check-in has closed."
+          : `The after check-in opens in week ${sprint.weeks}.`,
       );
     }
 

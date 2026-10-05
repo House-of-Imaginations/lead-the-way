@@ -1,15 +1,19 @@
 import { literals } from "convex-helpers/validators";
 import { v, type Infer } from "convex/values";
-import { agreementForViewer } from "./agreements";
 import type { Doc } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
-import { progressOf, sessionOf } from "./learning";
-import { dayMonth } from "./lib/agreement";
+import { agreementForViewer, dayMonth } from "./lib/agreement";
 import { timedViewerQuery } from "./lib/customFunctions";
+import { progressOf, sessionOf } from "./lib/learning";
 import { isPresented, projectOf } from "./lib/projects";
 import { greetingOf } from "./lib/shell";
-import { currentSprint } from "./lib/sprint";
-import { afterCheckInOpen, answeredAfter } from "./lib/surveys";
+import { isLaterSprint, launchedSprint } from "./lib/sprint";
+import {
+  afterCheckInOpen,
+  answeredAfter,
+  answeredBefore,
+  beforeCheckInOpen,
+} from "./lib/surveys";
 import {
   hourEnd,
   hourLong,
@@ -69,6 +73,8 @@ export const homeValidator = v.object({
   agreementUpdated: v.boolean(),
   /** Ruling 7: from week 4 until the after check-in is answered. */
   afterCheckIn: v.boolean(),
+  /** From the second sprint, in week 1 or before, until answered or skipped (P7a Ruling 17). */
+  beforeCheckIn: v.boolean(),
 });
 export type Home = Infer<typeof homeValidator>;
 
@@ -131,8 +137,8 @@ async function launchedFor(
   ctx: QueryCtx,
   viewer: Viewer,
 ): Promise<Launched | null> {
-  const sprint = await currentSprint(ctx, viewer.org._id);
-  if (!sprint || sprint.launchedAt === undefined) return null;
+  const sprint = await launchedSprint(ctx, viewer.org._id);
+  if (!sprint) return null;
   // `now` is a getter that reads the clock; read it once.
   const now = viewer.now;
   return {
@@ -192,7 +198,12 @@ function stripOf({ sprint, week, complete }: Launched): Home["weeks"] {
     const names = { name: `Week ${w}`, short: `Wk ${w}` };
     const date = dayShort(hourStart(sprint, w), sprint.timeZone);
     if (complete || w < week) {
-      out.push({ ...names, status: "Done", shortStatus: "Done", state: "done" });
+      out.push({
+        ...names,
+        status: "Done",
+        shortStatus: "Done",
+        state: "done",
+      });
     } else if (w === week) {
       out.push({
         ...names,
@@ -224,7 +235,8 @@ function applyOf(
 ): Activity {
   let state: Activity["state"] = "todo";
   if (past && project && project.startedWeek <= w) state = "done";
-  if (current && project) state = project.status === "saved" ? "done" : "progress";
+  if (current && project)
+    state = project.status === "saved" ? "done" : "progress";
   return {
     label: state === "progress" ? "Apply, in progress" : "Apply",
     state,
@@ -265,7 +277,7 @@ export const home = timedViewerQuery()({
     if (!launched) return null;
     const { sprint, now, week, note } = launched;
     const me = viewer.person._id;
-    const [progress, project, answers] = await Promise.all([
+    const [progress, project, answers, later] = await Promise.all([
       progressOf(ctx, me, sprint._id),
       projectOf(ctx, me, sprint._id),
       ctx.db
@@ -274,6 +286,7 @@ export const home = timedViewerQuery()({
           q.eq("personId", me).eq("sprintId", sprint._id),
         )
         .take(MY_SURVEY_ROWS),
+      isLaterSprint(ctx, viewer.org._id, sprint),
     ]);
     // Task 6's read, so 10 and 11 can't disagree on "updated".
     const forMe = await agreementForViewer(ctx, viewer);
@@ -309,6 +322,12 @@ export const home = timedViewerQuery()({
         : null,
       agreementUpdated: forMe?.mine === "updated",
       afterCheckIn: afterCheckInOpen(sprint, now) && !answeredAfter(answers),
+      // Sprint 1 asks at join (P6 Ruling 7). Later sprints have no join, so
+      // /me asks until the end of week 1 (P7a Ruling 17).
+      beforeCheckIn:
+        later &&
+        beforeCheckInOpen(sprint, later, now) &&
+        !answeredBefore(answers),
     };
   },
 });

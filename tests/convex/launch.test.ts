@@ -85,8 +85,9 @@ async function commitHour(t: T, orgId: Id<"orgs">) {
       orgId,
       teamId: team._id,
       status: "draft",
-      // Never read: a draft's week one is worked out live (Ruling 17).
-      startDate: "2099-01-07",
+      // A past Wednesday: a draft's week one is the later of this and the
+      // next working week (Ruling 17, P7a Ruling 14), so launch works it out.
+      startDate: "2026-01-07",
       timeZone: "Australia/Melbourne",
       weeks: 4,
       protectedHour: { weekday: 3, start: "14:00", durationMinutes: 60 },
@@ -783,4 +784,25 @@ test("a launch that runs out of inviteEmail tokens writes nothing", async () => 
   expect((await sprintOf(t, orgId))?.launchedAt).toBeUndefined();
   expect(await invitesOf(t, orgId)).toEqual([]);
   expect(await launchedEvents(t, orgId)).toEqual([]);
+});
+
+test("an address is compared normalised on both sides at launch (Ruling 4)", async () => {
+  const { t, owner, orgId, launch } = await manager();
+  await ready(t, orgId);
+  const roleId = await employeeRoleId(t, orgId);
+  await owner.mutation(api.invites.create, {
+    orgId,
+    roleId,
+    email: " Omar@Example.com. ",
+  });
+  // A row stored before Ruling 4, with its trailing dot.
+  await pendingInvite(t, orgId, "ben@example.com.", Date.now() + 60_000);
+  expect(
+    await launch(["omar@example.com", "Ben@Example.com", "ana@example.com"]),
+  ).toMatchObject({ invited: 1 });
+  expect((await invitesOf(t, orgId)).map((i) => i.email).sort()).toEqual([
+    "ana@example.com",
+    "ben@example.com.",
+    "omar@example.com",
+  ]);
 });

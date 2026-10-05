@@ -64,6 +64,17 @@ async function fill(ctx: RunCtx, orgId: Id<"orgs">) {
     sharing: "private",
     autosavedAt: 0,
   });
+  await ctx.db.insert("sprintOutcomes", {
+    orgId,
+    sprintId,
+    takenAt: 0,
+    counted: [],
+    threshold: 5,
+    completed: { hidden: true, n: 0 },
+    presented: { hidden: true, n: 0 },
+    categories: [],
+    answers: [],
+  });
   const imageId = await ctx.storage.store(new Blob(["x"]));
   await ctx.db.patch(orgId, { imageId });
   return [screenshotId, imageId];
@@ -95,12 +106,16 @@ test("deleting a workspace clears its product rows and nobody else's", async () 
     demoScript: (await ctx.db.query("demoScript").collect()).map(
       (r) => r.orgId,
     ),
+    sprintOutcomes: (await ctx.db.query("sprintOutcomes").collect()).map(
+      (r) => r.orgId,
+    ),
   }));
   expect(left).toEqual({
     teams: [kept],
     sprints: [kept],
     events: [kept],
     demoScript: [kept],
+    sprintOutcomes: [kept],
   });
 });
 

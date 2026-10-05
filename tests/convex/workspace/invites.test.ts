@@ -492,3 +492,52 @@ test("the signed-out preview never shows the inviter's address", async () => {
       ?.invitedBy,
   ).toBe("Someone");
 });
+
+test("a row stored before Ruling 4, with its trailing dot, still seats its address", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  const dana = await seedAuthUser(t, {
+    name: "Dana",
+    email: "dana@example.com",
+    emailVerified: false,
+  });
+  await t.run((ctx) =>
+    ctx.db.insert("orgInvites", {
+      orgId,
+      roleId,
+      token: "tok-dana",
+      email: "dana@example.com.",
+      status: "pending",
+      invitedBy: "user_owner",
+      expiresAt: Date.now() + 60_000,
+      createdAt: 1,
+    }),
+  );
+  await t
+    .withIdentity(dana)
+    .mutation(api.invites.accept, { token: "tok-dana" });
+  expect(
+    await t.withIdentity(dana).query(api.orgs.myPermissions, { orgId }),
+  ).toEqual(["members:read"]);
+});
+
+test("an address that normalises to nothing is refused, never an open link", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  for (const email of [".", " . "]) {
+    await expect(
+      owner.mutation(api.invites.create, { orgId, roleId, email }),
+    ).rejects.toMatchObject({ data: { code: "FIELD_REQUIRED" } });
+  }
+  // A blank field is still a shareable link, as before.
+  const { token } = await owner.mutation(api.invites.create, {
+    orgId,
+    roleId,
+    email: "  ",
+  });
+  expect(await t.query(api.invites.publicPreview, { token })).toMatchObject({
+    emailPinned: false,
+  });
+});

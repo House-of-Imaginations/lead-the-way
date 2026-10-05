@@ -12,10 +12,13 @@ export function useHour(): number {
   // Bumped on every fire, so the timer re-arms even if the hour did not move.
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setHour(hourOf(Date.now()));
-      setTick((t) => t + 1);
-    }, msToNextHour(Date.now()) + 5_000);
+    const timer = setTimeout(
+      () => {
+        setHour(hourOf(Date.now()));
+        setTick((t) => t + 1);
+      },
+      msToNextHour(Date.now()) + 5_000,
+    );
     return () => clearTimeout(timer);
   }, [tick]);
   return hour;

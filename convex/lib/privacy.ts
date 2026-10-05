@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { MAX_MEMBERS_PER_ORG, permissionsOf } from "./orgs/membership";
-import type { Permission } from "./orgs/permissions";
+import { isManager, type Permission } from "./orgs/permissions";
 
 /**
  * THE ONLY WAY A MANAGER SEES A NUMBER ABOUT PEOPLE (spec 5.1).
@@ -25,10 +25,21 @@ import type { Permission } from "./orgs/permissions";
  * from a live `count` or `aggregate` inside a query: two live looks a minute
  * apart could be differenced back to the one person who acted. Membership
  * counts (invited, joined) are live, as they are facts about the invitation,
- * not activity. A snapshot's totals are checked against the threshold again
- * when read (`statOf` in manager.ts), as it may have been raised since. The
- * files that may call `count` and `aggregate` are pinned by a test in
- * tests/convex/canary.test.ts; extend that list on purpose, never in passing.
+ * not activity. A snapshot's totals are checked again when read (`statOf` in
+ * manager.ts), against the threshold now and the one the row stored (P7a
+ * Ruling 7). The files that may call `count` and `aggregate` are pinned by a
+ * test in tests/convex/canary.test.ts; extend that list on purpose, never in
+ * passing.
+ *
+ * WHO A ROW COUNTED (Ruling FX). Each snapshot stores the ids it counted and
+ * the ids seated when it was taken, only so `snapshotSeries`
+ * (lib/snapshots.ts) can show just the rows whose counted and seated groups
+ * both equal the sprint's first row's, and hide a row from a reader it
+ * counted. No query returns them.
+ *
+ * LIVE "JOINED" BESIDE A FROZEN "OF N" (P7a Ruling 8). 08 shows the live
+ * joined count next to a snapshot's n. The gap says how many people a total
+ * leaves out (opted out, or managing the team), never who. Accepted.
  */
 export const MIN_THRESHOLD = 5;
 
@@ -81,12 +92,12 @@ export function count(
 /**
  * The people a manager-facing number may count: the invited team, less anyone
  * who opted out of team totals (spec rule 5). Manager counts are over the
- * invited ("6 of 7 finished week 1"), so nobody who can read team totals
- * counts: not an owner-kind seat (the owner holds every permission), not a
- * custom role with `team:insights`. Nor does the asker: they know their own
- * value, so counting it toward their own threshold would lower the floor by
- * one. `askerId` is required so it cannot be forgotten; an internal caller
- * with nobody asking passes null.
+ * invited ("6 of 7 finished week 1"), so nobody who manages the team counts
+ * (`loadSeated`, Ruling 1): not an owner-kind seat (the owner holds every
+ * permission), not a custom role with `team:insights` or `sprint:manage`.
+ * Nor does the asker: they know their own value, so counting it toward their
+ * own threshold would lower the floor by one. `askerId` is required so it
+ * cannot be forgotten; an internal caller with nobody asking passes null.
  *
  * A seat whose role is gone is left out: counting it would only raise n.
  * Each opt-out is read by `by_person`, so no number of stale rows can push
@@ -114,10 +125,14 @@ export async function loadCountable(
 
 /**
  * Everyone seated on the team: each person in the org whose role is the
- * org's and can't read team totals, opted out or not, whoever is asking.
- * Not a `Countable`; `signatureCount` is the one sanctioned count made from
- * it (Rulings 1 and 24). The agreement's "Signed by the team" reads it, so
- * the title is the same for every viewer and no opt-out flips it.
+ * org's and who doesn't manage the team, opted out or not, whoever is asking.
+ * Ruling 1: a role with `team:insights` or `sprint:manage` is a manager's, and
+ * a manager is in no total. Their pre-launch `normsConfidence` shares its key
+ * with the team's week 4 answer, and they know their own value, so counting
+ * them would lower the floor. Not a `Countable`; `signatureCount` and
+ * `countSeated` are the sanctioned counts made from it (Rulings 1 and 24).
+ * The agreement's "Signed by the team" reads it, so the title is the same for
+ * every viewer and no opt-out flips it.
  */
 export async function loadSeated(
   ctx: QueryCtx,
@@ -131,10 +146,28 @@ export async function loadSeated(
   for (const person of people) {
     const role = await ctx.db.get(person.roleId);
     if (!role || role.orgId !== org._id) continue;
-    if (permissionsOf(role).includes("team:insights")) continue;
+    if (isManager({ permissions: permissionsOf(role) })) continue;
     seated.push(person);
   }
   return seated;
+}
+
+/**
+ * The one count over the seated team (`loadSeated`), for public acts such as
+ * presenting (R-i): opting out of team totals doesn't hide what a person
+ * showed the team. Hidden below the threshold, as `count` is. It counts
+ * whatever list it is handed, so the caller must pass `loadSeated`'s result,
+ * never a filtered few; the seated canary in tests/convex/canary.test.ts
+ * pins which files may call it.
+ */
+export function countSeated(
+  seated: readonly Doc<"people">[],
+  did: (person: Doc<"people">) => boolean,
+  org: Pick<Doc<"orgs">, "privacyThreshold">,
+): Aggregate {
+  const n = seated.length;
+  if (n < thresholdOf(org)) return { hidden: true, n };
+  return { hidden: false, n, value: seated.filter(did).length };
 }
 
 /**
@@ -157,12 +190,7 @@ export async function signatureCount(
   agreement: Pick<Doc<"agreements">, "_id" | "version">,
   permissions: readonly Permission[],
 ): Promise<{ signed: number; of: number } | null> {
-  if (
-    permissions.includes("team:insights") ||
-    permissions.includes("sprint:manage")
-  ) {
-    return null;
-  }
+  if (isManager({ permissions })) return null;
   const seated = await loadSeated(ctx, org);
   if (seated.length < thresholdOf(org)) return null;
   const signatures = await ctx.db

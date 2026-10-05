@@ -11,7 +11,7 @@ import {
   screenshotProblem,
 } from "./lib/projectLimits";
 import { isPresented, projectOf, savedProject } from "./lib/projects";
-import { currentSprint } from "./lib/sprint";
+import { launchedSprint } from "./lib/sprint";
 import { parts, weekOf } from "./lib/sprintTime";
 import { isAdoptable } from "./lib/storage";
 import type { Viewer } from "./lib/viewer";
@@ -80,11 +80,14 @@ function checked(f: ProjectFields): ProjectFields {
     [f.after, PROJECT_LIMITS.text],
     [f.headline, PROJECT_LIMITS.headline],
   ]);
-  return { ...f, resultTypes: RESULT_TYPES.filter((r) => f.resultTypes.includes(r)) };
+  return {
+    ...f,
+    resultTypes: RESULT_TYPES.filter((r) => f.resultTypes.includes(r)),
+  };
 }
 
 async function sprintOf(ctx: QueryCtx, viewer: Viewer) {
-  const sprint = await currentSprint(ctx, viewer.org._id);
+  const sprint = await launchedSprint(ctx, viewer.org._id);
   if (!sprint) {
     throwUserError("NO_SPRINT", "Your team's sprint hasn't started yet.");
   }
@@ -120,7 +123,7 @@ export const mine = timedViewerQuery()({
   returns: v.union(v.null(), myProjectValidator),
   handler: async (ctx): Promise<MyProject | null> => {
     const { viewer } = ctx;
-    const sprint = await currentSprint(ctx, viewer.org._id);
+    const sprint = await launchedSprint(ctx, viewer.org._id);
     if (!sprint) return null;
     const week = weekNow(sprint, viewer.now);
     const p = await projectOf(ctx, viewer.person._id, sprint._id);
@@ -242,7 +245,7 @@ export const setScreenshot = viewerMutation()({
   returns: v.null(),
   handler: async (ctx, { storageId }): Promise<null> => {
     const { viewer } = ctx;
-    const sprint = await currentSprint(ctx, viewer.org._id);
+    const sprint = await launchedSprint(ctx, viewer.org._id);
     const project = sprint
       ? await projectOf(ctx, viewer.person._id, sprint._id)
       : null;

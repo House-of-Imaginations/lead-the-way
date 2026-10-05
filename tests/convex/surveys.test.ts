@@ -3,7 +3,13 @@ import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { castOf } from "../../convex/lib/demo/cast";
 import { DEMO_TARGETS, type DemoTarget } from "../../convex/lib/demo/schedule";
-import { calderLane, harness, seat, workspace, type T } from "./workspace/helpers";
+import {
+  calderLane,
+  harness,
+  seat,
+  workspace,
+  type T,
+} from "./workspace/helpers";
 
 beforeEach(() => {
   vi.stubEnv("DEMO_MODE", "on");
@@ -69,7 +75,12 @@ test("Dan answers the before check-in once", async () => {
     expectOrgId: orgId,
   });
   expect(await rowsOf(t, personId)).toEqual([
-    { phase: "before", question: "aiConfidence", score: 3, skippedAt: undefined },
+    {
+      phase: "before",
+      question: "aiConfidence",
+      score: 3,
+      skippedAt: undefined,
+    },
     {
       phase: "before",
       question: "comfortWithManager",
@@ -151,7 +162,12 @@ test("the after check-in opens in week 4 and can't be skipped", async () => {
   expect(
     (await rowsOf(t, personId)).filter((r) => r.phase === "after"),
   ).toEqual([
-    { phase: "after", question: "aiConfidence", score: 4, skippedAt: undefined },
+    {
+      phase: "after",
+      question: "aiConfidence",
+      score: 4,
+      skippedAt: undefined,
+    },
     {
       phase: "after",
       question: "comfortWithManager",

@@ -178,7 +178,9 @@ export const callsFor = ({
   "agreements:sign": { version: 1, expectOrgId: orgId },
   "sprints:launchPage": {},
   "sprints:launch": { emails: [], message: "", expectOrgId: orgId },
+  "sprints:runAnother": { expectOrgId: orgId },
   "manager:overview": {},
+  "manager:outcomes": {},
   "surveys:checkIn": { phase: "before", answers: null, expectOrgId: orgId },
   "me:home": {},
   "me:sprint": {},
@@ -186,7 +188,11 @@ export const callsFor = ({
   "projects:mine": {},
   "projects:saveDraft": { ...PROJECT, expectOrgId: orgId },
   "projects:save": { ...PROJECT, expectOrgId: orgId },
-  "projects:saveReflection": { learned: "", howChecked: "", expectOrgId: orgId },
+  "projects:saveReflection": {
+    learned: "",
+    howChecked: "",
+    expectOrgId: orgId,
+  },
   "projects:generateUploadUrl": { expectOrgId: orgId },
   // null, not the fixture file: a foreign id would make the tenant sweep
   // expect NOT_FOUND from the handler instead of WORKSPACE_CHANGED.

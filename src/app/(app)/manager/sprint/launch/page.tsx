@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { api } from "@convex/_generated/api";
 import { fetchAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, getShell, managerRead } from "@/lib/account/queries";
-import { LaunchForm } from "./LaunchForm";
+import { LaunchForm } from "./_components/LaunchForm";
 
 export const metadata: Metadata = { title: "Launch sprint · Lead the Way" };
 

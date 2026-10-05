@@ -15,7 +15,7 @@ import { nowFor } from "./lib/clock";
 import { profileOf } from "./lib/account/profile";
 import { emailConfigured } from "./lib/email/send";
 import { throwUserError, type ErrorCode } from "./lib/errors";
-import { MAX_MESSAGE } from "./lib/inviteRules";
+import { MAX_MESSAGE, normalEmail } from "./lib/inviteRules";
 import { sendInvite } from "./lib/orgs/email";
 import {
   INVITE_WINDOW_MS,
@@ -33,7 +33,8 @@ import {
 } from "./lib/orgs/membership";
 import { firstNameOf, initialsOf, isDemoAccount } from "./lib/orgs/people";
 import { reserveRateLimit } from "./lib/rateLimits";
-import { currentSprint } from "./lib/sprint";
+import { currentSprint, isLaterSprint, launchedSprint } from "./lib/sprint";
+import { beforeCheckInOpen } from "./lib/surveys";
 import {
   hourRange,
   hourStart,
@@ -58,6 +59,12 @@ import {
  * email address" tells the holder only that this account is not the one. The
  * one place the address shows is `publicPreview`, so sign-up can lock it
  * (Ruling 2).
+ *
+ * THE PINNED ADDRESS IS NOT VERIFIED (R-d). Nothing mails a code to the
+ * address an invitation names, and accepting needs an account with that
+ * address, not a verified one. The proof is the link itself: single use,
+ * expiring and revocable, sent by a manager to the address they chose.
+ * Whoever holds it is taken to be the person it was meant for.
  */
 
 const MAX_NAME = 80;
@@ -115,6 +122,8 @@ export const joinFactsValidator = v.object({
   span: v.string(),
   showAndTell: v.string(),
   course: v.string(),
+  /** The before check-in is open for this sprint; a later sprint closes it after week 1. */
+  askBefore: v.boolean(),
 });
 export type JoinFacts = Infer<typeof joinFactsValidator>;
 
@@ -122,8 +131,9 @@ export type JoinFacts = Infer<typeof joinFactsValidator>;
  * What 09 says about the sprint a link joins (Rulings 2 and 18): the
  * workspace's current sprint, in the sprint's time zone. No zone note: the
  * reader has no seat here yet, so no time zone of their own. A draft's week
- * one is worked out from the clock (`startDateOf`), as every screen does.
- * Null before the workspace has a sprint.
+ * one is `startDateOf`'s, as every screen has it: the next working week, or
+ * the month a "Run another sprint" clone pinned. Null before the workspace
+ * has a sprint.
  */
 async function joinFacts(
   ctx: QueryCtx,
@@ -145,6 +155,15 @@ async function joinFacts(
     )
     .first();
   const managerName = manager?.name ?? (await nameOf(ctx, invitedBy));
+  // What `surveys.checkIn` will accept: the sprint the joiner lands in.
+  const launched = await launchedSprint(ctx, org._id);
+  const askBefore =
+    !launched ||
+    beforeCheckInOpen(
+      launched,
+      await isLaterSprint(ctx, org._id, launched),
+      nowFor(org),
+    );
   return {
     managerName,
     managerFirstName: firstNameOf(managerName),
@@ -155,6 +174,7 @@ async function joinFacts(
     span: spanLabel(hourStart(sprint, 1), last, tz),
     showAndTell: `${day.day} ${day.month}`,
     course: sprint.courseTitle,
+    askBefore,
   };
 }
 
@@ -185,10 +205,12 @@ async function refusalOf(
 
   // Read from the auth component's own row, not the JWT: the claims are
   // whatever the token was minted with. A matching address is enough; a
-  // verified one is not required (spec 5).
+  // verified one is not required (spec 5). Both sides normalised (Ruling 4):
+  // a row stored before it may keep a trailing dot.
   if (invite.email) {
     const user = await authComponent.getAnyUserById(ctx, userId);
-    if (user?.email?.trim().toLowerCase() !== invite.email) {
+    // Fails closed: an account with no address matches nothing.
+    if (!user?.email || normalEmail(user.email) !== normalEmail(invite.email)) {
       return no("INVITE_WRONG_ACCOUNT");
     }
   }
@@ -349,7 +371,12 @@ export const create = orgMutation("members:manage")({
       );
     }
 
-    const to = email?.trim().toLowerCase() || undefined;
+    const to = normalEmail(email ?? "") || undefined;
+    // Fails closed: an address that normalises to nothing (".") must never
+    // become an open link anyone holding it could take.
+    if (email?.trim() && !to) {
+      throwUserError("FIELD_REQUIRED", "Enter a full email address.");
+    }
     const { inviteId, token, expiresAt } = await insertInvite(ctx, {
       orgId: ctx.orgId,
       roleId,

@@ -1207,12 +1207,10 @@ test("a skipped check-in is not a response (Review Focus 3)", async () => {
       )
       .collect(),
   );
-  expect(rows.map((r) => [r.phase, r.question, r.score, r.skippedAt])).toEqual(
-    [
-      ["before", "aiConfidence", undefined, skippedAt],
-      ["before", "comfortWithManager", undefined, skippedAt],
-    ],
-  );
+  expect(rows.map((r) => [r.phase, r.question, r.score, r.skippedAt])).toEqual([
+    ["before", "aiConfidence", undefined, skippedAt],
+    ["before", "comfortWithManager", undefined, skippedAt],
+  ]);
   // 4 answers and a skip is 4 responses, below 5: hidden. `aggregate` needs
   // no filter, because a skip row's `score` is undefined and `valueOf`
   // passes that through (`snapshot` reads exactly as P7's outcomes will).

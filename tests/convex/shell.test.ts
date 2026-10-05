@@ -388,3 +388,24 @@ test("the status follows the clock across the end of the hour, and accepts hour 
     ...next("Wed 23 Sep, 2:00 PM"),
   });
 });
+
+test("once launched, Sprint opens the overview and still needs sprint:manage (Ruling 5)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await clock(t, "week1");
+  const links = (shell: Shell | null) =>
+    shell?.nav.flatMap((group) => group.links.map((l) => [l.label, l.href]));
+  expect(links(await as("priya").query(api.viewer.shell, {}))).toEqual([
+    ["Overview", "/manager"],
+    ["Sprint", "/manager"],
+    ["Team agreement", "/manager/agreement"],
+    ["Outcomes", "/manager/outcomes"],
+    ["My learning", "/manager/learning"],
+    ["Resources", "/manager#resources"],
+  ]);
+  const insights = await seat(t, orgId, "user_insights", ["team:insights"]);
+  expect(links(await insights.as.query(api.viewer.shell, {}))).toEqual([
+    ["Overview", "/manager"],
+    ["Outcomes", "/manager/outcomes"],
+    ["Resources", "/manager#resources"],
+  ]);
+});

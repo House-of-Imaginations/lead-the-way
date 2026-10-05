@@ -102,12 +102,23 @@ export function hourEnd(sprint: HourOf, week: number): number {
 }
 
 /**
+ * When the sprint closes (P7a Ruling 9): a day after its last hour ends.
+ * The outcomes row is taken then (`takeOutcomes`), the after check-in
+ * stops (`afterCheckInOpen`), and `sprints.launch` schedules its backstop
+ * run for this instant.
+ */
+export function closesAt(sprint: HourOf & { weeks: number }): number {
+  return hourEnd(sprint, sprint.weeks) + 86_400_000;
+}
+
+/**
  * Which week of the sprint `now` is in (Ruling 10). Weeks are calendar weeks
  * in the sprint's time zone: week 1 starts at 00:00 on the Monday of the
  * first hour's week. 0 before that; not clamped after the last week.
  * Counted in calendar days, so a week that loses an hour to daylight saving
- * still turns over at midnight on Monday. A draft's stored `startDate` is
- * stale: pass a launched sprint, or `{ ...sprint, startDate: startDateOf(sprint, now) }`.
+ * still turns over at midnight on Monday.
+ * A draft's stored `startDate` may be behind the clock: pass a launched
+ * sprint, or `{ ...sprint, startDate: startDateOf(sprint, now) }`.
  */
 export function weekOf(sprint: HourOf, now: number): number {
   const first = hourDate(sprint, 1);
@@ -134,9 +145,31 @@ export function weekOneDate(
 }
 
 /**
- * Week one's hour day. A draft's is always worked out now, so every screen
- * names the same week and a draft revisited later never starts in the past
- * (Ruling 17); `launch` stores it. A launched sprint keeps the date it stored.
+ * "Run another sprint" (P7a Ruling 14): the first `weekday` (1 is Monday) of
+ * the calendar month after `now`'s, in `timeZone`. On Thursday 1 October 2026,
+ * Wednesday is 4 November.
+ */
+export function nextMonthDate(
+  weekday: number,
+  now: number,
+  timeZone: string,
+): string {
+  const [y, m] = dateIn(now, timeZone).split("-").map(Number);
+  // `m` counts from 1, so as a `Date.UTC` month it is already the next one.
+  const first = new Date(Date.UTC(y!, m!, 1)).toISOString().slice(0, 10);
+  return addDays(first, (weekday - dayOf(first) + 7) % 7);
+}
+
+/** The Monday of `date`'s week, "YYYY-MM-DD". */
+export const mondayOf = (date: string) =>
+  addDays(date, -((dayOf(date) + 6) % 7));
+
+/**
+ * Week one's hour day. A draft's is the next working week, worked out now, so
+ * every screen names the same week and a draft revisited later never starts
+ * in the past (Ruling 17). A stored date later than that holds: "Run another
+ * sprint" pins next month (P7a Ruling 14), and 04 keeps that week when the day
+ * changes. `launch` stores it. A launched sprint keeps the date it stored.
  */
 export function startDateOf(
   sprint: Pick<
@@ -145,9 +178,10 @@ export function startDateOf(
   >,
   now: number,
 ): string {
-  return sprint.launchedAt === undefined
-    ? weekOneDate(sprint.protectedHour.weekday, now, sprint.timeZone)
-    : sprint.startDate;
+  if (sprint.launchedAt !== undefined) return sprint.startDate;
+  const fresh = weekOneDate(sprint.protectedHour.weekday, now, sprint.timeZone);
+  // "YYYY-MM-DD" strings compare as dates.
+  return sprint.startDate > fresh ? sprint.startDate : fresh;
 }
 
 /**

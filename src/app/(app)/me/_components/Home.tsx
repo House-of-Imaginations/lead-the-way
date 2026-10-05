@@ -103,9 +103,7 @@ export function Home({
         body: `Session ${session} marked done.`,
       });
     } catch (e) {
-      setError(
-        userMessage(e, "We couldn't mark the session done. Try again."),
-      );
+      setError(userMessage(e, "We couldn't mark the session done. Try again."));
     } finally {
       setPending(false);
     }
@@ -128,6 +126,11 @@ export function Home({
             Please review and sign.
           </Link>
         </InlineNotification>
+      ) : null}
+
+      {data.beforeCheckIn ? (
+        // Answering or skipping writes rows, so `beforeCheckIn` turns false and the card goes.
+        <CheckIn phase="before" expectOrgId={expectOrgId} onDone={() => {}} />
       ) : null}
 
       {data.afterCheckIn ? (
@@ -269,7 +272,9 @@ export function Home({
                   >
                     <Twin wide={week.name} narrow={week.short} />
                   </p>
-                  <p className={clsx("text-body-02", current && "font-semibold")}>
+                  <p
+                    className={clsx("text-body-02", current && "font-semibold")}
+                  >
                     <Twin wide={week.status} narrow={week.shortStatus} />
                   </p>
                 </li>

@@ -3,8 +3,13 @@ import { redirect } from "next/navigation";
 import { api } from "@convex/_generated/api";
 import { ConvexClientProvider } from "@/app/_components/ConvexClientProvider";
 import { fetchAuthQuery, getToken } from "@/lib/account/auth-server";
-import { currentHour, getHome, getShell, managerRead } from "@/lib/account/queries";
-import { JoinView } from "../JoinView";
+import {
+  currentHour,
+  getHome,
+  getShell,
+  managerRead,
+} from "@/lib/account/queries";
+import { JoinView } from "../_components/JoinView";
 
 export const metadata: Metadata = {
   title: "Invitation preview · Lead the Way",

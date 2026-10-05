@@ -55,15 +55,19 @@ export const copyLinks = (page: InviteLink[] | null, sent: InviteLink[]) =>
   new Map([...(page ?? []), ...sent].map((l) => [l.email, l.token]));
 
 /** Ruling 29, worded from the counts `launch` returns. */
-export function launchedToast({
-  invited,
-  emailed,
-}: {
-  invited: number;
-  emailed: number;
-}) {
-  const body =
-    invited === 0
+export function launchedToast(
+  {
+    invited,
+    emailed,
+  }: {
+    invited: number;
+    emailed: number;
+  },
+  carried = false,
+) {
+  const body = carried
+    ? "Your team carries over."
+    : invited === 0
       ? "Everyone is already invited."
       : emailed === invited
         ? `${invitations(invited)} sent.`
@@ -73,13 +77,17 @@ export function launchedToast({
 
 /** Why "Send invitations" is off, or null when it is on. */
 export function sendReason(
-  { canInvite, gate }: Pick<LaunchPage, "canInvite" | "gate">,
+  {
+    canInvite,
+    carriesTeam,
+    gate,
+  }: Pick<LaunchPage, "canInvite" | "carriesTeam" | "gate">,
   count: number,
 ): string | null {
   if (!canInvite) return NO_INVITE;
   if (!(gate.committed && gate.pathwayDone && gate.agreementSaved))
     return GATE_REASON;
-  return count === 0 ? "Add at least one email address." : null;
+  return count === 0 && !carriesTeam ? "Add at least one email address." : null;
 }
 
 /** Moves focus to the invited list's heading once this tab has launched. */
@@ -183,6 +191,8 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
   const [copyError, setCopyError] = useState<string | null>(null);
 
   const reason = sendReason(data, emails.length);
+  // A launch that only carries the team over.
+  const carried = data.carriesTeam && emails.length === 0;
   const links = copyLinks(data.links, sentLinks);
 
   // Its own form, so Enter in "Add by email" adds the address and can never
@@ -214,10 +224,15 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
       const result = await launch({ expectOrgId, emails, message });
       setSentLinks(result.links);
       setLaunchedHere(true);
-      toast(launchedToast(result));
+      toast(launchedToast(result, carried));
     } catch (error) {
       setSendError(
-        userMessage(error, "The invitations didn't send. Try again."),
+        userMessage(
+          error,
+          carried
+            ? "The sprint didn't launch. Try again."
+            : "The invitations didn't send. Try again.",
+        ),
       );
     } finally {
       setPending(false);
@@ -340,7 +355,9 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
                 </ul>
               ) : (
                 <p className="text-body-02 text-text-secondary">
-                  Add your team by email.
+                  {data.carriesTeam
+                    ? "Your team carries over. Add emails only for new people."
+                    : "Add your team by email."}
                 </p>
               )}
             </div>
@@ -389,7 +406,7 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
                   aria-describedby={reason ? "send-reason" : undefined}
                   onClick={send}
                 >
-                  Send invitations
+                  {carried ? "Launch sprint" : "Send invitations"}
                 </Button>
                 {reason ? (
                   <p

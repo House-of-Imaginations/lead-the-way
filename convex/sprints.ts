@@ -2,7 +2,7 @@ import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { MutationCtx } from "./_generated/server";
-import { dayMonth, latestSaved } from "./lib/agreement";
+import { dayMonth, latestAgreement, latestSaved } from "./lib/agreement";
 import { virtualClock } from "./lib/clock";
 import { timedViewerQuery, viewerMutation } from "./lib/customFunctions";
 import { DEMO_CAST } from "./lib/demo/cast";
@@ -24,6 +24,7 @@ import {
 } from "./lib/orgs/invites";
 import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
 import { reserveRateLimit } from "./lib/rateLimits";
+import { takeOutcomes } from "./lib/snapshots";
 import {
   HOUR_STARTS,
   isOneOf,
@@ -37,20 +38,22 @@ import {
   currentTeam,
   ensureSprint,
   gateOpen,
+  isLaterSprint,
   requireDraft,
   setupGate,
   sprintInvites,
 } from "./lib/sprint";
 import {
   addDays,
-  dayOf,
+  closesAt,
   hourEnd,
   hourPattern,
   hourStart,
+  mondayOf,
+  nextMonthDate,
   spanLabel,
   sprintPhase,
   startDateOf,
-  weekOneDate,
 } from "./lib/sprintTime";
 import type { Viewer } from "./lib/viewer";
 
@@ -108,7 +111,7 @@ export const current = timedViewerQuery("sprint:manage")({
       timeZone: sprint.timeZone,
       startDate,
       // `startDate` is week one's hour day; its week starts on the Monday before.
-      weekOneMonday: addDays(startDate, -((dayOf(startDate) + 6) % 7)),
+      weekOneMonday: mondayOf(startDate),
       committed: sprint.committedAt !== undefined,
       notReady: sprint.notReady !== undefined,
       launched: sprint.launchedAt !== undefined,
@@ -140,8 +143,13 @@ async function draftFor(
     sprint,
     hour: {
       protectedHour: { weekday, start, durationMinutes: 60 },
-      // Week one follows the day (Ruling 17).
-      startDate: weekOneDate(weekday, viewer.now, sprint.timeZone),
+      // The day moves within week one's week: the next working week (Ruling
+      // 17), or the month "Run another sprint" pinned (P7a Ruling 14). 04's
+      // preview draws the same date from `weekOneMonday`.
+      startDate: addDays(
+        mondayOf(startDateOf(sprint, viewer.now)),
+        weekday - 1,
+      ),
     },
   };
 }
@@ -251,6 +259,8 @@ export const launchPage = timedViewerQuery("sprint:manage")({
       launched: v.boolean(),
       /** `launch` also needs members:manage. */
       canInvite: v.boolean(),
+      /** A later sprint carries the team over, so it may launch with no new addresses. */
+      carriesTeam: v.boolean(),
       gate: v.object({
         committed: v.boolean(),
         pathwayDone: v.boolean(),
@@ -297,6 +307,7 @@ export const launchPage = timedViewerQuery("sprint:manage")({
     return {
       launched: sprint.launchedAt !== undefined,
       canInvite,
+      carriesTeam: await isLaterSprint(ctx, orgId, sprint),
       // 07 shows three of the four; the team profile isn't a launch step.
       gate: {
         committed: gate.committed,
@@ -371,7 +382,8 @@ export const launch = viewerMutation(
     // Normalised as `isDemoAddress` reads them, so a trailing dot can't slip
     // a demo address past it.
     const emails = [...new Set(args.emails.map(normalEmail).filter(Boolean))];
-    if (emails.length === 0) {
+    // A later sprint carries its team over, so it may send none.
+    if (emails.length === 0 && !(await isLaterSprint(ctx, orgId, sprint))) {
       throwUserError("FIELD_REQUIRED", "Add at least one email address.");
     }
     if (emails.length > MAX_LAUNCH_INVITES) {
@@ -398,15 +410,18 @@ export const launch = viewerMutation(
     const now = viewer.now;
 
     // Members and live invitations are skipped. A lapsed one isn't: its
-    // address gets a fresh invitation.
+    // address gets a fresh invitation. Both sides normalised (Ruling 4), so a
+    // row stored before it with a trailing dot still matches.
     const skip = new Set<string>();
     const people = await ctx.db
       .query("people")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .take(MAX_MEMBERS_PER_ORG);
-    for (const person of people) skip.add(person.email);
+    for (const person of people) skip.add(normalEmail(person.email));
     const pending = await livePending(ctx, orgId, now);
-    for (const invite of pending) if (invite.email) skip.add(invite.email);
+    for (const invite of pending) {
+      if (invite.email) skip.add(normalEmail(invite.email));
+    }
     const fresh = emails.filter((email) => !skip.has(email));
     // The same cap `invites.create` holds.
     if (pending.length + fresh.length > MAX_INVITES_PER_ORG) {
@@ -431,7 +446,8 @@ export const launch = viewerMutation(
     // Each week's team totals are frozen when its hour ends (Ruling 2). On a
     // virtual clock a real `runAt` would fire at once, so `moveClock` takes
     // them instead. Each run makes good a missed earlier one; the last week
-    // has nothing after it, so one more run a day later backs it up.
+    // has nothing after it, so one more run when the sprint closes backs it
+    // up and takes the outcomes row (P7a Ruling 9).
     if (!virtualClock(viewer.org)) {
       const stored = { ...sprint, startDate: startDateOf(sprint, now) };
       const args = { orgId, sprintId: sprint._id };
@@ -443,7 +459,7 @@ export const launch = viewerMutation(
         );
       }
       await ctx.scheduler.runAt(
-        hourEnd(stored, sprint.weeks) + 86_400_000,
+        closesAt(stored),
         internal.snapshots.take,
         args,
       );
@@ -483,5 +499,73 @@ export const launch = viewerMutation(
       }
     }
     return { invited, emailed, links };
+  },
+});
+
+/**
+ * 16's "Run another sprint" (P7a Ruling 14). Once the newest sprint has closed
+ * and its outcomes are stored, a draft copy opens setup at 04. It keeps the
+ * same team, course, length and hour, from the first such weekday of next
+ * month. The newest saved agreement becomes a draft version, so 06 opens on it
+ * while employees keep reading the saved one. There are no invitations and no
+ * new team row: 07 invites again, and may launch with no addresses because the
+ * team carries over. It logs nothing; launching does. A closed sprint whose
+ * outcomes row is missing (a missed scheduled run) gets it written here; that
+ * row counts as of the click, though answers still can't arrive after close.
+ */
+export const runAnother = viewerMutation("sprint:manage")({
+  args: {},
+  returns: v.object({ href: v.literal("/setup/protected-hour") }),
+  handler: async (ctx): Promise<{ href: "/setup/protected-hour" }> => {
+    const { viewer } = ctx;
+    const orgId = viewer.org._id;
+    // `now` is a getter that reads the clock; read it once.
+    const now = viewer.now;
+    const sprint = await currentSprint(ctx, orgId);
+    if (sprint && sprint.launchedAt === undefined) {
+      throwUserError(
+        "SPRINT_DRAFT_EXISTS",
+        "Your next sprint is already in setup.",
+      );
+    }
+    if (!sprint || closesAt(sprint) > now) {
+      throwUserError(
+        "SPRINT_NOT_CLOSED",
+        "You can run another sprint once this one has closed.",
+      );
+    }
+    // A missed scheduled run is recovered here.
+    await takeOutcomes(ctx, viewer.org, sprint, now);
+    await ctx.db.insert("sprints", {
+      orgId,
+      teamId: sprint.teamId,
+      startDate: nextMonthDate(
+        sprint.protectedHour.weekday,
+        now,
+        sprint.timeZone,
+      ),
+      timeZone: sprint.timeZone,
+      weeks: sprint.weeks,
+      protectedHour: sprint.protectedHour,
+      courseTitle: sprint.courseTitle,
+      createdAt: now,
+    });
+    const saved = await latestSaved(ctx, sprint.teamId);
+    const latest = await latestAgreement(ctx, sprint.teamId);
+    // A draft already on top is the one 06 opens; only a saved one is copied.
+    if (saved && latest?._id === saved._id) {
+      await ctx.db.insert("agreements", {
+        orgId,
+        teamId: saved.teamId,
+        version: saved.version + 1,
+        status: "draft",
+        tools: saved.tools,
+        neverIn: saved.neverIn,
+        checks: saved.checks,
+        escalation: saved.escalation,
+        contact: saved.contact,
+      });
+    }
+    return { href: "/setup/protected-hour" };
   },
 });

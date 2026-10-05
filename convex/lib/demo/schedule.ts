@@ -19,7 +19,10 @@ export const DEMO_TARGETS = {
   week2: mel("2026-09-16T13:00"),
   week3: mel("2026-09-23T13:00"),
   week4: mel("2026-09-30T13:00"),
-  complete: mel("2026-09-30T16:00"),
+  // Thursday, an hour after the sprint closes (`closesAt`, 3:00 PM), so the
+  // jump takes the outcomes row. Labels made from the last hour still say
+  // 30 September.
+  complete: mel("2026-10-01T16:00"),
 } as const;
 export type DemoTarget = keyof typeof DEMO_TARGETS;
 export const demoTargetValidator = literals(

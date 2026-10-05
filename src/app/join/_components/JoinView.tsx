@@ -49,7 +49,10 @@ export function JoinBar({
 }) {
   return (
     <header className="flex min-h-control-lg flex-wrap items-center gap-x-05 gap-y-02 border-b border-border-subtle px-05 py-03">
-      <Link href="/" className="flex items-center gap-[10px] text-body-emphasis">
+      <Link
+        href="/"
+        className="flex items-center gap-[10px] text-body-emphasis"
+      >
         <Logo />
         Lead the Way
       </Link>
@@ -76,7 +79,9 @@ export function JoinInvalid({ you }: { you: You }) {
     <div className="flex min-h-dvh flex-col">
       <JoinBar orgName={null} you={you} />
       <main className="mx-auto flex w-full max-w-[640px] flex-col gap-04 px-05 py-09">
-        <h1 className="text-heading-01">This invitation link isn&apos;t valid.</h1>
+        <h1 className="text-heading-01">
+          This invitation link isn&apos;t valid.
+        </h1>
         <p className="text-body-01 text-text-secondary">
           Ask your manager for a new one.
         </p>
@@ -151,7 +156,10 @@ function Actions({
                 onJoined((await accept({ token })).orgId);
               } catch (e) {
                 setError(
-                  userMessage(e, "We couldn't add you to the sprint. Try again."),
+                  userMessage(
+                    e,
+                    "We couldn't add you to the sprint. Try again.",
+                  ),
                 );
                 setPending(false);
               }
@@ -292,7 +300,10 @@ export function JoinView({
                   className="shrink-0 text-interactive max-[900px]:hidden"
                 />
                 <div className="flex flex-col gap-02">
-                  <h2 id="join-hour" className="text-label-01 text-text-secondary">
+                  <h2
+                    id="join-hour"
+                    className="text-label-01 text-text-secondary"
+                  >
                     Your protected hour
                   </h2>
                   <p className="text-heading-03 font-light min-[900px]:text-heading-02">
@@ -304,7 +315,10 @@ export function JoinView({
                 </div>
               </section>
 
-              <section aria-labelledby="join-goal" className="flex flex-col gap-05">
+              <section
+                aria-labelledby="join-goal"
+                className="flex flex-col gap-05"
+              >
                 <h2
                   id="join-goal"
                   className="text-heading-04 min-[900px]:text-heading-03"
@@ -342,11 +356,14 @@ export function JoinView({
               </section>
 
               <div className="max-[900px]:hidden">
-                <InlineNotification icon={Locked} title="Your learning stays private.">
+                <InlineNotification
+                  icon={Locked}
+                  title="Your learning stays private."
+                >
                   Your individual SkillsBuild activity is private. Your manager
-                  sees only aggregate team participation and the work you
-                  choose to share at the final show and tell. Participation is
-                  for development and is not used as a performance score.
+                  sees only aggregate team participation and the work you choose
+                  to share at the final show and tell. Participation is for
+                  development and is not used as a performance score.
                 </InlineNotification>
               </div>
               <div className="min-[900px]:hidden">
@@ -366,7 +383,14 @@ export function JoinView({
               state={state}
               orgName={orgName}
               invitedBy={invitedBy}
-              onJoined={setJoined}
+              onJoined={(orgId) => {
+                // A later sprint past week 1 has no before check-in to answer.
+                if (join?.askBefore === false) {
+                  // A full load, as CheckIn's onDone does.
+                  // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
+                  window.location.assign("/me");
+                } else setJoined(orgId);
+              }}
             />
           </section>
         </main>

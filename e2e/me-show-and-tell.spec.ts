@@ -44,9 +44,7 @@ async function open(page: Page) {
 test.describe("week 4", () => {
   test.beforeEach(() => resetDemo("week4"));
 
-  test("14 reads as the wireframe before anyone presents", async ({
-    page,
-  }) => {
+  test("14 reads as the wireframe before anyone presents", async ({ page }) => {
     await open(page);
     await expect(main(page).getByText("Week 4", { exact: true })).toBeVisible();
     await expect(
@@ -122,7 +120,9 @@ test.describe("week 4", () => {
     ).toBeVisible();
 
     await presentButton(page).click();
-    await confirm(page).getByRole("button", { name: "Present project" }).click();
+    await confirm(page)
+      .getByRole("button", { name: "Present project" })
+      .click();
     await expect(page.getByText(PRESENTED, { exact: true })).toBeVisible();
     await expect(confirm(page)).toHaveCount(0);
     await expect(session(page).getByRole("listitem")).toHaveText([

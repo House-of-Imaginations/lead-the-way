@@ -1,7 +1,7 @@
 import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { throwUserError } from "../errors";
-import { takeDueSnapshots } from "../snapshots";
+import { takeDueSnapshots, takeOutcomes } from "../snapshots";
 import { currentSprint } from "../sprint";
 import { DEMO_TARGETS, type DemoTarget } from "./schedule";
 import { STEPS, isStepKey } from "./script";
@@ -26,6 +26,16 @@ export async function moveClock(
     );
   }
   await ctx.db.patch(org._id, { demoNow: to });
+  /**
+   * Every total due by `cutoff`: the weeks, and the outcomes once the sprint
+   * has closed, in this transaction. The sprint is read each time, as a step
+   * may launch it.
+   */
+  const freeze = async (cutoff: number) => {
+    const sprint = await currentSprint(ctx, org._id);
+    await takeOutcomes(ctx, org, sprint, to, cutoff);
+    await takeDueSnapshots(ctx, org, sprint, to, cutoff);
+  };
 
   // One row per scripted step (22), so the due range fits in one read.
   const due = await ctx.db
@@ -37,19 +47,12 @@ export async function moveClock(
     if (row.appliedAt !== undefined || !isStepKey(row.key)) continue;
     // Before a step, every week whose hour ended before it: a jump past
     // several weeks freezes each as of its own hour, not as of the jump. A
-    // step at the hour's end (the session) still counts. The sprint is read
-    // each time, as a step may launch it.
-    await takeDueSnapshots(
-      ctx,
-      org,
-      await currentSprint(ctx, org._id),
-      to,
-      row.at - 1,
-    );
+    // step at the hour's end (the session) still counts.
+    await freeze(row.at - 1);
     await STEPS[row.key]({ ctx, orgId: org._id, at: row.at });
     await ctx.db.patch(row._id, { appliedAt: Date.now() });
     applied.push(row.key);
   }
-  await takeDueSnapshots(ctx, org, await currentSprint(ctx, org._id), to);
+  await freeze(to);
   return { demoNow: to, applied };
 }

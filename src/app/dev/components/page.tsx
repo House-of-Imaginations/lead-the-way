@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Gallery } from "./Gallery";
+import { Gallery } from "./_components/Gallery";
 
 export const metadata: Metadata = {
   title: "Components · Lead the Way",

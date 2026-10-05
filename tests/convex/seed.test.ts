@@ -487,3 +487,40 @@ test("any persona in the demo can reset it, Dan included", async () => {
   const priya = t.withIdentity({ subject: accounts.priya });
   expect((await priya.query(api.orgs.active, {}))?.org._id).not.toBe(demoId);
 });
+
+test("seed.invite can invite into a team:insights role, made once", async () => {
+  const t = harness();
+  const accounts = await seedDemoAccounts(t);
+  const orgId = await t.mutation(internal.seed.writeCalderLane, { accounts });
+  for (const email of ["lead-one@example.com", "lead-two@example.com"]) {
+    expect(
+      typeof (await t.mutation(internal.seed.invite, {
+        email,
+        insights: true,
+      })),
+    ).toBe("string");
+  }
+  await t.mutation(internal.seed.invite, { email: "plain@example.com" });
+
+  const { roles, invites } = await t.run(async (ctx) => ({
+    roles: await ctx.db
+      .query("orgRoles")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
+    invites: await ctx.db
+      .query("orgInvites")
+      .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
+      .collect(),
+  }));
+  const leads = roles.filter(
+    (r) => r.kind === "custom" && r.name === "Team lead",
+  );
+  expect(leads).toHaveLength(1);
+  expect(leads[0]).toMatchObject({ permissions: ["team:insights"] });
+  const roleOf = (email: string) =>
+    invites.find((i) => i.email === email)!.roleId;
+  expect(roleOf("lead-one@example.com")).toBe(leads[0]!._id);
+  expect(roleOf("lead-two@example.com")).toBe(leads[0]!._id);
+  const plain = roles.find((r) => r._id === roleOf("plain@example.com"));
+  expect(plain).toMatchObject({ kind: "custom", permissions: [] });
+});

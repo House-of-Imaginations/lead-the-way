@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { internal } from "../../convex/_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 import { castOf } from "../../convex/lib/demo/cast";
 import { call, callsFor, publicFunctions } from "./sweep";
 import { calderLane, seat } from "./workspace/helpers";
@@ -215,6 +215,8 @@ for (const c of CASES) {
       expect.arrayContaining([
         "priya manager:overview",
         "lead manager:overview",
+        "priya manager:outcomes",
+        "lead manager:outcomes",
         "priya viewer:shell",
         "priya members:list",
         "priya invites:list",
@@ -255,12 +257,20 @@ test("survey answers are read by question only through the privacy layer", () =>
 });
 
 /**
- * The files that may touch `loadSeated` (raw seated people) or
- * `signatureCount` (a live count): the privacy layer, the overview and 10.
- * A new reader of either is a new place a manager could see a number, so it
- * has to be added here on purpose.
+ * The files that may touch `loadSeated` (raw seated people), `signatureCount`
+ * (a live count) or `countSeated` (a count over whatever list it is handed):
+ * the privacy layer, the overview (which holds `sprintHeadcount`, a membership
+ * fact), 10's `agreementForViewer`, and the outcomes writer (presented counts
+ * every seated presenter, R-i). A new reader of any
+ * of them is a new place a manager could see a number, so it has to be added
+ * here on purpose.
  */
-const SEATED_FILES = ["lib/privacy.ts", "manager.ts", "agreements.ts"];
+const SEATED_FILES = [
+  "lib/privacy.ts",
+  "manager.ts",
+  "lib/agreement.ts",
+  "lib/snapshots.ts",
+];
 
 test("the seated team and the live signature count are read only where the allowlist says", () => {
   const dir = new URL("../../convex/", import.meta.url);
@@ -268,11 +278,13 @@ test("the seated team and the live signature count are read only where the allow
   for (const file of readdirSync(dir, { recursive: true }) as string[]) {
     if (!file.endsWith(".ts") || file.startsWith("_generated")) continue;
     const source = readFileSync(new URL(file, dir), "utf8");
-    if (/\b(?:loadSeated|signatureCount)\b/.test(source)) found.push(file);
+    if (/\b(?:loadSeated|signatureCount|countSeated)\b/.test(source)) {
+      found.push(file);
+    }
   }
   // Nothing found would pass vacuously; both current readers must be seen.
   expect(found).toEqual(
-    expect.arrayContaining(["manager.ts", "agreements.ts"]),
+    expect.arrayContaining(["manager.ts", "lib/agreement.ts"]),
   );
   expect(found.filter((file) => !SEATED_FILES.includes(file))).toEqual([]);
 });
@@ -303,4 +315,62 @@ test("private activity is counted only where the allowlist says", () => {
   expect(found.filter((file) => !PRIVATE_COUNT_FILES.includes(file))).toEqual(
     [],
   );
+});
+
+/**
+ * Snapshot and outcome rows store who they counted and who was seated (Tasks
+ * 3 and 4, Ruling FX). Those lists and every person id stay in the database:
+ * no read hands them to a manager.
+ */
+test("no outcomes or snapshot read hands over who was counted", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "complete" });
+  const { as: lead } = await seat(t, orgId, "user_lead", ["team:insights"]);
+  const { personIds, weeks, outcomes } = await t.run(async (ctx) => {
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    const weeks = await ctx.db
+      .query("teamSnapshots")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    const outcomes = await ctx.db
+      .query("sprintOutcomes")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    return {
+      personIds: people.map((p) => p._id as string),
+      // The smaller of the two stored lists, so both must be there.
+      weeks: weeks.map((r) =>
+        Math.min(r.counted?.length ?? 0, r.seated?.length ?? 0),
+      ),
+      outcomes: outcomes.map((r) =>
+        Math.min(r.counted.length, r.seated?.length ?? 0),
+      ),
+    };
+  });
+  // The rows do hold a cohort and a roster, so a clean answer means something.
+  expect(weeks.length).toBeGreaterThanOrEqual(1);
+  expect(weeks.every((n) => n > 0)).toBe(true);
+  expect(outcomes).toHaveLength(1);
+  expect(outcomes[0]).toBeGreaterThan(0);
+
+  for (const [who, caller] of [
+    ["priya", as("priya")],
+    ["lead", lead],
+  ] as const) {
+    for (const [name, answer] of [
+      ["manager.overview", await caller.query(api.manager.overview, {})],
+      ["manager.outcomes", await caller.query(api.manager.outcomes, {})],
+    ] as const) {
+      expect(answer, `${who} ${name}`).not.toBeNull();
+      const text = JSON.stringify(answer);
+      expect(text, `${who} ${name}`).not.toContain('"counted"');
+      expect(text, `${who} ${name}`).not.toContain('"seated"');
+      for (const id of personIds) {
+        expect(text.includes(id), `${who} ${name} ${id}`).toBe(false);
+      }
+    }
+  }
 });

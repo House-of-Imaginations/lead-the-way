@@ -4,7 +4,13 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { castOf } from "../../convex/lib/demo/cast";
 import { INVITE_MESSAGE } from "../../convex/lib/demo/script";
 import { seedAuthUser } from "./testHelpers";
-import { calderLane, harness, seat, workspace, type T } from "./workspace/helpers";
+import {
+  calderLane,
+  harness,
+  seat,
+  workspace,
+  type T,
+} from "./workspace/helpers";
 
 beforeEach(() => {
   vi.stubEnv("DEMO_MODE", "on");
@@ -26,6 +32,7 @@ const CALDER_JOIN = {
   span: "9 to 30 September 2026",
   showAndTell: "30 Sep",
   course: "AI Productivity Fundamentals",
+  askBefore: true,
 };
 
 async function pendingToken(t: T, orgId: Id<"orgs">, email: string) {

@@ -2,11 +2,7 @@ import { api } from "@convex/_generated/api";
 import { AuthSplit } from "@/components/app/AuthSplit";
 import { SignUpForm } from "@/components/app/SignUpForm";
 import { fetchAuthQuery } from "@/lib/account/auth-server";
-import {
-  currentHour,
-  getAuthMethods,
-  openOrHome,
-} from "@/lib/account/queries";
+import { currentHour, getAuthMethods, openOrHome } from "@/lib/account/queries";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
