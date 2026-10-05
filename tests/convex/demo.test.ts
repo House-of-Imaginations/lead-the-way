@@ -14,6 +14,7 @@ import { ORG_TABLES } from "../../convex/lib/orgs/cascade";
 import { castOf } from "../../convex/lib/demo/cast";
 import { aggregate, loadCountable } from "../../convex/lib/privacy";
 import { isPresented } from "../../convex/lib/projects";
+import { RESULT_TYPES } from "../../convex/lib/projectLimits";
 import { DEFAULT_SETTINGS } from "../../convex/lib/settings";
 import { recordSkip, upsertAnswer } from "../../convex/lib/surveys";
 import { getViewer } from "../../convex/lib/viewer";
@@ -304,6 +305,25 @@ test("the sprint completes automatically when the clock passes the end of the we
   const done = await sprintOf(t, orgId);
   expect(done.completedAt).toBe(SCHEDULE["sprint.complete"]);
   expect(done.status).toBeUndefined();
+});
+
+test("the seeded projects only use result types the form offers", async () => {
+  const { t, orgId, as } = await calderLane();
+  await as("priya").mutation(api.demo.setClock, {
+    target: "complete",
+    expectOrgId: orgId,
+  });
+  const rows = await t.run((ctx) =>
+    ctx.db
+      .query("projects")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
+  );
+  expect(rows.length).toBeGreaterThan(0);
+  const offered: readonly string[] = RESULT_TYPES;
+  for (const row of rows) {
+    for (const type of row.resultTypes) expect(offered).toContain(type);
+  }
 });
 
 test("an employee can move the demo clock", async () => {

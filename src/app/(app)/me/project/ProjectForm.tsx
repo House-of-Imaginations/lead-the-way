@@ -87,7 +87,11 @@ function Section({
 
 export function ProjectForm({ initial }: { initial: MyProject }) {
   const hour = useHour();
-  const data = useQuery(api.projects.mine, { hour }) ?? initial;
+  const query = useQuery(api.projects.mine, { hour });
+  // A new hour gives undefined for a moment; keep the last result so the form doesn't flash back to the page-load snapshot.
+  const [last, setLast] = useState(initial);
+  if (query && query !== last) setLast(query);
+  const data = query ?? last;
   const expectOrgId = useExpectOrgId();
   const saveDraft = useMutation(api.projects.saveDraft);
   const save = useMutation(api.projects.save);
@@ -156,6 +160,7 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
     // A pending autosave would only be a no-op after this (saveDraft leaves a saved project alone).
     clearTimeout(timer.current);
     unsaved.current = null;
+    const attempted = form;
     setPending(true);
     setError(null);
     try {
@@ -166,6 +171,8 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
       });
     } catch (e) {
       setError(userMessage(e, "Your project didn't save. Try again."));
+      // Still a draft, so the last edits go back on the autosave timer.
+      change(attempted);
     } finally {
       setPending(false);
     }
@@ -238,7 +245,7 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
           </div>
           <button
             type="button"
-            className="text-body-02 text-link hover:text-link-hover hover:underline max-[671px]:min-h-[48px]"
+            className="text-body-02 text-link hover:text-link-hover hover:underline max-[671px]:min-h-control-lg"
             onClick={() => change(DANS_EXAMPLE)}
           >
             Use Dan&apos;s example
@@ -371,10 +378,7 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
 
         <div className="flex flex-wrap items-center justify-end gap-x-05 gap-y-03 border-t border-border-subtle pt-06">
           {project ? (
-            <p
-              role="status"
-              className="mr-auto text-label-01 text-text-secondary"
-            >
+            <p className="mr-auto text-label-01 text-text-secondary">
               {project.autosavedLabel}
             </p>
           ) : null}

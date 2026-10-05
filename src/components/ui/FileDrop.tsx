@@ -1,7 +1,7 @@
 "use client";
 
 import { Upload } from "@carbon/icons-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "./Button";
 
 export type FileDropProps = {
@@ -32,8 +32,25 @@ export function FileDrop({
   onRemove,
 }: FileDropProps) {
   const [over, setOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const removeRef = useRef<HTMLButtonElement>(null);
+  const had = useRef(Boolean(current));
+  const refocus = useRef(false);
+  const has = Boolean(current);
+  // The focused control unmounts when the zone swaps, so hand focus to its successor once it can take it.
+  useEffect(() => {
+    if (has !== had.current) {
+      had.current = has;
+      refocus.current = true;
+    }
+    const next = has ? removeRef.current : inputRef.current;
+    if (refocus.current && next && !next.disabled) {
+      refocus.current = false;
+      next.focus();
+    }
+  }, [has, busy]);
   const note = error ? (
-    <span id={`${id}-error`} className="ltw-err">
+    <span id={`${id}-error`} role="alert" className="ltw-err">
       {error}
     </span>
   ) : (
@@ -51,7 +68,14 @@ export function FileDrop({
           alt={current.alt}
           className="max-h-[200px] w-auto border border-border-subtle"
         />
-        <Button kind="ghost" size="sm" disabled={busy} onClick={onRemove}>
+        <Button
+          ref={removeRef}
+          kind="ghost"
+          size="sm"
+          className="ltw-fd-remove"
+          disabled={busy}
+          onClick={onRemove}
+        >
           Remove file
         </Button>
         {note}
@@ -63,12 +87,18 @@ export function FileDrop({
     <div className="flex flex-col gap-02">
       <label
         className="ltw-fd"
-        data-over={over || undefined}
+        data-over={(over && !busy) || undefined}
+        aria-busy={busy || undefined}
         onDragOver={(e) => {
           e.preventDefault();
           setOver(true);
         }}
-        onDragLeave={() => setOver(false)}
+        onDragLeave={(e) => {
+          // Crossing onto the icon or the text also fires dragleave on the label.
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            setOver(false);
+          }
+        }}
         onDrop={(e) => {
           e.preventDefault();
           setOver(false);
@@ -77,6 +107,7 @@ export function FileDrop({
         }}
       >
         <input
+          ref={inputRef}
           id={id}
           type="file"
           accept={accept.join(",")}
@@ -91,7 +122,7 @@ export function FileDrop({
           }}
         />
         <Upload className="ltw-i" aria-hidden="true" />
-        <span>{label}</span>
+        <span>{busy ? "Uploading" : label}</span>
       </label>
       {note}
     </div>

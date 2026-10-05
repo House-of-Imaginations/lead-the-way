@@ -193,13 +193,25 @@ test("save needs a title and both checks, and logs project.saved once", async ()
     (await eventsOf(t, orgId, "project.saved")).map((e) => e.meta),
   ).toEqual([{ fieldsFilled: 3 }]);
 
+  // A partial save counts only what is filled.
+  await as("mei").mutation(api.projects.save, {
+    ...DRAFT,
+    after: "Done the same day.",
+    humanReviewed: true,
+    dataSafe: true,
+    expectOrgId,
+  });
+  expect(
+    (await eventsOf(t, orgId, "project.saved")).map((e) => e.meta),
+  ).toEqual([{ fieldsFilled: 3 }, { fieldsFilled: 1 }]);
+
   // An edit through Save project is the same project, not a second save.
   await dan.mutation(api.projects.save, {
     ...READY,
     headline: "",
     expectOrgId,
   });
-  expect(await eventsOf(t, orgId, "project.saved")).toHaveLength(1);
+  expect(await eventsOf(t, orgId, "project.saved")).toHaveLength(2);
 
   // A late autosave can't undo a save (Ruling 12).
   await dan.mutation(api.projects.saveDraft, { ...DRAFT, expectOrgId });
@@ -286,6 +298,11 @@ test("a screenshot is a PNG or JPG up to 5 MB, and a replacement deletes the old
   expect(
     (await dan.query(api.projects.mine, {}))!.project!.screenshotUrl,
   ).toEqual(expect.any(String));
+  // A refused replacement keeps the current file.
+  await expect(set(await upload(t, "image/svg+xml"))).rejects.toMatchObject({
+    data: { code: "SCREENSHOT_TYPE" },
+  });
+  expect(await gone(t, first)).toBe(false);
 
   const second = await upload(t, "image/jpeg");
   await set(second);

@@ -64,12 +64,12 @@ export const board = timedViewerQuery()({
       projectOf(ctx, personId, sprint._id),
       ctx.db
         .query("projects")
-        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
         .take(PROJECTS_READ),
     ]);
 
     const shown = rows
-      .filter((p) => p.sprintId === sprint._id && isPresented(p))
+      .filter(isPresented)
       .sort((a, b) => (a.presentedAt ?? 0) - (b.presentedAt ?? 0));
     const presented: Board["presented"] = [];
     for (const p of shown) {

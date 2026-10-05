@@ -1369,6 +1369,10 @@ button.ltw-sn-acct:hover {
   .ltw-menu-i {
     min-height: 48px;
   }
+  .ltw-cb-l,
+  .ltw-fd-remove {
+    min-height: 48px;
+  }
   .ltw-toast button,
   .ltw-tag button {
     position: relative;
@@ -1587,7 +1591,7 @@ button.ltw-sn-acct:hover {
   cursor: pointer;
   transition: background-color 70ms var(--ease-productive);
 }
-.ltw-fd:hover,
+.ltw-fd:not(:has(input:disabled)):hover,
 .ltw-fd[data-over] {
   background: var(--layer-hover);
   color: var(--link-hover); /* keeps 4.5:1 on layer-hover */

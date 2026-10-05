@@ -158,3 +158,41 @@ test("the board's own facts are the viewer's", async () => {
   // Priya has no project of her own.
   expect((await as("priya").query(api.showAndTell.board, {}))!.mine).toBeNull();
 });
+
+test("the board shows only the current sprint's presented projects", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "complete");
+  const mei = await personOf(t, orgId, "mei");
+  // A newer sprint takes over; the six projects presented in the old one stay behind.
+  await t.run(async (ctx) => {
+    const old = (await ctx.db
+      .query("sprints")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first())!;
+    const { _id, _creationTime, ...rest } = old;
+    void _id;
+    void _creationTime;
+    const sprintId = await ctx.db.insert("sprints", rest);
+    await ctx.db.insert("projects", {
+      orgId,
+      personId: mei,
+      sprintId,
+      startedWeek: 1,
+      title: "Next sprint's project",
+      before: "",
+      change: "",
+      after: "",
+      resultTypes: [],
+      humanReviewed: true,
+      dataSafe: true,
+      status: "saved",
+      sharing: "team",
+      presentedAt: Date.now(),
+      autosavedAt: Date.now(),
+    });
+  });
+  const board = (await as("dan").query(api.showAndTell.board, {}))!;
+  expect(board.presented).toEqual([
+    { title: "Next sprint's project", firstName: "Mei" },
+  ]);
+});

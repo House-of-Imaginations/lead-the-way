@@ -234,7 +234,10 @@ export const generateUploadUrl = viewerMutation()({
  *
  * ponytail: storage ids carry no workspace, so any fresh id is accepted. An id
  * is reachable only by someone it was already served to, and a stale one is
- * refused. Add an `uploads` table (id, person, time) if ids ever leak wider.
+ * refused. A refused upload (type, size, age) also stays in storage, because the
+ * throw rolls back any cleanup: orphans are a prototype ceiling. Add an
+ * `uploads` table (id, person, time), swept by a cron, if ids ever leak wider
+ * or the orphans matter.
  */
 export const setScreenshot = viewerMutation()({
   args: { storageId: v.union(v.id("_storage"), v.null()) },

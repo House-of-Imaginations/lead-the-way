@@ -184,6 +184,7 @@ export const sprintTables = {
     autosavedAt: v.number(),
   })
     .index("by_org", ["orgId"])
+    .index("by_sprint", ["sprintId"])
     .index("by_person_and_sprint", ["personId", "sprintId"]),
 
   /** A credential. `shareSlug` is the public link, the only signed-out read. */
