@@ -75,6 +75,7 @@ import type * as orgs from "../orgs.js";
 import type * as pathway from "../pathway.js";
 import type * as profiles from "../profiles.js";
 import type * as projects from "../projects.js";
+import type * as reminders from "../reminders.js";
 import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
 import type * as showAndTell from "../showAndTell.js";
@@ -162,6 +163,7 @@ declare const fullApi: ApiFromModules<{
   pathway: typeof pathway;
   profiles: typeof profiles;
   projects: typeof projects;
+  reminders: typeof reminders;
   seed: typeof seed;
   settings: typeof settings;
   showAndTell: typeof showAndTell;

@@ -36,6 +36,10 @@ async function rowsOf(t: T, orgId: Id<"orgs">) {
       .query("surveyResponses")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .collect(),
+    reminders: await ctx.db
+      .query("reminders")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
     pathwayProgress: await ctx.db
       .query("pathwayProgress")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))

@@ -17,6 +17,7 @@ export const ORG_TABLES = [
   "badges",
   "surveyResponses",
   "settings",
+  "reminders",
   "events",
   "teamSnapshots",
   "sprintOutcomes",

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { inviteEmail } from "../../convex/lib/email/messages";
+import { inviteEmail, reminderEmail } from "../../convex/lib/email/messages";
 import { escapeHtml, renderEmail } from "../../convex/lib/email/template";
 
 /**
@@ -93,4 +93,38 @@ test("the invitation email escapes the manager's message", () => {
   );
   // The plain-text part carries the words as typed.
   expect(text).toContain(`Priya wrote: "${message}"`);
+});
+
+test("the reminders say when, in plain words, and how to turn them off", () => {
+  const weekly = reminderEmail({
+    kind: "weekly",
+    week: 2,
+    weeks: 4,
+    when: "Wednesday 16 September at 2:00 PM, Melbourne time",
+    link: "https://example.com/home",
+  });
+  expect(weekly.subject).toBe("Your protected hour is tomorrow");
+  expect(weekly.content).toEqual({
+    heading: "Your protected hour is tomorrow",
+    paragraphs: [
+      "Week 2 of 4: Wednesday 16 September at 2:00 PM, Melbourne time.",
+      "One hour of your working week is protected for practical AI learning.",
+    ],
+    action: { label: "Open your week", url: "https://example.com/home" },
+    footer:
+      "You get this because reminders are on in Lead the Way. Turn them off in Settings, Notifications.",
+  });
+  const show = reminderEmail({
+    kind: "showAndTell",
+    week: 4,
+    weeks: 4,
+    when: "Wednesday 30 September at 2:00 PM",
+  });
+  expect(show.subject).toBe("Show and tell is tomorrow");
+  expect(show.content.paragraphs).toEqual([
+    "Your team's show and tell is in the protected hour on Wednesday 30 September at 2:00 PM.",
+    "Bring one way you used AI at work, if you want to share it. Nothing is shared unless you choose to.",
+  ]);
+  // No link without SITE_URL: no button.
+  expect(show.content.action).toBeUndefined();
 });

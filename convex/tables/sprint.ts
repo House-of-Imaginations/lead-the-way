@@ -237,6 +237,23 @@ export const sprintTables = {
     .index("by_org", ["orgId"])
     .index("by_person", ["personId"]),
 
+  /**
+   * One row per person per reminder run (P7b-1): what `reminders.send`
+   * decided, so a second run for the same week sends nothing. `emailed` is
+   * false where no sending domain is configured.
+   */
+  reminders: defineTable({
+    orgId: v.id("orgs"),
+    sprintId: v.id("sprints"),
+    personId: v.id("people"),
+    week: v.number(),
+    kind: literals("weekly", "showAndTell"),
+    at: v.number(),
+    emailed: v.boolean(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_sprint_week_and_person", ["sprintId", "week", "personId"]),
+
   /** What happened when, for the timeline and outcomes. No person id on purpose. */
   events: defineTable({
     orgId: v.id("orgs"),

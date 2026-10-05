@@ -99,3 +99,45 @@ export async function sendPasswordResetEmail(
       "If you did not ask for this, ignore it. Nothing changes until the link is opened, and your password is unchanged.",
   });
 }
+
+type Reminder = {
+  kind: "weekly" | "showAndTell";
+  week: number;
+  weeks: number;
+  /** "Wednesday 16 September at 2:00 PM", plus the zone note when it differs. */
+  when: string;
+  /** The person's home; no button without one. */
+  link?: string;
+};
+
+/**
+ * The day-before reminders (S-d). Says when, says what the hour is for, and
+ * says how to stop them, because an email nobody asked to keep getting is
+ * the one that gets reported.
+ */
+export function reminderEmail(r: Reminder) {
+  const heading =
+    r.kind === "showAndTell"
+      ? "Show and tell is tomorrow"
+      : "Your protected hour is tomorrow";
+  const paragraphs =
+    r.kind === "showAndTell"
+      ? [
+          `Your team's show and tell is in the protected hour on ${r.when}.`,
+          "Bring one way you used AI at work, if you want to share it. Nothing is shared unless you choose to.",
+        ]
+      : [
+          `Week ${r.week} of ${r.weeks}: ${r.when}.`,
+          "One hour of your working week is protected for practical AI learning.",
+        ];
+  return {
+    subject: heading,
+    content: {
+      heading,
+      paragraphs,
+      ...(r.link ? { action: { label: "Open your week", url: r.link } } : {}),
+      footer:
+        "You get this because reminders are on in Lead the Way. Turn them off in Settings, Notifications.",
+    },
+  };
+}
