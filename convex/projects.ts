@@ -80,7 +80,10 @@ function checked(f: ProjectFields): ProjectFields {
     [f.after, PROJECT_LIMITS.text],
     [f.headline, PROJECT_LIMITS.headline],
   ]);
-  return { ...f, resultTypes: RESULT_TYPES.filter((r) => f.resultTypes.includes(r)) };
+  return {
+    ...f,
+    resultTypes: RESULT_TYPES.filter((r) => f.resultTypes.includes(r)),
+  };
 }
 
 async function sprintOf(ctx: QueryCtx, viewer: Viewer) {

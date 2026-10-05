@@ -41,4 +41,3 @@ export async function launchClone(t: T, orgId: Id<"orgs">) {
   );
   return clone._id;
 }
-

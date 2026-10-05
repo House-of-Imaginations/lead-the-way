@@ -68,9 +68,7 @@ test("every manager page renders from the query its row names (Ruling 5)", () =>
       href === "/manager"
         ? "page.tsx"
         : `${href.slice("/manager/".length)}/page.tsx`;
-    expect(readFileSync(new URL(file, dir), "utf8"), href).toContain(
-      row!.name,
-    );
+    expect(readFileSync(new URL(file, dir), "utf8"), href).toContain(row!.name);
   }
   expect(
     Object.keys(ROUTE_PERMISSION).filter((href) => !(href in PAGES)),

@@ -54,10 +54,12 @@ test("Continue learning marks this week's session, never lowers, and keeps one r
     await dan.mutation(api.learning.continueSession, { expectOrgId: orgId }),
   ).toEqual(pressed);
   const rows = await t.run(async (ctx) => {
-    const danId = (await ctx.db
-      .query("people")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .collect()).find((p) => p.email === castOf("dan").email)!._id;
+    const danId = (
+      await ctx.db
+        .query("people")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect()
+    ).find((p) => p.email === castOf("dan").email)!._id;
     return await ctx.db
       .query("learningProgress")
       .withIndex("by_person_and_sprint", (q) => q.eq("personId", danId))
@@ -113,7 +115,9 @@ test("a week 3 press issues no badge", async () => {
   await as("dan").mutation(api.learning.continueSession, {
     expectOrgId: orgId,
   });
-  expect(await t.run((ctx) => ctx.db.query("badges").collect())).toHaveLength(0);
+  expect(await t.run((ctx) => ctx.db.query("badges").collect())).toHaveLength(
+    0,
+  );
 });
 
 test("before week one, Continue learning opens session 1", async () => {

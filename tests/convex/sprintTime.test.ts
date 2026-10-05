@@ -311,7 +311,7 @@ test("a draft's week one is the later of its stored date and the next working we
     startDateOf(draft("2026-11-04"), Date.parse("2026-11-20T09:00:00+11:00")),
   ).toBe("2026-11-25");
   // A launched sprint keeps its date.
-  expect(
-    startDateOf({ ...sprint("2026-09-09"), launchedAt: 1 }, oct1),
-  ).toBe("2026-09-09");
+  expect(startDateOf({ ...sprint("2026-09-09"), launchedAt: 1 }, oct1)).toBe(
+    "2026-09-09",
+  );
 });

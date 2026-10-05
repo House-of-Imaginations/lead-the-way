@@ -273,7 +273,11 @@ test("13 at the week 2 target counts two of eight", async () => {
         current: true,
         activities: [
           learn("todo"),
-          { label: "Apply, in progress", state: "progress", href: "/me/project" },
+          {
+            label: "Apply, in progress",
+            state: "progress",
+            href: "/me/project",
+          },
         ],
       },
       {
@@ -409,8 +413,14 @@ test("13 in week 3: a project started in week 2 leaves week 1's Apply undone", a
     await ctx.db.patch(project._id, { startedWeek: 2 });
   });
   const weeks = (await as("dan").query(api.me.sprint, {}))!.weeks;
-  expect(weeks[0]!.activities[1]).toMatchObject({ label: "Apply", state: "todo" });
-  expect(weeks[1]!.activities[1]).toMatchObject({ label: "Apply", state: "done" });
+  expect(weeks[0]!.activities[1]).toMatchObject({
+    label: "Apply",
+    state: "todo",
+  });
+  expect(weeks[1]!.activities[1]).toMatchObject({
+    label: "Apply",
+    state: "done",
+  });
 });
 
 test("before launch there is no week to show", async () => {

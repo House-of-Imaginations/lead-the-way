@@ -173,9 +173,7 @@ function navFor(viewer: Viewer, groups: typeof MANAGER_NAV): Shell["nav"] {
     .map((group) => ({
       title: group.title,
       links: group.links
-        .filter(
-          (l) => !l.need || viewer.permissions.includes(l.need),
-        )
+        .filter((l) => !l.need || viewer.permissions.includes(l.need))
         .map(({ label, href, icon }) => ({ label, href, icon })),
     }))
     .filter((group) => group.links.length > 0);
