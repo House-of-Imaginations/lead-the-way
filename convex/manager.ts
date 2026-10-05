@@ -7,7 +7,7 @@ import { throwUserError } from "./lib/errors";
 import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
 import { PATHWAY_MODULES, coachingPercent } from "./lib/pathway";
 import { loadSeated, thresholdOf, type Aggregate } from "./lib/privacy";
-import { isManager } from "./lib/shell";
+import { ROUTE_PERMISSION, isManager } from "./lib/orgs/permissions";
 import { latestSnapshot } from "./lib/snapshots";
 import {
   currentSprint,
@@ -253,7 +253,9 @@ export const overview = timedViewerQuery()({
 
     return {
       phase,
-      canManage: viewer.permissions.includes("sprint:manage"),
+      canManage: viewer.permissions.includes(
+        ROUTE_PERMISSION["/manager/sprint/launch"],
+      ),
       intro,
       timeline,
       learning: {

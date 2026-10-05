@@ -5,7 +5,12 @@ import type { QueryCtx } from "../_generated/server";
 import { flagOn } from "../app";
 import { castOf } from "./demo/cast";
 import { MAX_MEMBERS_PER_ORG, seatsOfUser } from "./orgs/membership";
-import type { Permission } from "./orgs/permissions";
+import {
+  ROUTE_PERMISSION,
+  isManager,
+  type ManagerRoute,
+  type Permission,
+} from "./orgs/permissions";
 import { firstNameOf, initialsOf } from "./orgs/people";
 import { SETUP_STEPS } from "./setupSteps";
 import { currentSprint, currentTeam, setupGate } from "./sprint";
@@ -85,11 +90,6 @@ export const shellValidator = v.object({
 });
 export type Shell = Infer<typeof shellValidator>;
 
-/** The manager area is a matter of permissions, never of a role's name (rule 6). */
-export const isManager = (viewer: Viewer) =>
-  viewer.permissions.includes("team:insights") ||
-  viewer.permissions.includes("sprint:manage");
-
 /**
  * Where this viewer belongs (R4). Launch doesn't need the team profile, and
  * setup closes at launch, so a launched sprint is home at /manager either way.
@@ -118,49 +118,47 @@ const link = (label: string, href: string, icon: Icon) => ({
 
 type Link = ReturnType<typeof link>;
 
+/** A manager page's link, carrying the permission its query needs (Ruling 5). */
+const page = (label: string, href: ManagerRoute, icon: Icon) => ({
+  ...link(label, href, icon),
+  need: ROUTE_PERMISSION[href] as Permission | null,
+});
+
 /**
- * Ruling 13: a link with `need` shows only to a viewer who holds it. Overview
+ * Ruling 13: a link with a `need` shows only to a viewer who holds it. Overview
  * and Resources have none, so every manager has a home and the resources.
  */
 const MANAGER_NAV: {
   title: string;
-  links: (Link & { need?: Permission })[];
+  links: (Link & { need?: Permission | null })[];
 }[] = [
   {
     title: "Team",
     links: [
-      link("Overview", "/manager", "Dashboard"),
-      {
-        ...link("Sprint", "/manager/sprint/launch", "Calendar"),
-        need: "sprint:manage",
-      },
-      {
-        ...link("Team agreement", "/manager/agreement", "DocumentTasks"),
-        need: "sprint:manage",
-      },
-      {
-        ...link("Outcomes", "/manager/outcomes", "ChartColumn"),
-        need: "team:insights",
-      },
+      page("Overview", "/manager", "Dashboard"),
+      page("Sprint", "/manager/sprint/launch", "Calendar"),
+      page("Team agreement", "/manager/agreement", "DocumentTasks"),
+      page("Outcomes", "/manager/outcomes", "ChartColumn"),
     ],
   },
   {
     title: "You",
     links: [
-      {
-        ...link("My learning", "/manager/learning", "Education"),
-        need: "sprint:manage",
-      },
+      page("My learning", "/manager/learning", "Education"),
       link("Resources", "/manager#resources", "Catalog"),
     ],
   },
 ];
 
-/** Once the sprint launches, Sprint opens the overview (spec 4.1). */
+/**
+ * Once the sprint launches, Sprint opens the overview (spec 4.1). Matched by
+ * href, and it keeps the launch page's `need`, so it still shows only to
+ * `sprint:manage`.
+ */
 const LAUNCHED_NAV = MANAGER_NAV.map((group) => ({
   ...group,
   links: group.links.map((l) =>
-    l.label === "Sprint" ? { ...l, href: "/manager" } : l,
+    l.href === "/manager/sprint/launch" ? { ...l, href: "/manager" } : l,
   ),
 }));
 
@@ -171,7 +169,7 @@ function navFor(viewer: Viewer, groups: typeof MANAGER_NAV): Shell["nav"] {
       title: group.title,
       links: group.links
         .filter(
-          (l) => l.need === undefined || viewer.permissions.includes(l.need),
+          (l) => !l.need || viewer.permissions.includes(l.need),
         )
         .map(({ label, href, icon }) => ({ label, href, icon })),
     }))

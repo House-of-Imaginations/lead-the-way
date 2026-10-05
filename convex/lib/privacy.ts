@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { MAX_MEMBERS_PER_ORG, permissionsOf } from "./orgs/membership";
-import type { Permission } from "./orgs/permissions";
+import { isManager, type Permission } from "./orgs/permissions";
 
 /**
  * THE ONLY WAY A MANAGER SEES A NUMBER ABOUT PEOPLE (spec 5.1).
@@ -135,10 +135,7 @@ export async function loadSeated(
   for (const person of people) {
     const role = await ctx.db.get(person.roleId);
     if (!role || role.orgId !== org._id) continue;
-    const held = permissionsOf(role);
-    if (held.includes("team:insights") || held.includes("sprint:manage")) {
-      continue;
-    }
+    if (isManager({ permissions: permissionsOf(role) })) continue;
     seated.push(person);
   }
   return seated;
@@ -180,12 +177,7 @@ export async function signatureCount(
   agreement: Pick<Doc<"agreements">, "_id" | "version">,
   permissions: readonly Permission[],
 ): Promise<{ signed: number; of: number } | null> {
-  if (
-    permissions.includes("team:insights") ||
-    permissions.includes("sprint:manage")
-  ) {
-    return null;
-  }
+  if (isManager({ permissions })) return null;
   const seated = await loadSeated(ctx, org);
   if (seated.length < thresholdOf(org)) return null;
   const signatures = await ctx.db

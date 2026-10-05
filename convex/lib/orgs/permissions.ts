@@ -68,3 +68,28 @@ export function within(
 ): boolean {
   return grants(outer, inner);
 }
+
+/** The manager area is a matter of permissions, never of a role's name (rule 6). */
+export const isManager = ({
+  permissions,
+}: {
+  permissions: readonly Permission[];
+}) =>
+  permissions.includes("team:insights") ||
+  permissions.includes("sprint:manage");
+
+/**
+ * The permission each manager page's query needs, or null for any manager
+ * (Ruling 5). The nav shows a link only to a holder and 08's `canManage`
+ * reads it, so the nav, the overview's buttons and the query can't disagree.
+ * tests/convex/routes.test.ts fails when a page's query needs another.
+ */
+export const ROUTE_PERMISSION = {
+  "/manager": null,
+  "/manager/sprint/launch": "sprint:manage",
+  "/manager/agreement": "sprint:manage",
+  "/manager/outcomes": "team:insights",
+  "/manager/learning": "sprint:manage",
+} as const satisfies Record<string, Permission | null>;
+
+export type ManagerRoute = keyof typeof ROUTE_PERMISSION;
