@@ -4,7 +4,7 @@ import { CheckmarkFilled, PresentationFile } from "@carbon/icons-react";
 import { useMutation, usePreloadedQuery, type Preloaded } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { api } from "@convex/_generated/api";
 import { CheckIn } from "@/components/app/CheckIn";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
@@ -47,14 +47,22 @@ function Project({
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set before the mutation: Convex can deliver the presented board before
+  // present() resolves, so the line may mount while it is still pending.
+  const presenting = useRef(false);
+  const focusDone = useCallback((el: HTMLParagraphElement | null) => {
+    if (el && presenting.current) el.focus();
+  }, []);
 
   async function presentProject() {
     setPending(true);
+    setError(null);
+    presenting.current = true;
     try {
       await present({ expectOrgId });
-      setError(null);
       toast({ title: PRESENTED });
     } catch (e) {
+      presenting.current = false;
       setError(userMessage(e, "Your project wasn't presented. Try again."));
     } finally {
       setConfirming(false);
@@ -64,6 +72,7 @@ function Project({
 
   async function addToBadge() {
     setPending(true);
+    setError(null);
     try {
       await attachReflection({ expectOrgId });
       router.push("/me/credential");
@@ -153,7 +162,11 @@ function Project({
           </Button>
         )}
         {mine.presented ? (
-          <p className="flex min-h-control-lg items-center gap-03 px-05 text-body-02">
+          <p
+            ref={focusDone}
+            tabIndex={-1}
+            className="flex min-h-control-lg items-center gap-03 px-05 text-body-02"
+          >
             <CheckmarkFilled
               size={16}
               aria-hidden="true"
@@ -168,6 +181,10 @@ function Project({
             description="Your project title, before, change, after and headline become visible to your team and your manager. Your course activity stays private."
             open={confirming}
             onOpenChange={setConfirming}
+            // The trigger is gone once presented; focus stays on the line instead.
+            onCloseAutoFocus={(e) => {
+              if (presenting.current) e.preventDefault();
+            }}
             trigger={
               <Button
                 icon={PresentationFile}

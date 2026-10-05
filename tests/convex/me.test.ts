@@ -208,6 +208,26 @@ test("a new agreement version asks Dan to review and sign", async () => {
   expect((await dan.query(api.me.home, {}))?.agreementUpdated).toBe(true);
 });
 
+test("an agreement with no tools and nothing ruled out reads as none agreed", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  await t.run(async (ctx) => {
+    const v1 = (await ctx.db
+      .query("agreements")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first())!;
+    await ctx.db.patch(v1._id, {
+      tools: [],
+      neverIn: v1.neverIn.map((item) => ({ ...item, on: false })),
+    });
+  });
+  expect((await as("dan").query(api.me.home, {}))?.agreement).toEqual({
+    ...AGREEMENT,
+    tools: "None agreed yet.",
+    neverIn: "None agreed yet.",
+  });
+});
+
 test("another time zone gets its own greeting and the sprint's zone on the hour", async () => {
   const { t, orgId, as } = await calderLane();
   const dan = as("dan");

@@ -99,7 +99,10 @@ test("Dan's example fills the form, and saving opens Reflect", async ({
 }) => {
   resetDemo("week1");
   await open(page);
-  await expect(page.locator("#reflect")).toHaveCount(0);
+  // 11's "Add reflection" lands here before a save too: the line, no inputs.
+  const reflect = page.locator("#reflect");
+  await expect(reflect).toContainText("Save your project to add a reflection.");
+  await expect(reflect.getByRole("textbox")).toHaveCount(0);
   await page.getByRole("button", { name: "Use Dan's example" }).click();
   await expect(field(page, "Project title")).toHaveValue(
     "AI-assisted weekly client reporting",
@@ -122,10 +125,10 @@ test("Dan's example fills the form, and saving opens Reflect", async ({
   await saveButton(page).click();
   await expect(page.getByText("Project saved", { exact: true })).toBeVisible();
 
-  const reflect = page.locator("#reflect");
   await expect(
     reflect.getByRole("heading", { name: "Reflect" }),
   ).toBeVisible();
+  await expect(reflect).not.toContainText("Save your project to add a reflection.");
   await reflect
     .getByRole("textbox", { name: "What I learned" })
     .fill("Check every figure it produces.");

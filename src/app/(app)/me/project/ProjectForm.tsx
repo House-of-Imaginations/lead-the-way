@@ -418,50 +418,57 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
           ) : null}
         </div>
 
-        {saved ? (
-          <div className="pt-07">
-            <Section
-              id="reflect"
-              title="Reflect"
-              helper="What you learned, for the show and tell and your credential."
-              onPhone
-            >
-              <TextArea
-                id="learned"
-                label="What I learned"
-                maxLength={PROJECT_LIMITS.text}
-                value={reflection.learned}
-                onChange={(e) =>
-                  setReflection((r) => ({ ...r, learned: e.target.value }))
-                }
-              />
-              <TextArea
-                id="how-checked"
-                label="How you checked it"
-                maxLength={PROJECT_LIMITS.text}
-                value={reflection.howChecked}
-                onChange={(e) =>
-                  setReflection((r) => ({ ...r, howChecked: e.target.value }))
-                }
-              />
-              <div className="flex flex-col items-start gap-02">
-                <Button
-                  kind="tertiary"
-                  size="md"
-                  disabled={reflecting}
-                  onClick={saveReflectionNow}
-                >
-                  Save reflection
-                </Button>
-                {reflectError ? (
-                  <p role="alert" className="text-label-01 text-support-error">
-                    {reflectError}
-                  </p>
-                ) : null}
-              </div>
-            </Section>
-          </div>
-        ) : null}
+        {/* Always here, so 11's "Add reflection" link lands on it before a save too. */}
+        <div className="pt-07">
+          <Section
+            id="reflect"
+            title="Reflect"
+            helper="What you learned, for the show and tell and your credential."
+            onPhone
+          >
+            {saved ? (
+              <>
+                <TextArea
+                  id="learned"
+                  label="What I learned"
+                  maxLength={PROJECT_LIMITS.text}
+                  value={reflection.learned}
+                  onChange={(e) =>
+                    setReflection((r) => ({ ...r, learned: e.target.value }))
+                  }
+                />
+                <TextArea
+                  id="how-checked"
+                  label="How you checked it"
+                  maxLength={PROJECT_LIMITS.text}
+                  value={reflection.howChecked}
+                  onChange={(e) =>
+                    setReflection((r) => ({ ...r, howChecked: e.target.value }))
+                  }
+                />
+                <div className="flex flex-col items-start gap-02">
+                  <Button
+                    kind="tertiary"
+                    size="md"
+                    disabled={reflecting}
+                    onClick={saveReflectionNow}
+                  >
+                    Save reflection
+                  </Button>
+                  {reflectError ? (
+                    <p role="alert" className="text-label-01 text-support-error">
+                      {reflectError}
+                    </p>
+                  ) : null}
+                </div>
+              </>
+            ) : (
+              <p className="text-body-02 text-text-secondary">
+                Save your project to add a reflection.
+              </p>
+            )}
+          </Section>
+        </div>
       </div>
 
       <aside

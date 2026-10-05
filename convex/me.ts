@@ -263,7 +263,7 @@ export const home = timedViewerQuery()({
     const { viewer } = ctx;
     const launched = await launchedFor(ctx, viewer);
     if (!launched) return null;
-    const { sprint, now, week, complete, note } = launched;
+    const { sprint, now, week, note } = launched;
     const me = viewer.person._id;
     const [progress, project, answers] = await Promise.all([
       progressOf(ctx, me, sprint._id),
@@ -296,12 +296,14 @@ export const home = timedViewerQuery()({
             tools: forMe.toolList.length
               ? forMe.toolList.join(", ")
               : "None agreed yet.",
-            neverIn: [
-              ...forMe.neverIn.slice(0, 3),
-              ...(forMe.neverIn.length > 3
-                ? [`and ${forMe.neverIn.length - 3} more`]
-                : []),
-            ].join(", "),
+            neverIn: forMe.neverIn.length
+              ? [
+                  ...forMe.neverIn.slice(0, 3),
+                  ...(forMe.neverIn.length > 3
+                    ? [`and ${forMe.neverIn.length - 3} more`]
+                    : []),
+                ].join(", ")
+              : "None agreed yet.",
             contact: `Ask ${forMe.contactName}`,
           }
         : null,

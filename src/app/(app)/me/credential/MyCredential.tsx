@@ -51,20 +51,28 @@ export function MyCredential({
       ) : (
         <>
           {/* Beside the title on desktop; under the cards below 900px, LinkedIn first (M4). */}
-          <div className="flex max-[900px]:order-2 max-[900px]:flex-col-reverse max-[900px]:gap-03">
-            <Button
-              kind="tertiary"
-              icon={LinkIcon}
-              onClick={() => copy(credential.slug)}
-            >
-              Copy credential link
-            </Button>
-            <Button
-              icon={LogoLinkedin}
-              onClick={() => toast({ title: "Simulated in this prototype." })}
-            >
-              Share on LinkedIn
-            </Button>
+          <div className="flex flex-col gap-03 max-[900px]:order-2">
+            <div className="flex max-[900px]:flex-col-reverse max-[900px]:gap-03">
+              <Button
+                kind="tertiary"
+                icon={LinkIcon}
+                onClick={() => copy(credential.slug)}
+              >
+                Copy credential link
+              </Button>
+              <Button
+                icon={LogoLinkedin}
+                onClick={() => toast({ title: "Simulated in this prototype." })}
+              >
+                Share on LinkedIn
+              </Button>
+            </div>
+            {/* Under the buttons, beside the one that failed. */}
+            {copyError ? (
+              <p role="alert" className="text-label-01 text-support-error">
+                {copyError}
+              </p>
+            ) : null}
           </div>
           <div className="col-span-full max-[900px]:order-1">
             <Credential
@@ -82,14 +90,6 @@ export function MyCredential({
               }
             />
           </div>
-          {copyError ? (
-            <p
-              role="alert"
-              className="col-span-full text-label-01 text-support-error max-[900px]:order-3"
-            >
-              {copyError}
-            </p>
-          ) : null}
           <p className="col-span-full flex items-center gap-03 text-body-02 text-text-secondary max-[900px]:order-4">
             <Locked size={16} aria-hidden="true" className="shrink-0" />
             You choose what goes on your credential. Your course activity and

@@ -42,6 +42,8 @@ test.beforeEach(({ page }) => {
   page.on("pageerror", (e) => errors.push(e.message));
 });
 test.afterEach(() => expect(errors).toEqual([]));
+// The journey leaves the clock at complete; hand the next spec a fresh week 1.
+test.afterAll(() => resetDemo("week1"));
 
 test("Dan's sprint, from week 2 to his public credential", async ({
   page,

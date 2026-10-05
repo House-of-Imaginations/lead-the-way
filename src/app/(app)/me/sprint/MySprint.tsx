@@ -39,7 +39,7 @@ function ActivityRow({ activity }: { activity: Activity }) {
     </>
   );
   return (
-    <li className="flex items-center gap-03 border-t border-border-subtle py-03 text-body-02 max-[672px]:min-h-[48px]">
+    <li className="flex items-center gap-03 border-t border-border-subtle py-03 text-body-02 max-[672px]:min-h-[48px] max-[672px]:py-0">
       <Icon
         size={16}
         aria-hidden="true"
@@ -56,7 +56,8 @@ function ActivityRow({ activity }: { activity: Activity }) {
         <Link
           href={activity.href}
           className={clsx(
-            "text-link hover:text-link-hover hover:underline",
+            // The link, not the row, is the 48px touch target on phones.
+            "text-link hover:text-link-hover hover:underline max-[672px]:inline-flex max-[672px]:min-h-[48px] max-[672px]:items-center",
             activity.state === "progress" && "font-semibold",
           )}
         >

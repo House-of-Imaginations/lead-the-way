@@ -199,8 +199,14 @@ export function Home({
             <ul className="flex flex-wrap gap-03">
               {IDEAS.map((idea) => (
                 <li key={idea.label}>
-                  <Link href="/me/project" className="ltw-tag hover:underline max-[672px]:min-h-[48px]">
-                    <Twin wide={idea.label} narrow={idea.short} />
+                  {/* The hit area is 48px on phones; the tag inside keeps its 24px shape. */}
+                  <Link
+                    href="/me/project"
+                    className="group inline-flex items-center max-[672px]:min-h-[48px]"
+                  >
+                    <span className="ltw-tag group-hover:underline">
+                      <Twin wide={idea.label} narrow={idea.short} />
+                    </span>
                   </Link>
                 </li>
               ))}

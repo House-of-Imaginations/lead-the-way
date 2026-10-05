@@ -130,6 +130,8 @@ test.describe("week 4", () => {
     ]);
     await expect(presentButton(page)).toHaveCount(0);
     await expect(page.getByText(DONE, { exact: true })).toBeVisible();
+    // The trigger went away; focus lands on the line that replaced it.
+    await expect(page.getByText(DONE, { exact: true })).toBeFocused();
 
     // Convex holds it: still presented after a reload.
     await page.reload();
@@ -143,6 +145,33 @@ test.describe("week 4", () => {
     await open(page);
     await addButton(page).click();
     await expect(page).toHaveURL("/me/credential");
+  });
+
+  test("at 390 the tiles stack and the buttons are full touch targets @mobile", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page);
+    const tiles = await project(page).getByRole("term").all();
+    const [before, changed, after] = await Promise.all(
+      tiles.map((t) => t.boundingBox()),
+    );
+    expect(changed!.y).toBeGreaterThan(before!.y);
+    expect(after!.y).toBeGreaterThan(changed!.y);
+    expect(changed!.x).toBe(before!.x);
+    for (const button of [
+      page.getByRole("link", { name: "Edit reflection" }),
+      addButton(page),
+      presentButton(page),
+    ]) {
+      const box = (await button.boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(48);
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
   });
 
   for (const scheme of ["light", "dark"] as const) {

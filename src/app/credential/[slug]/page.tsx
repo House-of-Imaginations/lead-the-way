@@ -46,7 +46,7 @@ export default async function PublicCredentialPage({
         <Credential credential={credential} />
       </main>
       <footer className="border-t border-border-subtle p-05">
-        <p className="text-label-01 text-text-helper">
+        <p className="text-label-01 text-text-secondary">
           Concept prototype. Not an official IBM product.
         </p>
       </footer>
