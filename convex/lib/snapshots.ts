@@ -24,10 +24,11 @@ import { closesAt, hourEnd } from "./sprintTime";
  * `internal.snapshots.take`, which `sprints.launch` schedules at each hour's
  * end for a real workspace, plus once when the sprint closes, a day after
  * the last. Either takes every due week that has no row, so a late or missed
- * run is made good by the next, and the extra run backs up the last week and
- * takes the outcomes row. A late or backstop run reads the rows as they are
- * when it runs, not as they were at the hour's end: only the demo, which
- * plays its history in order, can take a week as of its hour (`cutoff`).
+ * run is made good by the next, and the extra run backs up the last week.
+ * The outcomes row has its own writer, `takeOutcomes`. A late or backstop
+ * run reads the rows as they are when it runs, not as they were at the
+ * hour's end: only the demo, which plays its history in order, can take a
+ * week as of its hour (`cutoff`).
  *
  * Only `sprint`'s weeks, and only if it is still this org's: a run scheduled
  * for one sprint never snapshots the next.
@@ -42,9 +43,6 @@ export async function takeDueSnapshots(
   if (!sprint || sprint.orgId !== org._id || sprint.launchedAt === undefined) {
     return 0;
   }
-  // The sprint closes once, a day after its last hour (Ruling 9). Before
-  // the weeks, so a run with no week left to take still closes it.
-  await takeOutcomes(ctx, org, sprint, now, cutoff);
   const due: number[] = [];
   for (
     let week = 1;
@@ -112,6 +110,12 @@ export async function outcomesOf(
  * can arrive after the total it belongs to (Review Focus 4). Never
  * rewritten: a later run finds it and does nothing.
  *
+ * Two triggers, as for the weeks: `moveClock` calls it in its own
+ * transaction, since the demo plays its history in order and needs the row
+ * at once. On real time `snapshots.take` schedules `snapshots.takeOutcomes`
+ * once the sprint has closed, so a throw here can't take the week rows with
+ * it. Only `sprint`'s row, and only if it is still this org's.
+ *
  * - Completed and the averages count `loadCountable`: no manager, nobody
  *   opted out, nobody asking. An average counts answers only; a skip (no
  *   score) or no row is nobody answering (Review Focus 3).
@@ -121,13 +125,16 @@ export async function outcomesOf(
  * - `counted` and `threshold` let `snapshotSeries` and `statOf` judge the
  *   row later (Rulings 6 and 7).
  */
-async function takeOutcomes(
+export async function takeOutcomes(
   ctx: MutationCtx,
   org: Doc<"orgs">,
-  sprint: Doc<"sprints">,
+  sprint: Doc<"sprints"> | null,
   now: number,
-  cutoff: number,
+  cutoff = now,
 ): Promise<void> {
+  if (!sprint || sprint.orgId !== org._id || sprint.launchedAt === undefined) {
+    return;
+  }
   if (closesAt(sprint) > cutoff) return;
   if (await outcomesOf(ctx, sprint._id)) return;
 

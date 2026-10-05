@@ -23,11 +23,22 @@ beforeEach(() => {
   vi.stubEnv("DEMO_MODE", "on");
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllEnvs();
 });
 
 const move = (t: T, target: DemoTarget) =>
   t.mutation(internal.seed.clock, { target });
+
+/**
+ * The real backstop run, and the outcomes run it schedules (GB-M1). Timers
+ * are fake, so the scheduled run fires only when drained here.
+ */
+async function backstop(t: T, orgId: Id<"orgs">, sprintId: Id<"sprints">) {
+  vi.useFakeTimers({ toFake: ["setTimeout"] });
+  await t.mutation(internal.snapshots.take, { orgId, sprintId });
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+}
 
 /** The demo clock set directly: no scripted step runs and no total is taken. */
 const clockAt = (t: T, orgId: Id<"orgs">, local: string) =>
@@ -161,7 +172,7 @@ test("the demo's outcomes match the spec", async () => {
   expect(row.threshold).toBe(5);
   expect(row.counted).toHaveLength(7);
   // A later run (the real backstop) adds nothing and changes nothing.
-  await t.mutation(internal.snapshots.take, { orgId, sprintId: row.sprintId });
+  await backstop(t, orgId, row.sprintId);
   expect(await outcomesRow(t, orgId)).toEqual(row);
 });
 
@@ -355,7 +366,7 @@ test("the after check-in closes when the outcomes are taken", async () => {
 
   // At closesAt the backstop run takes the row.
   await clockAt(t, orgId, "2026-10-01T15:00");
-  await t.mutation(internal.snapshots.take, { orgId, sprintId });
+  await backstop(t, orgId, sprintId);
   const row = (await outcomesRow(t, orgId))!;
   expect(row.takenAt).toBe(mel("2026-10-01T15:00"));
   // Dan's answer made it in: one response, so hidden.
@@ -389,6 +400,77 @@ test("the after check-in closes when the outcomes are taken", async () => {
     ).filter((r) => r.phase === "after"),
   );
   expect(meiAfter).toEqual([]);
+});
+
+test("the backstop takes the outcomes in a run of its own, so a failure there keeps week 4's row (GB-M1)", async () => {
+  const { t, orgId } = await calderLane();
+  // Before week 4's hour ends, so its row is the backstop's to take.
+  await move(t, "week4");
+  const sprintId = await sprintIdOf(t, orgId);
+  const weeks = () =>
+    t.run(async (ctx) =>
+      (
+        await ctx.db
+          .query("teamSnapshots")
+          .withIndex("by_sprint_and_week", (q) => q.eq("sprintId", sprintId))
+          .collect()
+      ).map((r) => r.week),
+    );
+  expect(await weeks()).toEqual([1, 2, 3]);
+  // Mei opts out, so the weeks no longer read her rows but the outcomes
+  // writer still does (presented counts every seated presenter). A second
+  // project for her makes its projectOf `.unique()` throw, and only there.
+  const mei = await personOf(t, orgId, "mei");
+  await optOut(t, orgId, mei);
+  await t.run(async (ctx) => {
+    const project = (await ctx.db
+      .query("projects")
+      .withIndex("by_person_and_sprint", (q) =>
+        q.eq("personId", mei).eq("sprintId", sprintId),
+      )
+      .first())!;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { _id, _creationTime, ...copy } = project;
+    await ctx.db.insert("projects", copy);
+  });
+
+  await clockAt(t, orgId, "2026-10-01T15:00");
+  vi.useFakeTimers({ toFake: ["setTimeout"] });
+  await t.mutation(internal.snapshots.take, { orgId, sprintId });
+  // The weeks commit on their own; the outcomes run is only scheduled.
+  expect(await weeks()).toEqual([1, 2, 3, 4]);
+  expect(await outcomesRow(t, orgId)).toBeNull();
+  const jobs = () =>
+    t.run(async (ctx) =>
+      (await ctx.db.system.query("_scheduled_functions").collect())
+        .filter((job) => job.name === "snapshots:takeOutcomes")
+        .map((job) => ({ args: job.args, state: job.state.kind })),
+    );
+  expect(await jobs()).toEqual([{ args: [{ sprintId }], state: "pending" }]);
+
+  // The outcomes run throws, and takes nothing else with it.
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  expect(await jobs()).toEqual([{ args: [{ sprintId }], state: "failed" }]);
+  expect(await weeks()).toEqual([1, 2, 3, 4]);
+  expect(await outcomesRow(t, orgId)).toBeNull();
+
+  // Fixed, the next run writes the one row, and a run after that adds none.
+  await t.run(async (ctx) => {
+    const extra = (
+      await ctx.db
+        .query("projects")
+        .withIndex("by_person_and_sprint", (q) =>
+          q.eq("personId", mei).eq("sprintId", sprintId),
+        )
+        .collect()
+    ).at(-1)!;
+    await ctx.db.delete(extra._id);
+  });
+  await backstop(t, orgId, sprintId);
+  await backstop(t, orgId, sprintId);
+  expect(await outcomesRow(t, orgId)).toMatchObject({
+    takenAt: mel("2026-10-01T15:00"),
+  });
 });
 
 test("outcomes are pending until the sprint closes, and null before launch", async () => {

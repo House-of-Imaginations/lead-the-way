@@ -103,7 +103,7 @@ export function hourEnd(sprint: HourOf, week: number): number {
 
 /**
  * When the sprint closes (P7a Ruling 9): a day after its last hour ends.
- * The outcomes row is taken then (`takeDueSnapshots`), the after check-in
+ * The outcomes row is taken then (`takeOutcomes`), the after check-in
  * stops (`afterCheckInOpen`), and `sprints.launch` schedules its backstop
  * run for this instant.
  */
