@@ -31,10 +31,11 @@ import { isManager, type Permission } from "./orgs/permissions";
  * test in tests/convex/canary.test.ts; extend that list on purpose, never in
  * passing.
  *
- * WHO A ROW COUNTED (P7a Ruling 6). Each snapshot stores the ids it counted,
- * only so `snapshotSeries` (lib/snapshots.ts) can hide a row that differs by
- * fewer than the threshold from the last row shown, or that counted its
- * reader. No query returns them.
+ * WHO A ROW COUNTED (Ruling FX). Each snapshot stores the ids it counted and
+ * the ids seated when it was taken, only so `snapshotSeries`
+ * (lib/snapshots.ts) can show just the rows whose counted and seated groups
+ * both equal the sprint's first row's, and hide a row from a reader it
+ * counted. No query returns them.
  *
  * LIVE "JOINED" BESIDE A FROZEN "OF N" (P7a Ruling 8). 08 shows the live
  * joined count next to a snapshot's n. The gap says how many people a total

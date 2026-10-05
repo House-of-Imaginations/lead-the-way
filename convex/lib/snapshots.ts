@@ -62,6 +62,7 @@ export async function takeDueSnapshots(
   // Counted as the privacy layer counts, asked by nobody. Each person's own
   // rows are read once (one per person and sprint, writer contract 5).
   const people = await loadCountable(ctx, org, null);
+  const seated = await loadSeated(ctx, org);
   const sessions = new Map<Id<"people">, number>();
   const underway = new Set<Id<"people">>();
   for (const person of people) {
@@ -82,6 +83,7 @@ export async function takeDueSnapshots(
       ),
       tasksUnderway: count(people, (p) => underway.has(p._id), org),
       counted: people.map((p) => p._id),
+      seated: seated.map((p) => p._id),
       threshold: thresholdOf(org),
     });
   }
@@ -122,8 +124,8 @@ export async function outcomesOf(
  * - Presented counts every seated presenter, opted out or not, because
  *   presenting is public (R-i). The categories add up to it, so they are
  *   left out when it is hidden.
- * - `counted` and `threshold` let `snapshotSeries` and `statOf` judge the
- *   row later (Rulings 6 and 7).
+ * - `counted`, `seated` and `threshold` let `snapshotSeries` and `statOf`
+ *   judge the row later (Rulings FX and 7).
  */
 export async function takeOutcomes(
   ctx: MutationCtx,
@@ -187,6 +189,7 @@ export async function takeOutcomes(
     sprintId: sprint._id,
     takenAt: now,
     counted: countable.map((p) => p._id),
+    seated: seated.map((p) => p._id),
     threshold: thresholdOf(org),
     completed: count(countable, (p) => finished.has(p._id), org),
     presented,
@@ -202,25 +205,34 @@ export async function takeOutcomes(
 export type SeriesRow<T> = { row: T; comparable: boolean };
 
 /**
- * WHAT A READER MAY SET SIDE BY SIDE (Ruling 6, R-e): the weekly rows in week
- * order, then the outcomes row last. Two totals over cohorts one person
- * apart difference back to that person: week 1 counts Mei, week 2 doesn't
- * (she opted out, or now reads totals), so week 1 less week 2 is Mei. A row
- * is comparable only when it stored its cohort, the reader isn't in it (they
- * know their own part), and it differs from EVERY row already shown by
- * nobody or by at least the threshold. Checking every shown row, not just
- * the last, is what stops week 3 being read against week 1, whether week 2
- * was hidden or shown (two passing steps can still land one person apart).
- * After a small change, totals stay hidden for the rest of the sprint; the
- * copy says why, naming nobody.
+ * WHAT A READER MAY SET SIDE BY SIDE (Ruling FX, R-e): the weekly rows in week
+ * order, then the outcomes row last. One fixed group per sprint: a row is
+ * comparable only when it stored both `counted` and `seated` and both equal
+ * the first row's, as sets. The first row is the reference; without both
+ * lists, nothing is comparable.
  *
- * The one place this is decided, so 08 and 16 can't disagree. `counted`
- * never leaves this file's callers.
+ * Why one group, not "close enough": two totals over cohorts one person
+ * apart difference back to that person, and so can any combination of
+ * totals over different cohorts (weeks counting Mei + A, Mei + B and A + B
+ * are pairwise far apart, yet together give Mei away). When every shown row
+ * has the one cohort, no combination of shown totals can be differenced.
+ * The roster is public, so checking it too means a role change hides the
+ * rows whatever that person's opt-out, and the show or hide decision never
+ * says whether they had opted out. The threshold plays no part, so raising
+ * it can't change which rows compare.
+ *
+ * The decision is the same for every reader. Only then is a row that
+ * counted this reader hidden from them too (they know their own part); that
+ * touches no other row. After any change, totals stay hidden until a row
+ * counts and seats the first row's group again; the copy says why, naming
+ * nobody.
+ *
+ * The one place this is decided, so 08 and 16 can't disagree. `counted` and
+ * `seated` never leave this file's callers.
  */
 export async function snapshotSeries(
   ctx: QueryCtx,
   sprint: Doc<"sprints">,
-  org: Doc<"orgs">,
   readerId: Id<"people">,
 ): Promise<{
   weeks: SeriesRow<Doc<"teamSnapshots">>[];
@@ -233,28 +245,25 @@ export async function snapshotSeries(
     .take(sprint.weeks);
   const final = await outcomesOf(ctx, sprint._id);
 
-  // Every row shown so far: comparability isn't transitive, so a row is
-  // checked against each, not only the last.
-  const shown: ReadonlySet<Id<"people">>[] = [];
-  const mark = <R extends { counted?: Id<"people">[] }>(
-    row: R,
-  ): SeriesRow<R> => {
-    if (!row.counted || row.counted.includes(readerId)) {
-      return { row, comparable: false };
-    }
-    const cohort = new Set(row.counted);
-    for (const prev of shown) {
-      let changed = 0;
-      for (const id of cohort) if (!prev.has(id)) changed++;
-      for (const id of prev) if (!cohort.has(id)) changed++;
-      if (changed > 0 && changed < thresholdOf(org)) {
-        return { row, comparable: false };
-      }
-    }
-    shown.push(cohort);
-    return { row, comparable: true };
+  const ref = weekly[0] ?? final;
+  const sameSet = (a: Id<"people">[], b: Id<"people">[]) => {
+    const set = new Set(a);
+    return set.size === new Set(b).size && b.every((id) => set.has(id));
   };
-  const weeks = weekly.map(mark);
-  // The outcomes row last, against every week shown.
-  return { weeks, outcomes: final ? mark(final) : null };
+  const mark = <
+    R extends { counted?: Id<"people">[]; seated?: Id<"people">[] },
+  >(
+    row: R,
+  ): SeriesRow<R> => ({
+    row,
+    comparable:
+      !!ref?.counted &&
+      !!ref.seated &&
+      !!row.counted &&
+      !!row.seated &&
+      sameSet(row.counted, ref.counted) &&
+      sameSet(row.seated, ref.seated) &&
+      !row.counted.includes(readerId),
+  });
+  return { weeks: weekly.map(mark), outcomes: final ? mark(final) : null };
 }

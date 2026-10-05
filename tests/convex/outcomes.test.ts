@@ -163,14 +163,17 @@ test("the demo's outcomes match the spec", async () => {
     },
     projects: { caption: "6 projects completed", categories: CATEGORIES },
   });
-  // Ruling 6: who a row counted never leaves Convex.
-  expect(JSON.stringify(out)).not.toMatch(/counted|personId|email/);
+  // Ruling FX: who a row counted, or seated, never leaves Convex.
+  expect(JSON.stringify(out)).not.toMatch(/counted|seated|personId|email/);
 
   // One row, taken by the jump to complete, under the threshold of the day.
   const row = (await outcomesRow(t, orgId))!;
   expect(row.takenAt).toBe(DEMO_TARGETS.complete);
   expect(row.threshold).toBe(5);
   expect(row.counted).toHaveLength(7);
+  // The public roster when taken: the seven seated, never Priya.
+  expect(row.seated).toHaveLength(7);
+  expect(row.seated).not.toContain(await personOf(t, orgId, "priya"));
   // A later run (the real backstop) adds nothing and changes nothing.
   await backstop(t, orgId, row.sprintId);
   expect(await outcomesRow(t, orgId)).toEqual(row);
@@ -181,7 +184,7 @@ test("outcome averages count answers only, from counted people", async () => {
   // Week 1, before its hour ends: everyone has joined and no total is taken
   // yet, so every stored row counts the same people. Keep these changes
   // here: made after any weekly row, they would hide the outcomes as a
-  // cohort change (Ruling 6) instead of testing what counts.
+  // cohort change (Ruling FX) instead of testing what counts.
   await move(t, "week1");
   const sprintId = await sprintIdOf(t, orgId);
   // Aisha answered before (8 September) and opts out of team totals.
@@ -248,7 +251,7 @@ test("outcome averages count answers only, from counted people", async () => {
 test("presented counts every seated presenter, opted out or not", async () => {
   const { t, orgId, as } = await calderLane();
   // Opted out at the week 1 target, before week 1's hour ends, so every row
-  // counts the same six and the outcomes row stays comparable (Ruling 6).
+  // counts the same six and the outcomes row stays comparable (Ruling FX).
   // Moved later, 16 would read "Hidden after a change to who is counted".
   await move(t, "week1");
   await optOut(t, orgId, await personOf(t, orgId, "mei"));

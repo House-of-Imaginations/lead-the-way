@@ -113,7 +113,7 @@ function spanShort(from: number, to: number, timeZone: string): string {
   return m1 === m2 ? `${d1} to ${d2} ${m2}` : `${d1} ${m1} to ${d2} ${m2}`;
 }
 
-/** Ruling 6's helper: why a total is hidden, naming nobody. */
+/** Ruling FX's helper: why a total is hidden, naming nobody. */
 const COHORT_CHANGED = "Hidden after a change to who is counted";
 
 /**
@@ -123,7 +123,7 @@ const COHORT_CHANGED = "Hidden after a change to who is counted";
  * threshold can't show it: a weekly row says the next row will; the final
  * row (`final`: the outcomes row, or week 4's) has no next row, so it says
  * what it was taken under. Whether the row exists and may be compared at all
- * (Ruling 6) is the caller's to decide.
+ * (Ruling FX) is the caller's to decide.
  */
 function statOf(
   total: Aggregate,
@@ -153,7 +153,7 @@ function statOf(
  *
  * Any manager may read it, so /manager never refuses its own home (Ruling 6).
  * Team totals and the projects count need `team:insights`, and come only from
- * the newest weekly snapshot, read through `snapshotSeries` (P7a Ruling 6),
+ * the newest weekly snapshot, read through `snapshotSeries` (Ruling FX),
  * never a live count (Ruling 1). Invited and joined are live membership facts
  * (Ruling 3). `hour` is never read: the server passes the current hour so the
  * cached answer turns over each hour (Ruling 14).
@@ -244,7 +244,7 @@ export const overview = timedViewerQuery()({
     );
     // The newest week, as the series lets this viewer read it.
     const series = insights
-      ? await snapshotSeries(ctx, sprint, org, viewer.person._id)
+      ? await snapshotSeries(ctx, sprint, viewer.person._id)
       : null;
     const latest = series?.weeks.at(-1);
     const tile = (key: "sessionDone" | "tasksUnderway"): Stat =>
@@ -375,7 +375,7 @@ export const outcomesValidator = v.union(
 );
 export type Outcomes = Infer<typeof outcomesValidator>;
 
-/** A total on a row that isn't comparable (Ruling 6). It never says who changed. */
+/** A total on a row that isn't comparable (Ruling FX). It never says who changed. */
 const CHANGED: Stat = { kind: "hidden", helper: COHORT_CHANGED };
 
 /** 16's two questions, as the spec words them (spec 3.3, "Survey"). */
@@ -416,7 +416,6 @@ export const outcomes = timedViewerQuery("team:insights")({
     const { outcomes: final } = await snapshotSeries(
       ctx,
       sprint,
-      org,
       viewer.person._id,
     );
     if (!final) {

@@ -317,8 +317,9 @@ test("private activity is counted only where the allowlist says", () => {
 });
 
 /**
- * Snapshot and outcome rows store who they counted (Tasks 3 and 4). That list
- * and every person id stay in the database: no read hands them to a manager.
+ * Snapshot and outcome rows store who they counted and who was seated (Tasks
+ * 3 and 4, Ruling FX). Those lists and every person id stay in the database:
+ * no read hands them to a manager.
  */
 test("no outcomes or snapshot read hands over who was counted", async () => {
   const { t, orgId, as } = await calderLane();
@@ -339,11 +340,16 @@ test("no outcomes or snapshot read hands over who was counted", async () => {
       .collect();
     return {
       personIds: people.map((p) => p._id as string),
-      weeks: weeks.map((r) => r.counted?.length ?? 0),
-      outcomes: outcomes.map((r) => r.counted.length),
+      // The smaller of the two stored lists, so both must be there.
+      weeks: weeks.map((r) =>
+        Math.min(r.counted?.length ?? 0, r.seated?.length ?? 0),
+      ),
+      outcomes: outcomes.map((r) =>
+        Math.min(r.counted.length, r.seated?.length ?? 0),
+      ),
     };
   });
-  // The rows do hold a cohort, so a clean answer means something.
+  // The rows do hold a cohort and a roster, so a clean answer means something.
   expect(weeks.length).toBeGreaterThanOrEqual(1);
   expect(weeks.every((n) => n > 0)).toBe(true);
   expect(outcomes).toHaveLength(1);
@@ -360,6 +366,7 @@ test("no outcomes or snapshot read hands over who was counted", async () => {
       expect(answer, `${who} ${name}`).not.toBeNull();
       const text = JSON.stringify(answer);
       expect(text, `${who} ${name}`).not.toContain('"counted"');
+      expect(text, `${who} ${name}`).not.toContain('"seated"');
       for (const id of personIds) {
         expect(text.includes(id), `${who} ${name} ${id}`).toBe(false);
       }

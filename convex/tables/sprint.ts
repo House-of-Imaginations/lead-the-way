@@ -252,11 +252,14 @@ export const sprintTables = {
 
   /**
    * Team totals, frozen when each week's hour ends (Rulings 1 and 2). One row
-   * per (sprint, week), never rewritten. Aggregates only, plus `counted`: the
-   * ids `loadCountable` returned, kept so `snapshotSeries` can hide a row
-   * after a small change to who is counted (P7a Ruling 6). No query returns
-   * it. `threshold` is `thresholdOf(org)` when taken (P7a Ruling 7). Rows
-   * taken before P7a have neither: they read as hidden, and as taken at 5.
+   * per (sprint, week), never rewritten. Aggregates only, plus `counted`
+   * (the ids `loadCountable` returned) and `seated` (the public roster then:
+   * everyone seated, opted out or not, no manager), kept so `snapshotSeries`
+   * shows only rows with the sprint's one fixed group (Ruling FX). No query
+   * returns either. `threshold` is
+   * `thresholdOf(org)` when taken (P7a Ruling 7). Rows taken before P7a have
+   * none of them: they read as hidden, and as taken at 5. Rows without
+   * `seated` read as hidden too.
    */
   teamSnapshots: defineTable({
     orgId: v.id("orgs"),
@@ -266,6 +269,7 @@ export const sprintTables = {
     sessionDone: aggregateValidator,
     tasksUnderway: aggregateValidator,
     counted: v.optional(v.array(v.id("people"))),
+    seated: v.optional(v.array(v.id("people"))),
     threshold: v.optional(v.number()),
   })
     .index("by_org", ["orgId"])
@@ -273,13 +277,16 @@ export const sprintTables = {
   /**
    * A sprint's outcomes, taken once when it closes (P7a Rulings 9 and 10).
    * One row per sprint, never rewritten. `counted` is who the private
-   * totals counted: no query returns it (Ruling 6). Aggregates only.
+   * totals counted and `seated` the public roster when taken, both for
+   * `snapshotSeries` (Ruling FX): no query returns them, and a row without
+   * `seated` reads as hidden. Aggregates only.
    */
   sprintOutcomes: defineTable({
     orgId: v.id("orgs"),
     sprintId: v.id("sprints"),
     takenAt: v.number(),
     counted: v.array(personId),
+    seated: v.optional(v.array(personId)),
     threshold: v.number(),
     completed: aggregateValidator,
     presented: aggregateValidator,

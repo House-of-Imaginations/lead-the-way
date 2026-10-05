@@ -112,6 +112,7 @@ test("overview has no per-person fields", async () => {
     "_id",
     "people",
     "counted",
+    "seated",
   ]) {
     expect(keys.has(key), key).toBe(false);
   }
@@ -152,7 +153,7 @@ test("an opt-out leaves invited and joined alone and waits for the next snapshot
     projects: CHANGED,
   });
   // Week 2 counts one person fewer than week 1, so it can't be shown beside
-  // it (Ruling 6).
+  // it (Ruling FX).
   expect(after.team).toEqual({
     sessionDone: { label: "Week 2 session done", stat: CHANGED },
     tasksUnderway: { label: "Real tasks underway", stat: CHANGED },
@@ -501,7 +502,7 @@ test("the overview's words at each demo target", async () => {
   ]);
 });
 
-test("a one-person cohort change hides the later rows, compared with the last row shown", async () => {
+test("a one-person cohort change hides the later rows, compared with the first row (Ruling FX)", async () => {
   const { t, orgId, as } = await calderLane();
   const priya = as("priya");
   await move(t, "week2");
@@ -520,8 +521,8 @@ test("a one-person cohort change hides the later rows, compared with the last ro
     tasksUnderway: { label: "Real tasks underway", stat: CHANGED },
   });
 
-  // Week 3 counts the same six as week 2. Week 2 was never shown, so week 3
-  // is compared with week 1, one person apart, and stays hidden too.
+  // Week 3 counts the same six as week 2, but the first row is the one each
+  // row must match, and week 1 counted seven, so week 3 stays hidden too.
   await move(t, "week4");
   const week3 = (await priya.query(api.manager.overview, {}))!;
   expect(week3.team).toEqual({
@@ -531,9 +532,8 @@ test("a one-person cohort change hides the later rows, compared with the last ro
 
   const reader = await personOf(t, orgId, "priya");
   const series = await t.run(async (ctx) => {
-    const org = (await ctx.db.get(orgId))!;
     const sprint = (await currentSprint(ctx, orgId))!;
-    const { weeks, outcomes } = await snapshotSeries(ctx, sprint, org, reader);
+    const { weeks, outcomes } = await snapshotSeries(ctx, sprint, reader);
     return {
       weeks: weeks.map(({ row, comparable }) => [
         row.week,
@@ -576,9 +576,68 @@ test("a reader counted in a row sees it hidden", async () => {
   });
   // The same row reads as shown to Priya, whom it never counted.
   expect(
-    (await as("priya").query(api.manager.overview, {}))!.team?.sessionDone
-      .stat,
+    (await as("priya").query(api.manager.overview, {}))!.team?.sessionDone.stat,
   ).toEqual(shown(6, 7));
+});
+
+/**
+ * Calder Lane at week 3. Mei opts out (or not) before week 1's row is taken,
+ * then is given a role that reads totals before week 2's. Checks the stored
+ * rows really hold that story.
+ */
+async function meiPromotedInWeek2(optedOut: boolean) {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week1");
+  const mei = await personOf(t, orgId, "mei");
+  if (optedOut) await optOut(t, orgId, mei);
+  await move(t, "week2");
+  await t.run(async (ctx) => {
+    const roleId = await ctx.db.insert("orgRoles", {
+      orgId,
+      kind: "custom",
+      name: "Team lead",
+      permissions: ["team:insights"],
+      createdAt: 0,
+    });
+    await ctx.db.patch(mei, { roleId });
+  });
+  await move(t, "week3");
+  const [week1, week2] = await t.run(async (ctx) =>
+    (
+      await ctx.db
+        .query("teamSnapshots")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect()
+    ).sort((a, b) => a.week - b.week),
+  );
+  expect(week1?.seated).toContain(mei);
+  expect(week2?.seated).not.toContain(mei);
+  expect(week1?.counted?.includes(mei)).toBe(!optedOut);
+  expect(week2?.counted).not.toContain(mei);
+  return { as };
+}
+
+const WEEK2_CHANGED = {
+  sessionDone: { label: "Week 2 session done", stat: CHANGED },
+  tasksUnderway: { label: "Real tasks underway", stat: CHANGED },
+};
+
+test("a role change hides the totals whether or not that person opted out (Ruling FX, attack 2)", async () => {
+  // Opted out, both rows count the same six; the roster still changed, so
+  // showing or hiding never tells Priya which it was.
+  for (const optedOut of [true, false]) {
+    const { as } = await meiPromotedInWeek2(optedOut);
+    const priya = (await as("priya").query(api.manager.overview, {}))!;
+    expect(priya.team, `opted out: ${optedOut}`).toEqual(WEEK2_CHANGED);
+  }
+});
+
+test("after a promotion, the new reader sees the row hidden as Priya does (Ruling FX, attack 3)", async () => {
+  for (const optedOut of [true, false]) {
+    const { as } = await meiPromotedInWeek2(optedOut);
+    const mei = (await as("mei").query(api.manager.overview, {}))!;
+    expect(mei.team, `opted out: ${optedOut}`).toEqual(WEEK2_CHANGED);
+  }
 });
 
 test("a row with no stored cohort reads hidden", async () => {
