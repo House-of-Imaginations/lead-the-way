@@ -18,9 +18,6 @@ export type ErrorCode =
   | "FIELD_REQUIRED"
   | "NAME_REQUIRED"
   | "NOT_FOUND"
-  | "AVATAR_MISSING"
-  | "AVATAR_TYPE"
-  | "AVATAR_SIZE"
   | "RATE_LIMITED"
   // Organizations. `NOT_A_MEMBER` and `FORBIDDEN` are deliberately separate:
   // the client sends the first back to the workspace picker and explains the
@@ -36,9 +33,7 @@ export type ErrorCode =
   | "ROLE_IN_USE"
   | "ROLE_INVALID"
   | "LAST_OWNER"
-  // Separate from the AVATAR_* codes even though the two share their limits:
-  // the sentences differ ("a workspace picture", not "a picture"), and a client
-  // branching on the code should not have to also know which screen it is on.
+  // A workspace picture's limits are the account avatar's (lib/account/avatar.ts).
   | "ORG_IMAGE_MISSING"
   | "ORG_IMAGE_TYPE"
   | "ORG_IMAGE_SIZE"
@@ -62,7 +57,22 @@ export type ErrorCode =
   | "TERMS_REQUIRED"
   // Setup edits after launch, and a launch before setup is done (P4).
   | "SPRINT_LAUNCHED"
-  | "LAUNCH_NOT_READY";
+  | "LAUNCH_NOT_READY"
+  // The employee journey (P6).
+  | "NO_SPRINT"
+  | "CHECK_IN_CLOSED"
+  | "CHECK_IN_DONE"
+  | "AGREEMENT_CHANGED"
+  | "AGREEMENT_NOT_SAVED"
+  | "PROJECT_TITLE_REQUIRED"
+  | "PROJECT_CHECKS_REQUIRED"
+  | "PROJECT_TOO_LONG"
+  | "PROJECT_NOT_SAVED"
+  | "PROJECT_MISSING"
+  | "SCREENSHOT_TYPE"
+  | "SCREENSHOT_SIZE"
+  | "SCREENSHOT_STALE"
+  | "BADGE_MISSING";
 
 export function isRateLimitedError(error: unknown): error is ConvexError<{
   code: "RATE_LIMITED";

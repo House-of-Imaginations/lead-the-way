@@ -8,6 +8,7 @@ import { Button, Checkbox, PasswordInput, TextInput } from "@/components/ui";
 import type { Provider } from "@convex/lib/auth/providers";
 import { authClient } from "@/lib/account/auth-client";
 import { startAccount } from "@/lib/account/start";
+import { withParams } from "@/lib/url";
 import { AuthAlternatives } from "./AuthAlternatives";
 
 const DEMO_REFUSAL =
@@ -48,7 +49,18 @@ function focusFirst(errors: Errors) {
   return first !== undefined;
 }
 
-export function SignUpForm({ providers }: { providers: Provider[] }) {
+export function SignUpForm({
+  providers,
+  invite,
+  email,
+}: {
+  providers: Provider[];
+  /** The join link's token (`/signup?invite=`): sign-up goes back to it (Ruling 19). */
+  invite?: string;
+  /** The invitation's pinned address, shown locked (Ruling 2). */
+  email?: string;
+}) {
+  const next = invite ? `/join/${encodeURIComponent(invite)}` : null;
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [pending, startTransition] = useTransition();
@@ -75,14 +87,14 @@ export function SignUpForm({ providers }: { providers: Provider[] }) {
           password,
         });
         if (error) {
-          const next = signUpErrors(error);
-          flushSync(() => setErrors(next));
-          focusFirst(next);
+          const found = signUpErrors(error);
+          flushSync(() => setErrors(found));
+          focusFirst(found);
           return;
         }
         signedUpAs.current = email;
       }
-      const started = await startAccount(true);
+      const started = await startAccount(true, invite);
       if ("error" in started) {
         setErrors({ form: started.error });
         return;
@@ -115,7 +127,13 @@ export function SignUpForm({ providers }: { providers: Provider[] }) {
           type="email"
           label="Work email"
           autoComplete="email"
-          helper="Use your work address so your team can find you."
+          readOnly={email !== undefined}
+          defaultValue={email}
+          helper={
+            email
+              ? "Your invitation is for this address."
+              : "Use your work address so your team can find you."
+          }
           error={errors.email}
         />
         <PasswordInput
@@ -152,12 +170,12 @@ export function SignUpForm({ providers }: { providers: Provider[] }) {
         providers={providers}
         ssoLabel="Sign up with single sign-on"
         emailId="signup-email"
-        next={null}
+        next={next}
       />
       <p className="text-center text-body-02">
         Already have an account?{" "}
         <Link
-          href="/login"
+          href={next ? withParams("/login", "", { next }) : "/login"}
           className="text-link underline hover:text-link-hover"
         >
           Log in

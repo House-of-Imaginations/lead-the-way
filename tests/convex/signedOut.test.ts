@@ -25,7 +25,7 @@ const SIGNED_OUT: Record<
   "viewer:home": { args: {}, answer: null },
   // Null when signed out.
   "viewer:shell": { args: {}, answer: null },
-  // The invitation page, before sign-up: what the link invites to, no address.
+  // The invitation page, before sign-up: what the link invites to, and the pinned address on a pending link.
   "invites:publicPreview": {
     args: { token: "tok" },
     answer: {
@@ -35,7 +35,14 @@ const SIGNED_OUT: Record<
       invitedBy: "Someone",
       name: null,
       message: null,
+      email: null,
+      join: null,
     },
+  },
+  // The public credential: a slug nobody holds answers null (the page's 404).
+  "badges:publicBySlug": {
+    args: { slug: "dan-okafor-ai-fundamentals" },
+    answer: null,
   },
 };
 

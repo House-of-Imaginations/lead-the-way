@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Button,
   Checkbox,
+  FileDrop,
   PasswordInput,
   Select,
   TextArea,
@@ -19,6 +20,7 @@ const SIZES = ["2 to 5", "6 to 10", "11 to 20", "21 or more"].map((s) => ({
 export function FieldsSection() {
   const [names, setNames] = useState(false);
   const [reviewed, setReviewed] = useState(false);
+  const [chosen, setChosen] = useState<string | null>(null);
   const ready = names && reviewed;
   return (
     <Section id="fields" title="Fields">
@@ -54,6 +56,33 @@ export function FieldsSection() {
           id="f-learned"
           label="What I learned"
           placeholder="The template saved me the most time on..."
+        />
+        <FileDrop
+          id="f-shot"
+          label="Drag a file here or click to upload"
+          helper={chosen ? `Chosen: ${chosen}` : "PNG or JPG, up to 5 MB."}
+          accept={["image/png", "image/jpeg"]}
+          onFile={(file) => setChosen(file.name)}
+        />
+        <FileDrop
+          id="f-shot-error"
+          label="Drag a file here or click to upload"
+          helper="PNG or JPG, up to 5 MB."
+          accept={["image/png", "image/jpeg"]}
+          error="Upload a PNG or JPG."
+          onFile={() => {}}
+        />
+        <FileDrop
+          id="f-shot-current"
+          label="Drag a file here or click to upload"
+          helper="PNG or JPG, up to 5 MB."
+          accept={["image/png", "image/jpeg"]}
+          current={{
+            url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+            alt: "Sample screenshot",
+          }}
+          onFile={() => {}}
+          onRemove={() => {}}
         />
         <Select
           id="f-size"

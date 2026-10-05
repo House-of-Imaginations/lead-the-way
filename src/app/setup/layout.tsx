@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { ConvexClientProvider } from "@/app/_components/ConvexClientProvider";
+import { HourlyRefresh } from "@/components/app/HourlyRefresh";
 import { MovedToast } from "@/components/app/MovedToast";
 import { SetupHeader } from "@/components/app/SetupHeader";
 import { DemoBanner } from "@/components/ui/DemoBanner";
@@ -35,6 +36,7 @@ export default async function SetupLayout({
       <Suspense>
         <MovedToast />
       </Suspense>
+      <HourlyRefresh />
     </div>
   );
 }

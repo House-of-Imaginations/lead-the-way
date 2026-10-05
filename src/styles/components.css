@@ -232,6 +232,11 @@ textarea.ltw-field {
   outline: 2px solid var(--support-error);
   outline-offset: -2px;
 }
+/* Read-only: the value reads as given, with room for the lock icon. */
+input.ltw-field:read-only:not(:disabled) {
+  padding-right: 40px;
+  color: var(--text-secondary);
+}
 .ltw-field:disabled {
   color: var(--text-disabled);
   border-bottom-color: transparent;
@@ -1364,6 +1369,12 @@ button.ltw-sn-acct:hover {
   .ltw-menu-i {
     min-height: 48px;
   }
+  .ltw-cb-l,
+  .ltw-fd-remove,
+  .ltw-btn-md,
+  .ltw-btn-sm {
+    min-height: 48px;
+  }
   .ltw-toast button,
   .ltw-tag button {
     position: relative;
@@ -1563,4 +1574,44 @@ button.ltw-sn-acct:hover {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* FileDrop (12): a dashed zone over a visually hidden file input. Local: the bundle has no file uploader. */
+.ltw-fd {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 96px;
+  padding: 16px;
+  border: 1px dashed var(--border-strong);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.16px;
+  color: var(--link);
+  cursor: pointer;
+  transition: background-color 70ms var(--ease-productive);
+}
+.ltw-fd:not(:has(input:disabled)):hover,
+.ltw-fd[data-over] {
+  background: var(--layer-hover);
+  color: var(--link-hover); /* keeps 4.5:1 on layer-hover */
+}
+.ltw-fd:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 3px var(--background);
+}
+.ltw-fd:has(input:disabled) {
+  cursor: not-allowed;
+  color: var(--text-disabled);
+}
+.ltw-fd input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

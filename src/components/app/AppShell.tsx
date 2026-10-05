@@ -26,6 +26,7 @@ import {
 } from "@/components/ui";
 import { api } from "@convex/_generated/api";
 import type { Shell } from "@convex/lib/shell";
+import { useHour } from "@/lib/useHour";
 import { authClient } from "@/lib/account/auth-client";
 import type { NavState } from "@/lib/navState";
 import { MovedToast } from "./MovedToast";
@@ -44,6 +45,11 @@ const ICONS: Record<NavIcon, CarbonIconType> = {
   Portfolio,
   PresentationFile,
   Certificate,
+};
+
+const WARM: Record<string, typeof api.me.sprint | typeof api.projects.mine> = {
+  "/me/sprint": api.me.sprint,
+  "/me/project": api.projects.mine,
 };
 
 /** The signed-in shell. The (app) layout renders the demo banner above it. */
@@ -69,6 +75,7 @@ export function AppShell({
   const [leaving, setLeaving] = useState(false);
   const pathname = usePathname();
   const convex = useConvex();
+  const warmHour = useHour(); // what useTimedQuery subscribes with
   const setActiveOrg = useMutation(api.profiles.setActiveOrg);
 
   // Exact path, first match: "/manager" and "/manager#resources" share a path,
@@ -162,6 +169,11 @@ export function AppShell({
     status: shell.status,
     user,
     accountMenu,
+    // Pages whose data the browser subscribes to: warm it before the click.
+    onWarm: (href) => {
+      const query = WARM[href];
+      if (query) convex.prewarmQuery({ query, args: { hour: warmHour } });
+    },
   };
 
   return (

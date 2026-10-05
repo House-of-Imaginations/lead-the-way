@@ -184,6 +184,8 @@ export const sprintTables = {
     autosavedAt: v.number(),
   })
     .index("by_org", ["orgId"])
+    .index("by_sprint_and_presentedAt", ["sprintId", "presentedAt"])
+    .index("by_screenshotId", ["screenshotId"])
     .index("by_person_and_sprint", ["personId", "sprintId"]),
 
   /** A credential. `shareSlug` is the public link, the only signed-out read. */
@@ -201,14 +203,20 @@ export const sprintTables = {
     .index("by_person", ["personId"])
     .index("by_shareSlug", ["shareSlug"]),
 
-  /** One row per answer. Only ever read back as an aggregate by a manager. */
+  /**
+   * One row per answer. Only ever read back as an aggregate by a manager.
+   * A row has exactly one of `score` (an answer) and `skippedAt` ("Skip for
+   * now", Ruling 6). A skip is not an answer: every reader treats a row
+   * without a score as nobody answering.
+   */
   surveyResponses: defineTable({
     orgId: v.id("orgs"),
     sprintId: v.id("sprints"),
     personId,
     phase: phaseValidator,
     question: surveyQuestionValidator,
-    score: v.number(),
+    score: v.optional(v.number()),
+    skippedAt: v.optional(v.number()),
   })
     .index("by_org", ["orgId"])
     .index("by_person_and_sprint", ["personId", "sprintId"])

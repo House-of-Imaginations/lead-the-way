@@ -1,6 +1,7 @@
 import { literals } from "convex-helpers/validators";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
 import {
   CHECK_LABELS,
   CONTACT_LABELS,
@@ -15,12 +16,14 @@ import {
   latestAgreement,
   latestSaved,
 } from "./lib/agreement";
-import { viewerMutation, viewerQuery } from "./lib/customFunctions";
+import { timedViewerQuery, viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
+import { signatureCount } from "./lib/privacy";
 import { currentSprint, currentTeam } from "./lib/sprint";
 import { hourStart, startDateOf } from "./lib/sprintTime";
 import { getInOrg } from "./lib/tenant";
+import type { Viewer } from "./lib/viewer";
 import { contactValidator, toggleValidator } from "./tables/sprint";
 
 /**
@@ -77,7 +80,180 @@ function dedupe<T>(
   return out;
 }
 
-export const current = viewerQuery("sprint:manage")({
+// ponytail: a team saves a handful of versions; past this, "updated" stops
+// looking further back.
+const VERSIONS_READ = 50;
+const PRACTISE = "Practise with de-identified or sample data.";
+
+const agreementForMeValidator = v.object({
+  heading: v.string(),
+  version: v.number(),
+  tools: v.string(),
+  /** The saved tools alone, for 11's row. */
+  toolList: v.array(v.string()),
+  neverIn: v.array(v.string()),
+  practise: v.union(v.string(), v.null()),
+  checks: v.array(v.string()),
+  escalation: v.string(),
+  contact: v.string(),
+  /** The bare name, for 11. */
+  contactName: v.string(),
+  /** Null for a team:insights holder and below the threshold. */
+  signatures: v.union(
+    v.null(),
+    v.object({ signed: v.number(), of: v.number() }),
+  ),
+  /** "updated": signed an older version, not this one (spec 3.3). */
+  mine: literals("unsigned", "signed", "updated"),
+  initials: v.string(),
+});
+export type AgreementForMe = Infer<typeof agreementForMeValidator>;
+
+/**
+ * 10: the latest saved agreement as anyone seated reads it, and where they
+ * stand. Ruling 1: a count, never a list, so it can't say who hasn't signed.
+ */
+export const forMe = timedViewerQuery()({
+  args: {},
+  returns: v.union(v.null(), agreementForMeValidator),
+  handler: (ctx) => agreementForViewer(ctx, ctx.viewer),
+});
+
+/**
+ * The body of `forMe`, exported so `me.home` (Task 7) reads the same rule
+ * without a nested `ctx.runQuery` (a plain helper is what the Convex
+ * guidelines prefer).
+ */
+export async function agreementForViewer(
+  ctx: QueryCtx,
+  viewer: Viewer,
+): Promise<AgreementForMe | null> {
+  const orgId = viewer.org._id;
+  const team = await currentTeam(ctx, orgId);
+  const saved = team ? await latestSaved(ctx, team._id) : null;
+  if (!team || !saved) return null;
+  const sprint = await currentSprint(ctx, orgId);
+  const tz = sprint?.timeZone ?? viewer.person.timeZone;
+
+  const signedOn = (a: Pick<Doc<"agreements">, "_id" | "version">) =>
+    ctx.db
+      .query("agreementSignatures")
+      .withIndex("by_agreement_version_and_person", (q) =>
+        q
+          .eq("agreementId", a._id)
+          .eq("version", a.version)
+          .eq("personId", viewer.person._id),
+      )
+      .unique();
+  let mine: AgreementForMe["mine"] = (await signedOn(saved))
+    ? "signed"
+    : "unsigned";
+  if (mine === "unsigned") {
+    const older = await ctx.db
+      .query("agreements")
+      .withIndex("by_team_and_version", (q) =>
+        q.eq("teamId", team._id).lt("version", saved.version),
+      )
+      .order("desc")
+      .take(VERSIONS_READ);
+    for (const a of older) {
+      if (await signedOn(a)) {
+        mine = "updated";
+        break;
+      }
+    }
+  }
+
+  const signatures = await signatureCount(
+    ctx,
+    viewer.org,
+    saved,
+    viewer.permissions,
+  );
+
+  // ponytail: a contact who has left reads as the manager, as 06 does.
+  const contact =
+    saved.contact.kind === "person"
+      ? await getInOrg(ctx, orgId, saved.contact.personId).then(
+          (p) => p.name,
+          () => "your manager",
+        )
+      : saved.contact.label;
+  const neverIn = saved.neverIn.filter((t) => t.on).map((t) => t.label);
+  return {
+    heading: `${team.name}, agreed ${dayMonth(saved.savedAt ?? saved._creationTime, tz, true)}`,
+    version: saved.version,
+    tools: saved.tools.length
+      ? `${saved.tools.join(", ")}. Anything else, ask first.`
+      : "No tools agreed yet. Ask before you use one.",
+    toolList: saved.tools,
+    neverIn,
+    practise: neverIn.length ? PRACTISE : null,
+    checks: saved.checks.filter((c) => c.on).map((c) => c.label),
+    escalation: saved.escalation,
+    contact: `Ask ${contact}.`,
+    contactName: contact,
+    signatures,
+    mine,
+    initials: viewer.person.initials,
+  };
+}
+
+/**
+ * Sign the latest saved version, the one the page showed. One signature per
+ * (agreement, version, person) (writer contract), logged as the script's
+ * `sign` logs it. Signing twice is a double tap, not an error.
+ */
+export const sign = viewerMutation()({
+  args: { version: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { version }): Promise<null> => {
+    const { viewer } = ctx;
+    const orgId = viewer.org._id;
+    const team = await currentTeam(ctx, orgId);
+    const saved = team ? await latestSaved(ctx, team._id) : null;
+    if (!saved) {
+      throwUserError(
+        "AGREEMENT_NOT_SAVED",
+        "Your team's agreement isn't saved yet.",
+      );
+    }
+    if (saved.version !== version) {
+      throwUserError(
+        "AGREEMENT_CHANGED",
+        "The agreement changed while you were reading. Read the new version, then sign.",
+      );
+    }
+    const had = await ctx.db
+      .query("agreementSignatures")
+      .withIndex("by_agreement_version_and_person", (q) =>
+        q
+          .eq("agreementId", saved._id)
+          .eq("version", saved.version)
+          .eq("personId", viewer.person._id),
+      )
+      .unique();
+    if (had) return null;
+    await ctx.db.insert("agreementSignatures", {
+      orgId,
+      agreementId: saved._id,
+      version: saved.version,
+      personId: viewer.person._id,
+      signedAt: viewer.now,
+    });
+    const sprint = await currentSprint(ctx, orgId);
+    await logEvent(ctx, {
+      orgId,
+      sprintId: sprint?._id,
+      type: "agreement.signed",
+      at: viewer.now,
+      meta: { version: saved.version },
+    });
+    return null;
+  },
+});
+
+export const current = timedViewerQuery("sprint:manage")({
   args: {},
   returns: v.object({
     status: literals("none", "draft", "saved"),

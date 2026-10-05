@@ -4,17 +4,21 @@ import { ensureProfile } from "./lib/account/ensureProfile";
 import { authenticatedMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { MAX_ORG_NAME, createWorkspace } from "./lib/orgs/create";
+import { firstNameOf } from "./lib/orgs/people";
 import { getViewer } from "./lib/viewer";
 
 /**
  * The step after sign-up, by email or a first social sign-in (R8). Returns
  * where to go next:
+ *  - "/join/<token>" when the sign-up came from a join link (Ruling 3). It
+ *    makes nothing, whatever the token names. The join page says what's wrong
+ *    with a link that won't seat this account (wrong address, used, demo,
+ *    unknown), so a join link never ends in a fresh workspace;
  *  - "/home" when the account already has a workspace;
  *  - "/join/<token>" when a live invitation names its address and the account
- *    has VERIFIED that address (the join page seats it, P6). Sign-up doesn't
- *    demand verification, so an unverified address proves nothing: the token
- *    is never returned to it (spec 5, "holding the link is the proof"). An
- *    invitation from the demo workspace never counts;
+ *    has VERIFIED that address. Without the link in hand, an unverified
+ *    address proves nothing, so the token is never returned to it (spec 5).
+ *    An invitation from the demo workspace never counts;
  *  - "/setup/team" after making a fresh workspace and team.
  * The terms box is asked once and stored on the profile.
  *
@@ -25,9 +29,9 @@ import { getViewer } from "./lib/viewer";
  * skips mailing one.
  */
 export const start = authenticatedMutation({
-  args: { acceptTerms: v.boolean() },
+  args: { acceptTerms: v.boolean(), token: v.optional(v.string()) },
   returns: v.string(),
-  handler: async (ctx, { acceptTerms }) => {
+  handler: async (ctx, { acceptTerms, token }) => {
     const profile = await ensureProfile(ctx, ctx.userId);
     if (profile.termsAcceptedAt === undefined) {
       if (!acceptTerms) {
@@ -38,6 +42,8 @@ export const start = authenticatedMutation({
       }
       await ctx.db.patch(profile._id, { termsAcceptedAt: Date.now() });
     }
+    // Holding the link is the proof (spec 5); the join page checks the rest.
+    if (token) return `/join/${encodeURIComponent(token)}`;
     if (await getViewer(ctx)) return "/home";
 
     const user = await authComponent.getAnyUserById(ctx, ctx.userId);
@@ -58,7 +64,7 @@ export const start = authenticatedMutation({
       }
     }
 
-    const first = user?.name?.trim().split(/\s+/)[0];
+    const first = firstNameOf(user?.name ?? "");
     const name = first ? `${first}'s workspace` : "";
     await createWorkspace(
       ctx,

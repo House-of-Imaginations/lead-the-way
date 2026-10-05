@@ -7,6 +7,10 @@ import { isDemoAddress } from "../demo/cast";
 
 export const DEFAULT_TIME_ZONE = "Australia/Melbourne";
 
+/** The first word of a name, whatever whitespace surrounds it ("" for none). */
+export const firstNameOf = (name: string): string =>
+  name.trim().split(/\s+/)[0] ?? "";
+
 /** Two letters for an avatar: the first and last word of a name. */
 export function initialsOf(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);

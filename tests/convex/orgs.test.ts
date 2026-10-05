@@ -1,8 +1,9 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { ConvexError } from "convex/values";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import schema from "../../convex/schema";
 import { personFields, registerComponents, seedAuthUser } from "./testHelpers";
 
@@ -832,4 +833,132 @@ test("deleting a workspace takes its picture with it", async () => {
   }));
   expect(after.file).toBeNull();
   expect(after.org).toBeNull();
+});
+
+/**
+ * `setImage` adopts an upload and later deletes it, and storage ids leak
+ * through `storage.getUrl` URLs. Anyone who signs up owns a workspace, so
+ * without a freshness and references check they could take another
+ * workspace's logo and have it deleted. `convex-test` drops the blob type, so
+ * the type is patched on, as `projects.test.ts` does.
+ */
+async function pngUpload(t: ReturnType<typeof harness>) {
+  return await t.run(async (ctx) => {
+    const id = await ctx.storage.store(new Blob(["pretend png"]));
+    const writer = ctx.db as unknown as {
+      patch(
+        id: Id<"_storage">,
+        value: { contentType: string },
+      ): Promise<void>;
+    };
+    await writer.patch(id, { contentType: "image/png" });
+    return id;
+  });
+}
+
+test("a file another workspace shows as its logo is refused and kept", async () => {
+  const t = harness();
+  const { orgId: mine } = await workspace(t);
+  const { orgId: theirs } = await t
+    .withIdentity(BOB)
+    .mutation(api.orgs.create, { name: "Other" });
+  const logo = await pngUpload(t);
+  await t.run((ctx) => ctx.db.patch(theirs, { imageId: logo }));
+
+  await expect(
+    t
+      .withIdentity(ALICE)
+      .mutation(api.orgs.setImage, { orgId: mine, storageId: logo }),
+  ).rejects.toThrow(ConvexError);
+
+  const after = await t.run(async (ctx) => ({
+    file: await ctx.db.system.get(logo),
+    theirs: await ctx.db.get(theirs),
+    mine: await ctx.db.get(mine),
+  }));
+  expect(after.file).not.toBeNull();
+  expect(after.theirs?.imageId).toBe(logo);
+  expect(after.mine?.imageId).toBeUndefined();
+});
+
+test("a project screenshot is refused as a workspace picture", async () => {
+  const t = harness();
+  const { orgId: mine } = await workspace(t);
+  const { orgId: theirs } = await t
+    .withIdentity(BOB)
+    .mutation(api.orgs.create, { name: "Other" });
+  const shot = await pngUpload(t);
+  await t.run(async (ctx) => {
+    const team = await ctx.db
+      .query("teams")
+      .withIndex("by_org", (q) => q.eq("orgId", theirs))
+      .unique();
+    const sprintId = await ctx.db.insert("sprints", {
+      orgId: theirs,
+      teamId: team!._id,
+      status: "draft",
+      startDate: "2026-09-09",
+      timeZone: "Australia/Melbourne",
+      weeks: 4,
+      protectedHour: { weekday: 3, start: "14:00", durationMinutes: 60 },
+      courseTitle: "AI Productivity Fundamentals",
+      createdAt: 0,
+    });
+    const person = await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", theirs))
+      .first();
+    await ctx.db.insert("projects", {
+      orgId: theirs,
+      personId: person!._id,
+      sprintId,
+      startedWeek: 1,
+      title: "Draft the weekly update",
+      before: "",
+      change: "",
+      after: "",
+      resultTypes: [],
+      humanReviewed: false,
+      dataSafe: false,
+      screenshotId: shot,
+      status: "draft",
+      sharing: "private",
+      autosavedAt: 0,
+    });
+  });
+
+  await expect(
+    t
+      .withIdentity(ALICE)
+      .mutation(api.orgs.setImage, { orgId: mine, storageId: shot }),
+  ).rejects.toThrow(ConvexError);
+  expect(await t.run((ctx) => ctx.db.system.get(shot))).not.toBeNull();
+});
+
+test("a stale upload is refused, a fresh one adopted and re-saving it is a no-op", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  try {
+    const t = harness();
+    const { orgId } = await workspace(t);
+    const alice = t.withIdentity(ALICE);
+    const old = await pngUpload(t);
+    vi.setSystemTime(Date.now() + 16 * 60_000);
+    await expect(
+      alice.mutation(api.orgs.setImage, { orgId, storageId: old }),
+    ).rejects.toThrow(ConvexError);
+
+    const fresh = await pngUpload(t);
+    await alice.mutation(api.orgs.setImage, { orgId, storageId: fresh });
+    // Past the window, the file the workspace already shows is still its own.
+    vi.setSystemTime(Date.now() + 16 * 60_000);
+    await alice.mutation(api.orgs.setImage, { orgId, storageId: fresh });
+    const after = await t.run(async (ctx) => ({
+      file: await ctx.db.system.get(fresh),
+      org: await ctx.db.get(orgId),
+    }));
+    expect(after.file).not.toBeNull();
+    expect(after.org?.imageId).toBe(fresh);
+  } finally {
+    vi.useRealTimers();
+  }
 });

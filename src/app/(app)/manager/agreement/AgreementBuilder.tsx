@@ -1,7 +1,6 @@
 "use client";
 
 import { Add, Download } from "@carbon/icons-react";
-import { useQuery } from "convex-helpers/react/cache";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useState, type ReactNode, type SubmitEvent } from "react";
@@ -24,6 +23,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { userMessage } from "@/lib/errors";
+import { useTimedQuery } from "@/lib/useTimedQuery";
 import { AgreementPreview } from "./AgreementPreview";
 
 type Agreement = FunctionReturnType<typeof api.agreements.current>;
@@ -164,7 +164,7 @@ function Toggles({
 }
 
 export function AgreementBuilder({ initial }: { initial: Agreement }) {
-  const data = useQuery(api.agreements.current, {}) ?? initial;
+  const data = useTimedQuery(api.agreements.current, initial) ?? initial;
   const expectOrgId = useExpectOrgId();
   const saveAgreement = useMutation(api.agreements.save);
   const toast = useToast();

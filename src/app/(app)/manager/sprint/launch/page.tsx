@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { api } from "@convex/_generated/api";
 import { fetchAuthQuery } from "@/lib/account/auth-server";
-import { getShell, managerRead } from "@/lib/account/queries";
+import { currentHour, getShell, managerRead } from "@/lib/account/queries";
 import { LaunchForm } from "./LaunchForm";
 
 export const metadata: Metadata = { title: "Launch sprint · Lead the Way" };
@@ -12,7 +12,7 @@ export default async function SprintLaunchPage() {
   const shell = await getShell();
   if (shell?.area !== "manager") return null;
   const initial = await managerRead(() =>
-    fetchAuthQuery(api.sprints.launchPage, {}),
+    fetchAuthQuery(api.sprints.launchPage, { hour: currentHour() }),
   );
   // No team yet: setup starts with the team.
   if (!initial) redirect("/setup/team");

@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { MAX_MEMBERS_PER_ORG, permissionsOf } from "./orgs/membership";
+import type { Permission } from "./orgs/permissions";
 
 /**
  * THE ONLY WAY A MANAGER SEES A NUMBER ABOUT PEOPLE (spec 5.1).
@@ -114,9 +115,9 @@ export async function loadCountable(
 /**
  * Everyone seated on the team: each person in the org whose role is the
  * org's and can't read team totals, opted out or not, whoever is asking.
- * Not a `Countable`, so no number about them can be made from it; the
- * agreement's "Signed by the team" reads it, so the title is the same for
- * every viewer and no opt-out flips it.
+ * Not a `Countable`; `signatureCount` is the one sanctioned count made from
+ * it (Rulings 1 and 24). The agreement's "Signed by the team" reads it, so
+ * the title is the same for every viewer and no opt-out flips it.
  */
 export async function loadSeated(
   ctx: QueryCtx,
@@ -134,4 +135,45 @@ export async function loadSeated(
     seated.push(person);
   }
   return seated;
+}
+
+/**
+ * 10's signature count: who signed `agreement`, over the seated team as the
+ * overview counts it (`loadSeated`). Null below the threshold, as the
+ * overview's "Signed by the team" is (manager Ruling 15), so a count can't
+ * single out who hasn't signed. Null too for anyone who manages the team
+ * (`team:insights` or `sprint:manage`): a manager reads the overview, which
+ * never lets a live number out (manager Ruling 15), so the rule lives here and
+ * no caller can forget it.
+ *
+ * ponytail: runs in every employee's `me.home` and `forMe`, reading N people,
+ * N roles and S signatures, and re-runs for every seated employee on each
+ * signature or `people` write: about 80k reads per signature at
+ * MAX_MEMBERS_PER_ORG (200). Denormalize a count on the agreement past that.
+ */
+export async function signatureCount(
+  ctx: QueryCtx,
+  org: Doc<"orgs">,
+  agreement: Pick<Doc<"agreements">, "_id" | "version">,
+  permissions: readonly Permission[],
+): Promise<{ signed: number; of: number } | null> {
+  if (
+    permissions.includes("team:insights") ||
+    permissions.includes("sprint:manage")
+  ) {
+    return null;
+  }
+  const seated = await loadSeated(ctx, org);
+  if (seated.length < thresholdOf(org)) return null;
+  const signatures = await ctx.db
+    .query("agreementSignatures")
+    .withIndex("by_agreement_version_and_person", (q) =>
+      q.eq("agreementId", agreement._id).eq("version", agreement.version),
+    )
+    .take(MAX_MEMBERS_PER_ORG);
+  const signedBy = new Set(signatures.map((s) => s.personId));
+  return {
+    signed: seated.filter((p) => signedBy.has(p._id)).length,
+    of: seated.length,
+  };
 }

@@ -6,7 +6,7 @@ import { flagOn } from "../app";
 import { castOf } from "./demo/cast";
 import { MAX_MEMBERS_PER_ORG, seatsOfUser } from "./orgs/membership";
 import type { Permission } from "./orgs/permissions";
-import { initialsOf } from "./orgs/people";
+import { firstNameOf, initialsOf } from "./orgs/people";
 import { SETUP_STEPS } from "./setupSteps";
 import { currentSprint, currentTeam, setupGate } from "./sprint";
 import { sprintStatus } from "./sprintTime";
@@ -229,7 +229,8 @@ async function checklistOf(
   };
 }
 
-function greetingOf(viewer: Viewer, now: number): string {
+/** Ruling 23 (P6): in the viewer's own time zone, afternoon ends at 5:00 PM. 11 uses it too. */
+export function greetingOf(viewer: Viewer, now: number): string {
   const hour = Number(
     new Intl.DateTimeFormat("en-US", {
       timeZone: viewer.person.timeZone,
@@ -237,8 +238,8 @@ function greetingOf(viewer: Viewer, now: number): string {
       hourCycle: "h23",
     }).format(now),
   );
-  const part = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
-  return `Good ${part}, ${viewer.person.name.split(/\s+/)[0]}`;
+  const part = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+  return `Good ${part}, ${firstNameOf(viewer.person.name)}`;
 }
 
 /** Priya and Dan switch to each other, once the other has a seat (spec 6). */
@@ -259,7 +260,7 @@ async function switchToOf(ctx: QueryCtx, viewer: Viewer, isDemo: boolean) {
     .take(MAX_MEMBERS_PER_ORG);
   if (!people.some((p) => p.email === other.email)) return null;
   return {
-    label: `Switch to ${other.name.split(" ")[0]}'s view`,
+    label: `Switch to ${firstNameOf(other.name)}'s view`,
     email: other.email,
   };
 }

@@ -32,6 +32,7 @@ export {
 export { PasswordInput, type PasswordInputProps } from "./PasswordInput";
 export { Select, type SelectProps } from "./Select";
 export { Checkbox, type CheckboxProps } from "./Checkbox";
+export { FileDrop, type FileDropProps } from "./FileDrop";
 export { Toggle, type ToggleProps } from "./Toggle";
 export { ContentSwitcher, type ContentSwitcherProps } from "./ContentSwitcher";
 export { SelectableTile, type SelectableTileProps } from "./SelectableTile";

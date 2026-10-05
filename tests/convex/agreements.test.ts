@@ -7,7 +7,7 @@ import {
   DEFAULT_ESCALATION,
   NEVER_IN_DEFAULTS,
 } from "../../convex/lib/agreement";
-import { mel } from "../../convex/lib/demo/schedule";
+import { DEMO_TARGETS, mel } from "../../convex/lib/demo/schedule";
 import { personFields } from "./testHelpers";
 import {
   calderLane,
@@ -395,4 +395,162 @@ test("a jump after the tester saved leaves one saved version", async () => {
     [1, "saved", ["Claude"]],
   ]);
   expect(await savedEvents(t, orgId)).toEqual([{ version: 1 }]);
+});
+
+async function eventsOf(t: T, orgId: Id<"orgs">, type: string) {
+  return await t.run(async (ctx) =>
+    (
+      await ctx.db
+        .query("events")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect()
+    ).filter((e) => e.type === type),
+  );
+}
+
+const DAN = "dan.okafor@calderlane.com.au";
+
+/** Calder Lane at week 1: v1 saved on 7 September, 7 signed, Dan not yet. */
+async function week1() {
+  const lane = await calderLane();
+  await lane.t.mutation(internal.seed.clock, { target: "week1" });
+  return lane;
+}
+
+async function danSignatures(t: T, orgId: Id<"orgs">) {
+  const dan = await personIdOf(t, orgId, (p) => p.email === DAN);
+  return await t.run(async (ctx) =>
+    (await ctx.db.query("agreementSignatures").collect()).filter(
+      (s) => s.personId === dan,
+    ),
+  );
+}
+
+test("forMe shows Dan the saved agreement and a count, never who signed", async () => {
+  const { as } = await week1();
+  const forMe = await as("dan").query(api.agreements.forMe, {});
+  expect(forMe).toEqual({
+    heading: "Client Services team, agreed 7 September 2026",
+    version: 1,
+    tools: "Microsoft Copilot, ChatGPT Enterprise. Anything else, ask first.",
+    toolList: ["Microsoft Copilot", "ChatGPT Enterprise"],
+    neverIn: [
+      "Client names",
+      "Personal information",
+      "Passwords",
+      "Confidential commercial information",
+      "Unapproved customer data",
+    ],
+    practise: "Practise with de-identified or sample data.",
+    checks: [
+      "Verify factual claims",
+      "Check sources or citations",
+      "Human review before client delivery",
+      "Review tone and context",
+    ],
+    escalation: DEFAULT_ESCALATION,
+    contact: "Ask Priya Raman.",
+    contactName: "Priya Raman",
+    // Over the seated team without Priya (team:insights), as the overview
+    // counts it: the six who signed at 9:00 AM, of seven, Dan not yet.
+    signatures: { signed: 6, of: 7 },
+    mine: "unsigned",
+    initials: "DO",
+  });
+  // Ruling 1: nobody else's name or initials.
+  expect(JSON.stringify(forMe)).not.toMatch(/Whitlock|Tanaka|"SW"|"MT"/);
+});
+
+test("Priya and any team:insights holder never get the count", async () => {
+  // Calder Lane is over the threshold; the role alone withholds it, so
+  // forMe can't bypass the overview (manager Ruling 15).
+  const { t, orgId, as } = await week1();
+  expect(await as("priya").query(api.agreements.forMe, {})).toMatchObject({
+    version: 1,
+    mine: "signed",
+    initials: "PR",
+    signatures: null,
+  });
+  const { as: lead } = await seat(t, orgId, "user_lead", ["team:insights"]);
+  expect(await lead.query(api.agreements.forMe, {})).toMatchObject({
+    mine: "unsigned",
+    signatures: null,
+  });
+  // A sprint manager runs the sprint without team totals; the live count
+  // would still be a number a manager watches change, so it is withheld too.
+  const { as: runner } = await seat(t, orgId, "user_runner", ["sprint:manage"]);
+  expect(await runner.query(api.agreements.forMe, {})).toMatchObject({
+    mine: "unsigned",
+    signatures: null,
+  });
+});
+
+test("Dan signs once, and the script never signs again for him", async () => {
+  const { t, orgId, as } = await week1();
+  const dan = as("dan");
+  await dan.mutation(api.agreements.sign, { version: 1, expectOrgId: orgId });
+  // A double tap changes nothing.
+  await dan.mutation(api.agreements.sign, { version: 1, expectOrgId: orgId });
+  expect(await dan.query(api.agreements.forMe, {})).toMatchObject({
+    mine: "signed",
+    signatures: { signed: 7, of: 7 },
+  });
+  expect(await danSignatures(t, orgId)).toHaveLength(1);
+  expect(
+    (await eventsOf(t, orgId, "agreement.signed")).filter(
+      (e) => e.at === DEMO_TARGETS.week1,
+    ),
+  ).toEqual([expect.objectContaining({ meta: { version: 1 } })]);
+
+  // The script's late signing (1:45 PM) finds his row and leaves it.
+  await t.mutation(internal.seed.clock, { target: "week2" });
+  expect(await danSignatures(t, orgId)).toHaveLength(1);
+});
+
+test("a new version asks Dan to sign again, and its count starts at nobody", async () => {
+  const { t, orgId, as } = await week1();
+  const dan = as("dan");
+  await dan.mutation(api.agreements.sign, { version: 1, expectOrgId: orgId });
+
+  const priya = await personIdOf(t, orgId, (p) => p.email === PRIYA);
+  const { version } = await as("priya").mutation(api.agreements.save, {
+    ...content({ kind: "person", personId: priya }),
+    tools: ["Microsoft Copilot"],
+    expectOrgId: orgId,
+  });
+  expect(version).toBe(2);
+
+  expect(await dan.query(api.agreements.forMe, {})).toMatchObject({
+    version: 2,
+    tools: "Microsoft Copilot. Anything else, ask first.",
+    mine: "updated",
+    signatures: { signed: 0, of: 7 },
+  });
+  await expect(
+    dan.mutation(api.agreements.sign, { version: 1, expectOrgId: orgId }),
+  ).rejects.toMatchObject({ data: { code: "AGREEMENT_CHANGED" } });
+  await dan.mutation(api.agreements.sign, { version: 2, expectOrgId: orgId });
+  expect(await dan.query(api.agreements.forMe, {})).toMatchObject({
+    mine: "signed",
+    signatures: { signed: 1, of: 7 },
+  });
+});
+
+test("nothing saved, nothing to sign; a team under the threshold gets no count", async () => {
+  const { t, orgId, save } = await manager();
+  const emp = await employee(t, orgId);
+  expect(await emp.query(api.agreements.forMe, {})).toBeNull();
+  await expect(
+    emp.mutation(api.agreements.sign, { version: 1, expectOrgId: orgId }),
+  ).rejects.toMatchObject({ data: { code: "AGREEMENT_NOT_SAVED" } });
+
+  await save(content(PRIVACY));
+  await emp.mutation(api.agreements.sign, { version: 1, expectOrgId: orgId });
+  // One seated employee, under 5: "1 of 1" would name who signed.
+  expect(await emp.query(api.agreements.forMe, {})).toMatchObject({
+    version: 1,
+    contact: "Ask Privacy officer.",
+    signatures: null,
+    mine: "signed",
+  });
 });

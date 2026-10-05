@@ -6,7 +6,13 @@ import { Button, Checkbox } from "@/components/ui";
 import { startAccount } from "@/lib/account/start";
 
 /** R8: the terms show once. Accepted already: just Continue. */
-export function StartForm({ needsTerms }: { needsTerms: boolean }) {
+export function StartForm({
+  needsTerms,
+  token,
+}: {
+  needsTerms: boolean;
+  token?: string;
+}) {
   const [agreed, setAgreed] = useState(!needsTerms);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -17,7 +23,7 @@ export function StartForm({ needsTerms }: { needsTerms: boolean }) {
         e.preventDefault();
         setError(null);
         startTransition(async () => {
-          const started = await startAccount(needsTerms);
+          const started = await startAccount(needsTerms, token);
           if ("error" in started) setError(started.error);
           else window.location.assign(started.next);
         });

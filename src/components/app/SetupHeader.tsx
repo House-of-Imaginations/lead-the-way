@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { authClient } from "@/lib/account/auth-client";
 import { Logo } from "@/components/ui/Logo";
 
 /** The pages whose form "Save and exit" submits (Ruling 10). */
@@ -41,6 +42,21 @@ export function SetupHeader({ home }: { home: string }) {
           Save and exit
         </Button>
       )}
+      {/* Ruling 20: the wrong account can leave setup without a workspace. */}
+      <Button
+        kind="ghost"
+        onClick={() =>
+          void authClient
+            .signOut()
+            .catch(() => null)
+            .then(() =>
+              // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load drops the old session's client state
+              window.location.assign("/login"),
+            )
+        }
+      >
+        Log out
+      </Button>
     </header>
   );
 }

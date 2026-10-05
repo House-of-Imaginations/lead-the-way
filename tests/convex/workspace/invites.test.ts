@@ -30,6 +30,8 @@ test("an invite seats the person and opens the workspace", async () => {
     invitedBy: "Someone",
     name: null,
     message: null,
+    email: null,
+    join: null,
   });
   expect(
     await t.query(api.invites.publicPreview, { token: "nope" }),
@@ -201,6 +203,14 @@ test("preview names each accept state", async () => {
   ).toBeNull();
   expect(
     await t.query(api.invites.publicPreview, { token: declined.token }),
+  ).toBeNull();
+  // A pending, pinned link that has lapsed hides its address too.
+  const lapsed = await create("lapsed@example.com");
+  await t.run(async (ctx) => {
+    await ctx.db.patch(lapsed.inviteId, { expiresAt: Date.now() - 1 });
+  });
+  expect(
+    await t.query(api.invites.publicPreview, { token: lapsed.token }),
   ).toBeNull();
 });
 

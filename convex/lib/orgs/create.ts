@@ -33,14 +33,19 @@ async function slugTaken(ctx: MutationCtx, slug: string) {
 }
 
 /**
- * `base`, else `base-2` to `base-50`. For names the person didn't choose
+ * `base`, else `base-2` to `base-50`, else `base-` and 6 random characters. For names the person didn't choose
  * ("Bec's workspace"), where a clash shouldn't stop sign-up.
- * ponytail: a linear probe, 50 reads at worst; a random suffix if names ever crowd.
+ * ponytail: 50 probes then 3 random tries (36^6 slugs each); a real counter if one name ever crowds that.
  */
 async function freeSlug(ctx: MutationCtx, base: string): Promise<string> {
   if (!(await slugTaken(ctx, base))) return base;
   for (let n = 2; n <= 50; n++) {
     const slug = `${base.slice(0, MAX_SLUG_LENGTH - 3).replace(/-+$/, "")}-${n}`;
+    if (!(await slugTaken(ctx, slug))) return slug;
+  }
+  for (let i = 0; i < 3; i++) {
+    const rand = Math.random().toString(36).slice(2, 8).padEnd(6, "0");
+    const slug = `${base.slice(0, MAX_SLUG_LENGTH - 7).replace(/-+$/, "")}-${rand}`;
     if (!(await slugTaken(ctx, slug))) return slug;
   }
   throwUserError("SLUG_TAKEN", "A workspace with that name already exists.");
@@ -67,7 +72,7 @@ export async function createWorkspace(
   if (await isDemoAccount(ctx, userId)) {
     throwUserError(
       "DEMO_ACCOUNT_CREATE",
-      "Demo accounts can't make a workspace. Sign up with your own email to make one.",
+      "Demo accounts can't make a workspace. If you were invited, open your invitation link.",
     );
   }
   const trimmed = cleanOrgName(name);

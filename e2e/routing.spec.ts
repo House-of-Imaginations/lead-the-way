@@ -23,7 +23,14 @@ test("signed out, private pages go to log in and keep where you were going", asy
       `/login?next=${encodeURIComponent(path)}`,
     );
   }
-  for (const path of ["/", "/signup", "/login", "/reset-password"]) {
+  for (const path of [
+    "/",
+    "/signup",
+    "/login",
+    "/reset-password",
+    // Public (spec 7.1). A 404 before the badge exists still stays at its URL.
+    "/credential/dan-okafor-ai-fundamentals",
+  ]) {
     await page.goto(path);
     await expect(page, path).toHaveURL(path);
   }

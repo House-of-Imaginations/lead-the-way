@@ -1,3 +1,4 @@
+import { Locked } from "@carbon/icons-react";
 import clsx from "clsx";
 import type { ComponentProps } from "react";
 import { Field, describedBy, type FieldProps } from "./Field";
@@ -22,18 +23,28 @@ export function TextInput({
       error={error}
       labelAction={labelAction}
     >
-      <input
-        id={id}
-        className={clsx("ltw-field", error && "ltw-field-invalid", className)}
-        aria-invalid={error ? true : undefined}
-        {...input}
-        aria-describedby={describedBy(
-          id,
-          helper,
-          error,
-          input["aria-describedby"],
+      {/* Read-only (not disabled): a lock marks a value that can be read and copied, not typed over. */}
+      <span className="relative block">
+        <input
+          id={id}
+          className={clsx("ltw-field", error && "ltw-field-invalid", className)}
+          aria-invalid={error ? true : undefined}
+          {...input}
+          aria-describedby={describedBy(
+            id,
+            helper,
+            error,
+            input["aria-describedby"],
+          )}
+        />
+        {input.readOnly && !input.disabled && (
+          <Locked
+            size={16}
+            aria-hidden="true"
+            className="pointer-events-none absolute right-05 top-1/2 -translate-y-1/2 text-text-secondary"
+          />
         )}
-      />
+      </span>
     </Field>
   );
 }

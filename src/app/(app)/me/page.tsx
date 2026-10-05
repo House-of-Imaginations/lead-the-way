@@ -1,11 +1,20 @@
-import { getShell } from "@/lib/account/queries";
+import type { Metadata } from "next";
+import { api } from "@convex/_generated/api";
+import { preloadAuthQuery } from "@/lib/account/auth-server";
+import { currentHour, getShell, openOrHome } from "@/lib/account/queries";
+import { Home } from "./Home";
 
-// ponytail: P3 shell page, P4/P5/P6 fill the body
+export const metadata: Metadata = { title: "This week · Lead the Way" };
+
 export default async function ThisWeekPage() {
+  // The employee layout redirects everyone else, and it renders in parallel
+  // with this page.
   const shell = await getShell();
-  return (
-    <div className="flex max-w-content-max flex-col gap-07">
-      <h1 className="text-heading-01">{shell?.greeting}</h1>
-    </div>
+  if (shell?.area !== "employee") return null;
+  // Ruling 16: one subscription, with the hour the shell used. HourlyRefresh
+  // re-runs this at the top of the hour.
+  const preloaded = await openOrHome(() =>
+    preloadAuthQuery(api.me.home, { hour: currentHour() }),
   );
+  return <Home preloaded={preloaded} greeting={shell.greeting} />;
 }

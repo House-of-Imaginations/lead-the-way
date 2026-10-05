@@ -4,12 +4,14 @@ import {
   hourLabel,
   hourLong,
   hourPattern,
+  hourRange,
   hourStart,
   spanLabel,
   sprintPhase,
   sprintStatus,
   weekOf,
   weekOneDate,
+  zoneNote,
 } from "../../convex/lib/sprintTime";
 import type { Doc } from "../../convex/_generated/dataModel";
 
@@ -242,5 +244,26 @@ test("hourLong spells the hour out", () => {
   );
   expect(hourLong(at("2026-09-09T09:00"), MEL)).toBe(
     "Wednesday 9 September at 9:00 AM",
+  );
+});
+
+test("hourRange keeps one AM or PM when both ends share it (Ruling 17)", () => {
+  const two = { weekday: 3, start: "14:00", durationMinutes: 60 };
+  expect(hourRange(two, "long")).toBe("Wednesday, 2:00 to 3:00 PM");
+  expect(hourRange(two, "short")).toBe("Wed 2:00 to 3:00 PM");
+  expect(
+    hourRange({ weekday: 1, start: "11:30", durationMinutes: 60 }, "long"),
+  ).toBe("Monday, 11:30 AM to 12:30 PM");
+  expect(
+    hourRange({ weekday: 5, start: "09:00", durationMinutes: 45 }, "short"),
+  ).toBe("Fri 9:00 to 9:45 AM");
+});
+
+test("zoneNote names the sprint's city only when the viewer is elsewhere", () => {
+  expect(zoneNote(MEL, MEL)).toBe("");
+  expect(zoneNote(MEL, "Europe/London")).toBe(", Melbourne time");
+  expect(zoneNote("America/New_York", MEL)).toBe(", New York time");
+  expect(zoneNote("America/Argentina/Buenos_Aires", "UTC")).toBe(
+    ", Buenos Aires time",
   );
 });

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
-import { initialsOf } from "../../convex/lib/orgs/people";
+import { firstNameOf, initialsOf } from "../../convex/lib/orgs/people";
 import { seedAuthUser } from "./testHelpers";
 import { harness, workspace } from "./workspace/helpers";
 
@@ -9,6 +9,12 @@ test("initials come from the first and last word", () => {
   expect(initialsOf("  tomás  de la reyes ")).toBe("TR");
   expect(initialsOf("Dan")).toBe("D");
   expect(initialsOf("   ")).toBe("?");
+});
+
+test("a first name survives stray whitespace", () => {
+  expect(firstNameOf("Dan Okafor")).toBe("Dan");
+  expect(firstNameOf("\tDan  Okafor ")).toBe("Dan");
+  expect(firstNameOf("   ")).toBe("");
 });
 
 test("joining makes a people row with a name, initials and email", async () => {

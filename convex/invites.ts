@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { literals } from "convex-helpers/validators";
 import { authComponent } from "./auth";
 import {
@@ -7,6 +7,7 @@ import {
   orgMutation,
   orgQuery,
   publicQuery,
+  timedViewerQuery,
 } from "./lib/customFunctions";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
@@ -30,8 +31,16 @@ import {
   permissionsOf,
   requireWithin,
 } from "./lib/orgs/membership";
-import { isDemoAccount } from "./lib/orgs/people";
+import { firstNameOf, initialsOf, isDemoAccount } from "./lib/orgs/people";
 import { reserveRateLimit } from "./lib/rateLimits";
+import { currentSprint } from "./lib/sprint";
+import {
+  hourRange,
+  hourStart,
+  parts,
+  spanLabel,
+  startDateOf,
+} from "./lib/sprintTime";
 
 /**
  * Invitations: a link that seats whoever it was meant for.
@@ -46,7 +55,9 @@ import { reserveRateLimit } from "./lib/rateLimits";
  * `create` does not count it.
  *
  * NO REFUSAL NAMES THE PINNED ADDRESS. "This invitation is for a different
- * email address" tells the holder only that this account is not the one.
+ * email address" tells the holder only that this account is not the one. The
+ * one place the address shows is `publicPreview`, so sign-up can lock it
+ * (Ruling 2).
  */
 
 const MAX_NAME = 80;
@@ -91,6 +102,60 @@ async function byToken(ctx: QueryCtx | MutationCtx, token: string) {
     .query("orgInvites")
     .withIndex("by_token", (q) => q.eq("token", token))
     .unique();
+}
+
+export const joinFactsValidator = v.object({
+  managerName: v.string(),
+  managerFirstName: v.string(),
+  managerInitials: v.string(),
+  managerRole: v.string(),
+  /** The invitation message (07), shown in quotes. */
+  quote: v.union(v.string(), v.null()),
+  hour: v.string(),
+  span: v.string(),
+  showAndTell: v.string(),
+  course: v.string(),
+});
+export type JoinFacts = Infer<typeof joinFactsValidator>;
+
+/**
+ * What 09 says about the sprint a link joins (Rulings 2 and 18): the
+ * workspace's current sprint, in the sprint's time zone. No zone note: the
+ * reader has no seat here yet, so no time zone of their own. A draft's week
+ * one is worked out from the clock (`startDateOf`), as every screen does.
+ * Null before the workspace has a sprint.
+ */
+async function joinFacts(
+  ctx: QueryCtx,
+  org: Doc<"orgs">,
+  invitedBy: string,
+  message: string | undefined,
+): Promise<JoinFacts | null> {
+  const found = await currentSprint(ctx, org._id);
+  if (!found) return null;
+  const sprint = { ...found, startDate: startDateOf(found, nowFor(org)) };
+  const tz = sprint.timeZone;
+  const last = hourStart(sprint, sprint.weeks);
+  const day = parts(last, tz, { day: "numeric", month: "short" });
+  // `.first()`, as `usableInvite` reads seats: a stray second row must not throw here.
+  const manager = await ctx.db
+    .query("people")
+    .withIndex("by_user_and_org", (q) =>
+      q.eq("userId", invitedBy).eq("orgId", org._id),
+    )
+    .first();
+  const managerName = manager?.name ?? (await nameOf(ctx, invitedBy));
+  return {
+    managerName,
+    managerFirstName: firstNameOf(managerName),
+    managerInitials: manager?.initials ?? initialsOf(managerName),
+    managerRole: manager?.jobTitle || "Team manager",
+    quote: message ?? null,
+    hour: hourRange(sprint.protectedHour, "long"),
+    span: spanLabel(hourStart(sprint, 1), last, tz),
+    showAndTell: `${day.day} ${day.month}`,
+    course: sprint.courseTitle,
+  };
 }
 
 /**
@@ -389,9 +454,15 @@ export const revoke = orgMutation("members:manage")({
   },
 });
 
-/** What the signed-out invitation page may show. Pending links only; never the address. */
+/**
+ * What the signed-out invitation page may show. Pending, unexpired links
+ * only. It names the pinned address, so sign-up can show it locked (Ruling
+ * 2): holding the link already proves that mailbox. Never the inviter's
+ * address (`nameOf`).
+ */
 export const publicPreview = publicQuery({
-  args: { token: v.string() },
+  // `hour` is never read: a new one makes the cached answer read the clock again (Ruling 16).
+  args: { token: v.string(), hour: v.optional(v.number()) },
   returns: v.union(
     v.null(),
     v.object({
@@ -401,6 +472,8 @@ export const publicPreview = publicQuery({
       invitedBy: v.string(),
       name: v.union(v.string(), v.null()),
       message: v.union(v.string(), v.null()),
+      email: v.union(v.string(), v.null()),
+      join: v.union(v.null(), joinFactsValidator),
     }),
   ),
   handler: async (ctx, { token }) => {
@@ -417,6 +490,8 @@ export const publicPreview = publicQuery({
       invitedBy: await nameOf(ctx, invite.invitedBy),
       name: invite.name ?? null,
       message: invite.message ?? null,
+      email: invite.email ?? null,
+      join: await joinFacts(ctx, org, invite.invitedBy, invite.message),
     };
   },
 });
@@ -435,7 +510,8 @@ const STATE_OF_REFUSAL = {
  * show (unknown, expired, or its role gone).
  */
 export const preview = authenticatedQuery({
-  args: { token: v.string() },
+  // `hour` is never read: a new one makes the cached answer read the clock again (Ruling 16).
+  args: { token: v.string(), hour: v.optional(v.number()) },
   returns: v.union(
     v.null(),
     v.object({
@@ -452,6 +528,7 @@ export const preview = authenticatedQuery({
         "DEMO_ACCOUNT",
       ),
       emailConfigured: v.boolean(),
+      join: v.union(v.null(), joinFactsValidator),
     }),
   ),
   handler: async (ctx, { token }) => {
@@ -481,7 +558,33 @@ export const preview = authenticatedQuery({
             ? ("ALREADY_MEMBER" as const)
             : ("READY" as const),
       emailConfigured: emailConfigured(),
+      // A withdrawn link shows no more than the signed-out page does.
+      join:
+        refusal === "INVITE_REVOKED" ||
+        refusal === "INVITE_DECLINED" ||
+        refusal === "INVITE_USED"
+          ? null
+          : await joinFacts(ctx, org, invite.invitedBy, invite.message),
     };
+  },
+});
+
+/**
+ * `/join/preview` (Ruling 18): 09 as the team will see it, built from the
+ * viewer's own sprint and invitation message. Timed (Ruling 16): a draft's
+ * dates come from the clock.
+ */
+export const teamPreview = timedViewerQuery("sprint:manage")({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({ orgName: v.string(), join: joinFactsValidator }),
+  ),
+  handler: async (ctx) => {
+    const { org, userId } = ctx.viewer;
+    const sprint = await currentSprint(ctx, org._id);
+    const join = await joinFacts(ctx, org, userId, sprint?.inviteMessage);
+    return join && { orgName: org.name, join };
   },
 });
 
