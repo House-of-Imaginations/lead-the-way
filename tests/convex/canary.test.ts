@@ -38,21 +38,28 @@ test("the canary's detector finds the sentinel and nothing else", () => {
 
 /**
  * Dan's private states. One project per person per sprint, so each is its
- * own run: a draft with his before check-in skipped (the skip's timestamp is
- * the sentinel), and a saved project he never presented with an answered
- * check-in. The saved one has `sharing: "team"` but no `presentedAt`: the
- * half-way state `isPresented` must still refuse (Ruling 4). Renamed, so the
- * script neither presents nor links it.
+ * own run: a draft with his before check-in skipped, and saved projects he
+ * never presented with an answered check-in. The skip's timestamp is the
+ * sentinel, so this proves only that `skippedAt` is never exposed; that a skip
+ * is never counted as a response is Task 3's "a skipped check-in is not a
+ * response". Two half-way states `isPresented` must still refuse (Ruling 4):
+ * `sharing: "team"` without `presentedAt`, and `presentedAt` with
+ * `sharing: "private"`. Renamed, so the script neither presents nor links it.
  */
 const CASES = [
   {
     name: "a draft and a skipped check-in",
-    project: { status: "draft", sharing: "private" },
+    project: { status: "draft", sharing: "private", presentedAt: undefined },
     skipped: true,
   },
   {
     name: "a saved project he hasn't presented",
-    project: { status: "saved", sharing: "team" },
+    project: { status: "saved", sharing: "team", presentedAt: undefined },
+    skipped: false,
+  },
+  {
+    name: "a saved private project with a presentedAt",
+    project: { status: "saved", sharing: "private", presentedAt: 1 },
     skipped: false,
   },
 ] as const;
@@ -110,11 +117,7 @@ for (const c of CASES) {
           q.eq("personId", dan._id).eq("sprintId", sprint._id),
         )
         .unique())!;
-      await ctx.db.patch(project._id, {
-        title: TITLE,
-        ...c.project,
-        presentedAt: undefined,
-      });
+      await ctx.db.patch(project._id, { title: TITLE, ...c.project });
       const roles = await ctx.db
         .query("orgRoles")
         .withIndex("by_org", (q) => q.eq("orgId", orgId))
@@ -147,8 +150,12 @@ for (const c of CASES) {
         (await ctx.db.query("teamSnapshots").collect()).map((s) => s.week),
       ).toContain(4);
       const project = await ctx.db.get(ids.projectId);
-      expect(project).toMatchObject({ title: TITLE, ...c.project });
-      expect(project?.presentedAt).toBeUndefined();
+      expect(project).toMatchObject({
+        title: TITLE,
+        status: c.project.status,
+        sharing: c.project.sharing,
+      });
+      expect(project?.presentedAt).toBe(c.project.presentedAt);
       const badge = await ctx.db
         .query("badges")
         .withIndex("by_person", (q) => q.eq("personId", ids.personId))
@@ -245,6 +252,29 @@ test("survey answers are read by question only through the privacy layer", () =>
   expect(found.filter((file) => !SURVEY_INDEX_FILES.includes(file))).toEqual(
     [],
   );
+});
+
+/**
+ * The files that may touch `loadSeated` (raw seated people) or
+ * `signatureCount` (a live count): the privacy layer, the overview and 10.
+ * A new reader of either is a new place a manager could see a number, so it
+ * has to be added here on purpose.
+ */
+const SEATED_FILES = ["lib/privacy.ts", "manager.ts", "agreements.ts"];
+
+test("the seated team and the live signature count are read only where the allowlist says", () => {
+  const dir = new URL("../../convex/", import.meta.url);
+  const found: string[] = [];
+  for (const file of readdirSync(dir, { recursive: true }) as string[]) {
+    if (!file.endsWith(".ts") || file.startsWith("_generated")) continue;
+    const source = readFileSync(new URL(file, dir), "utf8");
+    if (/\b(?:loadSeated|signatureCount)\b/.test(source)) found.push(file);
+  }
+  // Nothing found would pass vacuously; both current readers must be seen.
+  expect(found).toEqual(
+    expect.arrayContaining(["manager.ts", "agreements.ts"]),
+  );
+  expect(found.filter((file) => !SEATED_FILES.includes(file))).toEqual([]);
 });
 
 /**

@@ -185,6 +185,7 @@ export const sprintTables = {
   })
     .index("by_org", ["orgId"])
     .index("by_sprint", ["sprintId"])
+    .index("by_screenshotId", ["screenshotId"])
     .index("by_person_and_sprint", ["personId", "sprintId"]),
 
   /** A credential. `shareSlug` is the public link, the only signed-out read. */

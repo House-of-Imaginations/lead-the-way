@@ -55,7 +55,9 @@ export const orgTables = {
     isDemo: v.boolean(),
     demoNow: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_slug", ["slug"]),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_imageId", ["imageId"]),
 
   /**
    * A role, owned by one org and invented by it.

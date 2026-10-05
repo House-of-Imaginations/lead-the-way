@@ -164,11 +164,12 @@ export async function agreementForViewer(
     }
   }
 
-  // A team:insights holder reads the overview, which never lets a number
-  // out (manager Ruling 15); this read must not hand it one.
-  const signatures = viewer.permissions.includes("team:insights")
-    ? null
-    : await signatureCount(ctx, viewer.org, saved);
+  const signatures = await signatureCount(
+    ctx,
+    viewer.org,
+    saved,
+    viewer.permissions,
+  );
 
   // ponytail: a contact who has left reads as the manager, as 06 does.
   const contact =

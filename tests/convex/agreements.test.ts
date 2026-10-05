@@ -476,6 +476,13 @@ test("Priya and any team:insights holder never get the count", async () => {
     mine: "unsigned",
     signatures: null,
   });
+  // A sprint manager runs the sprint without team totals; the live count
+  // would still be a number a manager watches change, so it is withheld too.
+  const { as: runner } = await seat(t, orgId, "user_runner", ["sprint:manage"]);
+  expect(await runner.query(api.agreements.forMe, {})).toMatchObject({
+    mine: "unsigned",
+    signatures: null,
+  });
 });
 
 test("Dan signs once, and the script never signs again for him", async () => {

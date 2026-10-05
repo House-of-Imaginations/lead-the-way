@@ -317,6 +317,42 @@ test("a screenshot is a PNG or JPG up to 5 MB, and a replacement deletes the old
   ).toBeNull();
 });
 
+test("a file another row already holds is refused and never deleted", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week1");
+  const expectOrgId = orgId;
+  const dan = as("dan");
+  const mei = as("mei");
+  await dan.mutation(api.projects.saveDraft, { ...DRAFT, expectOrgId });
+  await mei.mutation(api.projects.saveDraft, { ...DRAFT, expectOrgId });
+
+  // The workspace logo, served to every member and on the invite preview.
+  const logo = await upload(t, "image/png");
+  await t.run((ctx) => ctx.db.patch(orgId, { imageId: logo }));
+  const meis = await upload(t, "image/png");
+  await mei.mutation(api.projects.setScreenshot, {
+    storageId: meis,
+    expectOrgId,
+  });
+  const own = await upload(t, "image/png");
+  await dan.mutation(api.projects.setScreenshot, { storageId: own, expectOrgId });
+
+  for (const taken of [logo, meis]) {
+    await expect(
+      dan.mutation(api.projects.setScreenshot, { storageId: taken, expectOrgId }),
+    ).rejects.toMatchObject({ data: { code: "SCREENSHOT_STALE" } });
+  }
+  // Setting your own file again is not taking anyone's.
+  await dan.mutation(api.projects.setScreenshot, { storageId: own, expectOrgId });
+  await dan.mutation(api.projects.setScreenshot, {
+    storageId: null,
+    expectOrgId,
+  });
+  expect(await gone(t, own)).toBe(true);
+  expect(await gone(t, logo)).toBe(false);
+  expect(await gone(t, meis)).toBe(false);
+});
+
 test("an upload older than 15 minutes is refused", async () => {
   const { t, orgId, as } = await calderLane();
   await move(t, "week1");

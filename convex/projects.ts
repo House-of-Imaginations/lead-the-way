@@ -232,9 +232,9 @@ export const generateUploadUrl = viewerMutation()({
  * Refusals come first and the delete comes last, because a throw rolls back a
  * delete too (orgs.ts `setImage` says the same).
  *
- * ponytail: storage ids carry no workspace, so any fresh id is accepted. An id
- * is reachable only by someone it was already served to, and a stale one is
- * refused. A refused upload (type, size, age) also stays in storage, because the
+ * ponytail: storage ids carry no workspace, so any fresh id that no other row
+ * holds (an org's `imageId`, another project's `screenshotId`) is accepted. A
+ * stale one is refused. A refused upload (type, size, age) also stays in storage, because the
  * throw rolls back any cleanup: orphans are a prototype ceiling. Add an
  * `uploads` table (id, person, time), swept by a cron, if ids ever leak wider
  * or the orphans matter.
@@ -266,6 +266,23 @@ export const setScreenshot = viewerMutation()({
       }
       const problem = screenshotProblem(uploaded.contentType, uploaded.size);
       if (problem) throwUserError(problem.code, problem.message);
+      // A file some other row holds (a workspace logo is served to every
+      // member, even on the signed-out invite) is not yours to take, and
+      // taking it would let "Remove" delete it.
+      const logo = await ctx.db
+        .query("orgs")
+        .withIndex("by_imageId", (q) => q.eq("imageId", storageId))
+        .first();
+      const holder = await ctx.db
+        .query("projects")
+        .withIndex("by_screenshotId", (q) => q.eq("screenshotId", storageId))
+        .first();
+      if (logo || (holder && holder._id !== project._id)) {
+        throwUserError(
+          "SCREENSHOT_STALE",
+          "That upload has expired. Upload the file again.",
+        );
+      }
     }
     const previous = project.screenshotId;
     await ctx.db.patch(project._id, { screenshotId: storageId ?? undefined });

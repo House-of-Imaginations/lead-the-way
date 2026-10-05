@@ -5,7 +5,10 @@ import { api } from "@convex/_generated/api";
 import { Credential } from "@/components/app/Credential";
 import { Logo } from "@/components/ui/Logo";
 
-export const metadata: Metadata = { title: "Credential · Lead the Way" };
+export const metadata: Metadata = {
+  title: "Credential · Lead the Way",
+  robots: { index: false },
+};
 
 /**
  * Spec 7.1: the public credential, outside the app shell. `fetchQuery`, not

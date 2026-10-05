@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { MAX_MEMBERS_PER_ORG, permissionsOf } from "./orgs/membership";
+import type { Permission } from "./orgs/permissions";
 
 /**
  * THE ONLY WAY A MANAGER SEES A NUMBER ABOUT PEOPLE (spec 5.1).
@@ -140,13 +141,28 @@ export async function loadSeated(
  * 10's signature count: who signed `agreement`, over the seated team as the
  * overview counts it (`loadSeated`). Null below the threshold, as the
  * overview's "Signed by the team" is (manager Ruling 15), so a count can't
- * single out who hasn't signed.
+ * single out who hasn't signed. Null too for anyone who manages the team
+ * (`team:insights` or `sprint:manage`): a manager reads the overview, which
+ * never lets a live number out (manager Ruling 15), so the rule lives here and
+ * no caller can forget it.
+ *
+ * ponytail: runs in every employee's `me.home` and `forMe`, reading N people,
+ * N roles and S signatures, and re-runs for every seated employee on each
+ * signature or `people` write: about 80k reads per signature at
+ * MAX_MEMBERS_PER_ORG (200). Denormalize a count on the agreement past that.
  */
 export async function signatureCount(
   ctx: QueryCtx,
   org: Doc<"orgs">,
   agreement: Pick<Doc<"agreements">, "_id" | "version">,
+  permissions: readonly Permission[],
 ): Promise<{ signed: number; of: number } | null> {
+  if (
+    permissions.includes("team:insights") ||
+    permissions.includes("sprint:manage")
+  ) {
+    return null;
+  }
   const seated = await loadSeated(ctx, org);
   if (seated.length < thresholdOf(org)) return null;
   const signatures = await ctx.db
