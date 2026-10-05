@@ -7,8 +7,8 @@ import {
   mel,
   type DemoTarget,
 } from "../../convex/lib/demo/schedule";
-import { readyToLaunch } from "./sprintHelpers";
 import { snapshotSeries } from "../../convex/lib/snapshots";
+import { readyToLaunch } from "./sprintHelpers";
 import {
   calderLane,
   harness,
@@ -300,6 +300,10 @@ test("a demo launch schedules nothing: the demo clock takes them", async () => {
     expectOrgId: orgId,
   });
   expect(await scheduled(t)).toEqual([]);
+  const jobs = await t.run((ctx) =>
+    ctx.db.system.query("_scheduled_functions").collect(),
+  );
+  expect(jobs.filter((job) => job.name === "reminders:send")).toEqual([]);
 });
 
 test("the demo launched with DEMO_MODE off runs on real time, so it schedules", async () => {

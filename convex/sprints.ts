@@ -46,12 +46,12 @@ import {
 import {
   addDays,
   closesAt,
-  reminderAt,
   hourEnd,
   hourPattern,
   hourStart,
   mondayOf,
   nextMonthDate,
+  reminderAt,
   spanLabel,
   sprintPhase,
   startDateOf,

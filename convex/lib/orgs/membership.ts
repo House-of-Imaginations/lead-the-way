@@ -215,7 +215,8 @@ export async function setRole(
 
 /**
  * Give up a seat, having checked the org keeps an owner. The person's
- * settings row goes with it: nothing else would ever read it again.
+ * settings row and reminder ledger rows go with it: nothing else would ever
+ * read them again.
  */
 export async function dropSeat(
   ctx: MutationCtx,
@@ -227,6 +228,12 @@ export async function dropSeat(
     .withIndex("by_person", (q) => q.eq("personId", person._id))
     .first();
   if (settings) await ctx.db.delete(settings._id);
+  // One row per week of a sprint, so a handful at most.
+  const reminders = await ctx.db
+    .query("reminders")
+    .withIndex("by_person", (q) => q.eq("personId", person._id))
+    .collect();
+  for (const row of reminders) await ctx.db.delete(row._id);
   await ctx.db.delete(person._id);
 }
 

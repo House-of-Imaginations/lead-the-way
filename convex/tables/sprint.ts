@@ -252,7 +252,8 @@ export const sprintTables = {
     emailed: v.boolean(),
   })
     .index("by_org", ["orgId"])
-    .index("by_sprint_week_and_person", ["sprintId", "week", "personId"]),
+    .index("by_sprint_week_and_person", ["sprintId", "week", "personId"])
+    .index("by_person", ["personId"]),
 
   /** What happened when, for the timeline and outcomes. No person id on purpose. */
   events: defineTable({

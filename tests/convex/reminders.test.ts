@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { mel } from "../../convex/lib/demo/schedule";
+import { reminderAt } from "../../convex/lib/sprintTime";
 import { move, readyToLaunch } from "./sprintHelpers";
 import {
   calderLane,
@@ -182,12 +183,17 @@ test("never the demo workspace", async () => {
   expect(await sent(t, orgId)).toEqual([]);
 });
 
-test("a person who left gets nothing", async () => {
+test("a person who leaves gets nothing, and their ledger rows go with them", async () => {
   vi.setSystemTime(mel("2026-09-22T14:00"));
   const t = harness();
   const { orgId, a, b, sprintId } = await team(t);
-  await t.run((ctx) => ctx.db.delete(a.personId));
   await t.mutation(internal.reminders.send, { orgId, sprintId, week: 3 });
+  expect((await sent(t, orgId)).map((r) => r.personId)).toContain(a.personId);
+  await a.as.mutation(api.members.leave, { orgId });
+  expect((await sent(t, orgId)).map((r) => r.personId)).not.toContain(
+    a.personId,
+  );
+  await t.mutation(internal.reminders.send, { orgId, sprintId, week: 4 });
   const people = (await sent(t, orgId)).map((r) => r.personId);
   expect(people).not.toContain(a.personId);
   expect(people).toContain(b.personId);
@@ -246,4 +252,38 @@ test("a real launch schedules each week's reminder a day ahead, skipping one alr
       args: [{ orgId, sprintId: sprint._id, week: 4 }],
     },
   ]);
+});
+
+test("a launch more than a day before week one schedules week one's reminder too", async () => {
+  // Friday 18 September: week one is Monday the 21st at 9:00 AM.
+  vi.setSystemTime(mel("2026-09-18T09:00"));
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  await owner.mutation(api.sprints.commit, {
+    weekday: 1,
+    start: "09:00",
+    expectOrgId: orgId,
+  });
+  await readyToLaunch(t, orgId);
+  await owner.mutation(api.sprints.launch, {
+    emails: ["ana@example.com"],
+    message: "",
+    expectOrgId: orgId,
+  });
+  const sprint = await t.run(
+    async (ctx) =>
+      (await ctx.db
+        .query("sprints")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .first())!,
+  );
+  const jobs = await t.run((ctx) =>
+    ctx.db.system.query("_scheduled_functions").collect(),
+  );
+  const weeks = jobs
+    .filter((job) => job.name === "reminders:send")
+    .map((job) => ({ at: job.scheduledTime, week: job.args[0].week }))
+    .sort((x, y) => x.week - y.week);
+  expect(weeks).toHaveLength(4);
+  expect(weeks[0]).toEqual({ at: reminderAt(sprint, 1), week: 1 });
 });
