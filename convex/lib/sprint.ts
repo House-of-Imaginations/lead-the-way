@@ -72,21 +72,19 @@ export type SetupGate = {
 };
 
 /**
- * Any saved version counts, even with a newer draft on top. Read here, not
- * through lib/agreement's `latestSaved`: lib/agreement imports this file.
+ * The newest saved version of the Team AI Agreement. A newer draft on top
+ * doesn't count. Here, not in lib/agreement (which re-exports it), because
+ * lib/agreement imports this file and the setup gate needs it.
  */
-async function agreementSaved(
-  ctx: QueryCtx,
-  teamId: Id<"teams">,
-): Promise<boolean> {
+export async function latestSaved(ctx: QueryCtx, teamId: Id<"teams">) {
   const versions = ctx.db
     .query("agreements")
     .withIndex("by_team_and_version", (q) => q.eq("teamId", teamId))
     .order("desc");
   for await (const version of versions) {
-    if (version.status === "saved") return true;
+    if (version.status === "saved") return version;
   }
-  return false;
+  return null;
 }
 
 export async function setupGate(
@@ -99,7 +97,9 @@ export async function setupGate(
     teamSaved: team?.savedAt !== undefined,
     committed: sprint?.committedAt !== undefined,
     pathwayDone: await requiredDone(ctx, viewer.person._id),
-    agreementSaved: team !== null && (await agreementSaved(ctx, team._id)),
+    // Any saved version counts, even with a newer draft on top.
+    agreementSaved:
+      team !== null && (await latestSaved(ctx, team._id)) !== null,
   };
 }
 

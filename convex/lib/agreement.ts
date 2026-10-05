@@ -3,7 +3,7 @@ import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { signatureCount } from "./privacy";
-import { currentSprint, currentTeam } from "./sprint";
+import { currentSprint, currentTeam, latestSaved } from "./sprint";
 import { getInOrg } from "./tenant";
 import type { Viewer } from "./viewer";
 
@@ -62,17 +62,8 @@ export async function latestAgreement(ctx: QueryCtx, teamId: Id<"teams">) {
     .first();
 }
 
-/** The newest saved version. A newer draft on top doesn't count. */
-export async function latestSaved(ctx: QueryCtx, teamId: Id<"teams">) {
-  const versions = ctx.db
-    .query("agreements")
-    .withIndex("by_team_and_version", (q) => q.eq("teamId", teamId))
-    .order("desc");
-  for await (const version of versions) {
-    if (version.status === "saved") return version;
-  }
-  return null;
-}
+// Lives in lib/sprint, which the setup gate reads and this file imports.
+export { latestSaved } from "./sprint";
 
 /** "7 September", or "7 September 2026" with the year. */
 export function dayMonth(

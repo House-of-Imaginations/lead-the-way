@@ -87,10 +87,11 @@ export type SeriesRow<T> = { row: T; comparable: boolean };
  * doesn't (she opted out, or now reads totals), so week 1 less week 2 is Mei.
  * Walking the weeks in order, a row is comparable only when it stored its
  * cohort, the reader isn't in it (they know their own part), and it differs
- * from the last row shown by nobody or by at least the threshold. It is
- * compared with the last row SHOWN, not the row before, so week 3 can't be
- * read against week 1 once week 2 is hidden. After a small change, totals
- * stay hidden for the rest of the sprint; the copy says why, naming nobody.
+ * from EVERY row already shown by nobody or by at least the threshold.
+ * Checking every shown row, not just the last, is what stops week 3 being
+ * read against week 1, whether week 2 was hidden or shown (two passing steps
+ * can still land one person apart). After a small change, totals stay hidden
+ * for the rest of the sprint; the copy says why, naming nobody.
  *
  * The one place this is decided, so 08 and 16 can't disagree. `outcomes` is
  * null for now: the sprint's outcomes row, walked after the weeks, comes with
@@ -107,17 +108,19 @@ export async function snapshotSeries(
     .query("teamSnapshots")
     .withIndex("by_sprint_and_week", (q) => q.eq("sprintId", sprint._id))
     .take(sprint.weeks);
-  let last: Set<Id<"people">> | null = null;
+  // Every row shown so far: comparability isn't transitive, so a row is
+  // checked against each, not only the last.
+  const shown: ReadonlySet<Id<"people">>[] = [];
   const comparable = (counted: Id<"people">[] | undefined) => {
     if (!counted || counted.includes(readerId)) return false;
     const cohort = new Set(counted);
-    if (last) {
+    for (const prev of shown) {
       let changed = 0;
-      for (const id of cohort) if (!last.has(id)) changed++;
-      for (const id of last) if (!cohort.has(id)) changed++;
+      for (const id of cohort) if (!prev.has(id)) changed++;
+      for (const id of prev) if (!cohort.has(id)) changed++;
       if (changed > 0 && changed < thresholdOf(org)) return false;
     }
-    last = cohort;
+    shown.push(cohort);
     return true;
   };
   return {

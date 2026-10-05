@@ -8,6 +8,7 @@ import {
   type DemoTarget,
 } from "../../convex/lib/demo/schedule";
 import { PATHWAY_MODULES } from "../../convex/lib/pathway";
+import { snapshotSeries } from "../../convex/lib/snapshots";
 import {
   calderLane,
   harness,
@@ -376,4 +377,64 @@ test("each row stores who it counted and the threshold it was taken under (Rulin
   expect(row?.counted).toContain(dan);
   // The manager reads the totals, so she is never counted.
   expect(row?.counted).not.toContain(priya);
+});
+
+test("a row is shown only 0 or at least the threshold apart from every row shown (Ruling 6)", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const a: Id<"people">[] = [];
+  for (let i = 0; i < 10; i++) {
+    a.push((await seat(t, orgId, `user_${i}`, [])).personId);
+  }
+  const { personId: reader } = await seat(t, orgId, "user_reader", [
+    "team:insights",
+  ]);
+  const without = (...drop: number[]) => a.filter((_, i) => !drop.includes(i));
+  /** `comparable` for each week of a new sprint, its weeks counting `cohorts`. */
+  const walk = async (cohorts: Id<"people">[][]) => {
+    const sprintId = await launchedSprint(t, orgId);
+    return await t.run(async (ctx) => {
+      for (const [i, counted] of cohorts.entries()) {
+        const total = { hidden: false, n: counted.length, value: 0 } as const;
+        await ctx.db.insert("teamSnapshots", {
+          orgId,
+          sprintId,
+          week: i + 1,
+          takenAt: mel("2026-09-09T15:00"),
+          sessionDone: total,
+          tasksUnderway: total,
+          counted,
+          threshold: 5,
+        });
+      }
+      const org = (await ctx.db.get(orgId))!;
+      const sprint = (await ctx.db.get(sprintId))!;
+      const { weeks } = await snapshotSeries(ctx, sprint, org, reader);
+      return weeks.map((w) => w.comparable);
+    });
+  };
+
+  // 2 apart hides; 5 apart from the last row shown shows; 0 apart shows.
+  expect(
+    await walk([
+      a,
+      without(0, 1),
+      without(0, 1, 2, 3, 4),
+      without(0, 1, 2, 3, 4),
+    ]),
+  ).toEqual([true, false, true, true]);
+  // 4 apart hides.
+  expect(await walk([a, without(0, 1, 2, 3)])).toEqual([true, false]);
+  // Back to a cohort already shown.
+  expect(await walk([a, without(0, 1, 2, 3, 4), a])).toEqual([
+    true,
+    true,
+    true,
+  ]);
+  // W3 is 6 from W2 but 1 from W1, both shown: W1 less W3 would be one person.
+  expect(await walk([a, without(0, 1, 2, 3, 4), without(5)])).toEqual([
+    true,
+    true,
+    false,
+  ]);
 });

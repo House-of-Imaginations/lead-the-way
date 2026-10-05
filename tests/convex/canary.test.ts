@@ -255,10 +255,11 @@ test("survey answers are read by question only through the privacy layer", () =>
 });
 
 /**
- * The files that may touch `loadSeated` (raw seated people) or
- * `signatureCount` (a live count): the privacy layer, the overview and 10's
- * `agreementForViewer`. A new reader of either is a new place a manager could
- * see a number, so it has to be added here on purpose.
+ * The files that may touch `loadSeated` (raw seated people), `signatureCount`
+ * (a live count) or `countSeated` (a count over whatever list it is handed):
+ * the privacy layer, the overview and 10's `agreementForViewer`. A new reader
+ * of any of them is a new place a manager could see a number, so it has to be
+ * added here on purpose.
  */
 const SEATED_FILES = ["lib/privacy.ts", "manager.ts", "lib/agreement.ts"];
 
@@ -268,7 +269,9 @@ test("the seated team and the live signature count are read only where the allow
   for (const file of readdirSync(dir, { recursive: true }) as string[]) {
     if (!file.endsWith(".ts") || file.startsWith("_generated")) continue;
     const source = readFileSync(new URL(file, dir), "utf8");
-    if (/\b(?:loadSeated|signatureCount)\b/.test(source)) found.push(file);
+    if (/\b(?:loadSeated|signatureCount|countSeated)\b/.test(source)) {
+      found.push(file);
+    }
   }
   // Nothing found would pass vacuously; both current readers must be seen.
   expect(found).toEqual(

@@ -521,3 +521,23 @@ test("a row stored before Ruling 4, with its trailing dot, still seats its addre
     await t.withIdentity(dana).query(api.orgs.myPermissions, { orgId }),
   ).toEqual(["members:read"]);
 });
+
+test("an address that normalises to nothing is refused, never an open link", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  for (const email of [".", " . "]) {
+    await expect(
+      owner.mutation(api.invites.create, { orgId, roleId, email }),
+    ).rejects.toMatchObject({ data: { code: "FIELD_REQUIRED" } });
+  }
+  // A blank field is still a shareable link, as before.
+  const { token } = await owner.mutation(api.invites.create, {
+    orgId,
+    roleId,
+    email: "  ",
+  });
+  expect(await t.query(api.invites.publicPreview, { token })).toMatchObject({
+    emailPinned: false,
+  });
+});

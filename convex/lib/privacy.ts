@@ -95,8 +95,8 @@ export function count(
  * (`loadSeated`, Ruling 1): not an owner-kind seat (the owner holds every
  * permission), not a custom role with `team:insights` or `sprint:manage`.
  * Nor does the asker: they know their own value, so counting it toward their
- * own threshold would lower the floor by one. `askerId` is required so it cannot be forgotten; an internal caller
- * with nobody asking passes null.
+ * own threshold would lower the floor by one. `askerId` is required so it
+ * cannot be forgotten; an internal caller with nobody asking passes null.
  *
  * A seat whose role is gone is left out: counting it would only raise n.
  * Each opt-out is read by `by_person`, so no number of stale rows can push
@@ -154,8 +154,10 @@ export async function loadSeated(
 /**
  * The one count over the seated team (`loadSeated`), for public acts such as
  * presenting (R-i): opting out of team totals doesn't hide what a person
- * showed the team. Hidden below the threshold, as `count` is. Takes the
- * seated list, not a `Countable`, so it can't be handed a filtered few.
+ * showed the team. Hidden below the threshold, as `count` is. It counts
+ * whatever list it is handed, so the caller must pass `loadSeated`'s result,
+ * never a filtered few; the seated canary in tests/convex/canary.test.ts
+ * pins which files may call it.
  */
 export function countSeated(
   seated: readonly Doc<"people">[],

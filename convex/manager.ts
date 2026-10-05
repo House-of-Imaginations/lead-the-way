@@ -127,11 +127,7 @@ function statOf(
   org: Doc<"orgs">,
 ): Stat {
   const now = thresholdOf(org);
-  if (
-    total.hidden &&
-    total.n >= now &&
-    (rowThreshold ?? MIN_THRESHOLD) > now
-  ) {
+  if (total.hidden && total.n >= now && (rowThreshold ?? MIN_THRESHOLD) > now) {
     return { kind: "hidden", helper: "Shown from next week's totals" };
   }
   if (total.hidden || total.n < now) {
@@ -147,10 +143,9 @@ function statOf(
  * Any manager may read it, so /manager never refuses its own home (Ruling 6).
  * Team totals and the projects count need `team:insights`, and come only from
  * the newest weekly snapshot, read through `snapshotSeries` (P7a Ruling 6),
- * never a live count (Ruling 1). Invited and
- * joined are live membership facts (Ruling 3). `hour` is never read: the
- * server passes the current hour so the cached answer turns over each hour
- * (Ruling 14).
+ * never a live count (Ruling 1). Invited and joined are live membership facts
+ * (Ruling 3). `hour` is never read: the server passes the current hour so the
+ * cached answer turns over each hour (Ruling 14).
  */
 export const overview = timedViewerQuery()({
   args: {},

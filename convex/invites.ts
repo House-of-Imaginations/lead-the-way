@@ -189,7 +189,8 @@ async function refusalOf(
   // a row stored before it may keep a trailing dot.
   if (invite.email) {
     const user = await authComponent.getAnyUserById(ctx, userId);
-    if (normalEmail(user?.email ?? "") !== normalEmail(invite.email)) {
+    // Fails closed: an account with no address matches nothing.
+    if (!user?.email || normalEmail(user.email) !== normalEmail(invite.email)) {
       return no("INVITE_WRONG_ACCOUNT");
     }
   }
@@ -351,6 +352,11 @@ export const create = orgMutation("members:manage")({
     }
 
     const to = normalEmail(email ?? "") || undefined;
+    // Fails closed: an address that normalises to nothing (".") must never
+    // become an open link anyone holding it could take.
+    if (email?.trim() && !to) {
+      throwUserError("FIELD_REQUIRED", "Enter a full email address.");
+    }
     const { inviteId, token, expiresAt } = await insertInvite(ctx, {
       orgId: ctx.orgId,
       roleId,

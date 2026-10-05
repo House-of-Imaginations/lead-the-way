@@ -3,6 +3,7 @@ import { authComponent } from "./auth";
 import { ensureProfile } from "./lib/account/ensureProfile";
 import { authenticatedMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
+import { normalEmail } from "./lib/inviteRules";
 import { MAX_ORG_NAME, createWorkspace } from "./lib/orgs/create";
 import { firstNameOf } from "./lib/orgs/people";
 import { getViewer } from "./lib/viewer";
@@ -47,7 +48,7 @@ export const start = authenticatedMutation({
     if (await getViewer(ctx)) return "/home";
 
     const user = await authComponent.getAnyUserById(ctx, ctx.userId);
-    const email = user?.email?.trim().toLowerCase();
+    const email = normalEmail(user?.email ?? "") || undefined;
     if (email && user?.emailVerified === true) {
       const invites = ctx.db
         .query("orgInvites")
