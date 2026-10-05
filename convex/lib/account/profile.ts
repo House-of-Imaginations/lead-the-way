@@ -1,5 +1,6 @@
 import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
+import { MAX_DISPLAY_NAME } from "../profileFields";
 
 /**
  * Find somebody's profile row. The one read every account function starts with,
@@ -15,8 +16,8 @@ export async function profileOf(
     .unique();
 }
 
-/** A display name is one line of a person's own choosing, not an identity claim. */
-export const MAX_DISPLAY_NAME = 40;
+// Moved to the pure module so the Profile tab reads the same limit (P7b-1).
+export { MAX_DISPLAY_NAME };
 
 export async function insertProfile(
   ctx: MutationCtx,

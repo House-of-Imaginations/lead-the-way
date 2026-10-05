@@ -37,8 +37,9 @@ import type { StepKey } from "./schedule";
  *  4. The sprint is launched when `sprints.launchedAt` is set.
  *  5. One row per (person, module) in `pathwayProgress`, per (person, sprint)
  *     in `learningProgress` and `projects`, per (agreement, version, person)
- *     in `agreementSignatures`, and per (person, sprint, phase, question) in
- *     `surveyResponses`. Writers upsert; they never add a second row.
+ *     in `agreementSignatures`, per (person, sprint, phase, question) in
+ *     `surveyResponses`, and per person in `settings`. Writers upsert; they
+ *     never add a second row.
  *  6. `orgInvites.email` and `people.email` are lowercased.
  *  7. An agreement counts as saved at `status: "saved"`, and versions only
  *     go up.

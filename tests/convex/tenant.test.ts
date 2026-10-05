@@ -48,6 +48,10 @@ async function rowsOf(t: T, orgId: Id<"orgs">) {
       .query("sprintOutcomes")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .collect(),
+    settings: await ctx.db
+      .query("settings")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
   }));
 }
 

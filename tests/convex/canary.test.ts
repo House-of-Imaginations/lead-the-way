@@ -218,6 +218,7 @@ for (const c of CASES) {
         "priya manager:outcomes",
         "lead manager:outcomes",
         "priya viewer:shell",
+        "priya settings:mine",
         "priya members:list",
         "priya invites:list",
         "priya sprints:launchPage",
@@ -233,6 +234,7 @@ for (const c of CASES) {
         "mei badges:mine",
         "mei badges:publicBySlug",
         "mei agreements:forMe",
+        "mei settings:mine",
       ]),
     );
   });

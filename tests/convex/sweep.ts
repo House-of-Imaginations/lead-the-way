@@ -151,6 +151,12 @@ export const callsFor = ({
   "invites:teamPreview": {},
   "profiles:saveProfile": { displayName: "Pat" },
   "profiles:setActiveOrg": { orgId },
+  "settings:mine": {},
+  "settings:setToggle": {
+    key: "weeklyReminder",
+    on: false,
+    expectOrgId: orgId,
+  },
   "teams:current": {},
   "teams:saveProfile": { challenges: [], finish: false, expectOrgId: orgId },
   "sprints:current": {},
