@@ -2,7 +2,6 @@
 
 import { Checkmark, Close } from "@carbon/icons-react";
 import clsx from "clsx";
-import { useQuery } from "convex-helpers/react/cache";
 import { useMutation } from "convex/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "@convex/_generated/api";
@@ -28,7 +27,7 @@ import {
 import { BEFORE_YOU_START, DANS_EXAMPLE } from "@/content/project";
 import { SESSIONS } from "@/content/sessions";
 import { userMessage } from "@/lib/errors";
-import { useHour } from "@/lib/useHour";
+import { useTimedQuery } from "@/lib/useTimedQuery";
 
 const EMPTY: ProjectFields = {
   title: "",
@@ -86,12 +85,8 @@ function Section({
 }
 
 export function ProjectForm({ initial }: { initial: MyProject }) {
-  const hour = useHour();
-  const query = useQuery(api.projects.mine, { hour });
-  // A new hour gives undefined for a moment; keep the last result so the form doesn't flash back to the page-load snapshot.
-  const [last, setLast] = useState(initial);
-  if (query && query !== last) setLast(query);
-  const data = query ?? last;
+  // `initial` is never null, so neither is the kept answer.
+  const data = useTimedQuery(api.projects.mine, initial) ?? initial;
   const expectOrgId = useExpectOrgId();
   const saveDraft = useMutation(api.projects.saveDraft);
   const save = useMutation(api.projects.save);

@@ -7,7 +7,6 @@ import {
   RadioButtonChecked,
 } from "@carbon/icons-react";
 import clsx from "clsx";
-import { useQuery } from "convex/react";
 import Link from "next/link";
 import { api } from "@convex/_generated/api";
 import type { MySprint as MySprintData } from "@convex/me";
@@ -19,7 +18,7 @@ import {
   Skeleton,
   Tag,
 } from "@/components/ui";
-import { useHour } from "@/lib/useHour";
+import { useTimedQuery } from "@/lib/useTimedQuery";
 
 type Activity = MySprintData["weeks"][number]["activities"][number];
 
@@ -75,8 +74,7 @@ const TITLE = <h1 className="text-heading-01">Your AI sprint</h1>;
 export function MySprint() {
   // Review Focus 6: a new hour is a new query, so the next session moves on
   // at 3:00 PM without a reload (Ruling 16).
-  const hour = useHour();
-  const data = useQuery(api.me.sprint, { hour });
+  const data = useTimedQuery(api.me.sprint);
 
   if (data === undefined) {
     return (

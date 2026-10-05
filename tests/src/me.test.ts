@@ -17,7 +17,8 @@ test("/me has one subscription, preloaded with the server's hour (Ruling 16)", (
 });
 
 test("/me/sprint asks again each hour (Review Focus 6)", () => {
+  // useTimedQuery sends useHour()'s hour and keeps the last answer over the turnover.
   const sprint = source("sprint/MySprint.tsx");
-  expect(sprint).toMatch(/const hour = useHour\(\);/);
-  expect(sprint).toMatch(/useQuery\(\s*api\.me\.sprint,\s*\{\s*hour\s*\}\s*\)/);
+  expect(sprint).toMatch(/useTimedQuery\(\s*api\.me\.sprint\s*\)/);
+  expect(sprint).not.toMatch(/\buseQuery\(/);
 });

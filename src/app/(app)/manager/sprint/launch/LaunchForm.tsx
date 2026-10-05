@@ -1,7 +1,6 @@
 "use client";
 
 import { Add, ArrowRight, Copy, Locked, Send } from "@carbon/icons-react";
-import { useQuery } from "convex-helpers/react/cache";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import Link from "next/link";
@@ -24,7 +23,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { userMessage } from "@/lib/errors";
-import { useHour } from "@/lib/useHour";
+import { useTimedQuery } from "@/lib/useTimedQuery";
 
 type LaunchPage = NonNullable<
   FunctionReturnType<typeof api.sprints.launchPage>
@@ -168,8 +167,7 @@ function Heading({
 
 export function LaunchForm({ initial }: { initial: LaunchPage }) {
   // null only if the team vanished mid-visit; keep showing the last page then.
-  const hour = useHour();
-  const data = useQuery(api.sprints.launchPage, { hour }) || initial;
+  const data = useTimedQuery(api.sprints.launchPage, initial) || initial;
   const expectOrgId = useExpectOrgId();
   const launch = useMutation(api.sprints.launch);
   const toast = useToast();

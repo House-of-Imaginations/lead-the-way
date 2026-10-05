@@ -17,7 +17,14 @@ const QUERY =
  * Helpers that read the clock for their caller. Add a new one here when you
  * write one, or a query calling it will not be caught.
  */
-const CLOCK_HELPERS = ["refusalOf", "shellOf", "agreementForViewer"];
+const CLOCK_HELPERS = [
+  "refusalOf",
+  "shellOf",
+  "agreementForViewer",
+  "launchedFor",
+  "joinFacts",
+  "weekNow",
+];
 
 /**
  * Frozen orgQuery functions (their file is not to change), so they cannot take
@@ -59,6 +66,12 @@ test("every query that reads the clock takes hour (Ruling 16)", () => {
       "viewer.ts:shell",
       "invites.ts:publicPreview",
       "invites.ts:preview",
+      "invites.ts:teamPreview",
+      "me.ts:home",
+      "me.ts:sprint",
+      "projects.ts:mine",
+      "showAndTell.ts:board",
+      "agreements.ts:forMe",
     ]),
   );
   expect(
