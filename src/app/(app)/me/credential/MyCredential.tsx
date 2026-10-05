@@ -67,9 +67,13 @@ export function MyCredential({
                 Share on LinkedIn
               </Button>
             </div>
-            {/* Under the buttons, beside the one that failed. */}
+            {/* Under the buttons; w-0 min-w-full wraps it to their width, so
+                the auto column never grows to fit the URL. */}
             {copyError ? (
-              <p role="alert" className="text-label-01 text-support-error">
+              <p
+                role="alert"
+                className="w-0 min-w-full text-label-01 text-support-error [overflow-wrap:anywhere]"
+              >
                 {copyError}
               </p>
             ) : null}
