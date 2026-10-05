@@ -366,7 +366,7 @@ export const outcomesValidator = v.union(
     state: v.literal("pending"),
     title: v.string(), // "Starts 4 Nov", "Sprint in progress" or "Sprint complete"
     helper: v.string(), // "Outcomes appear on Thu 1 Oct, the day after the last protected hour."
-    canRunAnother: v.literal(false),
+    canRunAnother: v.boolean(), // closed but the row is missing: runAnother writes it
     inviteLink: v.string(), // "/signup?ref=calder-lane": the page prefixes window.location.origin
   }),
   v.object({
@@ -439,6 +439,10 @@ export const outcomes = timedViewerQuery("team:insights")({
     const now = viewer.now;
     const tz = sprint.timeZone;
     const inviteLink = `/signup?ref=${org.slug}`;
+    // Off once a clone exists: the newest sprint is then the draft (Ruling 14).
+    const canRunAnother =
+      viewer.permissions.includes("sprint:manage") &&
+      (await currentSprint(ctx, org._id))?._id === sprint._id;
 
     const { outcomes: final } = await snapshotSeries(
       ctx,
@@ -460,7 +464,9 @@ export const outcomes = timedViewerQuery("team:insights")({
               ? `Starts ${dayMon(hourStart(sprint, 1), tz).join(" ")}`
               : "Sprint in progress",
         helper: `Outcomes appear on ${day.weekday} ${day.day} ${day.month}, the day after the last protected hour.`,
-        canRunAnother: false,
+        // Closed with no row: the scheduled write was missed, and the button
+        // is the way back, since runAnother writes the row first (FR-M4).
+        canRunAnother: canRunAnother && closesAt(sprint) <= now,
         inviteLink,
       };
     }
@@ -494,10 +500,7 @@ export const outcomes = timedViewerQuery("team:insights")({
       tag: `Finished ${dayMon(hourEnd(sprint, sprint.weeks), tz).join(" ")}`,
       intro:
         "Your team made AI learning part of the working week. Here is what changed, as a team.",
-      // Off once a clone exists: the newest sprint is then the draft (Ruling 14).
-      canRunAnother:
-        viewer.permissions.includes("sprint:manage") &&
-        (await currentSprint(ctx, org._id))?._id === sprint._id,
+      canRunAnother,
       inviteLink,
       participation: {
         invited,

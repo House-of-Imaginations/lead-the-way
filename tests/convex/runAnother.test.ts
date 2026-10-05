@@ -103,9 +103,19 @@ test("runAnother is refused until the sprint has closed", async () => {
   await expect(
     priya.mutation(api.sprints.runAnother, { expectOrgId: orgId }),
   ).rejects.toMatchObject(NOT_CLOSED);
+  const button = async () =>
+    (await priya.query(api.manager.outcomes, {}))?.canRunAnother;
+  // The last hour is over, but the sprint closes a day later.
+  await clockAt(t, orgId, mel("2026-10-01T14:30"));
+  expect(await button()).toBe(false);
   // Past closesAt (Thursday 1 October, 3:00 PM), but no outcomes row yet:
-  // a patched clock runs no snapshot. runAnother writes the missed row itself.
+  // a patched clock runs no snapshot. 16 is still pending, and offers the
+  // button, since runAnother writes the missed row itself.
   await clockAt(t, orgId, mel("2026-10-01T15:30"));
+  expect(await priya.query(api.manager.outcomes, {})).toMatchObject({
+    state: "pending",
+    canRunAnother: true,
+  });
   const outcomeRows = () =>
     t.run((ctx) => ctx.db.query("sprintOutcomes").collect());
   const [first] = await sprintsOf(t, orgId);

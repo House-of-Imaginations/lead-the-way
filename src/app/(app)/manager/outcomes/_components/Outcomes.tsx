@@ -143,7 +143,11 @@ export function Outcomes({
   if (data.state === "pending") {
     return (
       <div className="flex max-w-content-max flex-col gap-07">
-        <Header title={data.title} link={data.inviteLink} />
+        <Header
+          title={data.title}
+          link={data.inviteLink}
+          action={data.canRunAnother ? <RunAnother /> : null}
+        />
         <InlineNotification>{data.helper}</InlineNotification>
       </div>
     );
