@@ -13,6 +13,7 @@ import {
 import { isPresented, projectOf, savedProject } from "./lib/projects";
 import { currentSprint } from "./lib/sprint";
 import { parts, weekOf } from "./lib/sprintTime";
+import { isAdoptable } from "./lib/storage";
 import type { Viewer } from "./lib/viewer";
 
 /**
@@ -50,9 +51,6 @@ const myProjectValidator = v.object({
   ),
 });
 export type MyProject = Infer<typeof myProjectValidator>;
-
-// Wall-clock minutes, because `_storage` stamps the upload in real time.
-const FRESH_MS = 15 * 60_000;
 
 /** The current week, held to 1 to the sprint's last: the tip and `startedWeek`. */
 const weekNow = (sprint: Doc<"sprints">, now: number) =>
@@ -256,9 +254,7 @@ export const setScreenshot = viewerMutation()({
     }
     if (storageId !== null) {
       const uploaded = await ctx.db.system.get("_storage", storageId);
-      // Date.now(), not viewer.now: the upload is on the wall clock, and the
-      // demo clock is weeks behind it.
-      if (!uploaded || Date.now() - uploaded._creationTime > FRESH_MS) {
+      if (!uploaded) {
         throwUserError(
           "SCREENSHOT_STALE",
           "That upload has expired. Upload the file again.",
@@ -266,18 +262,8 @@ export const setScreenshot = viewerMutation()({
       }
       const problem = screenshotProblem(uploaded.contentType, uploaded.size);
       if (problem) throwUserError(problem.code, problem.message);
-      // A file some other row holds (a workspace logo is served to every
-      // member, even on the signed-out invite) is not yours to take, and
-      // taking it would let "Remove" delete it.
-      const logo = await ctx.db
-        .query("orgs")
-        .withIndex("by_imageId", (q) => q.eq("imageId", storageId))
-        .first();
-      const holder = await ctx.db
-        .query("projects")
-        .withIndex("by_screenshotId", (q) => q.eq("screenshotId", storageId))
-        .first();
-      if (logo || (holder && holder._id !== project._id)) {
+      // Stale, or a file some other row holds: not yours to take.
+      if (!(await isAdoptable(ctx, uploaded, { projectId: project._id }))) {
         throwUserError(
           "SCREENSHOT_STALE",
           "That upload has expired. Upload the file again.",

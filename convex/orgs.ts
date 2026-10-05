@@ -12,6 +12,7 @@ import { deleteOrg } from "./lib/orgs/cascade";
 import { findSeat, seatsOfUser } from "./lib/orgs/membership";
 import { createWorkspace, MAX_ORG_NAME } from "./lib/orgs/create";
 import { cleanOrgName } from "./lib/orgs/slug";
+import { isAdoptable } from "./lib/storage";
 import { getViewer } from "./lib/viewer";
 // The workspace picture obeys the SAME rules as an account picture -- PNG/JPEG/
 // WebP/GIF, under 2MB, no SVG -- so it shares the module rather than restating
@@ -246,6 +247,18 @@ export const setImage = orgMutation("org:manage")({
     }
 
     const org = await ctx.db.get(ctx.orgId);
+    // Re-saving the file this workspace already shows is a no-op: it is no
+    // longer fresh, and the swap below would delete it.
+    if (org?.imageId === storageId) return null;
+    // A stale file, or one another row holds (another workspace's logo, a
+    // project screenshot), is not ours to take: the swap below deletes what it
+    // replaces, and the missing-row branch deletes this file.
+    if (!(await isAdoptable(ctx, uploaded, { orgId: ctx.orgId }))) {
+      throwUserError(
+        "ORG_IMAGE_MISSING",
+        "That upload did not finish. Please try again.",
+      );
+    }
     // The gate already proved a seat in this org, so a missing row here is a
     // race with a delete rather than a caller doing something wrong. The bytes
     // go rather than being left for nobody, and this RETURNS instead of

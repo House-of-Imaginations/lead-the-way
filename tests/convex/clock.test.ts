@@ -69,7 +69,7 @@ const ALLOWED: {
     reason: "a profile belongs to an account, not to any workspace",
   },
   {
-    file: "projects.ts",
+    file: "lib/storage.ts",
     line: "Date.now() - uploaded._creationTime > FRESH_MS",
     reason: "`_storage` stamps an upload in real time (Ruling 24)",
   },
