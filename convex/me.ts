@@ -8,7 +8,7 @@ import { progressOf, sessionOf } from "./lib/learning";
 import { isPresented, projectOf } from "./lib/projects";
 import { greetingOf } from "./lib/shell";
 import { launchedSprint } from "./lib/sprint";
-import { afterCheckInOpen, answeredAfter } from "./lib/surveys";
+import { afterCheckInOpen, answeredAfter, answeredBefore } from "./lib/surveys";
 import {
   hourEnd,
   hourLong,
@@ -68,6 +68,8 @@ export const homeValidator = v.object({
   agreementUpdated: v.boolean(),
   /** Ruling 7: from week 4 until the after check-in is answered. */
   afterCheckIn: v.boolean(),
+  /** From the second sprint, in week 1 or before, until answered or skipped (P7a Ruling 17). */
+  beforeCheckIn: v.boolean(),
 });
 export type Home = Infer<typeof homeValidator>;
 
@@ -264,7 +266,7 @@ export const home = timedViewerQuery()({
     if (!launched) return null;
     const { sprint, now, week, note } = launched;
     const me = viewer.person._id;
-    const [progress, project, answers] = await Promise.all([
+    const [progress, project, answers, first] = await Promise.all([
       progressOf(ctx, me, sprint._id),
       projectOf(ctx, me, sprint._id),
       ctx.db
@@ -273,6 +275,11 @@ export const home = timedViewerQuery()({
           q.eq("personId", me).eq("sprintId", sprint._id),
         )
         .take(MY_SURVEY_ROWS),
+      // The oldest sprint is the first launched: a clone only follows a launched one.
+      ctx.db
+        .query("sprints")
+        .withIndex("by_org", (q) => q.eq("orgId", viewer.org._id))
+        .first(),
     ]);
     // Task 6's read, so 10 and 11 can't disagree on "updated".
     const forMe = await agreementForViewer(ctx, viewer);
@@ -308,6 +315,10 @@ export const home = timedViewerQuery()({
         : null,
       agreementUpdated: forMe?.mine === "updated",
       afterCheckIn: afterCheckInOpen(sprint, now) && !answeredAfter(answers),
+      // Sprint 1 asks at join (P6 Ruling 7). Later sprints have no join, so
+      // /me asks until the end of week 1 (P7a Ruling 17).
+      beforeCheckIn:
+        first?._id !== sprint._id && week <= 1 && !answeredBefore(answers),
     };
   },
 });

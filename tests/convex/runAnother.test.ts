@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { api, internal } from "../../convex/_generated/api";
+import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { castOf, type CastKey } from "../../convex/lib/demo/cast";
-import {
-  DEMO_TARGETS,
-  mel,
-  type DemoTarget,
-} from "../../convex/lib/demo/schedule";
+import { DEMO_TARGETS, mel } from "../../convex/lib/demo/schedule";
 import { calderLane, seat, type T } from "./workspace/helpers";
+import {
+  clockAt,
+  launchClone,
+  move,
+  personOf,
+  sprintsOf,
+} from "./sprintHelpers";
 
 /**
  * "Run another sprint" (P7a Rulings 14 to 17). The draft clone opens setup
@@ -20,33 +22,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
 });
-
-const move = (t: T, target: DemoTarget) =>
-  t.mutation(internal.seed.clock, { target });
-
-/** The demo clock at an instant. Melbourne is +11:00 from 4 October, so dates after that skip `mel`. */
-const clockAt = (t: T, orgId: Id<"orgs">, at: number) =>
-  t.run((ctx) => ctx.db.patch(orgId, { demoNow: at }));
-
-async function personOf(t: T, orgId: Id<"orgs">, key: CastKey) {
-  return await t.run(async (ctx) => {
-    const people = await ctx.db
-      .query("people")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .collect();
-    return people.find((p) => p.email === castOf(key).email)!._id;
-  });
-}
-
-/** The workspace's sprints, oldest first. */
-async function sprintsOf(t: T, orgId: Id<"orgs">) {
-  return await t.run((ctx) =>
-    ctx.db
-      .query("sprints")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .collect(),
-  );
-}
 
 async function agreementsOf(t: T, orgId: Id<"orgs">) {
   return await t.run((ctx) =>
@@ -64,15 +39,6 @@ async function invitesOf(t: T, orgId: Id<"orgs">) {
       .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
       .collect(),
   );
-}
-
-/** The clone, launched as `launch` leaves it: its pinned week one kept, `launchedAt` set. */
-async function launchClone(t: T, orgId: Id<"orgs">) {
-  const clone = (await sprintsOf(t, orgId))[1]!;
-  await t.run((ctx) =>
-    ctx.db.patch(clone._id, { launchedAt: mel("2026-10-01T17:00") }),
-  );
-  return clone._id;
 }
 
 const NOT_CLOSED = {
@@ -325,4 +291,62 @@ test("attachReflection in sprint 2 relinks the one badge", async () => {
     project: "Sprint 2 client brief",
     application: "Forty minutes a brief.",
   });
+});
+
+test("the before check-in shows on /me only from sprint 2, in week 1, until answered or skipped", async () => {
+  const { t, orgId, as } = await calderLane();
+  const dan = as("dan");
+  const mei = as("mei");
+  const asked = async (who: typeof dan) =>
+    (await who.query(api.me.home, {}))?.beforeCheckIn;
+
+  // Sprint 1 asks at join (P6 Ruling 7), never on /me, even with no before rows.
+  await move(t, "week1");
+  const danId = await personOf(t, orgId, "dan");
+  await t.run(async (ctx) => {
+    const rows = await ctx.db
+      .query("surveyResponses")
+      .withIndex("by_person_and_sprint", (q) => q.eq("personId", danId))
+      .collect();
+    for (const r of rows) await ctx.db.delete(r._id);
+  });
+  expect(await asked(dan)).toBe(false);
+
+  await move(t, "complete");
+  await as("priya").mutation(api.sprints.runAnother, { expectOrgId: orgId });
+  // The clone is a draft: Dan is still on sprint 1.
+  expect(await asked(dan)).toBe(false);
+
+  await launchClone(t, orgId);
+  // Week one is the week of Monday 2 November.
+  await clockAt(t, orgId, Date.parse("2026-10-20T12:00:00+11:00"));
+  expect(await asked(dan)).toBe(true);
+  await clockAt(t, orgId, Date.parse("2026-11-04T13:00:00+11:00"));
+  expect(await asked(dan)).toBe(true);
+  expect(await asked(mei)).toBe(true);
+  await clockAt(t, orgId, Date.parse("2026-11-09T09:00:00+11:00"));
+  expect(await asked(dan)).toBe(false);
+
+  // An answer ends it, and so does a skip (Ruling 6 writes a skip as rows).
+  await clockAt(t, orgId, Date.parse("2026-11-04T13:00:00+11:00"));
+  await dan.mutation(api.surveys.checkIn, {
+    phase: "before",
+    answers: { aiConfidence: 3, comfortWithManager: 4 },
+    expectOrgId: orgId,
+  });
+  expect(await asked(dan)).toBe(false);
+  await mei.mutation(api.surveys.checkIn, {
+    phase: "before",
+    answers: null,
+    expectOrgId: orgId,
+  });
+  expect(await asked(mei)).toBe(false);
+  // The save refuses a second, by the same rule.
+  await expect(
+    dan.mutation(api.surveys.checkIn, {
+      phase: "before",
+      answers: null,
+      expectOrgId: orgId,
+    }),
+  ).rejects.toMatchObject({ data: { code: "CHECK_IN_DONE" } });
 });

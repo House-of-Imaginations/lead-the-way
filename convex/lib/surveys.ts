@@ -20,6 +20,15 @@ export const answeredAfter = (rows: Doc<"surveyResponses">[]) =>
   rows.some((r) => r.phase === "after" && r.score !== undefined);
 
 /**
+ * The before check-in is done: answered or skipped, since Ruling 6 writes a
+ * skip as rows. `normsConfidence` is the manager's own question on 05, not
+ * this check-in. `surveys.checkIn` refuses a second, and `me.home` offers the
+ * card until this holds.
+ */
+export const answeredBefore = (rows: Doc<"surveyResponses">[]) =>
+  rows.some((r) => r.phase === "before" && r.question !== "normsConfidence");
+
+/**
  * One answer, one row per (person, sprint, phase, question) (writer contract
  * rule 5). A second answer replaces the score, and an answer replaces a skip
  * (Ruling 6). Nothing is logged, as the script's own answers log nothing for

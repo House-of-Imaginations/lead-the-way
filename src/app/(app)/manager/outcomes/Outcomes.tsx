@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import { InviteTeamModal } from "@/components/app/InviteTeamModal";
 import { InlineNotification, StatTile, Tag } from "@/components/ui";
+import { RunAnother } from "./RunAnother";
 
 type Data = NonNullable<FunctionReturnType<typeof api.manager.outcomes>>;
 type Closed = Extract<Data, { state: "closed" }>;
@@ -94,11 +95,14 @@ function Header({
   title,
   tag,
   link,
+  action,
   children,
 }: {
   title: string;
   tag?: string;
   link: string;
+  /** "Run another sprint", flush beside "Invite another team" (wireframe 16). */
+  action?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -110,7 +114,10 @@ function Header({
         </div>
         {children}
       </div>
-      <InviteTeamModal link={link} />
+      <div className="flex flex-wrap justify-end">
+        <InviteTeamModal link={link} />
+        {action}
+      </div>
     </header>
   );
 }
@@ -147,7 +154,12 @@ function ClosedOutcomes({ data }: { data: Closed }) {
   const presented = participation.presented;
   return (
     <div className="flex max-w-content-max flex-col gap-07">
-      <Header title={data.title} tag={data.tag} link={data.inviteLink}>
+      <Header
+        title={data.title}
+        tag={data.tag}
+        link={data.inviteLink}
+        action={data.canRunAnother ? <RunAnother /> : null}
+      >
         <p className="text-body-01 text-text-secondary">{data.intro}</p>
       </Header>
 

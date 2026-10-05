@@ -94,6 +94,7 @@ test("11 at the week 2 target reads as the wireframe", async () => {
     agreement: AGREEMENT,
     agreementUpdated: false,
     afterCheckIn: false,
+    beforeCheckIn: false,
   });
 });
 
@@ -115,6 +116,7 @@ test("11 in week 1, before Dan's first session", async () => {
     agreement: AGREEMENT,
     agreementUpdated: false,
     afterCheckIn: false,
+    beforeCheckIn: false,
   });
 });
 
@@ -184,6 +186,7 @@ test("11 once the sprint is complete", async () => {
     reflect: ADDED,
     weeks: [done(1), done(2), done(3), done(4)],
     afterCheckIn: false,
+    beforeCheckIn: false,
   });
 });
 

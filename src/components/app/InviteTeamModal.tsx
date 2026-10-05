@@ -30,7 +30,7 @@ export function InviteTeamModal({ link }: { link: string }) {
         setError(undefined);
       }}
       trigger={
-        <Button kind="tertiary" className="max-[672px]:w-full">
+        <Button kind="tertiary" size="md" className="max-[672px]:w-full">
           Invite another team
         </Button>
       }

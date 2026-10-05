@@ -7,6 +7,7 @@ import { closesAt } from "./lib/sprintTime";
 import {
   afterCheckInOpen,
   answeredAfter,
+  answeredBefore,
   recordSkip,
   upsertAnswer,
 } from "./lib/surveys";
@@ -50,12 +51,7 @@ export const checkIn = viewerMutation()({
       )
       .take(6);
     if (phase === "before") {
-      // normsConfidence is the manager's own (05), not this check-in.
-      if (
-        mine.some(
-          (r) => r.phase === "before" && r.question !== "normsConfidence",
-        )
-      ) {
+      if (answeredBefore(mine)) {
         throwUserError(
           "CHECK_IN_DONE",
           "You've already answered the before check-in.",

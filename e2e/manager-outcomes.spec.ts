@@ -223,3 +223,43 @@ test.describe("setup", () => {
     await expect(invite(page)).toHaveCount(0);
   });
 });
+
+test.describe("run another sprint", () => {
+  test.beforeAll(() => resetDemo("complete"));
+
+  test("Priya runs another sprint from 16, and sprint 1 stays on 16 and on Dan's /me", async ({
+    page,
+  }) => {
+    await open(page);
+    const run = main(page).getByRole("button", { name: "Run another sprint" });
+    await expect(run).toBeVisible();
+    await run.click();
+    await expect(page).toHaveURL("/setup/protected-hour");
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: "Make learning part of the working week",
+      }),
+    ).toBeVisible();
+
+    // 16 still shows sprint 1, and the clone takes the button away.
+    await page.goto("/manager/outcomes");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Sprint complete" }),
+    ).toBeVisible();
+    await expect(
+      main(page).getByText("Finished 30 Sep", { exact: true }),
+    ).toBeVisible();
+    await expect(invite(page)).toBeVisible();
+    await expect(
+      main(page).getByRole("button", { name: "Run another sprint" }),
+    ).toHaveCount(0);
+
+    await page.context().clearCookies();
+    await signInAs(page, "dan");
+    await page.goto("/me");
+    await expect(
+      page.getByText("Your sprint finished on Wednesday 30 September."),
+    ).toBeVisible();
+  });
+});

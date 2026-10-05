@@ -130,6 +130,11 @@ export function Home({
         </InlineNotification>
       ) : null}
 
+      {data.beforeCheckIn ? (
+        // Answering or skipping writes rows, so `beforeCheckIn` turns false and the card goes.
+        <CheckIn phase="before" expectOrgId={expectOrgId} onDone={() => {}} />
+      ) : null}
+
       {data.afterCheckIn ? (
         // Saving turns `afterCheckIn` false, and this query re-renders without it.
         <CheckIn phase="after" expectOrgId={expectOrgId} onDone={() => {}} />
