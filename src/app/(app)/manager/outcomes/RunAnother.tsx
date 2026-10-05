@@ -24,7 +24,8 @@ export function RunAnother() {
     setError(null);
     try {
       const { href } = await runAnother({ expectOrgId });
-      // Stays busy until setup replaces this page.
+      // The draft now exists, so `canRunAnother` turns false and this button
+      // unmounts; `router.push` then lands on setup.
       router.push(href);
     } catch (e) {
       setError(userMessage(e, FAILED));
@@ -36,6 +37,7 @@ export function RunAnother() {
     <>
       <Button
         size="md"
+        className="max-[672px]:w-full"
         icon={ArrowRight}
         onClick={run}
         disabled={pending}

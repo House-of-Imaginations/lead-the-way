@@ -300,7 +300,9 @@ test.describe("who sees 16", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Sprint complete" }),
     ).toBeVisible();
-    await expect(tile(page, "Completed the sprint")).toContainText("7");
+    await expect(tile(page, "Completed the sprint")).toHaveText(
+      /^Completed the sprint\s*7$/,
+    );
     await expect(bar(page, CONFIDENCE, BEFORE)).toContainText("2.8");
     await expect(region(page, "Applied projects")).toContainText(
       "6 projects completed",

@@ -86,6 +86,13 @@ test("employees read the newest launched sprint", async () => {
   expect((await dan.query(api.me.home, {}))?.intro).not.toBe(
     before.home?.intro,
   );
+  const after = await reads();
+  expect(after.sprint?.calendar.startDate).not.toBe(
+    before.sprint?.calendar.startDate,
+  );
+  expect(after.sprint?.weeks[0]?.date).toMatch(/November/);
+  expect(after.board).not.toEqual(before.board);
+  expect(after.shell?.status).not.toEqual(before.shell?.status);
 });
 
 test("runAnother is refused until the sprint has closed", async () => {

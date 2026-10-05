@@ -506,8 +506,8 @@ export const launch = viewerMutation(
  */
 export const runAnother = viewerMutation("sprint:manage")({
   args: {},
-  returns: v.object({ href: v.string() }),
-  handler: async (ctx): Promise<{ href: string }> => {
+  returns: v.object({ href: v.literal("/setup/protected-hour") }),
+  handler: async (ctx): Promise<{ href: "/setup/protected-hour" }> => {
     const { viewer } = ctx;
     const orgId = viewer.org._id;
     // `now` is a getter that reads the clock; read it once.
