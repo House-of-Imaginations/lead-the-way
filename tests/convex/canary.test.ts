@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { internal } from "../../convex/_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 import { castOf } from "../../convex/lib/demo/cast";
 import { call, callsFor, publicFunctions } from "./sweep";
 import { calderLane, seat } from "./workspace/helpers";
@@ -215,6 +215,8 @@ for (const c of CASES) {
       expect.arrayContaining([
         "priya manager:overview",
         "lead manager:overview",
+        "priya manager:outcomes",
+        "lead manager:outcomes",
         "priya viewer:shell",
         "priya members:list",
         "priya invites:list",
@@ -312,4 +314,55 @@ test("private activity is counted only where the allowlist says", () => {
   expect(found.filter((file) => !PRIVATE_COUNT_FILES.includes(file))).toEqual(
     [],
   );
+});
+
+/**
+ * Snapshot and outcome rows store who they counted (Tasks 3 and 4). That list
+ * and every person id stay in the database: no read hands them to a manager.
+ */
+test("no outcomes or snapshot read hands over who was counted", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "complete" });
+  const { as: lead } = await seat(t, orgId, "user_lead", ["team:insights"]);
+  const { personIds, weeks, outcomes } = await t.run(async (ctx) => {
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    const weeks = await ctx.db
+      .query("teamSnapshots")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    const outcomes = await ctx.db
+      .query("sprintOutcomes")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    return {
+      personIds: people.map((p) => p._id as string),
+      weeks: weeks.map((r) => r.counted?.length ?? 0),
+      outcomes: outcomes.map((r) => r.counted.length),
+    };
+  });
+  // The rows do hold a cohort, so a clean answer means something.
+  expect(weeks.length).toBeGreaterThanOrEqual(1);
+  expect(weeks.every((n) => n > 0)).toBe(true);
+  expect(outcomes).toHaveLength(1);
+  expect(outcomes[0]).toBeGreaterThan(0);
+
+  for (const [who, caller] of [
+    ["priya", as("priya")],
+    ["lead", lead],
+  ] as const) {
+    for (const [name, answer] of [
+      ["manager.overview", await caller.query(api.manager.overview, {})],
+      ["manager.outcomes", await caller.query(api.manager.outcomes, {})],
+    ] as const) {
+      expect(answer, `${who} ${name}`).not.toBeNull();
+      const text = JSON.stringify(answer);
+      expect(text, `${who} ${name}`).not.toContain('"counted"');
+      for (const id of personIds) {
+        expect(text.includes(id), `${who} ${name} ${id}`).toBe(false);
+      }
+    }
+  }
 });

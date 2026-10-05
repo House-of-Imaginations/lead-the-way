@@ -58,6 +58,12 @@ import {
  * email address" tells the holder only that this account is not the one. The
  * one place the address shows is `publicPreview`, so sign-up can lock it
  * (Ruling 2).
+ *
+ * THE PINNED ADDRESS IS NOT VERIFIED (R-d). Nothing mails a code to the
+ * address an invitation names, and accepting needs an account with that
+ * address, not a verified one. The proof is the link itself: single use,
+ * expiring and revocable, sent by a manager to the address they chose.
+ * Whoever holds it is taken to be the person it was meant for.
  */
 
 const MAX_NAME = 80;

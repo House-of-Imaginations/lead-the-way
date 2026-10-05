@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { resetDemo, signInAs } from "./demo";
+import { convex, resetDemo, signInAs } from "./demo";
 
 /** Everyone in Calder Lane but Priya, and Priya's surname: none may appear on 16. */
 const NAMES = [
@@ -261,5 +261,53 @@ test.describe("run another sprint", () => {
     await expect(
       page.getByText("Your sprint finished on Wednesday 30 September."),
     ).toBeVisible();
+  });
+});
+
+const MOVED = "That page is for your team. You're back on your home.";
+
+test.describe("who sees 16", () => {
+  test.beforeEach(() => resetDemo("complete"));
+
+  test("an employee is sent from 16 to their home with a note", async ({
+    page,
+  }) => {
+    await signInAs(page, "dan");
+    await page.goto("/manager/outcomes");
+    await expect(page).toHaveURL("/me");
+    await expect(page.getByText(MOVED, { exact: true })).toBeVisible();
+  });
+
+  test("a team:insights reader sees the values and no Run another sprint", async ({
+    page,
+  }) => {
+    // A fresh joiner is in no stored cohort, so nothing is hidden from them (R-e).
+    const email = `e2e-lead-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
+    const token = JSON.parse(
+      convex(["run", "seed:invite", JSON.stringify({ email, insights: true })]),
+    ) as string;
+    const res = await page.request.post("/api/auth/sign-up/email", {
+      data: { name: "Lena Brandt", email, password: "a long enough password" },
+      headers: { origin: "http://localhost:3000" },
+    });
+    expect(res.ok()).toBe(true);
+    await page.goto(`/join/${token}`);
+    await page.getByRole("button", { name: "Join team sprint" }).click();
+    await page.getByRole("button", { name: "Skip for now" }).click();
+    await expect(page).toHaveURL("/manager");
+
+    await page.goto("/manager/outcomes");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Sprint complete" }),
+    ).toBeVisible();
+    await expect(tile(page, "Completed the sprint")).toContainText("7");
+    await expect(bar(page, CONFIDENCE, BEFORE)).toContainText("2.8");
+    await expect(region(page, "Applied projects")).toContainText(
+      "6 projects completed",
+    );
+    await expect(invite(page)).toBeVisible();
+    await expect(
+      main(page).getByRole("button", { name: "Run another sprint" }),
+    ).toHaveCount(0);
   });
 });

@@ -6,6 +6,7 @@ import {
   internalAction,
   internalMutation,
   type ActionCtx,
+  type MutationCtx,
 } from "./_generated/server";
 import { assertFlag } from "./app";
 import { createAuth } from "./auth";
@@ -110,19 +111,49 @@ export const clock = internalMutation({
 });
 
 /**
+ * A custom "Team lead" role holding only `team:insights`, made the first time
+ * e2e needs one: a reader in no stored cohort, so 16 shows them values (P7a
+ * Task 8). Demo only, like `invite`.
+ */
+async function insightsRole(
+  ctx: MutationCtx,
+  orgId: Id<"orgs">,
+  at: number,
+): Promise<Id<"orgRoles">> {
+  // ponytail: a workspace holds at most 25 roles (`MAX_ROLES_PER_ORG`).
+  const roles = await ctx.db
+    .query("orgRoles")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .take(25);
+  const found = roles.find(
+    (r) => r.kind === "custom" && r.name === "Team lead",
+  );
+  if (found) return found._id;
+  return await ctx.db.insert("orgRoles", {
+    orgId,
+    kind: "custom",
+    name: "Team lead",
+    permissions: ["team:insights"],
+    createdAt: at,
+  });
+}
+
+/**
  * `pnpm exec convex run seed:invite '{"email":"x@example.com"}'`: a Calder
  * Lane invitation from Priya, and its token, for e2e. `status` makes a
  * finished link, so the join page's refusals can be shown.
  * ponytail: e2e has no other way to hold a token. Demo addresses can't sign
  * up, and the demo holds no open links. Demo only, like `clock`.
+ * `insights` grants the Team lead role (`team:insights` only) instead of Employee.
  */
 export const invite = internalMutation({
   args: {
     email: v.optional(v.string()),
     status: v.optional(literals("revoked", "declined", "accepted")),
+    insights: v.optional(v.boolean()),
   },
   returns: v.string(),
-  handler: async (ctx, { email, status }) => {
+  handler: async (ctx, { email, status, insights }) => {
     assertFlag("demo", true);
     const org = await ctx.db
       .query("orgs")
@@ -147,10 +178,12 @@ export const invite = internalMutation({
       );
     }
     const sprint = await currentSprint(ctx, org._id);
-    const role = await inviteRoleOf(ctx, org._id);
+    const roleId = insights
+      ? await insightsRole(ctx, org._id, nowFor(org))
+      : (await inviteRoleOf(ctx, org._id))._id;
     const { inviteId, token } = await insertInvite(ctx, {
       orgId: org._id,
-      roleId: role._id,
+      roleId,
       email,
       sprintId: sprint?._id,
       message: sprint?.inviteMessage ?? INVITE_MESSAGE,
