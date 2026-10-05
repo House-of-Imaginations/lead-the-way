@@ -415,3 +415,41 @@ test("the before check-in closes after week 1 of a later sprint", async () => {
   await clockAt(t, orgId, Date.parse("2026-11-04T13:00:00+11:00"));
   expect(await answer(mei)).toBeNull();
 });
+
+test("the join facts ask the before check-in only while it is open", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  const asks = async () =>
+    (await priya.query(api.invites.teamPreview, {}))?.join.askBefore;
+  // Sprint 1 asks at join, whatever the week.
+  await move(t, "week2");
+  expect(await asks()).toBe(true);
+  await move(t, "complete");
+  await priya.mutation(api.sprints.runAnother, { expectOrgId: orgId });
+  await launchClone(t, orgId);
+  await clockAt(t, orgId, Date.parse("2026-11-04T13:00:00+11:00"));
+  expect(await asks()).toBe(true);
+  // Week 2 of sprint 2: the save would refuse, so the join page must not ask.
+  await clockAt(t, orgId, Date.parse("2026-11-09T09:00:00+11:00"));
+  expect(await asks()).toBe(false);
+});
+
+test("a sprint 1 before answer is still accepted in week 2", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  const danId = await personOf(t, orgId, "dan");
+  await t.run(async (ctx) => {
+    const rows = await ctx.db
+      .query("surveyResponses")
+      .withIndex("by_person_and_sprint", (q) => q.eq("personId", danId))
+      .collect();
+    for (const r of rows) await ctx.db.delete(r._id);
+  });
+  expect(
+    await as("dan").mutation(api.surveys.checkIn, {
+      phase: "before",
+      answers: { aiConfidence: 3, comfortWithManager: 4 },
+      expectOrgId: orgId,
+    }),
+  ).toBeNull();
+});

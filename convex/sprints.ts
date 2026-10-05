@@ -508,7 +508,10 @@ export const launch = viewerMutation(
  * same team, course, length and hour, from the first such weekday of next
  * month. The newest saved agreement becomes a draft version, so 06 opens on it
  * while employees keep reading the saved one. There are no invitations and no
- * new team row: 07 invites again. It logs nothing; launching does.
+ * new team row: 07 invites again, and may launch with no addresses because the
+ * team carries over. It logs nothing; launching does. A closed sprint whose
+ * outcomes row is missing (a missed scheduled run) gets it written here; that
+ * row counts as of the click, though answers still can't arrive after close.
  */
 export const runAnother = viewerMutation("sprint:manage")({
   args: {},

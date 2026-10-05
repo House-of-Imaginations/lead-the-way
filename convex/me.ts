@@ -7,7 +7,7 @@ import { timedViewerQuery } from "./lib/customFunctions";
 import { progressOf, sessionOf } from "./lib/learning";
 import { isPresented, projectOf } from "./lib/projects";
 import { greetingOf } from "./lib/shell";
-import { launchedSprint } from "./lib/sprint";
+import { isLaterSprint, launchedSprint } from "./lib/sprint";
 import {
   afterCheckInOpen,
   answeredAfter,
@@ -277,7 +277,7 @@ export const home = timedViewerQuery()({
     if (!launched) return null;
     const { sprint, now, week, note } = launched;
     const me = viewer.person._id;
-    const [progress, project, answers, first] = await Promise.all([
+    const [progress, project, answers, later] = await Promise.all([
       progressOf(ctx, me, sprint._id),
       projectOf(ctx, me, sprint._id),
       ctx.db
@@ -286,11 +286,7 @@ export const home = timedViewerQuery()({
           q.eq("personId", me).eq("sprintId", sprint._id),
         )
         .take(MY_SURVEY_ROWS),
-      // The oldest sprint is the first launched: a clone only follows a launched one.
-      ctx.db
-        .query("sprints")
-        .withIndex("by_org", (q) => q.eq("orgId", viewer.org._id))
-        .first(),
+      isLaterSprint(ctx, viewer.org._id, sprint),
     ]);
     // Task 6's read, so 10 and 11 can't disagree on "updated".
     const forMe = await agreementForViewer(ctx, viewer);
@@ -329,8 +325,8 @@ export const home = timedViewerQuery()({
       // Sprint 1 asks at join (P6 Ruling 7). Later sprints have no join, so
       // /me asks until the end of week 1 (P7a Ruling 17).
       beforeCheckIn:
-        first?._id !== sprint._id &&
-        beforeCheckInOpen(sprint, first?._id, now) &&
+        later &&
+        beforeCheckInOpen(sprint, later, now) &&
         !answeredBefore(answers),
     };
   },

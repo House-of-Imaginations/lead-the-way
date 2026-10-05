@@ -55,15 +55,19 @@ export const copyLinks = (page: InviteLink[] | null, sent: InviteLink[]) =>
   new Map([...(page ?? []), ...sent].map((l) => [l.email, l.token]));
 
 /** Ruling 29, worded from the counts `launch` returns. */
-export function launchedToast({
-  invited,
-  emailed,
-}: {
-  invited: number;
-  emailed: number;
-}) {
-  const body =
-    invited === 0
+export function launchedToast(
+  {
+    invited,
+    emailed,
+  }: {
+    invited: number;
+    emailed: number;
+  },
+  carried = false,
+) {
+  const body = carried
+    ? "Your team carries over."
+    : invited === 0
       ? "Everyone is already invited."
       : emailed === invited
         ? `${invitations(invited)} sent.`
@@ -187,6 +191,8 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
   const [copyError, setCopyError] = useState<string | null>(null);
 
   const reason = sendReason(data, emails.length);
+  // A launch that only carries the team over.
+  const carried = data.carriesTeam && emails.length === 0;
   const links = copyLinks(data.links, sentLinks);
 
   // Its own form, so Enter in "Add by email" adds the address and can never
@@ -218,10 +224,15 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
       const result = await launch({ expectOrgId, emails, message });
       setSentLinks(result.links);
       setLaunchedHere(true);
-      toast(launchedToast(result));
+      toast(launchedToast(result, carried));
     } catch (error) {
       setSendError(
-        userMessage(error, "The invitations didn't send. Try again."),
+        userMessage(
+          error,
+          carried
+            ? "The sprint didn't launch. Try again."
+            : "The invitations didn't send. Try again.",
+        ),
       );
     } finally {
       setPending(false);
@@ -395,7 +406,7 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
                   aria-describedby={reason ? "send-reason" : undefined}
                   onClick={send}
                 >
-                  Send invitations
+                  {carried ? "Launch sprint" : "Send invitations"}
                 </Button>
                 {reason ? (
                   <p

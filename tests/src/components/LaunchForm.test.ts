@@ -38,6 +38,15 @@ test("a later sprint may send with no new addresses", () => {
   ).toBeNull();
 });
 
+test("a carry-over launch says the team carries over", () => {
+  expect(launchedToast({ invited: 0, emailed: 0 }, true).body).toBe(
+    "Your team carries over.",
+  );
+  expect(launchedToast({ invited: 0, emailed: 0 }).body).toBe(
+    "Everyone is already invited.",
+  );
+});
+
 test("links launch returned are kept when launchPage has none (email on)", () => {
   const links = copyLinks(null, [link("a@calderlane.com.au", "t1")]);
   expect(links.get("a@calderlane.com.au")).toBe("t1");

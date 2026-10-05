@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
-import { launchedSprint } from "./lib/sprint";
+import { isLaterSprint, launchedSprint } from "./lib/sprint";
 import { closesAt } from "./lib/sprintTime";
 import {
   afterCheckInOpen,
@@ -52,11 +52,8 @@ export const checkIn = viewerMutation()({
       )
       .take(6);
     if (phase === "before") {
-      const oldest = await ctx.db
-        .query("sprints")
-        .withIndex("by_org", (q) => q.eq("orgId", orgId))
-        .first();
-      if (!beforeCheckInOpen(sprint, oldest?._id, now)) {
+      const later = await isLaterSprint(ctx, orgId, sprint);
+      if (!beforeCheckInOpen(sprint, later, now)) {
         throwUserError("CHECK_IN_CLOSED", "The before check-in has closed.");
       }
       if (answeredBefore(mine)) {

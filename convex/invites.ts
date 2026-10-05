@@ -33,7 +33,8 @@ import {
 } from "./lib/orgs/membership";
 import { firstNameOf, initialsOf, isDemoAccount } from "./lib/orgs/people";
 import { reserveRateLimit } from "./lib/rateLimits";
-import { currentSprint } from "./lib/sprint";
+import { currentSprint, isLaterSprint, launchedSprint } from "./lib/sprint";
+import { beforeCheckInOpen } from "./lib/surveys";
 import {
   hourRange,
   hourStart,
@@ -121,6 +122,8 @@ export const joinFactsValidator = v.object({
   span: v.string(),
   showAndTell: v.string(),
   course: v.string(),
+  /** The before check-in is open for this sprint; a later sprint closes it after week 1. */
+  askBefore: v.boolean(),
 });
 export type JoinFacts = Infer<typeof joinFactsValidator>;
 
@@ -152,6 +155,15 @@ async function joinFacts(
     )
     .first();
   const managerName = manager?.name ?? (await nameOf(ctx, invitedBy));
+  // What `surveys.checkIn` will accept: the sprint the joiner lands in.
+  const launched = await launchedSprint(ctx, org._id);
+  const askBefore =
+    !launched ||
+    beforeCheckInOpen(
+      launched,
+      await isLaterSprint(ctx, org._id, launched),
+      nowFor(org),
+    );
   return {
     managerName,
     managerFirstName: firstNameOf(managerName),
@@ -162,6 +174,7 @@ async function joinFacts(
     span: spanLabel(hourStart(sprint, 1), last, tz),
     showAndTell: `${day.day} ${day.month}`,
     course: sprint.courseTitle,
+    askBefore,
   };
 }
 

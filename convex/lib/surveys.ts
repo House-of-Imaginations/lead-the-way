@@ -22,9 +22,9 @@ export const afterCheckInOpen = (sprint: Doc<"sprints">, now: number) =>
  */
 export const beforeCheckInOpen = (
   sprint: Doc<"sprints">,
-  firstId: Id<"sprints"> | undefined,
+  later: boolean,
   now: number,
-) => firstId === sprint._id || weekOf(sprint, now) <= 1;
+) => !later || weekOf(sprint, now) <= 1;
 
 /** The after check-in is answered. A skip (no `score`) is not an answer (Ruling 6). */
 export const answeredAfter = (rows: Doc<"surveyResponses">[]) =>

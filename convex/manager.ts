@@ -1,6 +1,7 @@
 import { literals } from "convex-helpers/validators";
 import { v, type Infer } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
 import { dayMonth, latestSaved } from "./lib/agreement";
 import { timedViewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
@@ -19,7 +20,8 @@ import {
   currentTeam,
   launchedSprint,
   setupGate,
-  sprintHeadcount,
+  isLaterSprint,
+  sprintInvites,
 } from "./lib/sprint";
 import {
   closesAt,
@@ -239,7 +241,7 @@ export const overview = timedViewerQuery()({
         q.eq("personId", viewer.person._id),
       )
       .take(PATHWAY_MODULES.length);
-    const headcount = await sprintHeadcount(ctx, org, sprint);
+    const headcount = await sprintHeadcount(ctx, org, sprint, now);
     // The newest week, as the series lets this viewer read it.
     const series = insights
       ? await snapshotSeries(ctx, sprint, viewer.person._id)
@@ -329,6 +331,34 @@ export const overview = timedViewerQuery()({
     };
   },
 });
+
+/**
+ * 08's and 16's invited and joined. Sprint 1 counts its own invitations. A
+ * later sprint carries the seated team over (managers left out), so joined is
+ * that team and invited adds its open, unexpired invitations. Membership
+ * facts, not activity: no threshold.
+ */
+async function sprintHeadcount(
+  ctx: QueryCtx,
+  org: Doc<"orgs">,
+  sprint: Doc<"sprints">,
+  now: number,
+): Promise<{ invited: number; joined: number }> {
+  const invites = (await sprintInvites(ctx, org._id, sprint._id)).filter(
+    (i) => i.status !== "revoked",
+  );
+  if (!(await isLaterSprint(ctx, org._id, sprint))) {
+    return {
+      invited: invites.length,
+      joined: invites.filter((i) => i.status === "accepted").length,
+    };
+  }
+  const joined = (await loadSeated(ctx, org)).length;
+  const open = invites.filter(
+    (i) => i.status === "pending" && i.expiresAt > now,
+  );
+  return { invited: joined + open.length, joined };
+}
 
 /** 16's answer (Rulings 11 and 12). Every label is made here. */
 export const outcomesValidator = v.union(
@@ -439,7 +469,7 @@ export const outcomes = timedViewerQuery("team:insights")({
     // Ruling 7, final: no "next week" on the outcomes row.
     const stat = (total: Aggregate): Stat =>
       comparable ? statOf(total, row.threshold, org, true) : CHANGED;
-    const { invited } = await sprintHeadcount(ctx, org, sprint);
+    const { invited } = await sprintHeadcount(ctx, org, sprint, now);
     const presented = stat(row.presented);
     const questions = row.answers.map((a) => ({
       ...QUESTIONS[a.question],
