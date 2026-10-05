@@ -4,6 +4,7 @@ import { ensureProfile } from "./lib/account/ensureProfile";
 import { authenticatedMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { MAX_ORG_NAME, createWorkspace } from "./lib/orgs/create";
+import { firstNameOf } from "./lib/orgs/people";
 import { getViewer } from "./lib/viewer";
 
 /**
@@ -63,7 +64,7 @@ export const start = authenticatedMutation({
       }
     }
 
-    const first = user?.name?.trim().split(/\s+/)[0];
+    const first = firstNameOf(user?.name ?? "");
     const name = first ? `${first}'s workspace` : "";
     await createWorkspace(
       ctx,

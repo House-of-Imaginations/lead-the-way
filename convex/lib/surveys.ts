@@ -1,6 +1,19 @@
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import type { SurveyQuestion } from "../tables/sprint";
+import { sprintPhase, weekOf } from "./sprintTime";
+
+/**
+ * Ruling 7: the after check-in is open from the last week (or once the sprint
+ * is complete). `surveys.checkIn` refuses before it; `me.home` and the board
+ * show the card from it. One rule, so a card never offers what the save refuses.
+ */
+export const afterCheckInOpen = (sprint: Doc<"sprints">, now: number) =>
+  sprintPhase(sprint, now) === "complete" || weekOf(sprint, now) >= sprint.weeks;
+
+/** The after check-in is answered. A skip (no `score`) is not an answer (Ruling 6). */
+export const answeredAfter = (rows: Doc<"surveyResponses">[]) =>
+  rows.some((r) => r.phase === "after" && r.score !== undefined);
 
 /**
  * One answer, one row per (person, sprint, phase, question) (writer contract

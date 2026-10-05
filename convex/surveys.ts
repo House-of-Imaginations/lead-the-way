@@ -3,8 +3,12 @@ import { viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
 import { currentSprint } from "./lib/sprint";
-import { sprintPhase, weekOf } from "./lib/sprintTime";
-import { recordSkip, upsertAnswer } from "./lib/surveys";
+import {
+  afterCheckInOpen,
+  answeredAfter,
+  recordSkip,
+  upsertAnswer,
+} from "./lib/surveys";
 import { phaseValidator } from "./tables/sprint";
 
 /**
@@ -55,20 +59,14 @@ export const checkIn = viewerMutation()({
           "You've already answered the before check-in.",
         );
       }
-    } else if (
-      sprintPhase(sprint, now) !== "complete" &&
-      weekOf(sprint, now) < sprint.weeks
-    ) {
+    } else if (!afterCheckInOpen(sprint, now)) {
       throwUserError(
         "CHECK_IN_CLOSED",
         `The after check-in opens in week ${sprint.weeks}.`,
       );
     }
 
-    if (
-      phase === "after" &&
-      mine.some((r) => r.phase === "after" && r.score !== undefined)
-    ) {
+    if (phase === "after" && answeredAfter(mine)) {
       throwUserError(
         "CHECK_IN_DONE",
         "You've already answered the after check-in.",

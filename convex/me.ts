@@ -9,6 +9,7 @@ import { timedViewerQuery } from "./lib/customFunctions";
 import { isPresented, projectOf } from "./lib/projects";
 import { greetingOf } from "./lib/shell";
 import { currentSprint } from "./lib/sprint";
+import { afterCheckInOpen, answeredAfter } from "./lib/surveys";
 import {
   hourEnd,
   hourLong,
@@ -276,12 +277,6 @@ export const home = timedViewerQuery()({
     ]);
     // Task 6's read, so 10 and 11 can't disagree on "updated".
     const forMe = await agreementForViewer(ctx, viewer);
-    // The same week 4 test as `surveys.checkIn`'s CHECK_IN_CLOSED, and a skip
-    // is not an answer (Ruling 6).
-    const afterOpen = complete || week >= sprint.weeks;
-    const answered = answers.some(
-      (r) => r.phase === "after" && r.score !== undefined,
-    );
     return {
       greeting: greetingOf(viewer, now),
       intro: introOf(launched),
@@ -311,7 +306,7 @@ export const home = timedViewerQuery()({
           }
         : null,
       agreementUpdated: forMe?.mine === "updated",
-      afterCheckIn: afterOpen && !answered,
+      afterCheckIn: afterCheckInOpen(sprint, now) && !answeredAfter(answers),
     };
   },
 });

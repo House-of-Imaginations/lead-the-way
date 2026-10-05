@@ -1,9 +1,12 @@
 import { v, type Infer } from "convex/values";
+import { badgeOf } from "./lib/badges";
 import { timedViewerQuery } from "./lib/customFunctions";
+import { firstNameOf } from "./lib/orgs/people";
 import { isPresented, projectOf } from "./lib/projects";
 import { settingsOf } from "./lib/settings";
 import { currentSprint } from "./lib/sprint";
 import { weekOf } from "./lib/sprintTime";
+import { afterCheckInOpen, answeredAfter } from "./lib/surveys";
 
 const boardValidator = v.object({
   weekTag: v.union(v.string(), v.null()), // "Week 4" in the show and tell week
@@ -29,7 +32,8 @@ const boardValidator = v.object({
 });
 export type Board = Infer<typeof boardValidator>;
 
-// ponytail: one workspace's projects across its sprints. Index by sprint past 200.
+// ponytail: the first 200 presented projects of one sprint, oldest first; a
+// later presenter past that is left off the board. Paginate if a team gets there.
 const PROJECTS_READ = 200;
 
 /**
@@ -50,10 +54,7 @@ export const board = timedViewerQuery()({
     const week = weekOf(sprint, viewer.now);
     const [settings, badge, answers, own, rows] = await Promise.all([
       settingsOf(ctx, personId),
-      ctx.db
-        .query("badges")
-        .withIndex("by_person", (q) => q.eq("personId", personId))
-        .first(),
+      badgeOf(ctx, personId),
       // Bounded: one row per phase and question for one person (writer contract).
       ctx.db
         .query("surveyResponses")
@@ -62,33 +63,31 @@ export const board = timedViewerQuery()({
         )
         .collect(),
       projectOf(ctx, personId, sprint._id),
+      // Only rows with a presentedAt, in presentation order (spec rule 10): a
+      // missing field sorts before every number, so drafts and unpresented
+      // rows are outside the range, and a teammate's autosave never re-runs
+      // this board.
       ctx.db
         .query("projects")
-        .withIndex("by_sprint", (q) => q.eq("sprintId", sprint._id))
+        .withIndex("by_sprint_and_presentedAt", (q) =>
+          q.eq("sprintId", sprint._id).gte("presentedAt", 0),
+        )
         .take(PROJECTS_READ),
     ]);
 
-    const shown = rows
-      .filter(isPresented)
-      .sort((a, b) => (a.presentedAt ?? 0) - (b.presentedAt ?? 0));
     const presented: Board["presented"] = [];
-    for (const p of shown) {
+    for (const p of rows.filter(isPresented)) {
       const person = await ctx.db.get(p.personId);
       if (person) {
-        presented.push({ title: p.title, firstName: person.name.split(" ")[0]! });
+        presented.push({ title: p.title, firstName: firstNameOf(person.name) });
       }
     }
 
-    const showAndTellWeek =
-      week >= sprint.weeks || sprint.completedAt !== undefined;
-    // A skip is not an answer (Ruling 6), though the after check-in has no skip.
-    const answeredAfter = answers.some(
-      (r) => r.phase === "after" && r.score !== undefined,
-    );
     return {
       weekTag: week === sprint.weeks ? `Week ${week}` : null,
       askBeforeSharing: settings.askBeforeSharing,
-      afterCheckIn: showAndTellWeek && !answeredAfter,
+      afterCheckIn:
+        afterCheckInOpen(sprint, viewer.now) && !answeredAfter(answers),
       hasBadge: badge !== null,
       mine:
         own?.status === "saved"

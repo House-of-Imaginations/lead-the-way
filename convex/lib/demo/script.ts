@@ -7,7 +7,7 @@ import { logEvent } from "../events";
 import { insertInvite, inviteRoleOf } from "../orgs/invites";
 import { joinByInvite } from "../orgs/join";
 import { MAX_MEMBERS_PER_ORG } from "../orgs/membership";
-import { issueBadge } from "../badges";
+import { badgeOf, issueBadge } from "../badges";
 import { projectOf } from "../projects";
 import { settingsOf } from "../settings";
 import { PATHWAY_MODULES, type ModuleKey } from "../pathway";
@@ -29,7 +29,7 @@ import type { StepKey } from "./schedule";
  *
  * THE CONTRACT WITH THE PRODUCT'S WRITERS. The script and the product write
  * the same rows, so each reads what the other wrote. Every later writer (P3
- * onwards) keeps these eight rules, or the script and the screens disagree:
+ * onwards) keeps these twelve rules, or the script and the screens disagree:
  *  1. One `teams` row per org, and one current sprint.
  *  2. The team is done when `teams.savedAt` is set.
  *  3. The hour is decided when `sprints.committedAt` or `sprints.notReady`
@@ -44,6 +44,14 @@ import type { StepKey } from "./schedule";
  *     go up.
  *  8. Both paths log every event type with the same meta keys, at
  *     `now = nowFor(org)`.
+ *  9. A project starts as a private draft. Presenting sets `sharing: "team"`
+ *     and `presentedAt` together; a project is presented exactly when
+ *     `isPresented` holds (Ruling 4).
+ * 10. `issueBadge` is the one writer of `badges` (Ruling 9).
+ * 11. A `surveyResponses` row holds exactly one of `score` and `skippedAt`,
+ *     and an answer replaces a skip (Ruling 6).
+ * 12. A person's settings are read through `settingsOf` before acting for
+ *     them (Ruling 5).
  */
 
 type StepCtx = { ctx: MutationCtx; orgId: Id<"orgs">; at: number };
@@ -756,10 +764,7 @@ export const STEPS: Record<StepKey, Step> = {
         howChecked: project.howChecked ?? DAN_HOW_CHECKED,
       });
     }
-    const badge = await ctx.db
-      .query("badges")
-      .withIndex("by_person", (q) => q.eq("personId", dan._id))
-      .first();
+    const badge = await badgeOf(ctx, dan._id);
     // Dan's setting decides whether his credential shows it (Ruling 10).
     if (
       badge &&

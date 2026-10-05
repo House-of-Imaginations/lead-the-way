@@ -1,5 +1,5 @@
-import type { Doc } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { slugify } from "./orgs/slug";
 
 /** The course credential (spec 7.3): the only badge P6 issues. */
@@ -13,6 +13,14 @@ export const COURSE_BADGE = {
     "Workflow improvement",
   ],
 };
+
+/** A person's one badge, or null before they finish (Ruling 9). */
+export async function badgeOf(ctx: QueryCtx, personId: Id<"people">) {
+  return await ctx.db
+    .query("badges")
+    .withIndex("by_person", (q) => q.eq("personId", personId))
+    .first();
+}
 
 async function slugTaken(ctx: MutationCtx, shareSlug: string) {
   return (
@@ -34,10 +42,7 @@ export async function issueBadge(
   person: Doc<"people">,
   at: number,
 ): Promise<Doc<"badges">> {
-  const existing = await ctx.db
-    .query("badges")
-    .withIndex("by_person", (q) => q.eq("personId", person._id))
-    .first();
+  const existing = await badgeOf(ctx, person._id);
   if (existing) return existing;
   const base = [slugify(person.name), "ai-fundamentals"]
     .filter(Boolean)

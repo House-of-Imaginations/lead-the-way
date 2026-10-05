@@ -6,6 +6,7 @@ import {
   viewerMutation,
   viewerQuery,
 } from "./lib/customFunctions";
+import { badgeOf } from "./lib/badges";
 import { throwUserError } from "./lib/errors";
 import { isPresented, savedProject } from "./lib/projects";
 import { settingsOf } from "./lib/settings";
@@ -46,13 +47,6 @@ type Reflection = Infer<typeof reflectionValidator>;
 function dateLabel(at: number, timeZone: string, month: "long" | "short") {
   const p = parts(at, timeZone, { day: "numeric", month, year: "numeric" });
   return month === "long" ? `${p.day} ${p.month} ${p.year}` : `${p.day} ${p.month}`;
-}
-
-async function badgeOf(ctx: QueryCtx, personId: Id<"people">) {
-  return await ctx.db
-    .query("badges")
-    .withIndex("by_person", (q) => q.eq("personId", personId))
-    .first();
 }
 
 /** The linked project, only while it is the holder's own saved project in the badge's workspace (Ruling 10). */

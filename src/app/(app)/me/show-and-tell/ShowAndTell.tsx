@@ -81,7 +81,7 @@ function Project({
 
   return (
     <section aria-labelledby="project-title" className="flex flex-col gap-01">
-      <div className="flex items-end justify-between gap-07 bg-text-primary p-06 text-background max-[671px]:flex-col max-[671px]:items-start max-[671px]:p-05">
+      <div className="flex items-end justify-between gap-07 bg-text-primary p-06 text-background max-[672px]:flex-col max-[672px]:items-start max-[672px]:p-05">
         <div className="flex min-w-0 flex-col gap-03">
           <p className="text-label-01">Your project</p>
           <h2 id="project-title" className="text-heading-02">
@@ -89,13 +89,13 @@ function Project({
           </h2>
         </div>
         {mine.headline ? (
-          <p className="max-w-[16ch] shrink-0 text-right text-display-03 max-[671px]:max-w-none max-[671px]:text-left max-[671px]:text-heading-01">
+          <p className="max-w-[16ch] shrink-0 text-right text-display-03 max-[672px]:max-w-none max-[672px]:text-left max-[672px]:text-heading-01">
             {mine.headline}
           </p>
         ) : null}
       </div>
 
-      <dl className="grid grid-cols-3 gap-01 max-[671px]:grid-cols-1">
+      <dl className="grid grid-cols-3 gap-01 max-[672px]:grid-cols-1">
         {tiles.map(([term, text]) => (
           <div key={term} className="flex flex-col gap-03 bg-layer-01 p-05">
             <dt className="text-label-01 text-text-secondary">{term}</dt>
@@ -104,7 +104,7 @@ function Project({
         ))}
       </dl>
 
-      <div className="flex flex-col gap-05 bg-layer-01 p-06 max-[671px]:p-05">
+      <div className="flex flex-col gap-05 bg-layer-01 p-06 max-[672px]:p-05">
         {mine.learned !== null ? (
           <figure className="flex flex-col gap-03">
             <figcaption className="text-label-01 text-text-secondary">
@@ -129,7 +129,7 @@ function Project({
         </ul>
       </div>
 
-      <div className="grid grid-cols-3 max-[671px]:grid-cols-1">
+      <div className="grid grid-cols-3 max-[672px]:grid-cols-1">
         <ButtonLink
           href="/me/project#reflect"
           kind="ghost"

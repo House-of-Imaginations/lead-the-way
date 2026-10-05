@@ -184,7 +184,7 @@ export const sprintTables = {
     autosavedAt: v.number(),
   })
     .index("by_org", ["orgId"])
-    .index("by_sprint", ["sprintId"])
+    .index("by_sprint_and_presentedAt", ["sprintId", "presentedAt"])
     .index("by_screenshotId", ["screenshotId"])
     .index("by_person_and_sprint", ["personId", "sprintId"]),
 

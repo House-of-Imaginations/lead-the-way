@@ -36,7 +36,7 @@ export default async function PublicCredentialPage({
           Shared by {credential.holder}
         </p>
       </header>
-      <main className="mx-auto flex w-full max-w-content-max flex-1 flex-col gap-07 p-07 max-[671px]:p-05">
+      <main className="mx-auto flex w-full max-w-content-max flex-1 flex-col gap-07 p-07 max-[672px]:p-05">
         <div className="flex flex-col gap-03">
           <h1 className="text-heading-01">{credential.holder}</h1>
           <p className="text-body-01 text-text-secondary">

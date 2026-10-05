@@ -12,8 +12,8 @@ export type CredentialView = Omit<
 
 function Row({ term, children }: { term: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[156px_minmax(0,1fr)] gap-05 border-b border-border-subtle py-04 last:border-b-0 max-[671px]:grid-cols-1 max-[671px]:gap-02">
-      <dt className="text-body-02 text-text-secondary max-[671px]:text-label-01">
+    <div className="grid grid-cols-[156px_minmax(0,1fr)] gap-05 border-b border-border-subtle py-04 last:border-b-0 max-[672px]:grid-cols-1 max-[672px]:gap-02">
+      <dt className="text-body-02 text-text-secondary max-[672px]:text-label-01">
         {term}
       </dt>
       <dd className="text-body-02">{children}</dd>
@@ -40,8 +40,8 @@ export function Credential({
         aria-labelledby="badge-title"
         className="flex flex-col bg-layer-01"
       >
-        <div className="flex flex-1 items-start gap-05 p-06 max-[671px]:p-05">
-          <div className="flex size-[96px] shrink-0 items-center justify-center bg-interactive text-text-on-color max-[671px]:size-[64px]">
+        <div className="flex flex-1 items-start gap-05 p-06 max-[672px]:p-05">
+          <div className="flex size-[96px] shrink-0 items-center justify-center bg-interactive text-text-on-color max-[672px]:size-[64px]">
             <Certificate size={32} aria-hidden="true" />
           </div>
           <div className="flex min-w-0 flex-col gap-02">
@@ -56,7 +56,7 @@ export function Credential({
             </p>
           </div>
         </div>
-        <p className="bg-layer-selected px-06 py-05 text-heading-03 font-light max-[671px]:px-05">
+        <p className="bg-layer-selected px-06 py-05 text-heading-03 font-light max-[672px]:px-05">
           Badge = I learned it.
         </p>
       </section>
@@ -71,7 +71,7 @@ export function Credential({
         aria-labelledby="applied-title"
         className="flex flex-col border border-interactive"
       >
-        <div className="flex flex-1 flex-col gap-05 p-06 max-[671px]:p-05">
+        <div className="flex flex-1 flex-col gap-05 p-06 max-[672px]:p-05">
           <div className="flex flex-wrap items-start justify-between gap-04">
             <h2 id="applied-title" className="text-heading-03">
               Applied at work
@@ -100,7 +100,7 @@ export function Credential({
           {reflection ? null : empty}
         </div>
         {reflection ? (
-          <p className="bg-interactive px-06 py-05 text-heading-03 font-light text-text-on-color max-[671px]:px-05">
+          <p className="bg-interactive px-06 py-05 text-heading-03 font-light text-text-on-color max-[672px]:px-05">
             Applied reflection = I used it.
           </p>
         ) : null}

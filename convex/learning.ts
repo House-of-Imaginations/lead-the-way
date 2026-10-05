@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
-import { issueBadge } from "./lib/badges";
+import { badgeOf, issueBadge } from "./lib/badges";
 import { viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { currentSprint } from "./lib/sprint";
@@ -74,10 +74,7 @@ export const continueSession = viewerMutation()({
     // True only on the press that issues the badge, so a toast fires once.
     let badgeIssued = false;
     if (sessionsDone >= COURSE_SESSIONS) {
-      const had = await ctx.db
-        .query("badges")
-        .withIndex("by_person", (q) => q.eq("personId", viewer.person._id))
-        .first();
+      const had = await badgeOf(ctx, viewer.person._id);
       // `issueBadge` returns the existing badge, so a second press adds nothing.
       await issueBadge(ctx, viewer.person, now);
       badgeIssued = !had;

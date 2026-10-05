@@ -68,11 +68,11 @@ function Section({
       className={clsx(
         "grid grid-cols-[200px_minmax(0,1fr)] gap-07 border-t border-border-subtle py-06 max-[900px]:grid-cols-1 max-[900px]:gap-05",
         // M3 stacks the fields without rules; only a titled section keeps its hairline.
-        !onPhone && "max-[671px]:border-t-0 max-[671px]:pt-0",
+        !onPhone && "max-[672px]:border-t-0 max-[672px]:pt-0",
       )}
     >
       <div
-        className={clsx("flex flex-col gap-02", !onPhone && "max-[671px]:sr-only")}
+        className={clsx("flex flex-col gap-02", !onPhone && "max-[672px]:sr-only")}
       >
         <h2 id={`${id}-title`} className="text-heading-04">
           {title}
@@ -251,7 +251,7 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
           </div>
           <button
             type="button"
-            className="text-body-02 text-link hover:text-link-hover hover:underline max-[671px]:min-h-control-lg"
+            className="text-body-02 text-link hover:text-link-hover hover:underline max-[672px]:min-h-control-lg"
             onClick={() => change(DANS_EXAMPLE)}
           >
             Use Dan&apos;s example
@@ -309,7 +309,7 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
           <Section id="result" title="Result" helper="Pick any that apply.">
             <fieldset className="flex flex-col gap-03">
               <legend className="ltw-lbl pb-03">Type of improvement</legend>
-              <div className="grid grid-cols-2 gap-x-06 gap-y-03 max-[671px]:grid-cols-1">
+              <div className="grid grid-cols-2 gap-x-06 gap-y-03 max-[672px]:grid-cols-1">
                 {RESULT_TYPES.map((type) => (
                   <Checkbox
                     key={type}
@@ -320,7 +320,7 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
                 ))}
               </div>
             </fieldset>
-            <div className="max-w-[360px] max-[671px]:max-w-none">
+            <div className="max-w-[360px] max-[672px]:max-w-none">
               <TextInput
                 id="headline"
                 label="Headline result"
@@ -394,16 +394,16 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
               Tick both checks to save.
             </p>
           ) : null}
-          <div className="flex max-[671px]:w-full">
+          <div className="flex max-[672px]:w-full">
             <ButtonLink
               href="/me"
               kind="secondary"
-              className="w-[200px] max-[671px]:hidden"
+              className="w-[200px] max-[672px]:hidden"
             >
               Cancel
             </ButtonLink>
             <Button
-              className="w-[200px] max-[671px]:w-full"
+              className="w-[200px] max-[672px]:w-full"
               disabled={!checked || pending}
               aria-describedby={checked ? undefined : "save-reason"}
               onClick={saveProject}
@@ -466,7 +466,7 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
 
       <aside
         aria-label="Guidance"
-        className="flex flex-col gap-01 max-[671px]:hidden"
+        className="flex flex-col gap-01 max-[672px]:hidden"
       >
         <section className="flex flex-col gap-04 bg-layer-01 p-05">
           <h2 className="text-heading-04">Before you start</h2>

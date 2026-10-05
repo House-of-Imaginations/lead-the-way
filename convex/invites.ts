@@ -31,7 +31,7 @@ import {
   permissionsOf,
   requireWithin,
 } from "./lib/orgs/membership";
-import { initialsOf, isDemoAccount } from "./lib/orgs/people";
+import { firstNameOf, initialsOf, isDemoAccount } from "./lib/orgs/people";
 import { reserveRateLimit } from "./lib/rateLimits";
 import { currentSprint } from "./lib/sprint";
 import {
@@ -147,7 +147,7 @@ async function joinFacts(
   const managerName = manager?.name ?? (await nameOf(ctx, invitedBy));
   return {
     managerName,
-    managerFirstName: managerName.split(" ")[0] ?? managerName,
+    managerFirstName: firstNameOf(managerName),
     managerInitials: manager?.initials ?? initialsOf(managerName),
     managerRole: manager?.jobTitle || "Team manager",
     quote: message ?? null,
