@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { mel } from "../../convex/lib/demo/schedule";
-import { move } from "./sprintHelpers";
+import { move, readyToLaunch } from "./sprintHelpers";
 import {
   calderLane,
   harness,
@@ -191,4 +191,59 @@ test("a person who left gets nothing", async () => {
   const people = (await sent(t, orgId)).map((r) => r.personId);
   expect(people).not.toContain(a.personId);
   expect(people).toContain(b.personId);
+});
+
+test("a real launch schedules each week's reminder a day ahead, skipping one already past", async () => {
+  // Sunday 20 September, 11:00 PM: week one is Monday the 21st at 9:00 AM,
+  // whose reminder time has passed. Daylight saving starts on 4 October.
+  // Timers stay fake, so no scheduled run fires.
+  vi.setSystemTime(mel("2026-09-20T23:00"));
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  await owner.mutation(api.sprints.commit, {
+    weekday: 1,
+    start: "09:00",
+    expectOrgId: orgId,
+  });
+  await readyToLaunch(t, orgId);
+  // As the snapshot schedule test launches; RESEND_FROM is empty, so no mail.
+  await owner.mutation(api.sprints.launch, {
+    emails: ["ana@example.com"],
+    message: "",
+    expectOrgId: orgId,
+  });
+  const sprint = await t.run(
+    async (ctx) =>
+      (await ctx.db
+        .query("sprints")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .first())!,
+  );
+  expect(sprint.startDate).toBe("2026-09-21");
+  const jobs = await t.run((ctx) =>
+    ctx.db.system.query("_scheduled_functions").collect(),
+  );
+  expect(
+    jobs
+      .filter((job) => job.name === "reminders:send")
+      .map((job) => ({
+        at: new Date(job.scheduledTime).toISOString(),
+        args: job.args,
+      })),
+  ).toEqual([
+    // Monday 9:00 AM AEST (UTC+10), less a day.
+    {
+      at: "2026-09-26T23:00:00.000Z",
+      args: [{ orgId, sprintId: sprint._id, week: 2 }],
+    },
+    // Monday 9:00 AM AEDT (UTC+11), less 24 hours.
+    {
+      at: "2026-10-03T22:00:00.000Z",
+      args: [{ orgId, sprintId: sprint._id, week: 3 }],
+    },
+    {
+      at: "2026-10-10T22:00:00.000Z",
+      args: [{ orgId, sprintId: sprint._id, week: 4 }],
+    },
+  ]);
 });

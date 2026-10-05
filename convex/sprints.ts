@@ -46,6 +46,7 @@ import {
 import {
   addDays,
   closesAt,
+  reminderAt,
   hourEnd,
   hourPattern,
   hourStart,
@@ -447,7 +448,8 @@ export const launch = viewerMutation(
     // virtual clock a real `runAt` would fire at once, so `moveClock` takes
     // them instead. Each run makes good a missed earlier one; the last week
     // has nothing after it, so one more run when the sprint closes backs it
-    // up and takes the outcomes row (P7a Ruling 9).
+    // up and takes the outcomes row (P7a Ruling 9). The reminder runs are
+    // scheduled the same way, and the demo never gets them.
     if (!virtualClock(viewer.org)) {
       const stored = { ...sprint, startDate: startDateOf(sprint, now) };
       const args = { orgId, sprintId: sprint._id };
@@ -463,6 +465,17 @@ export const launch = viewerMutation(
         internal.snapshots.take,
         args,
       );
+      // The day-before reminders (S-d). A week whose reminder time has
+      // already passed gets none: the launch invitation names the first hour.
+      for (let week = 1; week <= sprint.weeks; week++) {
+        const at = reminderAt(stored, week);
+        if (at > now) {
+          await ctx.scheduler.runAt(at, internal.reminders.send, {
+            ...args,
+            week,
+          });
+        }
+      }
     }
 
     let invited = 0;

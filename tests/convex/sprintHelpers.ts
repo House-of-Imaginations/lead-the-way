@@ -1,6 +1,7 @@
 import { internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { castOf, type CastKey } from "../../convex/lib/demo/cast";
+import { PATHWAY_MODULES } from "../../convex/lib/pathway";
 import { mel, type DemoTarget } from "../../convex/lib/demo/schedule";
 import type { T } from "./workspace/helpers";
 
@@ -40,4 +41,42 @@ export async function launchClone(t: T, orgId: Id<"orgs">) {
     ctx.db.patch(clone._id, { launchedAt: mel("2026-10-01T17:00") }),
   );
   return clone._id;
+}
+
+/** What `launch` needs besides the hour: everyone's pathway and a saved agreement. */
+export async function readyToLaunch(t: T, orgId: Id<"orgs">) {
+  await t.run(async (ctx) => {
+    const team = (await ctx.db
+      .query("teams")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .unique())!;
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    for (const person of people) {
+      for (const m of PATHWAY_MODULES) {
+        if (m.pathway !== "required") continue;
+        await ctx.db.insert("pathwayProgress", {
+          orgId,
+          personId: person._id,
+          moduleKey: m.key,
+          minutesWatched: m.minutes,
+          completedAt: 1,
+        });
+      }
+    }
+    await ctx.db.insert("agreements", {
+      orgId,
+      teamId: team._id,
+      version: 1,
+      status: "saved",
+      tools: [],
+      neverIn: [],
+      checks: [],
+      escalation: "",
+      contact: { kind: "label", label: "Privacy officer" },
+      savedAt: 1,
+    });
+  });
 }
