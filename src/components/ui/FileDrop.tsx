@@ -61,7 +61,10 @@ export function FileDrop({
 
   if (current) {
     return (
-      <div className="flex flex-col items-start gap-03">
+      <div
+        className="flex flex-col items-start gap-03"
+        aria-busy={busy || undefined}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element -- a signed storage URL, not a static asset */}
         <img
           src={current.url}
@@ -76,7 +79,7 @@ export function FileDrop({
           disabled={busy}
           onClick={onRemove}
         >
-          Remove file
+          {busy ? "Removing" : "Remove file"}
         </Button>
         {note}
       </div>

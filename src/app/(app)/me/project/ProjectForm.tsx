@@ -108,12 +108,15 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [reflecting, setReflecting] = useState(false);
   const [reflectError, setReflectError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // The fields waiting on the timer, so leaving the page inside the second still saves them.
+  // The fields not yet saved, kept until a save succeeds, so leaving the page (or a failed save) still has them.
   const unsaved = useRef<ProjectFields | null>(null);
+  // The latest form, for handlers whose closure is older than the typing done while they waited.
+  const latest = useRef(form);
   useEffect(
     () => () => {
       clearTimeout(timer.current);
@@ -130,23 +133,30 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
   // `week` is 1 to the sprint's last (projects.mine); a longer sprint keeps the last tip.
   const tip = SESSIONS[Math.min(data.week, SESSIONS.length) - 1]!;
 
-  function change(patch: Partial<ProjectFields>) {
-    const next = { ...form, ...patch };
-    setForm(next);
-    // Ruling 12: autosave while a draft; once saved, only "Save project" writes.
-    if (saved) return;
+  function autosave(next: ProjectFields) {
     unsaved.current = next;
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
-      unsaved.current = null;
       saveDraft({ expectOrgId, ...next }).then(
-        () => setError(null),
+        () => {
+          // Newer typing stays pending for its own timer.
+          if (unsaved.current === next) unsaved.current = null;
+          setError(null);
+        },
         (e: unknown) =>
           setError(
             userMessage(e, "Your draft didn't save. It tries again when you type."),
           ),
       );
     }, 1000);
+  }
+
+  function change(patch: Partial<ProjectFields>) {
+    const next = { ...form, ...patch };
+    setForm(next);
+    latest.current = next;
+    // Ruling 12: autosave while a draft; once saved, only "Save project" writes.
+    if (!saved) autosave(next);
   }
 
   const toggleType = (type: string, on: boolean) =>
@@ -159,20 +169,21 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
   async function saveProject() {
     // A pending autosave would only be a no-op after this (saveDraft leaves a saved project alone).
     clearTimeout(timer.current);
-    unsaved.current = null;
+    // `unsaved` stays set until the save lands, so leaving mid-save still flushes the draft.
     const attempted = form;
     setPending(true);
     setError(null);
     try {
-      await save({ expectOrgId, ...form });
+      await save({ expectOrgId, ...attempted });
+      if (unsaved.current === attempted) unsaved.current = null;
       toast({
         title: "Project saved",
         body: "Add a reflection below when you're ready.",
       });
     } catch (e) {
       setError(userMessage(e, "Your project didn't save. Try again."));
-      // Still a draft, so the last edits go back on the autosave timer.
-      change(attempted);
+      // Still a draft, so the latest edits (including any typed while saving) go back on the timer.
+      if (!saved) autosave(latest.current);
     } finally {
       setPending(false);
     }
@@ -221,14 +232,14 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
   }
 
   async function removeScreenshot() {
-    setUploading(true);
+    setRemoving(true);
     setFileError(null);
     try {
       await setScreenshot({ expectOrgId, storageId: null });
     } catch (e) {
       setFileError(userMessage(e, "The screenshot wasn't removed. Try again."));
     } finally {
-      setUploading(false);
+      setRemoving(false);
     }
   }
 
@@ -362,7 +373,8 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
               accept={SCREENSHOT_TYPES}
               onFile={upload}
               error={fileError}
-              busy={uploading}
+              // Each branch is busy only with its own action, so the swap after either never flashes the other's words.
+              busy={project?.screenshotUrl ? removing : uploading}
               current={
                 project?.screenshotUrl
                   ? {

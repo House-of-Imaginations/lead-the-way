@@ -73,6 +73,27 @@ test("the draft saves itself and survives a reload", async ({ page }) => {
   ).toHaveValue("Two hours by hand.");
 });
 
+test("a refused save keeps the draft", async ({ page }) => {
+  resetDemo("week1");
+  await open(page);
+  // No title, so the server refuses the save; pressed inside the debounce.
+  await field(page, "How did you complete this task before?").fill(
+    "Two hours by hand.",
+  );
+  await reviewed(page).check();
+  await dataSafe(page).check();
+  await saveButton(page).click();
+  // Exact: the dev overlay also logs the refused mutation.
+  await expect(
+    page.getByText("Add a project title to save.", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Draft saved at 1:00 PM")).toBeVisible();
+  await page.reload();
+  await expect(
+    field(page, "How did you complete this task before?"),
+  ).toHaveValue("Two hours by hand.");
+});
+
 test("Dan's example fills the form, and saving opens Reflect", async ({
   page,
 }) => {
