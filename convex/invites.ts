@@ -33,7 +33,7 @@ import {
 } from "./lib/orgs/membership";
 import { firstNameOf, initialsOf, isDemoAccount } from "./lib/orgs/people";
 import { reserveRateLimit } from "./lib/rateLimits";
-import { currentSprint, isLaterSprint, launchedSprint } from "./lib/sprint";
+import { setupSprint, isLaterSprint, launchedSprint } from "./lib/sprint";
 import { beforeCheckInOpen } from "./lib/surveys";
 import {
   hourRange,
@@ -141,7 +141,7 @@ async function joinFacts(
   invitedBy: string,
   message: string | undefined,
 ): Promise<JoinFacts | null> {
-  const found = await currentSprint(ctx, org._id);
+  const found = await setupSprint(ctx, org._id);
   if (!found) return null;
   const sprint = { ...found, startDate: startDateOf(found, nowFor(org)) };
   const tz = sprint.timeZone;
@@ -609,7 +609,7 @@ export const teamPreview = timedViewerQuery("sprint:manage")({
   ),
   handler: async (ctx) => {
     const { org, userId } = ctx.viewer;
-    const sprint = await currentSprint(ctx, org._id);
+    const sprint = await setupSprint(ctx, org._id);
     const join = await joinFacts(ctx, org, userId, sprint?.inviteMessage);
     return join && { orgName: org.name, join };
   },

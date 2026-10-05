@@ -4,7 +4,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { DEMO_CAST, castOf, type CastKey } from "../../convex/lib/demo/cast";
 import { mel, type DemoTarget } from "../../convex/lib/demo/schedule";
 import { snapshotSeries } from "../../convex/lib/snapshots";
-import { currentSprint } from "../../convex/lib/sprint";
+import { setupSprint } from "../../convex/lib/sprint";
 import {
   calderLane,
   harness,
@@ -532,7 +532,7 @@ test("a one-person cohort change hides the later rows, compared with the first r
 
   const reader = await personOf(t, orgId, "priya");
   const series = await t.run(async (ctx) => {
-    const sprint = (await currentSprint(ctx, orgId))!;
+    const sprint = (await setupSprint(ctx, orgId))!;
     const { weeks, outcomes } = await snapshotSeries(ctx, sprint, reader);
     return {
       weeks: weeks.map(({ row, comparable }) => [

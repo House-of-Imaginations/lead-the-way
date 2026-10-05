@@ -3,7 +3,7 @@ import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { signatureCount } from "./privacy";
-import { currentSprint, currentTeam, latestSaved } from "./sprint";
+import { setupSprint, currentTeam, latestSaved } from "./sprint";
 import { getInOrg } from "./tenant";
 import type { Viewer } from "./viewer";
 
@@ -126,7 +126,7 @@ export async function agreementForViewer(
   const team = await currentTeam(ctx, orgId);
   const saved = team ? await latestSaved(ctx, team._id) : null;
   if (!team || !saved) return null;
-  const sprint = await currentSprint(ctx, orgId);
+  const sprint = await setupSprint(ctx, orgId);
   const tz = sprint?.timeZone ?? viewer.person.timeZone;
 
   const signedOn = (a: Pick<Doc<"agreements">, "_id" | "version">) =>

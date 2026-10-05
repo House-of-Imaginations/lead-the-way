@@ -20,7 +20,7 @@ import {
 import { timedViewerQuery, viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
-import { currentSprint, currentTeam } from "./lib/sprint";
+import { setupSprint, currentTeam } from "./lib/sprint";
 import { hourStart, startDateOf } from "./lib/sprintTime";
 import { getInOrg } from "./lib/tenant";
 import { contactValidator, toggleValidator } from "./tables/sprint";
@@ -131,7 +131,7 @@ export const sign = viewerMutation()({
       personId: viewer.person._id,
       signedAt: viewer.now,
     });
-    const sprint = await currentSprint(ctx, orgId);
+    const sprint = await setupSprint(ctx, orgId);
     await logEvent(ctx, {
       orgId,
       sprintId: sprint?._id,
@@ -170,7 +170,7 @@ export const current = timedViewerQuery("sprint:manage")({
     const orgId = viewer.org._id;
     const [team, sprint] = await Promise.all([
       currentTeam(ctx, orgId),
-      currentSprint(ctx, orgId),
+      setupSprint(ctx, orgId),
     ]);
     const latest = team ? await latestAgreement(ctx, team._id) : null;
     const saved =
@@ -312,7 +312,7 @@ export const save = viewerMutation("sprint:manage")({
         ...saved,
       });
     }
-    const sprint = await currentSprint(ctx, orgId);
+    const sprint = await setupSprint(ctx, orgId);
     await logEvent(ctx, {
       orgId,
       sprintId: sprint?._id,

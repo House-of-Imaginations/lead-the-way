@@ -34,7 +34,7 @@ import {
   TEAM_SIZES,
 } from "./lib/setupOptions";
 import {
-  currentSprint,
+  setupSprint,
   currentTeam,
   ensureSprint,
   gateOpen,
@@ -97,7 +97,7 @@ export const current = timedViewerQuery("sprint:manage")({
   ),
   handler: async (ctx) => {
     const { viewer } = ctx;
-    const sprint = await currentSprint(ctx, viewer.org._id);
+    const sprint = await setupSprint(ctx, viewer.org._id);
     if (!sprint) return null;
     const team = await currentTeam(ctx, viewer.org._id);
     const band = team?.sizeBand;
@@ -289,7 +289,7 @@ export const launchPage = timedViewerQuery("sprint:manage")({
     const orgId = viewer.org._id;
     const [team, sprint] = await Promise.all([
       currentTeam(ctx, orgId),
-      currentSprint(ctx, orgId),
+      setupSprint(ctx, orgId),
     ]);
     if (!team || !sprint) return null;
     const isDemo = viewer.org.isDemo;
@@ -364,7 +364,7 @@ export const launch = viewerMutation(
 
     const [team, sprint] = await Promise.all([
       currentTeam(ctx, orgId),
-      currentSprint(ctx, orgId),
+      setupSprint(ctx, orgId),
     ]);
     // A stale 07 in a second tab: say it launched, not that it isn't ready.
     if (sprint) requireDraft(sprint);
@@ -521,7 +521,7 @@ export const runAnother = viewerMutation("sprint:manage")({
     const orgId = viewer.org._id;
     // `now` is a getter that reads the clock; read it once.
     const now = viewer.now;
-    const sprint = await currentSprint(ctx, orgId);
+    const sprint = await setupSprint(ctx, orgId);
     if (sprint && sprint.launchedAt === undefined) {
       throwUserError(
         "SPRINT_DRAFT_EXISTS",

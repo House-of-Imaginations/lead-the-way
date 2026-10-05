@@ -11,7 +11,7 @@ import {
   moduleKeyValidator,
   requiredDone,
 } from "./lib/pathway";
-import { currentSprint, ensureSprint } from "./lib/sprint";
+import { setupSprint, ensureSprint } from "./lib/sprint";
 import { upsertAnswer } from "./lib/surveys";
 import { SURVEY_QUESTIONS } from "./tables/sprint";
 
@@ -68,7 +68,7 @@ export const forViewer = viewerQuery("sprint:manage")({
     });
     const required = modules.filter((m) => m.pathway === "required");
 
-    const sprint = await currentSprint(ctx, viewer.org._id);
+    const sprint = await setupSprint(ctx, viewer.org._id);
     // One row per phase and question (writer contract 5).
     const answers = sprint
       ? await ctx.db
@@ -130,7 +130,7 @@ export const completeModule = viewerMutation("sprint:manage")({
         completedAt: now,
       });
     }
-    const sprint = await currentSprint(ctx, viewer.org._id);
+    const sprint = await setupSprint(ctx, viewer.org._id);
     await logEvent(ctx, {
       orgId: viewer.org._id,
       sprintId: sprint?._id,

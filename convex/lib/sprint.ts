@@ -20,11 +20,13 @@ export async function currentTeam(
 }
 
 /**
- * The newest sprint, of any state. Setup, launch and the manager overview read
- * it, so a clone from "Run another sprint" opens setup as soon as it is made.
- * Employees read `launchedSprint` instead (P7a Ruling 15).
+ * The newest sprint, of any state: the one being set up. Setup, launch and the
+ * manager overview read it, so a clone from "Run another sprint" opens setup
+ * as soon as it is made. Anything that means "the sprint people are in" reads
+ * `launchedSprint` or `joinedSprint` instead (P7a Ruling 15, P7b-1). Callers
+ * are pinned in `tests/convex/setupSprint.test.ts`.
  */
-export async function currentSprint(
+export async function setupSprint(
   ctx: QueryCtx,
   orgId: Id<"orgs">,
 ): Promise<Doc<"sprints"> | null> {
@@ -64,7 +66,7 @@ export async function ensureSprint(
   viewer: Viewer,
 ): Promise<Doc<"sprints">> {
   const orgId = viewer.org._id;
-  const found = await currentSprint(ctx, orgId);
+  const found = await setupSprint(ctx, orgId);
   if (found) return found;
   const team = await currentTeam(ctx, orgId);
   if (!team) throwUserError("NOT_FOUND", "That no longer exists.");

@@ -11,7 +11,7 @@ import { badgeOf, issueBadge } from "../badges";
 import { projectOf } from "../projects";
 import { settingsOf } from "../settings";
 import { PATHWAY_MODULES, type ModuleKey } from "../pathway";
-import { currentSprint, currentTeam } from "../sprint";
+import { setupSprint, currentTeam } from "../sprint";
 import { upsertAnswer } from "../surveys";
 import { DEMO_CAST, castOf, demoUserId, type CastKey } from "./cast";
 import type { StepKey } from "./schedule";
@@ -244,7 +244,7 @@ async function teamOf(ctx: MutationCtx, orgId: Id<"orgs">) {
 }
 
 async function sprintOf(ctx: MutationCtx, orgId: Id<"orgs">) {
-  const sprint = await currentSprint(ctx, orgId);
+  const sprint = await setupSprint(ctx, orgId);
   if (!sprint) {
     throwUserError(
       "DEMO_BROKEN",

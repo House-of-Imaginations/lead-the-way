@@ -16,7 +16,7 @@ import {
 import { ROUTE_PERMISSION, isManager } from "./lib/orgs/permissions";
 import { snapshotSeries } from "./lib/snapshots";
 import {
-  currentSprint,
+  setupSprint,
   currentTeam,
   launchedSprint,
   setupGate,
@@ -174,7 +174,7 @@ export const overview = timedViewerQuery()({
     const org = viewer.org;
     const [team, sprint] = await Promise.all([
       currentTeam(ctx, org._id),
-      currentSprint(ctx, org._id),
+      setupSprint(ctx, org._id),
     ]);
     if (!team || !sprint) return null;
     // `now` is a getter that reads the clock; read it once.
@@ -442,7 +442,7 @@ export const outcomes = timedViewerQuery("team:insights")({
     // Off once a clone exists: the newest sprint is then the draft (Ruling 14).
     const canRunAnother =
       viewer.permissions.includes("sprint:manage") &&
-      (await currentSprint(ctx, org._id))?._id === sprint._id;
+      (await setupSprint(ctx, org._id))?._id === sprint._id;
 
     const { outcomes: final } = await snapshotSeries(
       ctx,

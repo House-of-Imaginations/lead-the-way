@@ -2,7 +2,7 @@ import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { throwUserError } from "../errors";
 import { takeDueSnapshots, takeOutcomes } from "../snapshots";
-import { currentSprint } from "../sprint";
+import { setupSprint } from "../sprint";
 import { DEMO_TARGETS, type DemoTarget } from "./schedule";
 import { STEPS, isStepKey } from "./script";
 
@@ -32,7 +32,7 @@ export async function moveClock(
    * may launch it.
    */
   const freeze = async (cutoff: number) => {
-    const sprint = await currentSprint(ctx, org._id);
+    const sprint = await setupSprint(ctx, org._id);
     await takeOutcomes(ctx, org, sprint, to, cutoff);
     await takeDueSnapshots(ctx, org, sprint, to, cutoff);
   };

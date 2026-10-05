@@ -13,12 +13,7 @@ import {
 } from "./orgs/permissions";
 import { firstNameOf, initialsOf } from "./orgs/people";
 import { SETUP_STEPS } from "./setupSteps";
-import {
-  currentSprint,
-  currentTeam,
-  launchedSprint,
-  setupGate,
-} from "./sprint";
+import { setupSprint, currentTeam, launchedSprint, setupGate } from "./sprint";
 import { sprintStatus } from "./sprintTime";
 import type { Viewer } from "./viewer";
 
@@ -108,7 +103,7 @@ export async function homeOf(
   const orgId = viewer.org._id;
   const { team, sprint } = known ?? {
     team: await currentTeam(ctx, orgId),
-    sprint: await currentSprint(ctx, orgId),
+    sprint: await setupSprint(ctx, orgId),
   };
   return team?.savedAt === undefined && sprint?.launchedAt === undefined
     ? "/setup/team"
@@ -273,7 +268,7 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
   const isDemo = viewer.org.isDemo && flagOn("demo");
   const [team, sprint] = await Promise.all([
     currentTeam(ctx, viewer.org._id),
-    currentSprint(ctx, viewer.org._id),
+    setupSprint(ctx, viewer.org._id),
   ]);
   const workspaces: Shell["workspaces"] = [];
   for (const seat of await seatsOfUser(ctx, viewer.userId)) {

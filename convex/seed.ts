@@ -18,7 +18,7 @@ import { demoTargetValidator } from "./lib/demo/schedule";
 import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
 import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
-import { currentSprint } from "./lib/sprint";
+import { setupSprint } from "./lib/sprint";
 
 /**
  * Seeding the Calder Lane demo. `npx convex run seed:reset` does all of it;
@@ -177,7 +177,7 @@ export const invite = internalMutation({
         "Seed the demo first: pnpm exec convex run seed:reset.",
       );
     }
-    const sprint = await currentSprint(ctx, org._id);
+    const sprint = await setupSprint(ctx, org._id);
     const roleId = insights
       ? await insightsRole(ctx, org._id, nowFor(org))
       : (await inviteRoleOf(ctx, org._id))._id;

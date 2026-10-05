@@ -9,7 +9,7 @@ import { joinByInvite } from "../../convex/lib/orgs/join";
 import { isPresented } from "../../convex/lib/projects";
 import { DEFAULT_SETTINGS, settingsOf } from "../../convex/lib/settings";
 import {
-  currentSprint,
+  setupSprint,
   DEFAULT_COURSE,
   ensureSprint,
 } from "../../convex/lib/sprint";
@@ -165,7 +165,7 @@ test("ensureSprint makes one draft and reuses it", async () => {
   expect(all).toHaveLength(1);
 });
 
-test("currentSprint returns the newest", async () => {
+test("setupSprint returns the newest", async () => {
   const t = harness();
   const { orgId } = await workspace(t);
   const newest = await t.run(async (ctx) => {
@@ -187,9 +187,9 @@ test("currentSprint returns the newest", async () => {
     await ctx.db.insert("sprints", row);
     return await ctx.db.insert("sprints", { ...row, startDate: "2026-10-14" });
   });
-  expect((await t.run((ctx) => currentSprint(ctx, orgId)))?._id).toBe(newest);
+  expect((await t.run((ctx) => setupSprint(ctx, orgId)))?._id).toBe(newest);
   const other = await workspace(t, "Birch Studio");
-  expect(await t.run((ctx) => currentSprint(ctx, other.orgId))).toBeNull();
+  expect(await t.run((ctx) => setupSprint(ctx, other.orgId))).toBeNull();
 });
 
 test("logEvent writes the event at the given time", async () => {
