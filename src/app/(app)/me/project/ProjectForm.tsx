@@ -450,6 +450,7 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
                   <Button
                     kind="tertiary"
                     size="md"
+                    className="max-[672px]:w-full"
                     disabled={reflecting}
                     onClick={saveReflectionNow}
                   >

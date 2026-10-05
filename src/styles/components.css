@@ -1370,7 +1370,9 @@ button.ltw-sn-acct:hover {
     min-height: 48px;
   }
   .ltw-cb-l,
-  .ltw-fd-remove {
+  .ltw-fd-remove,
+  .ltw-btn-md,
+  .ltw-btn-sm {
     min-height: 48px;
   }
   .ltw-toast button,

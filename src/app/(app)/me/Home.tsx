@@ -196,7 +196,7 @@ export function Home({
             <p className="text-body-02 text-text-secondary max-[672px]:hidden">
               Some ideas that fit this week&apos;s session:
             </p>
-            <ul className="flex flex-wrap gap-03">
+            <ul className="flex flex-wrap gap-03 max-[672px]:gap-y-0">
               {IDEAS.map((idea) => (
                 <li key={idea.label}>
                   {/* The hit area is 48px on phones; the tag inside keeps its 24px shape. */}
