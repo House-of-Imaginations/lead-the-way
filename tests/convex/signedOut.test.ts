@@ -39,6 +39,11 @@ const SIGNED_OUT: Record<
       join: null,
     },
   },
+  // The public credential: a slug nobody holds answers null (the page's 404).
+  "badges:publicBySlug": {
+    args: { slug: "dan-okafor-ai-fundamentals" },
+    answer: null,
+  },
 };
 
 afterEach(() => {

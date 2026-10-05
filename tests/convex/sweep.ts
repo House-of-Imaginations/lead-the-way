@@ -193,4 +193,6 @@ export const callsFor = ({
   "projects:setScreenshot": { storageId: null, expectOrgId: orgId },
   "projects:present": { expectOrgId: orgId },
   "showAndTell:board": {},
+  "badges:mine": {},
+  "badges:attachReflection": { expectOrgId: orgId },
 });
