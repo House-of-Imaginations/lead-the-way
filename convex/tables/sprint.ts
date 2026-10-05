@@ -270,4 +270,30 @@ export const sprintTables = {
   })
     .index("by_org", ["orgId"])
     .index("by_sprint_and_week", ["sprintId", "week"]),
+  /**
+   * A sprint's outcomes, taken once when it closes (P7a Rulings 9 and 10).
+   * One row per sprint, never rewritten. `counted` is who the private
+   * totals counted: no query returns it (Ruling 6). Aggregates only.
+   */
+  sprintOutcomes: defineTable({
+    orgId: v.id("orgs"),
+    sprintId: v.id("sprints"),
+    takenAt: v.number(),
+    counted: v.array(personId),
+    threshold: v.number(),
+    completed: aggregateValidator,
+    presented: aggregateValidator,
+    categories: v.array(
+      v.object({ label: projectCategoryValidator, count: v.number() }),
+    ),
+    answers: v.array(
+      v.object({
+        question: literals("aiConfidence", "comfortWithManager"),
+        before: aggregateValidator,
+        after: aggregateValidator,
+      }),
+    ),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_sprint", ["sprintId"]),
 };

@@ -1,9 +1,17 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { progressOf } from "./learning";
-import { count, loadCountable, thresholdOf } from "./privacy";
-import { projectOf } from "./projects";
-import { hourEnd } from "./sprintTime";
+import { PROJECT_CATEGORIES } from "../tables/sprint";
+import { completedCourse, progressOf } from "./learning";
+import {
+  aggregate,
+  count,
+  countSeated,
+  loadCountable,
+  loadSeated,
+  thresholdOf,
+} from "./privacy";
+import { isPresented, projectOf } from "./projects";
+import { closesAt, hourEnd } from "./sprintTime";
 
 /**
  * TEAM TOTALS, FROZEN ONCE A WEEK (Rulings 1 and 2). A live count moves the
@@ -14,12 +22,12 @@ import { hourEnd } from "./sprintTime";
  *
  * One writer, two triggers: `moveClock` for the demo, and
  * `internal.snapshots.take`, which `sprints.launch` schedules at each hour's
- * end for a real workspace, plus once a day after the last. Either takes
- * every due week that has no row, so a late or missed run is made good by
- * the next, and the extra run backs up the last week. A late or backstop run
- * reads the rows as they are when it runs, not as they were at the hour's
- * end: only the demo, which plays its history in order, can take a week as
- * of its hour (`cutoff`).
+ * end for a real workspace, plus once when the sprint closes, a day after
+ * the last. Either takes every due week that has no row, so a late or missed
+ * run is made good by the next, and the extra run backs up the last week and
+ * takes the outcomes row. A late or backstop run reads the rows as they are
+ * when it runs, not as they were at the hour's end: only the demo, which
+ * plays its history in order, can take a week as of its hour (`cutoff`).
  *
  * Only `sprint`'s weeks, and only if it is still this org's: a run scheduled
  * for one sprint never snapshots the next.
@@ -34,6 +42,9 @@ export async function takeDueSnapshots(
   if (!sprint || sprint.orgId !== org._id || sprint.launchedAt === undefined) {
     return 0;
   }
+  // The sprint closes once, a day after its last hour (Ruling 9). Before
+  // the weeks, so a run with no week left to take still closes it.
+  await takeOutcomes(ctx, org, sprint, now, cutoff);
   const due: number[] = [];
   for (
     let week = 1;
@@ -79,52 +90,164 @@ export async function takeDueSnapshots(
   return due.length;
 }
 
+/** The two check-in questions 16 compares (Ruling 10), in its order. */
+const OUTCOME_QUESTIONS = ["aiConfidence", "comfortWithManager"] as const;
+type OutcomeQuestion = (typeof OUTCOME_QUESTIONS)[number];
+
+/** A sprint's one outcomes row (Ruling 10), or null until it has closed. */
+export async function outcomesOf(
+  ctx: QueryCtx,
+  sprintId: Id<"sprints">,
+): Promise<Doc<"sprintOutcomes"> | null> {
+  return await ctx.db
+    .query("sprintOutcomes")
+    .withIndex("by_sprint", (q) => q.eq("sprintId", sprintId))
+    .unique();
+}
+
+/**
+ * THE SPRINT'S OUTCOMES, TAKEN ONCE WHEN IT CLOSES (Rulings 9 and 10, R-a).
+ * 16 reads only this row, never a live count. It is written at `closesAt`,
+ * the same instant the after check-in stops taking answers, so no answer
+ * can arrive after the total it belongs to (Review Focus 4). Never
+ * rewritten: a later run finds it and does nothing.
+ *
+ * - Completed and the averages count `loadCountable`: no manager, nobody
+ *   opted out, nobody asking. An average counts answers only; a skip (no
+ *   score) or no row is nobody answering (Review Focus 3).
+ * - Presented counts every seated presenter, opted out or not, because
+ *   presenting is public (R-i). The categories add up to it, so they are
+ *   left out when it is hidden.
+ * - `counted` and `threshold` let `snapshotSeries` and `statOf` judge the
+ *   row later (Rulings 6 and 7).
+ */
+async function takeOutcomes(
+  ctx: MutationCtx,
+  org: Doc<"orgs">,
+  sprint: Doc<"sprints">,
+  now: number,
+  cutoff: number,
+): Promise<void> {
+  if (closesAt(sprint) > cutoff) return;
+  if (await outcomesOf(ctx, sprint._id)) return;
+
+  // Each person's own rows, read once: one progress row per person and
+  // sprint, and at most six check-in rows (writer contract 5).
+  const countable = await loadCountable(ctx, org, null);
+  const finished = new Set<Id<"people">>();
+  const responses = new Map<Id<"people">, Doc<"surveyResponses">[]>();
+  for (const person of countable) {
+    if (completedCourse(await progressOf(ctx, person._id, sprint._id))) {
+      finished.add(person._id);
+    }
+    responses.set(
+      person._id,
+      await ctx.db
+        .query("surveyResponses")
+        .withIndex("by_person_and_sprint", (q) =>
+          q.eq("personId", person._id).eq("sprintId", sprint._id),
+        )
+        .take(6),
+    );
+  }
+  /** That person's score, or undefined for no row or a skip. */
+  const scoreOf = (
+    person: Doc<"people">,
+    phase: "before" | "after",
+    question: OutcomeQuestion,
+  ) =>
+    responses
+      .get(person._id)
+      ?.find((r) => r.phase === phase && r.question === question)?.score;
+
+  const seated = await loadSeated(ctx, org);
+  const presenters = new Map<Id<"people">, Doc<"projects">>();
+  for (const person of seated) {
+    const project = await projectOf(ctx, person._id, sprint._id);
+    if (project && isPresented(project)) presenters.set(person._id, project);
+  }
+  const presented = countSeated(seated, (p) => presenters.has(p._id), org);
+  const projects = [...presenters.values()];
+  const categories = presented.hidden
+    ? []
+    : PROJECT_CATEGORIES.map((label) => ({
+        label,
+        count: projects.filter((p) => p.category === label).length,
+      })).filter((c) => c.count > 0);
+
+  await ctx.db.insert("sprintOutcomes", {
+    orgId: org._id,
+    sprintId: sprint._id,
+    takenAt: now,
+    counted: countable.map((p) => p._id),
+    threshold: thresholdOf(org),
+    completed: count(countable, (p) => finished.has(p._id), org),
+    presented,
+    categories,
+    answers: OUTCOME_QUESTIONS.map((question) => ({
+      question,
+      before: aggregate(countable, (p) => scoreOf(p, "before", question), org),
+      after: aggregate(countable, (p) => scoreOf(p, "after", question), org),
+    })),
+  });
+}
+
 export type SeriesRow<T> = { row: T; comparable: boolean };
 
 /**
- * WHAT A READER MAY SET SIDE BY SIDE (Ruling 6, R-e). Two totals over cohorts
- * one person apart difference back to that person: week 1 counts Mei, week 2
- * doesn't (she opted out, or now reads totals), so week 1 less week 2 is Mei.
- * Walking the weeks in order, a row is comparable only when it stored its
- * cohort, the reader isn't in it (they know their own part), and it differs
- * from EVERY row already shown by nobody or by at least the threshold.
- * Checking every shown row, not just the last, is what stops week 3 being
- * read against week 1, whether week 2 was hidden or shown (two passing steps
- * can still land one person apart). After a small change, totals stay hidden
- * for the rest of the sprint; the copy says why, naming nobody.
+ * WHAT A READER MAY SET SIDE BY SIDE (Ruling 6, R-e): the weekly rows in week
+ * order, then the outcomes row last. Two totals over cohorts one person
+ * apart difference back to that person: week 1 counts Mei, week 2 doesn't
+ * (she opted out, or now reads totals), so week 1 less week 2 is Mei. A row
+ * is comparable only when it stored its cohort, the reader isn't in it (they
+ * know their own part), and it differs from EVERY row already shown by
+ * nobody or by at least the threshold. Checking every shown row, not just
+ * the last, is what stops week 3 being read against week 1, whether week 2
+ * was hidden or shown (two passing steps can still land one person apart).
+ * After a small change, totals stay hidden for the rest of the sprint; the
+ * copy says why, naming nobody.
  *
- * The one place this is decided, so 08 and 16 can't disagree. `outcomes` is
- * null for now: the sprint's outcomes row, walked after the weeks, comes with
- * `sprintOutcomes`.
+ * The one place this is decided, so 08 and 16 can't disagree. `counted`
+ * never leaves this file's callers.
  */
 export async function snapshotSeries(
   ctx: QueryCtx,
   sprint: Doc<"sprints">,
   org: Doc<"orgs">,
   readerId: Id<"people">,
-): Promise<{ weeks: SeriesRow<Doc<"teamSnapshots">>[]; outcomes: null }> {
+): Promise<{
+  weeks: SeriesRow<Doc<"teamSnapshots">>[];
+  outcomes: SeriesRow<Doc<"sprintOutcomes">> | null;
+}> {
   // One row per week (writer contract), so a sprint's weeks bound the read.
-  const rows = await ctx.db
+  const weekly = await ctx.db
     .query("teamSnapshots")
     .withIndex("by_sprint_and_week", (q) => q.eq("sprintId", sprint._id))
     .take(sprint.weeks);
+  const final = await outcomesOf(ctx, sprint._id);
+
   // Every row shown so far: comparability isn't transitive, so a row is
   // checked against each, not only the last.
   const shown: ReadonlySet<Id<"people">>[] = [];
-  const comparable = (counted: Id<"people">[] | undefined) => {
-    if (!counted || counted.includes(readerId)) return false;
-    const cohort = new Set(counted);
+  const mark = <R extends { counted?: Id<"people">[] }>(
+    row: R,
+  ): SeriesRow<R> => {
+    if (!row.counted || row.counted.includes(readerId)) {
+      return { row, comparable: false };
+    }
+    const cohort = new Set(row.counted);
     for (const prev of shown) {
       let changed = 0;
       for (const id of cohort) if (!prev.has(id)) changed++;
       for (const id of prev) if (!cohort.has(id)) changed++;
-      if (changed > 0 && changed < thresholdOf(org)) return false;
+      if (changed > 0 && changed < thresholdOf(org)) {
+        return { row, comparable: false };
+      }
     }
     shown.push(cohort);
-    return true;
+    return { row, comparable: true };
   };
-  return {
-    weeks: rows.map((row) => ({ row, comparable: comparable(row.counted) })),
-    outcomes: null,
-  };
+  const weeks = weekly.map(mark);
+  // The outcomes row last, against every week shown.
+  return { weeks, outcomes: final ? mark(final) : null };
 }

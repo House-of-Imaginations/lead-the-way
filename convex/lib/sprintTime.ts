@@ -102,6 +102,16 @@ export function hourEnd(sprint: HourOf, week: number): number {
 }
 
 /**
+ * When the sprint closes (P7a Ruling 9): a day after its last hour ends.
+ * The outcomes row is taken then (`takeDueSnapshots`), the after check-in
+ * stops (`afterCheckInOpen`), and `sprints.launch` schedules its backstop
+ * run for this instant.
+ */
+export function closesAt(sprint: HourOf & { weeks: number }): number {
+  return hourEnd(sprint, sprint.weeks) + 86_400_000;
+}
+
+/**
  * Which week of the sprint `now` is in (Ruling 10). Weeks are calendar weeks
  * in the sprint's time zone: week 1 starts at 00:00 on the Monday of the
  * first hour's week. 0 before that; not clamped after the last week.

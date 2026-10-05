@@ -179,6 +179,7 @@ export const callsFor = ({
   "sprints:launchPage": {},
   "sprints:launch": { emails: [], message: "", expectOrgId: orgId },
   "manager:overview": {},
+  "manager:outcomes": {},
   "surveys:checkIn": { phase: "before", answers: null, expectOrgId: orgId },
   "me:home": {},
   "me:sprint": {},

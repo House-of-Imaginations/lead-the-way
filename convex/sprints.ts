@@ -43,6 +43,7 @@ import {
 } from "./lib/sprint";
 import {
   addDays,
+  closesAt,
   dayOf,
   hourEnd,
   hourPattern,
@@ -434,7 +435,8 @@ export const launch = viewerMutation(
     // Each week's team totals are frozen when its hour ends (Ruling 2). On a
     // virtual clock a real `runAt` would fire at once, so `moveClock` takes
     // them instead. Each run makes good a missed earlier one; the last week
-    // has nothing after it, so one more run a day later backs it up.
+    // has nothing after it, so one more run when the sprint closes backs it
+    // up and takes the outcomes row (P7a Ruling 9).
     if (!virtualClock(viewer.org)) {
       const stored = { ...sprint, startDate: startDateOf(sprint, now) };
       const args = { orgId, sprintId: sprint._id };
@@ -446,7 +448,7 @@ export const launch = viewerMutation(
         );
       }
       await ctx.scheduler.runAt(
-        hourEnd(stored, sprint.weeks) + 86_400_000,
+        closesAt(stored),
         internal.snapshots.take,
         args,
       );

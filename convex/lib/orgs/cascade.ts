@@ -19,6 +19,7 @@ export const ORG_TABLES = [
   "settings",
   "events",
   "teamSnapshots",
+  "sprintOutcomes",
   "demoScript",
 ] as const;
 

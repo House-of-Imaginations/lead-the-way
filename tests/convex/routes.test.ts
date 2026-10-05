@@ -27,14 +27,18 @@ const PAGES: Partial<
     name: "api.agreements.current",
     fn: api.agreements.current,
   },
+  "/manager/outcomes": {
+    name: "api.manager.outcomes",
+    fn: api.manager.outcomes,
+  },
   "/manager/learning": {
     name: "api.pathway.forViewer",
     fn: api.pathway.forViewer,
   },
 };
 
-/** Mapped routes with no page and query yet. Task 4 adds `/manager/outcomes`. */
-const NO_ROW_YET = ["/manager/outcomes"];
+/** Mapped routes with no page and query yet. */
+const NO_ROW_YET: string[] = [];
 
 const MANAGER_PERMISSIONS: Permission[] = ["sprint:manage", "team:insights"];
 

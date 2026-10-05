@@ -666,3 +666,26 @@ test("stored rows keep their threshold", async () => {
     helper: "Shown from next week's totals",
   });
 });
+
+test("week 4's row has no next week, so a lowered threshold names the one it was taken under (Q-2)", async () => {
+  const { t, orgId, as } = await calderLane();
+  // Seven are seated, so at 8 every week's row is stored hidden, n 7.
+  await t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold: 8 }));
+  await move(t, "complete");
+  // Lowered after the close: 7 would clear 5, but no value was stored, and
+  // no weekly row comes after week 4 to show it.
+  await t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold: 5 }));
+  const hidden = { kind: "hidden", helper: "Hidden until 8 responses" };
+  const overview = await as("priya").query(api.manager.overview, {});
+  expect(overview).toMatchObject({
+    phase: "complete",
+    sprint: { projects: hidden },
+    team: {
+      sessionDone: { label: "Week 4 session done", stat: hidden },
+      tasksUnderway: { stat: hidden },
+    },
+  });
+  expect(JSON.stringify(overview)).not.toContain(
+    "Shown from next week's totals",
+  );
+});

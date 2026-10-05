@@ -21,6 +21,7 @@ import {
   sprintInvites,
 } from "./lib/sprint";
 import {
+  closesAt,
   hourEnd,
   hourLabel,
   hourLong,
@@ -118,17 +119,26 @@ const COHORT_CHANGED = "Hidden after a change to who is counted";
  * A stored total on a tile (Ruling 7), checked against the threshold now and
  * the one it was taken under (a row with none was taken at 5). A total hidden
  * under an older, higher threshold has no value stored, so lowering the
- * threshold can't show it: it says the next row will. Whether the row exists
- * and may be compared at all (Ruling 6) is the caller's to decide.
+ * threshold can't show it: a weekly row says the next row will; the final
+ * row (`final`: the outcomes row, or week 4's) has no next row, so it says
+ * what it was taken under. Whether the row exists and may be compared at all
+ * (Ruling 6) is the caller's to decide.
  */
 function statOf(
   total: Aggregate,
   rowThreshold: number | undefined,
   org: Doc<"orgs">,
+  final = false,
 ): Stat {
   const now = thresholdOf(org);
-  if (total.hidden && total.n >= now && (rowThreshold ?? MIN_THRESHOLD) > now) {
-    return { kind: "hidden", helper: "Shown from next week's totals" };
+  const taken = rowThreshold ?? MIN_THRESHOLD;
+  if (total.hidden && total.n >= now && taken > now) {
+    return {
+      kind: "hidden",
+      helper: final
+        ? `Hidden until ${taken} responses`
+        : "Shown from next week's totals",
+    };
   }
   if (total.hidden || total.n < now) {
     return { kind: "hidden", helper: `Hidden until ${now} responses` };
@@ -241,7 +251,13 @@ export const overview = timedViewerQuery()({
         ? { kind: "pending", helper: pending }
         : !latest.comparable
           ? { kind: "hidden", helper: COHORT_CHANGED }
-          : statOf(latest.row[key], latest.row.threshold, org);
+          : statOf(
+              latest.row[key],
+              latest.row.threshold,
+              org,
+              // The last week has no next weekly row to show it (Q-2).
+              latest.row.week === sprint.weeks,
+            );
 
     const saved = await latestSaved(ctx, team._id);
     let agreement: Overview["agreement"] = {
@@ -312,6 +328,169 @@ export const overview = timedViewerQuery()({
               },
             }
           : null,
+    };
+  },
+});
+
+/** 16's answer (Rulings 11 and 12). Every label is made here. */
+export const outcomesValidator = v.union(
+  v.object({
+    state: v.literal("pending"),
+    title: v.string(), // "Sprint in progress" or "Sprint complete"
+    helper: v.string(), // "Outcomes appear on Thu 1 Oct, the day after the last protected hour."
+    canRunAnother: v.literal(false),
+    inviteLink: v.string(), // "/signup?ref=calder-lane": the page prefixes window.location.origin
+  }),
+  v.object({
+    state: v.literal("closed"),
+    title: v.literal("Sprint complete"),
+    tag: v.string(), // "Finished 30 Sep"
+    intro: v.string(),
+    canRunAnother: v.boolean(), // sprint:manage, and the newest sprint is this one
+    inviteLink: v.string(),
+    participation: v.object({
+      invited: v.number(),
+      completed: statValidator,
+      presented: statValidator,
+    }),
+    beforeAfter: v.object({
+      caption: v.string(), // "Team average on a 1 to 5 scale, 5 responses before and 7 after"
+      beforeLabel: v.string(), // "Before, 8 Sep"
+      afterLabel: v.string(), // "After, 30 Sep"
+      questions: v.array(
+        v.object({
+          title: v.string(),
+          quote: v.union(v.null(), v.string()),
+          before: statValidator,
+          after: statValidator,
+        }),
+      ),
+    }),
+    projects: v.object({
+      caption: v.union(v.null(), v.string()), // "6 projects completed", null when hidden
+      categories: v.array(v.object({ label: v.string(), count: v.number() })),
+    }),
+  }),
+);
+export type Outcomes = Infer<typeof outcomesValidator>;
+
+/** A total on a row that isn't comparable (Ruling 6). It never says who changed. */
+const CHANGED: Stat = { kind: "hidden", helper: COHORT_CHANGED };
+
+/** 16's two questions, as the spec words them (spec 3.3, "Survey"). */
+const QUESTIONS: Record<
+  "aiConfidence" | "comfortWithManager",
+  { title: string; quote: string | null }
+> = {
+  aiConfidence: { title: "Confidence using AI at work", quote: null },
+  comfortWithManager: {
+    title: "Comfort discussing AI with my manager",
+    quote: "I feel comfortable telling my manager how I use AI at work.",
+  },
+};
+
+/**
+ * 16, the sprint's outcomes. Reads only the stored `sprintOutcomes` row,
+ * through `snapshotSeries`, never a live count (R-a; the static test in
+ * tests/convex/outcomes.test.ts keeps `count` and `aggregate` out of this
+ * file). Pending until the sprint closes (Ruling 12), null before launch.
+ * Invited is the live, non-revoked invitation count, as on 08 (Ruling 11).
+ * Dates come from the sprint, never from a response's time.
+ */
+export const outcomes = timedViewerQuery("team:insights")({
+  args: {},
+  returns: v.union(v.null(), outcomesValidator),
+  handler: async (ctx): Promise<Outcomes | null> => {
+    const { viewer } = ctx;
+    const org = viewer.org;
+    // Task 6 reads `launchedSprint` here instead (Ruling 15).
+    const sprint = await currentSprint(ctx, org._id);
+    const launchedAt = sprint?.launchedAt;
+    if (!sprint || launchedAt === undefined) return null;
+    // `now` is a getter that reads the clock; read it once.
+    const now = viewer.now;
+    const tz = sprint.timeZone;
+    const inviteLink = `/signup?ref=${org.slug}`;
+
+    const { outcomes: final } = await snapshotSeries(
+      ctx,
+      sprint,
+      org,
+      viewer.person._id,
+    );
+    if (!final) {
+      const day = parts(closesAt(sprint), tz, {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      });
+      return {
+        state: "pending",
+        title:
+          sprintPhase(sprint, now) === "complete"
+            ? "Sprint complete"
+            : "Sprint in progress",
+        helper: `Outcomes appear on ${day.weekday} ${day.day} ${day.month}, the day after the last protected hour.`,
+        canRunAnother: false,
+        inviteLink,
+      };
+    }
+
+    const { row, comparable } = final;
+    // Ruling 7, final: no "next week" on the outcomes row.
+    const stat = (total: Aggregate): Stat =>
+      comparable ? statOf(total, row.threshold, org, true) : CHANGED;
+    const invites = (await sprintInvites(ctx, org._id, sprint._id)).filter(
+      (i) => i.status !== "revoked",
+    );
+    const presented = stat(row.presented);
+    const questions = row.answers.map((a) => ({
+      ...QUESTIONS[a.question],
+      before: stat(a.before),
+      after: stat(a.after),
+    }));
+    // Each phase's smallest shown n; a phase hidden throughout says nothing.
+    // "responses" once, after the first number: "5 responses before and 7 after".
+    const clauses = (["before", "after"] as const)
+      .flatMap((phase) => {
+        const ns = questions.flatMap((q) => {
+          const s = q[phase];
+          return s.kind === "shown" ? [s.of] : [];
+        });
+        return ns.length ? [{ n: Math.min(...ns), phase }] : [];
+      })
+      .map(({ n, phase }, i) => `${n} ${i === 0 ? "responses " : ""}${phase}`);
+
+    return {
+      state: "closed",
+      title: "Sprint complete",
+      tag: `Finished ${dayMon(hourEnd(sprint, sprint.weeks), tz).join(" ")}`,
+      intro:
+        "Your team made AI learning part of the working week. Here is what changed, as a team.",
+      // Task 6 adds "and the newest sprint is this one".
+      canRunAnother: viewer.permissions.includes("sprint:manage"),
+      inviteLink,
+      participation: {
+        invited: invites.length,
+        completed: stat(row.completed),
+        presented,
+      },
+      beforeAfter: {
+        caption: ["Team average on a 1 to 5 scale", clauses.join(" and ")]
+          .filter(Boolean)
+          .join(", "),
+        beforeLabel: `Before, ${dayMon(launchedAt, tz).join(" ")}`,
+        afterLabel: `After, ${dayMon(hourStart(sprint, sprint.weeks), tz).join(" ")}`,
+        questions,
+      },
+      // The categories add up to presented, so they go wherever it is hidden.
+      projects:
+        presented.kind === "shown"
+          ? {
+              caption: `${presented.value} ${presented.value === 1 ? "project" : "projects"} completed`,
+              categories: row.categories,
+            }
+          : { caption: null, categories: [] },
     };
   },
 });

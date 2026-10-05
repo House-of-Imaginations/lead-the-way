@@ -3,6 +3,7 @@ import { viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
 import { currentSprint } from "./lib/sprint";
+import { closesAt } from "./lib/sprintTime";
 import {
   afterCheckInOpen,
   answeredAfter,
@@ -15,7 +16,8 @@ import { phaseValidator } from "./tables/sprint";
  * The two employee check-ins (Ruling 7). Before: once, right after joining,
  * and skippable; a skip writes rows (Ruling 6) so the script leaves it alone,
  * and logs nothing, because a skip is not an answer. After: from week 4 until
- * answered, no skip. Rows are the viewer's own; nobody else reads them here.
+ * answered or the sprint closes, no skip. Rows are the viewer's own; nobody
+ * else reads them here.
  */
 export const checkIn = viewerMutation()({
   args: {
@@ -62,7 +64,9 @@ export const checkIn = viewerMutation()({
     } else if (!afterCheckInOpen(sprint, now)) {
       throwUserError(
         "CHECK_IN_CLOSED",
-        `The after check-in opens in week ${sprint.weeks}.`,
+        now >= closesAt(sprint)
+          ? "The after check-in has closed."
+          : `The after check-in opens in week ${sprint.weeks}.`,
       );
     }
 

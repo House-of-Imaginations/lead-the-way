@@ -257,11 +257,17 @@ test("survey answers are read by question only through the privacy layer", () =>
 /**
  * The files that may touch `loadSeated` (raw seated people), `signatureCount`
  * (a live count) or `countSeated` (a count over whatever list it is handed):
- * the privacy layer, the overview and 10's `agreementForViewer`. A new reader
- * of any of them is a new place a manager could see a number, so it has to be
- * added here on purpose.
+ * the privacy layer, the overview, 10's `agreementForViewer`, and the outcomes
+ * writer (presented counts every seated presenter, R-i). A new reader of any
+ * of them is a new place a manager could see a number, so it has to be added
+ * here on purpose.
  */
-const SEATED_FILES = ["lib/privacy.ts", "manager.ts", "lib/agreement.ts"];
+const SEATED_FILES = [
+  "lib/privacy.ts",
+  "manager.ts",
+  "lib/agreement.ts",
+  "lib/snapshots.ts",
+];
 
 test("the seated team and the live signature count are read only where the allowlist says", () => {
   const dir = new URL("../../convex/", import.meta.url);
