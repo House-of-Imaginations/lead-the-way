@@ -160,7 +160,7 @@ const PROJECTS: Record<ProjectKey, Canon> = {
     change:
       "Copilot turns my notes into an action list, which I check before sending.",
     after: "Action lists go out the same afternoon.",
-    resultTypes: ["Faster turnaround"],
+    resultTypes: ["Time saved"],
     headline: "Action lists sent the same day",
   },
   sarah: {
@@ -170,7 +170,7 @@ const PROJECTS: Record<ProjectKey, Canon> = {
     change:
       "Copilot writes a first draft from my call notes; I rewrite it in my voice.",
     after: "Follow-ups go out sooner and read more consistently.",
-    resultTypes: ["Time saved", "Quality improved"],
+    resultTypes: ["Time saved", "Quality improvement"],
     headline: "Follow-ups sent within the hour",
   },
   tomas: {
@@ -192,7 +192,7 @@ const PROJECTS: Record<ProjectKey, Canon> = {
     change:
       "Copilot drafts the standard sections from our approved wording; I tailor and check them.",
     after: "Proposals start from a checked draft instead of a blank page.",
-    resultTypes: ["Time saved", "Quality improved"],
+    resultTypes: ["Time saved", "Quality improvement"],
     headline: "Proposals start from a checked draft",
   },
   luca: {
@@ -203,7 +203,7 @@ const PROJECTS: Record<ProjectKey, Canon> = {
     change:
       "Copilot explains each formula so I can check it does what the sheet says.",
     after: "Formula errors are caught before a sheet is shared.",
-    resultTypes: ["Quality improved"],
+    resultTypes: ["Quality improvement"],
     headline: "Errors caught before sharing",
   },
 };

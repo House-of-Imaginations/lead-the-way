@@ -100,6 +100,18 @@ export async function fixtures(t: T): Promise<Ids> {
   });
 }
 
+/** Valid project fields, so the gate is what answers. */
+const PROJECT = {
+  title: "Weekly report",
+  before: "",
+  change: "",
+  after: "",
+  resultTypes: [],
+  headline: "",
+  humanReviewed: true,
+  dataSafe: true,
+};
+
 export const callsFor = ({
   orgId,
   roleId,
@@ -171,4 +183,14 @@ export const callsFor = ({
   "me:home": {},
   "me:sprint": {},
   "learning:continueSession": { expectOrgId: orgId },
+  "projects:mine": {},
+  "projects:saveDraft": { ...PROJECT, expectOrgId: orgId },
+  "projects:save": { ...PROJECT, expectOrgId: orgId },
+  "projects:saveReflection": { learned: "", howChecked: "", expectOrgId: orgId },
+  "projects:generateUploadUrl": { expectOrgId: orgId },
+  // null, not the fixture file: a foreign id would make the tenant sweep
+  // expect NOT_FOUND from the handler instead of WORKSPACE_CHANGED.
+  "projects:setScreenshot": { storageId: null, expectOrgId: orgId },
+  "projects:present": { expectOrgId: orgId },
+  "showAndTell:board": {},
 });
