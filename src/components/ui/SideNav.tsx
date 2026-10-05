@@ -63,6 +63,8 @@ export type SideNavProps = {
   resizable?: boolean;
   /** The saved state as the server read it from the cookie: the first paint matches. */
   initialState?: NavState | null;
+  /** Called with a link's href on hover and focus, so the app can warm that page's data. */
+  onWarm?: (href: string) => void;
 };
 
 const SNAP = 140;
@@ -122,6 +124,7 @@ export function SideNav({
   accountMenu,
   resizable = true,
   initialState = null,
+  onWarm,
 }: SideNavProps) {
   const serverRaw = initialState ? serializeNav(initialState) : "";
   const raw = useSyncExternalStore(subscribe, getSnapshot, () => serverRaw);
@@ -253,6 +256,9 @@ export function SideNav({
                 key={label}
                 className="ltw-sn-a"
                 href={href}
+                prefetch
+                onPointerEnter={() => onWarm?.(href)}
+                onFocus={() => onWarm?.(href)}
                 title={collapsed ? label : undefined}
                 aria-current={current ? "page" : undefined}
               >
@@ -301,6 +307,9 @@ export function SideNav({
                     <Link
                       className="ltw-sn-a"
                       href={href}
+                      prefetch
+                      onPointerEnter={() => onWarm?.(href)}
+                      onFocus={() => onWarm?.(href)}
                       title={collapsed ? label : undefined}
                       data-state={state}
                       aria-current={state === "current" ? "step" : undefined}
