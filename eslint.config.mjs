@@ -21,6 +21,7 @@ const eslintConfig = defineConfig([
                 "!@convex/lib/agreementLimits",
                 "!@convex/lib/inviteRules",
                 "!@convex/lib/pathwayModules",
+                "!@convex/lib/profileFields",
                 "!@convex/lib/projectLimits",
                 "!@convex/lib/setupOptions",
                 "!@convex/lib/setupSteps",

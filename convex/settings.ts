@@ -3,7 +3,10 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
-import { firstNameOf } from "./lib/orgs/people";
+import { saveDisplayName } from "./lib/account/profile";
+import { throwUserError } from "./lib/errors";
+import { firstNameOf, initialsOf } from "./lib/orgs/people";
+import { MAX_JOB_TITLE, TIME_ZONES } from "./lib/profileFields";
 import { thresholdOf } from "./lib/privacy";
 import { settingsOf, writeSettings, type Settings } from "./lib/settings";
 
@@ -89,6 +92,47 @@ export const setToggle = viewerMutation()({
     const patch: Partial<Settings> = {};
     patch[key] = on;
     await writeSettings(ctx, ctx.viewer.person, patch);
+    return null;
+  },
+});
+
+/**
+ * Profile's Save changes (17 and 19). The name is written to the seat, which
+ * every view of this workspace reads, and to the account, which the next
+ * workspace joined starts from (Ruling 5). Email is read-only (Ruling 6).
+ * The zone is the person's own: it never moves a sprint, whose snapshot and
+ * reminder runs are scheduled in the sprint's zone (R-h).
+ */
+export const saveProfile = viewerMutation()({
+  args: {
+    name: v.string(),
+    jobTitle: v.string(),
+    // R-h: a half-hour zone is refused by the validator itself.
+    timeZone: literals(...TIME_ZONES),
+    captionsByDefault: v.boolean(),
+    reduceMotion: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { viewer } = ctx;
+    const name = await saveDisplayName(ctx, viewer.userId, args.name);
+    const jobTitle = args.jobTitle.trim();
+    if (jobTitle.length > MAX_JOB_TITLE) {
+      throwUserError(
+        "FIELD_REQUIRED",
+        `A job title can be at most ${MAX_JOB_TITLE} characters.`,
+      );
+    }
+    await ctx.db.patch(viewer.person._id, {
+      name,
+      initials: initialsOf(name),
+      jobTitle,
+      timeZone: args.timeZone,
+    });
+    await writeSettings(ctx, viewer.person, {
+      captionsByDefault: args.captionsByDefault,
+      reduceMotion: args.reduceMotion,
+    });
     return null;
   },
 });
