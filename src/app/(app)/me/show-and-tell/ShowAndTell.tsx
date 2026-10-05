@@ -91,14 +91,16 @@ function Project({
   return (
     <section aria-labelledby="project-title" className="flex flex-col gap-01">
       <div className="flex items-end justify-between gap-07 bg-text-primary p-06 text-background max-[672px]:flex-col max-[672px]:items-start max-[672px]:p-05">
-        <div className="flex min-w-0 flex-col gap-03">
+        <div className="flex min-w-0 flex-1 flex-col gap-03">
           <p className="text-label-01">Your project</p>
-          <h2 id="project-title" className="text-heading-02">
+          <h2 id="project-title" className="text-heading-02 text-balance">
             {mine.title}
           </h2>
         </div>
+        {/* 14 sets "40 min" beside a one-line title: the free-text headline
+            stays compact so the title keeps the width. */}
         {mine.headline ? (
-          <p className="max-w-[16ch] shrink-0 text-right text-display-03 max-[672px]:max-w-none max-[672px]:text-left max-[672px]:text-heading-01">
+          <p className="max-w-[14ch] shrink-0 text-right text-heading-01 max-[672px]:max-w-none max-[672px]:text-left">
             {mine.headline}
           </p>
         ) : null}
