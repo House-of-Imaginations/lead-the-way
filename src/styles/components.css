@@ -959,6 +959,9 @@ input.ltw-field:read-only:not(:disabled) {
   background: var(--button-disabled);
   cursor: not-allowed;
 }
+.ltw-toggle[aria-disabled="true"] {
+  cursor: progress;
+}
 
 /* SelectableTile text blocks */
 .ltw-tile-title,
@@ -1380,7 +1383,8 @@ button.ltw-sn-acct:hover {
     position: relative;
   }
   .ltw-toast button::after,
-  .ltw-tag button::after {
+  .ltw-tag button::after,
+  .ltw-toggle::before {
     content: "";
     position: absolute;
     top: 50%;

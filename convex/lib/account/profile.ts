@@ -1,5 +1,7 @@
 import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
+import { throwUserError } from "../errors";
+import { MAX_DISPLAY_NAME } from "../profileFields";
 
 /**
  * Find somebody's profile row. The one read every account function starts with,
@@ -15,8 +17,26 @@ export async function profileOf(
     .unique();
 }
 
-/** A display name is one line of a person's own choosing, not an identity claim. */
-export const MAX_DISPLAY_NAME = 40;
+/** Validate and trim a display name, then write it to the account's profile. */
+export async function saveDisplayName(
+  ctx: MutationCtx,
+  userId: string,
+  raw: string,
+): Promise<string> {
+  const name = raw.trim();
+  if (!name) throwUserError("NAME_REQUIRED", "A name is required.");
+  if (name.length > MAX_DISPLAY_NAME) {
+    throwUserError(
+      "NAME_REQUIRED",
+      `A name can be at most ${MAX_DISPLAY_NAME} characters.`,
+    );
+  }
+  // Not `ensureProfile`: it imports this module, and the name is already in hand.
+  const profile = await profileOf(ctx, userId);
+  if (profile) await ctx.db.patch(profile._id, { displayName: name });
+  else await insertProfile(ctx, userId, name);
+  return name;
+}
 
 export async function insertProfile(
   ctx: MutationCtx,

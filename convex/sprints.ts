@@ -34,7 +34,7 @@ import {
   TEAM_SIZES,
 } from "./lib/setupOptions";
 import {
-  currentSprint,
+  setupSprint,
   currentTeam,
   ensureSprint,
   gateOpen,
@@ -51,6 +51,7 @@ import {
   hourStart,
   mondayOf,
   nextMonthDate,
+  reminderAt,
   spanLabel,
   sprintPhase,
   startDateOf,
@@ -97,7 +98,7 @@ export const current = timedViewerQuery("sprint:manage")({
   ),
   handler: async (ctx) => {
     const { viewer } = ctx;
-    const sprint = await currentSprint(ctx, viewer.org._id);
+    const sprint = await setupSprint(ctx, viewer.org._id);
     if (!sprint) return null;
     const team = await currentTeam(ctx, viewer.org._id);
     const band = team?.sizeBand;
@@ -289,7 +290,7 @@ export const launchPage = timedViewerQuery("sprint:manage")({
     const orgId = viewer.org._id;
     const [team, sprint] = await Promise.all([
       currentTeam(ctx, orgId),
-      currentSprint(ctx, orgId),
+      setupSprint(ctx, orgId),
     ]);
     if (!team || !sprint) return null;
     const isDemo = viewer.org.isDemo;
@@ -364,7 +365,7 @@ export const launch = viewerMutation(
 
     const [team, sprint] = await Promise.all([
       currentTeam(ctx, orgId),
-      currentSprint(ctx, orgId),
+      setupSprint(ctx, orgId),
     ]);
     // A stale 07 in a second tab: say it launched, not that it isn't ready.
     if (sprint) requireDraft(sprint);
@@ -447,7 +448,8 @@ export const launch = viewerMutation(
     // virtual clock a real `runAt` would fire at once, so `moveClock` takes
     // them instead. Each run makes good a missed earlier one; the last week
     // has nothing after it, so one more run when the sprint closes backs it
-    // up and takes the outcomes row (P7a Ruling 9).
+    // up and takes the outcomes row (P7a Ruling 9). The reminder runs are
+    // scheduled the same way, and the demo never gets them.
     if (!virtualClock(viewer.org)) {
       const stored = { ...sprint, startDate: startDateOf(sprint, now) };
       const args = { orgId, sprintId: sprint._id };
@@ -463,6 +465,17 @@ export const launch = viewerMutation(
         internal.snapshots.take,
         args,
       );
+      // The day-before reminders (S-d). A week whose reminder time has
+      // already passed gets none: the launch invitation names the first hour.
+      for (let week = 1; week <= sprint.weeks; week++) {
+        const at = reminderAt(stored, week);
+        if (at > now) {
+          await ctx.scheduler.runAt(at, internal.reminders.send, {
+            ...args,
+            week,
+          });
+        }
+      }
     }
 
     let invited = 0;
@@ -521,7 +534,7 @@ export const runAnother = viewerMutation("sprint:manage")({
     const orgId = viewer.org._id;
     // `now` is a getter that reads the clock; read it once.
     const now = viewer.now;
-    const sprint = await currentSprint(ctx, orgId);
+    const sprint = await setupSprint(ctx, orgId);
     if (sprint && sprint.launchedAt === undefined) {
       throwUserError(
         "SPRINT_DRAFT_EXISTS",

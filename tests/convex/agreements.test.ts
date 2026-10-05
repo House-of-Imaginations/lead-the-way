@@ -8,6 +8,7 @@ import {
   NEVER_IN_DEFAULTS,
 } from "../../convex/lib/agreement";
 import { DEMO_TARGETS, mel } from "../../convex/lib/demo/schedule";
+import { move, personOf } from "./sprintHelpers";
 import { personFields } from "./testHelpers";
 import {
   calderLane,
@@ -564,4 +565,52 @@ test("a sprint manager is not counted in the team's signatures (Ruling 1)", asyn
   expect(await dan.query(api.agreements.forMe, {})).toMatchObject({
     signatures: { signed: 7, of: 7 },
   });
+});
+
+test("signing logs the sprint people are in, not a draft clone (P7b-1)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "complete");
+  await as("priya").mutation(api.sprints.runAnother, { expectOrgId: orgId });
+  const danId = await personOf(t, orgId, "dan");
+  const { first, version } = await t.run(async (ctx) => {
+    const sprints = await ctx.db
+      .query("sprints")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    const saved = (
+      await ctx.db
+        .query("agreements")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect()
+    ).filter((a) => a.status === "saved");
+    // Drop Dan's signatures so `sign` writes and logs.
+    for (const row of await ctx.db
+      .query("agreementSignatures")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect()) {
+      if (row.personId === danId) await ctx.db.delete(row._id);
+    }
+    return {
+      first: sprints[0],
+      version: Math.max(...saved.map((a) => a.version)),
+    };
+  });
+  const signedEvents = () =>
+    t.run(async (ctx) =>
+      (
+        await ctx.db
+          .query("events")
+          .withIndex("by_org", (q) => q.eq("orgId", orgId))
+          .collect()
+      ).filter((e) => e.type === "agreement.signed"),
+    );
+  const before = await signedEvents();
+  await as("dan").mutation(api.agreements.sign, {
+    version,
+    expectOrgId: orgId,
+  });
+  const signed = await signedEvents();
+  // Exactly one new event, so a `sign` that logs nothing fails here.
+  expect(signed).toHaveLength(before.length + 1);
+  expect(signed.at(-1)?.sprintId).toBe(first._id);
 });

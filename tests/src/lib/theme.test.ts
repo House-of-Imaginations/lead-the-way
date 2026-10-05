@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import {
   GROUND_DARK,
   GROUND_LIGHT,
   resolveThemeMode,
+  setThemeMode,
+  storedThemeMode,
   themeColorFor,
   themeScript,
   THEME_STORAGE_KEY,
@@ -241,4 +243,32 @@ test("the dark theme-color is the dark background token", () => {
 
 test("the light theme-color is the light background token", () => {
   expect(GROUND_LIGHT.toLowerCase()).toBe(background("light"));
+});
+
+test("setThemeMode stores and applies a choice, and System clears both (P7b-1)", () => {
+  const store = new Map<string, string>();
+  const attrs = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  });
+  vi.stubGlobal("document", {
+    documentElement: {
+      setAttribute: (k: string, v: string) => void attrs.set(k, v),
+      removeAttribute: (k: string) => void attrs.delete(k),
+    },
+  });
+  try {
+    setThemeMode("dark");
+    expect(store.get(THEME_STORAGE_KEY)).toBe("dark");
+    expect(attrs.get("data-theme")).toBe("dark");
+    expect(storedThemeMode()).toBe("dark");
+    setThemeMode("system");
+    expect(store.has(THEME_STORAGE_KEY)).toBe(false);
+    expect(attrs.has("data-theme")).toBe(false);
+    expect(storedThemeMode()).toBe("system");
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

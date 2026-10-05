@@ -370,3 +370,13 @@ export function sprintStatus(
     note,
   };
 }
+
+/**
+ * When a week's reminder goes (S-d, Ruling 17): 24 hours before its hour
+ * starts, so the email can say "tomorrow". Plain milliseconds, so across a
+ * daylight saving change it lands an hour off the wall clock, still the day
+ * before.
+ */
+export function reminderAt(sprint: HourOf, week: number): number {
+  return hourStart(sprint, week) - 86_400_000;
+}

@@ -7,8 +7,8 @@ import {
   mel,
   type DemoTarget,
 } from "../../convex/lib/demo/schedule";
-import { PATHWAY_MODULES } from "../../convex/lib/pathway";
 import { snapshotSeries } from "../../convex/lib/snapshots";
+import { readyToLaunch } from "./sprintHelpers";
 import {
   calderLane,
   harness,
@@ -94,44 +94,6 @@ async function launchedSprint(t: T, orgId: Id<"orgs">) {
       courseTitle: "AI Productivity Fundamentals",
       launchedAt: mel("2026-09-08T10:00"),
       createdAt: mel("2026-09-01T09:30"),
-    });
-  });
-}
-
-/** What `launch` needs besides the hour: everyone's pathway and a saved agreement. */
-async function readyToLaunch(t: T, orgId: Id<"orgs">) {
-  await t.run(async (ctx) => {
-    const team = (await ctx.db
-      .query("teams")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .unique())!;
-    const people = await ctx.db
-      .query("people")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .collect();
-    for (const person of people) {
-      for (const m of PATHWAY_MODULES) {
-        if (m.pathway !== "required") continue;
-        await ctx.db.insert("pathwayProgress", {
-          orgId,
-          personId: person._id,
-          moduleKey: m.key,
-          minutesWatched: m.minutes,
-          completedAt: 1,
-        });
-      }
-    }
-    await ctx.db.insert("agreements", {
-      orgId,
-      teamId: team._id,
-      version: 1,
-      status: "saved",
-      tools: [],
-      neverIn: [],
-      checks: [],
-      escalation: "",
-      contact: { kind: "label", label: "Privacy officer" },
-      savedAt: 1,
     });
   });
 }
@@ -338,6 +300,10 @@ test("a demo launch schedules nothing: the demo clock takes them", async () => {
     expectOrgId: orgId,
   });
   expect(await scheduled(t)).toEqual([]);
+  const jobs = await t.run((ctx) =>
+    ctx.db.system.query("_scheduled_functions").collect(),
+  );
+  expect(jobs.filter((job) => job.name === "reminders:send")).toEqual([]);
 });
 
 test("the demo launched with DEMO_MODE off runs on real time, so it schedules", async () => {

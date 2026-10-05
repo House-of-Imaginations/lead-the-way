@@ -11,7 +11,8 @@ import {
   moduleKeyValidator,
   requiredDone,
 } from "./lib/pathway";
-import { currentSprint, ensureSprint } from "./lib/sprint";
+import { settingsOf } from "./lib/settings";
+import { setupSprint, ensureSprint } from "./lib/sprint";
 import { upsertAnswer } from "./lib/surveys";
 import { SURVEY_QUESTIONS } from "./tables/sprint";
 
@@ -46,6 +47,8 @@ export const forViewer = viewerQuery("sprint:manage")({
     afterConfidence: v.union(v.null(), v.number()),
     /** Ruling 16: after launch, 05's panel leads to the overview. */
     launched: v.boolean(),
+    /** 05's player: captions on unless the manager turned the default off (P7b-1). */
+    captionsByDefault: v.boolean(),
   }),
   handler: async (ctx) => {
     const { viewer } = ctx;
@@ -68,7 +71,7 @@ export const forViewer = viewerQuery("sprint:manage")({
     });
     const required = modules.filter((m) => m.pathway === "required");
 
-    const sprint = await currentSprint(ctx, viewer.org._id);
+    const sprint = await setupSprint(ctx, viewer.org._id);
     // One row per phase and question (writer contract 5).
     const answers = sprint
       ? await ctx.db
@@ -90,6 +93,8 @@ export const forViewer = viewerQuery("sprint:manage")({
       coachingPercent: coachingPercent(rows),
       afterConfidence: after?.score ?? null,
       launched: sprint?.launchedAt !== undefined,
+      captionsByDefault: (await settingsOf(ctx, viewer.person._id))
+        .captionsByDefault,
     };
   },
 });
@@ -130,7 +135,7 @@ export const completeModule = viewerMutation("sprint:manage")({
         completedAt: now,
       });
     }
-    const sprint = await currentSprint(ctx, viewer.org._id);
+    const sprint = await setupSprint(ctx, viewer.org._id);
     await logEvent(ctx, {
       orgId: viewer.org._id,
       sprintId: sprint?._id,

@@ -12,13 +12,9 @@ import {
   type Permission,
 } from "./orgs/permissions";
 import { firstNameOf, initialsOf } from "./orgs/people";
+import { settingsOf } from "./settings";
 import { SETUP_STEPS } from "./setupSteps";
-import {
-  currentSprint,
-  currentTeam,
-  launchedSprint,
-  setupGate,
-} from "./sprint";
+import { setupSprint, currentTeam, launchedSprint, setupGate } from "./sprint";
 import { sprintStatus } from "./sprintTime";
 import type { Viewer } from "./viewer";
 
@@ -48,6 +44,8 @@ export const shellValidator = v.object({
   expectOrgId: v.id("orgs"),
   /** The demo banner and the persona switch: the demo workspace with DEMO_MODE on. */
   isDemo: v.boolean(),
+  /** The person's Reduce motion setting (P7b-1); AppShell sets `data-reduce-motion`. */
+  reduceMotion: v.boolean(),
   area: literals("manager", "employee"),
   home: v.string(),
   greeting: v.string(),
@@ -108,7 +106,7 @@ export async function homeOf(
   const orgId = viewer.org._id;
   const { team, sprint } = known ?? {
     team: await currentTeam(ctx, orgId),
-    sprint: await currentSprint(ctx, orgId),
+    sprint: await setupSprint(ctx, orgId),
   };
   return team?.savedAt === undefined && sprint?.launchedAt === undefined
     ? "/setup/team"
@@ -273,7 +271,7 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
   const isDemo = viewer.org.isDemo && flagOn("demo");
   const [team, sprint] = await Promise.all([
     currentTeam(ctx, viewer.org._id),
-    currentSprint(ctx, viewer.org._id),
+    setupSprint(ctx, viewer.org._id),
   ]);
   const workspaces: Shell["workspaces"] = [];
   for (const seat of await seatsOfUser(ctx, viewer.userId)) {
@@ -291,6 +289,7 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
   return {
     expectOrgId: viewer.org._id,
     isDemo,
+    reduceMotion: (await settingsOf(ctx, viewer.person._id)).reduceMotion,
     area: manager ? "manager" : "employee",
     home: await homeOf(ctx, viewer, { team, sprint }),
     greeting: greetingOf(viewer, now),

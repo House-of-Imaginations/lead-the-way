@@ -213,9 +213,19 @@ export async function setRole(
   await ctx.db.patch(person._id, { roleId });
 }
 
+/** A person's own profile fields on their seat (17 and 19). The role is never one of them. */
+export async function updateSeatProfile(
+  ctx: MutationCtx,
+  person: Doc<"people">,
+  fields: Pick<Doc<"people">, "name" | "initials" | "jobTitle" | "timeZone">,
+): Promise<void> {
+  await ctx.db.patch(person._id, fields);
+}
+
 /**
  * Give up a seat, having checked the org keeps an owner. The person's
- * settings row goes with it: nothing else would ever read it again.
+ * settings row and reminder ledger rows go with it: nothing else would ever
+ * read them again.
  */
 export async function dropSeat(
   ctx: MutationCtx,
@@ -227,6 +237,14 @@ export async function dropSeat(
     .withIndex("by_person", (q) => q.eq("personId", person._id))
     .first();
   if (settings) await ctx.db.delete(settings._id);
+  // One row per reminder sent, building up across sprints: four or so a sprint.
+  // ponytail: 500 rows is over a hundred sprints; past it the rest are left
+  // behind, so page or schedule this delete if a seat ever gets near that.
+  const reminders = await ctx.db
+    .query("reminders")
+    .withIndex("by_person", (q) => q.eq("personId", person._id))
+    .take(500);
+  for (const row of reminders) await ctx.db.delete(row._id);
   await ctx.db.delete(person._id);
 }
 

@@ -3,7 +3,7 @@ import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { DEMO_NOW } from "../../convex/lib/demo/schedule";
 import {
-  currentSprint,
+  setupSprint,
   currentTeam,
   gateOpen,
   setupGate,
@@ -421,7 +421,7 @@ test("setupGate reads the four setup steps; launch needs three", async () => {
         ctx,
         (await getViewer(ctx))!,
         await currentTeam(ctx, orgId),
-        await currentSprint(ctx, orgId),
+        await setupSprint(ctx, orgId),
       ),
     );
   expect(await gate()).toEqual({

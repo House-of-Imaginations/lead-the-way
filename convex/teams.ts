@@ -9,7 +9,7 @@ import {
   TEAM_FUNCTIONS,
   TEAM_SIZES,
 } from "./lib/setupOptions";
-import { currentSprint, currentTeam, ensureSprint } from "./lib/sprint";
+import { setupSprint, currentTeam, ensureSprint } from "./lib/sprint";
 import { upsertAnswer } from "./lib/surveys";
 
 /** The "Other" challenge's own words (03 page 2). */
@@ -40,7 +40,7 @@ export const current = viewerQuery("sprint:manage")({
     const { viewer } = ctx;
     const team = await currentTeam(ctx, viewer.org._id);
     if (!team) return null;
-    const sprint = await currentSprint(ctx, viewer.org._id);
+    const sprint = await setupSprint(ctx, viewer.org._id);
     // At most six rows: two phases of three questions.
     const mine = sprint
       ? await ctx.db

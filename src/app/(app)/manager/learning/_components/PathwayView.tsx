@@ -300,6 +300,8 @@ export function PathwayView({ initial }: { initial: Pathway }) {
               src={content.video}
               captions={content.captions}
               label={content.title}
+              // ponytail: only 05 plays video; an employee player reads the same setting when one exists.
+              captionsOn={data.captionsByDefault}
             />
           </div>
           <div className="flex flex-col gap-03 bg-layer-01 p-05">

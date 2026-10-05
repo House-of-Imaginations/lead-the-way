@@ -3,9 +3,9 @@
  *
  * There are unavoidably two implementations: a pre-paint inline script (a
  * string, because it has to run before React exists or the wrong mode flashes)
- * and the toggle's own read (TypeScript). They kept drifting apart, and every
- * drift is the same bug -- the page in one mode with the switch claiming the
- * other. The last round fixed the valid cases and the empty case and left one:
+ * and the Settings Theme select's own read (TypeScript), which is the writer.
+ * They kept drifting apart, and every drift is the same bug -- the page in one
+ * mode with the select claiming the other. The last round fixed the valid cases and the empty case and left one:
  * `?theme=purple` with `"dark"` in the store. The script took `q` unvalidated,
  * so `m` became `"purple"`, failed the light/dark check, and set nothing -- the
  * page rendered from `prefers-color-scheme`, while a caller reading the store
@@ -17,12 +17,12 @@
  * future drift fails a test instead of shipping.
  *
  * Deliberately not a React module: `layout.tsx` is a server component and this
- * is the only thing it wanted from the client-side toggle file.
+ * is the only thing it wanted from the client-side Theme select.
  */
 
 export type ThemeMode = "system" | "dark" | "light";
 
-/** One key, named once, shared by the toggle and the pre-paint script. */
+/** One key, named once, shared by the Theme select and the pre-paint script. */
 export const THEME_STORAGE_KEY = "lead-the-way-theme";
 
 /**
@@ -112,5 +112,32 @@ export function applyThemeColor(mode: ThemeMode): void {
   } catch {
     // Nothing to recover: the page keeps whatever tint it already had. The
     // mode itself is applied by the caller, not here.
+  }
+}
+
+/**
+ * Settings' Theme select (P7b-1): store the choice where the pre-paint script
+ * reads it, and apply it now. "system" is no stored value and no attribute,
+ * as in the script. Storage can be blocked; the page still changes.
+ */
+export function setThemeMode(mode: ThemeMode): void {
+  try {
+    if (mode === "system") localStorage.removeItem(THEME_STORAGE_KEY);
+    else localStorage.setItem(THEME_STORAGE_KEY, mode);
+  } catch {
+    // Blocked storage: the choice lasts until the next load.
+  }
+  const root = document.documentElement;
+  if (mode === "system") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", mode);
+  applyThemeColor(mode);
+}
+
+/** The stored choice, without the URL override: what the Theme select shows. */
+export function storedThemeMode(): ThemeMode {
+  try {
+    return resolveThemeMode(null, localStorage.getItem(THEME_STORAGE_KEY));
+  } catch {
+    return "system";
   }
 }

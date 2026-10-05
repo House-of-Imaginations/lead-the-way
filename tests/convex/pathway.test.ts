@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import { coachingPercent, type ModuleKey } from "../../convex/lib/pathway";
+import { DEFAULT_SETTINGS } from "../../convex/lib/settings";
 import { personFields } from "./testHelpers";
 import { calderLane, harness, workspace, type T } from "./workspace/helpers";
 
@@ -244,5 +245,27 @@ test("forViewer says when the sprint has launched (Ruling 16)", async () => {
   await t.mutation(internal.seed.clock, { target: "week1" });
   expect((await as("priya").query(api.pathway.forViewer, {})).launched).toBe(
     true,
+  );
+});
+
+test("05's player follows the viewer's captions setting (P7b-1)", async () => {
+  const { t, owner, orgId } = await manager();
+  expect((await owner.query(api.pathway.forViewer, {})).captionsByDefault).toBe(
+    true,
+  );
+  await t.run(async (ctx) => {
+    const person = (await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .unique())!;
+    await ctx.db.insert("settings", {
+      orgId,
+      personId: person._id,
+      ...DEFAULT_SETTINGS,
+      captionsByDefault: false,
+    });
+  });
+  expect((await owner.query(api.pathway.forViewer, {})).captionsByDefault).toBe(
+    false,
   );
 });

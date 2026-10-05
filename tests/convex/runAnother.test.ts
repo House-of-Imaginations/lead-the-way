@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { api } from "../../convex/_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { DEMO_TARGETS, mel } from "../../convex/lib/demo/schedule";
 import { loadSeated } from "../../convex/lib/privacy";
@@ -462,4 +462,70 @@ test("a sprint 1 before answer is still accepted in week 2", async () => {
       expectOrgId: orgId,
     }),
   ).toBeNull();
+});
+
+test("09 for a link shows the sprint it joins, not a draft clone (P7b-1)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "complete");
+  await as("priya").mutation(api.sprints.runAnother, { expectOrgId: orgId });
+  const token = await t.mutation(internal.seed.invite, {});
+  // The joiner lands in sprint 1, so 09 names its show and tell.
+  expect(
+    (await t.query(api.invites.publicPreview, { token }))?.join,
+  ).toMatchObject({ showAndTell: "30 Sep" });
+  // Signed in, a non-member reads the same sprint through `preview`.
+  expect(
+    (
+      await t
+        .withIdentity({ subject: "user_stranger" })
+        .query(api.invites.preview, { token })
+    )?.join?.showAndTell,
+  ).toBe("30 Sep");
+  // Priya's own preview is of the clone she is about to launch.
+  expect(
+    (await as("priya").query(api.invites.teamPreview, {}))?.join.showAndTell,
+  ).toBe("25 Nov");
+});
+
+test("GC-M8: once sprint 1 closes, a join asks nothing and a before answer is refused", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "complete");
+  await as("priya").mutation(api.sprints.runAnother, { expectOrgId: orgId });
+  const token = await t.mutation(internal.seed.invite, {});
+  expect(
+    (await t.query(api.invites.publicPreview, { token }))?.join?.askBefore,
+  ).toBe(false);
+  // Dan stands in for a fresh joiner: no before rows of his own.
+  const danId = await personOf(t, orgId, "dan");
+  const rowsOf = () =>
+    t.run((ctx) =>
+      ctx.db
+        .query("surveyResponses")
+        .withIndex("by_person_and_sprint", (q) => q.eq("personId", danId))
+        .collect(),
+    );
+  await t.run(async (ctx) => {
+    for (const row of await ctx.db
+      .query("surveyResponses")
+      .withIndex("by_person_and_sprint", (q) => q.eq("personId", danId))
+      .collect()) {
+      await ctx.db.delete(row._id);
+    }
+  });
+  const dan = as("dan");
+  for (const answers of [{ aiConfidence: 3, comfortWithManager: 4 }, null]) {
+    await expect(
+      dan.mutation(api.surveys.checkIn, {
+        phase: "before",
+        answers,
+        expectOrgId: orgId,
+      }),
+    ).rejects.toMatchObject({
+      data: {
+        code: "CHECK_IN_CLOSED",
+        message: "The before check-in has closed.",
+      },
+    });
+  }
+  expect(await rowsOf()).toEqual([]);
 });

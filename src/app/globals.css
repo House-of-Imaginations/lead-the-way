@@ -69,6 +69,16 @@
   }
 }
 
+/* Settings' Reduce motion (P7b-1): the same rules, on the person's choice.
+   The repeat is deliberate (D7): a media query and an attribute cannot share one rule. */
+:root[data-reduce-motion] *,
+:root[data-reduce-motion] ::before,
+:root[data-reduce-motion] ::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 /* Download PDF (Ruling 28): print only [data-print], ink on white, on A4. */
 @media print {
   @page {

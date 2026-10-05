@@ -20,11 +20,13 @@ export async function currentTeam(
 }
 
 /**
- * The newest sprint, of any state. Setup, launch and the manager overview read
- * it, so a clone from "Run another sprint" opens setup as soon as it is made.
- * Employees read `launchedSprint` instead (P7a Ruling 15).
+ * The newest sprint, of any state: the one being set up. Setup, launch and the
+ * manager overview read it, so a clone from "Run another sprint" opens setup
+ * as soon as it is made. Anything that means "the sprint people are in" reads
+ * `launchedSprint` or `joinedSprint` instead (P7a Ruling 15, P7b-1). Callers
+ * are pinned in `tests/convex/setupSprint.test.ts`.
  */
-export async function currentSprint(
+export async function setupSprint(
   ctx: QueryCtx,
   orgId: Id<"orgs">,
 ): Promise<Doc<"sprints"> | null> {
@@ -54,6 +56,18 @@ export async function launchedSprint(
 }
 
 /**
+ * The sprint a person joining now lands in, and whose sign-offs count: the
+ * newest launched one, else the one being set up (P7b-1). 09 shows its dates
+ * and `agreements.sign` logs it, so a draft clone never relabels sprint 1.
+ */
+export async function joinedSprint(
+  ctx: QueryCtx,
+  orgId: Id<"orgs">,
+): Promise<Doc<"sprints"> | null> {
+  return (await launchedSprint(ctx, orgId)) ?? (await setupSprint(ctx, orgId));
+}
+
+/**
  * The current sprint, made as a draft the first time setup needs one: a
  * workspace starts with a team and no sprint (`createWorkspace`). Wednesday
  * 2:00 PM for an hour, four weeks, in the manager's time zone, from the next
@@ -64,7 +78,7 @@ export async function ensureSprint(
   viewer: Viewer,
 ): Promise<Doc<"sprints">> {
   const orgId = viewer.org._id;
-  const found = await currentSprint(ctx, orgId);
+  const found = await setupSprint(ctx, orgId);
   if (found) return found;
   const team = await currentTeam(ctx, orgId);
   if (!team) throwUserError("NOT_FOUND", "That no longer exists.");

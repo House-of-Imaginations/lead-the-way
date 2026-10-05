@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { Button, LikertScale } from "@/components/ui";
-import { userMessage } from "@/lib/errors";
+import { errorCode, userMessage } from "@/lib/errors";
 
 const QUESTIONS = [
   {
@@ -68,6 +68,16 @@ export function CheckIn({
       await checkIn({ phase, answers, expectOrgId });
       onDone();
     } catch (e) {
+      // The sprint closed (or went) after the page loaded: there is nothing
+      // left to answer, so move on rather than strand a joiner (GC-M8).
+      const code = errorCode(e);
+      if (
+        phase === "before" &&
+        (code === "CHECK_IN_CLOSED" || code === "NO_SPRINT")
+      ) {
+        onDone();
+        return;
+      }
       setError(userMessage(e, "Your answers didn't save. Try again."));
       setPending(false);
     }

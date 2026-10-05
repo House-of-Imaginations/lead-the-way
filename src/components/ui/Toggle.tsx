@@ -5,6 +5,8 @@ export type ToggleProps = {
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
+  /** A save is in flight: stays focusable and looks unchanged, but ignores clicks. */
+  pending?: boolean;
 };
 
 /** A settings row whose change applies at once. Never inside a form with Save: use Checkbox there. */
@@ -15,6 +17,7 @@ export function Toggle({
   checked,
   onChange,
   disabled,
+  pending,
 }: ToggleProps) {
   return (
     <div className="ltw-trow">
@@ -37,7 +40,10 @@ export function Toggle({
         aria-labelledby={`${id}-label`}
         aria-describedby={description ? `${id}-desc` : undefined}
         disabled={disabled}
-        onClick={() => onChange(!checked)}
+        aria-disabled={pending || undefined}
+        onClick={() => {
+          if (!pending) onChange(!checked);
+        }}
       />
     </div>
   );
