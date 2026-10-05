@@ -87,14 +87,22 @@ export function ProfileTab({ mine }: { mine: Mine }) {
             ? { jobTitle: message }
             : { form: message },
       );
+      // Focus the invalid field so its error is read.
+      const invalid =
+        code === "NAME_REQUIRED"
+          ? "settings-name"
+          : code === "FIELD_REQUIRED"
+            ? "settings-job"
+            : null;
+      if (invalid) document.getElementById(invalid)?.focus();
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-07 pt-07" noValidate>
-      <div className="grid grid-cols-2 gap-06 max-[900px]:grid-cols-1">
+    <form onSubmit={onSubmit} className="flex flex-col gap-07" noValidate>
+      <div className="grid max-w-[640px] grid-cols-2 gap-06 max-[900px]:grid-cols-1">
         <TextInput
           id="settings-name"
           label="Full name"
@@ -139,7 +147,9 @@ export function ProfileTab({ mine }: { mine: Mine }) {
         />
       </div>
       <fieldset className="flex flex-col gap-05">
-        <legend className="mb-05 text-heading-04">Accessibility</legend>
+        <legend className="mb-05 text-label-01 text-text-secondary">
+          Accessibility
+        </legend>
         <Checkbox
           label="Turn captions on by default"
           checked={form.captionsByDefault}
@@ -158,7 +168,7 @@ export function ProfileTab({ mine }: { mine: Mine }) {
           {errors.form}
         </p>
       ) : null}
-      <div className="flex border-t border-border-subtle pt-07 max-md:flex-col">
+      <div className="flex justify-end border-t border-border-subtle pt-07 max-md:flex-col">
         <ButtonLink
           href="/home"
           kind="secondary"
@@ -171,7 +181,7 @@ export function ProfileTab({ mine }: { mine: Mine }) {
           type="submit"
           size="xl"
           disabled={saving}
-          className="flex-1 max-md:w-full"
+          className="w-[200px] max-md:w-full"
         >
           Save changes
         </Button>

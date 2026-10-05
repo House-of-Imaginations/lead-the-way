@@ -84,6 +84,7 @@ test.describe("settings", () => {
       page.getByText("A name is required.", { exact: true }),
     ).toBeVisible();
     await expect(name).toHaveAttribute("aria-invalid", "true");
+    await expect(name).toBeFocused();
     await page.getByRole("link", { name: "Cancel" }).click();
     await expect(page).toHaveURL("/manager");
   });

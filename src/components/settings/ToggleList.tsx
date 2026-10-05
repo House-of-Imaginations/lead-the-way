@@ -44,11 +44,11 @@ export function ToggleList({
   const expectOrgId = useExpectOrgId();
   const setToggle = useMutation(api.settings.setToggle);
   const toast = useToast();
-  const [busy, setBusy] = useState<ToggleKey | null>(null);
+  const [busy, setBusy] = useState<ReadonlySet<ToggleKey>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   async function change(row: ToggleRow, on: boolean) {
-    setBusy(row.key);
+    setBusy((s) => new Set(s).add(row.key));
     setError(null);
     try {
       await setToggle({ key: row.key, on, expectOrgId });
@@ -59,12 +59,16 @@ export function ToggleList({
     } catch (e) {
       setError(userMessage(e, "That setting wasn't saved. Try again."));
     } finally {
-      setBusy(null);
+      setBusy((s) => {
+        const next = new Set(s);
+        next.delete(row.key);
+        return next;
+      });
     }
   }
 
   return (
-    <div className="flex flex-col pt-05">
+    <div className="flex flex-col border-t border-border-subtle">
       {rows.map((row) => (
         <Toggle
           key={row.key}
@@ -72,7 +76,7 @@ export function ToggleList({
           label={row.label}
           description={row.description}
           checked={values[row.key]}
-          disabled={busy === row.key}
+          pending={busy.has(row.key)}
           onChange={(on) => void change(row, on)}
         />
       ))}
