@@ -12,6 +12,7 @@ import {
   type Permission,
 } from "./orgs/permissions";
 import { firstNameOf, initialsOf } from "./orgs/people";
+import { settingsOf } from "./settings";
 import { SETUP_STEPS } from "./setupSteps";
 import { setupSprint, currentTeam, launchedSprint, setupGate } from "./sprint";
 import { sprintStatus } from "./sprintTime";
@@ -43,6 +44,8 @@ export const shellValidator = v.object({
   expectOrgId: v.id("orgs"),
   /** The demo banner and the persona switch: the demo workspace with DEMO_MODE on. */
   isDemo: v.boolean(),
+  /** The person's Reduce motion setting (P7b-1); AppShell sets `data-reduce-motion`. */
+  reduceMotion: v.boolean(),
   area: literals("manager", "employee"),
   home: v.string(),
   greeting: v.string(),
@@ -286,6 +289,7 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
   return {
     expectOrgId: viewer.org._id,
     isDemo,
+    reduceMotion: (await settingsOf(ctx, viewer.person._id)).reduceMotion,
     area: manager ? "manager" : "employee",
     home: await homeOf(ctx, viewer, { team, sprint }),
     greeting: greetingOf(viewer, now),

@@ -16,7 +16,7 @@ import {
 import { useConvex, useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache";
 import { usePathname } from "next/navigation";
-import { Suspense, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import {
   InlineNotification,
   SideNav,
@@ -71,6 +71,13 @@ export function AppShell({
   const live = useQuery(api.viewer.shell, { hour });
   const switched = !!live && live.expectOrgId !== initial.expectOrgId;
   const shell = (!switched && live) || initial;
+  // Settings' Reduce motion (P7b-1), as an attribute globals.css reads.
+  const reduceMotion = shell.reduceMotion;
+  useEffect(() => {
+    const root = document.documentElement;
+    root.toggleAttribute("data-reduce-motion", reduceMotion);
+    return () => root.removeAttribute("data-reduce-motion");
+  }, [reduceMotion]);
   // A switch made in this tab is not news: no notice while the page leaves.
   const [leaving, setLeaving] = useState(false);
   const pathname = usePathname();
@@ -120,7 +127,7 @@ export function AppShell({
             );
         },
       })),
-    // Ruling 18: the employee's disabled item waits for P7's settings pages.
+    // Ruling 18: the employee's disabled "Workspace settings" item is P7b-2.
     ...(shell.area === "manager"
       ? [{ label: "Workspace settings", href: "/workspace/settings" }]
       : []),
@@ -135,6 +142,11 @@ export function AppShell({
           },
         ]
       : []),
+    {
+      label: "Settings",
+      // 17 for the manager area, 19 for everyone else (Ruling 10).
+      href: shell.area === "manager" ? "/settings" : "/me/settings",
+    },
     {
       label: "Sign out",
       // /signed-out drops the cookies and goes to log in, so a sign-out that

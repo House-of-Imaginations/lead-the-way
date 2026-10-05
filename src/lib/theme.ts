@@ -114,3 +114,30 @@ export function applyThemeColor(mode: ThemeMode): void {
     // mode itself is applied by the caller, not here.
   }
 }
+
+/**
+ * Settings' Theme select (P7b-1): store the choice where the pre-paint script
+ * reads it, and apply it now. "system" is no stored value and no attribute,
+ * as in the script. Storage can be blocked; the page still changes.
+ */
+export function setThemeMode(mode: ThemeMode): void {
+  try {
+    if (mode === "system") localStorage.removeItem(THEME_STORAGE_KEY);
+    else localStorage.setItem(THEME_STORAGE_KEY, mode);
+  } catch {
+    // Blocked storage: the choice lasts until the next load.
+  }
+  const root = document.documentElement;
+  if (mode === "system") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", mode);
+  applyThemeColor(mode);
+}
+
+/** The stored choice, without the URL override: what the Theme select shows. */
+export function storedThemeMode(): ThemeMode {
+  try {
+    return resolveThemeMode(null, localStorage.getItem(THEME_STORAGE_KEY));
+  } catch {
+    return "system";
+  }
+}

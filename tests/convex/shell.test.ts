@@ -5,7 +5,9 @@ import {
   mel,
   type DemoTarget,
 } from "../../convex/lib/demo/schedule";
+import { DEFAULT_SETTINGS } from "../../convex/lib/settings";
 import type { Shell } from "../../convex/lib/shell";
+import { personOf } from "./sprintHelpers";
 import {
   calderLane,
   harness,
@@ -408,4 +410,20 @@ test("once launched, Sprint opens the overview and still needs sprint:manage (Ru
     ["Outcomes", "/manager/outcomes"],
     ["Resources", "/manager#resources"],
   ]);
+});
+
+test("the shell carries the viewer's reduce motion setting (P7b-1)", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  expect((await priya.query(api.viewer.shell, {}))?.reduceMotion).toBe(false);
+  const priyaId = await personOf(t, orgId, "priya");
+  await t.run((ctx) =>
+    ctx.db.insert("settings", {
+      orgId,
+      personId: priyaId,
+      ...DEFAULT_SETTINGS,
+      reduceMotion: true,
+    }),
+  );
+  expect((await priya.query(api.viewer.shell, {}))?.reduceMotion).toBe(true);
 });
