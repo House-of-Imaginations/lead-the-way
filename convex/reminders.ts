@@ -42,6 +42,8 @@ export const send = internalMutation({
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .take(MAX_MEMBERS_PER_ORG);
     for (const person of people) {
+      // A seat with no address has nowhere to send to: no email, no ledger row.
+      if (person.email === "") continue;
       const settings = await settingsOf(ctx, person._id);
       const kind =
         week === sprint.weeks && settings.showAndTellReminder

@@ -37,6 +37,11 @@ async function team(t: T) {
   const { owner, orgId } = await workspace(t);
   const a = await seat(t, orgId, "user_a", []);
   const b = await seat(t, orgId, "user_b", []);
+  // `orgs.create` here has no auth account to copy an address from; a real owner has one.
+  const ownerPersonId = await ownerId(t, orgId);
+  await t.run((ctx) =>
+    ctx.db.patch(ownerPersonId, { email: "owner@example.com" }),
+  );
   const sprintId = await t.run(async (ctx) => {
     const teamRow = (await ctx.db
       .query("teams")
@@ -197,6 +202,17 @@ test("a person who leaves gets nothing, and their ledger rows go with them", asy
   const people = (await sent(t, orgId)).map((r) => r.personId);
   expect(people).not.toContain(a.personId);
   expect(people).toContain(b.personId);
+});
+
+test("a seat with no email gets no reminder and no ledger row", async () => {
+  vi.setSystemTime(mel("2026-09-15T14:00"));
+  const t = harness();
+  const { orgId, a, b, sprintId } = await team(t);
+  await t.run((ctx) => ctx.db.patch(b.personId, { email: "" }));
+  await t.mutation(internal.reminders.send, { orgId, sprintId, week: 2 });
+  const people = (await sent(t, orgId)).map((r) => r.personId);
+  expect(people).toContain(a.personId);
+  expect(people).not.toContain(b.personId);
 });
 
 test("a real launch schedules each week's reminder a day ahead, skipping one already past", async () => {

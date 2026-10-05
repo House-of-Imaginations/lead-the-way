@@ -3,6 +3,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { MAX_MEMBERS_PER_ORG, permissionsOf } from "./orgs/membership";
 import { isManager, type Permission } from "./orgs/permissions";
+import { settingsOf } from "./settings";
 
 /**
  * THE ONLY WAY A MANAGER SEES A NUMBER ABOUT PEOPLE (spec 5.1).
@@ -111,12 +112,8 @@ export async function loadCountable(
   const counted: Doc<"people">[] = [];
   for (const person of await loadSeated(ctx, org)) {
     if (person._id === askerId) continue;
-    const settings = await ctx.db
-      .query("settings")
-      .withIndex("by_person", (q) => q.eq("personId", person._id))
-      .first();
     // No settings row means the default: counted.
-    if (settings && !settings.includeInTeamTotals) continue;
+    if (!(await settingsOf(ctx, person._id)).includeInTeamTotals) continue;
     counted.push(person);
   }
   // The brand is type-only; this is the one place a Countable is made.

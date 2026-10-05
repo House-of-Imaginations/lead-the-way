@@ -5,6 +5,7 @@ import type { QueryCtx } from "./_generated/server";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { saveDisplayName } from "./lib/account/profile";
 import { throwUserError } from "./lib/errors";
+import { updateSeatProfile } from "./lib/orgs/membership";
 import { firstNameOf, initialsOf } from "./lib/orgs/people";
 import { MAX_JOB_TITLE, TIME_ZONES } from "./lib/profileFields";
 import { thresholdOf } from "./lib/privacy";
@@ -123,7 +124,7 @@ export const saveProfile = viewerMutation()({
         `A job title can be at most ${MAX_JOB_TITLE} characters.`,
       );
     }
-    await ctx.db.patch(viewer.person._id, {
+    await updateSeatProfile(ctx, viewer.person, {
       name,
       initials: initialsOf(name),
       jobTitle,

@@ -207,6 +207,53 @@ test("scores are whole numbers from 1 to 5", async () => {
   expect(await rowsOf(t, personId)).toEqual([]);
 });
 
+test("a person who joins before launch saves the before check-in into sprint 1", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const { as, personId } = await seat(t, orgId, "user_emp", []);
+  // A draft's stored week one can lag the clock; 09 asks anyway, so the save must not refuse.
+  const sprintId = await t.run(async (ctx) => {
+    const team = (await ctx.db
+      .query("teams")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .unique())!;
+    return await ctx.db.insert("sprints", {
+      orgId,
+      teamId: team._id,
+      startDate: "2026-01-07",
+      timeZone: "Australia/Melbourne",
+      weeks: 4,
+      protectedHour: { weekday: 3, start: "14:00", durationMinutes: 60 },
+      courseTitle: "AI Productivity Fundamentals",
+      createdAt: 1,
+    });
+  });
+  await as.mutation(api.surveys.checkIn, {
+    phase: "before",
+    answers: ANSWERS,
+    expectOrgId: orgId,
+  });
+  const rows = await t.run((ctx) =>
+    ctx.db
+      .query("surveyResponses")
+      .withIndex("by_person_and_sprint", (q) => q.eq("personId", personId))
+      .collect(),
+  );
+  expect(
+    rows
+      .map(({ sprintId, phase, question, score }) => ({
+        sprintId,
+        phase,
+        question,
+        score,
+      }))
+      .sort((a, b) => a.question.localeCompare(b.question)),
+  ).toEqual([
+    { sprintId, phase: "before", question: "aiConfidence", score: 3 },
+    { sprintId, phase: "before", question: "comfortWithManager", score: 2 },
+  ]);
+});
+
 test("no sprint, no check-in", async () => {
   const t = harness();
   const { orgId } = await workspace(t);

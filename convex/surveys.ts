@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { viewerMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { logEvent } from "./lib/events";
-import { isLaterSprint, launchedSprint } from "./lib/sprint";
+import { isLaterSprint, joinedSprint, launchedSprint } from "./lib/sprint";
 import { closesAt } from "./lib/sprintTime";
 import {
   afterCheckInOpen,
@@ -33,7 +33,12 @@ export const checkIn = viewerMutation()({
   handler: async (ctx, { phase, answers }): Promise<null> => {
     const { viewer } = ctx;
     const orgId = viewer.org._id;
-    const sprint = await launchedSprint(ctx, orgId);
+    // Before: the sprint a joiner lands in, so a join before launch answers
+    // into sprint 1's draft. After: only a launched sprint has a week 4.
+    const sprint =
+      phase === "before"
+        ? await joinedSprint(ctx, orgId)
+        : await launchedSprint(ctx, orgId);
     if (!sprint) throwUserError("NO_SPRINT", "Your team has no sprint yet.");
     const now = viewer.now;
     const row = {
@@ -52,8 +57,12 @@ export const checkIn = viewerMutation()({
       )
       .take(6);
     if (phase === "before") {
-      const later = await isLaterSprint(ctx, orgId, sprint);
-      if (!beforeCheckInOpen(sprint, later, now)) {
+      // A draft has no window, as `joinFacts` asks it: its stored week one
+      // can lag the clock. A closed launched sprint still refuses (GC-M8).
+      if (
+        sprint.launchedAt !== undefined &&
+        !beforeCheckInOpen(sprint, await isLaterSprint(ctx, orgId, sprint), now)
+      ) {
         throwUserError("CHECK_IN_CLOSED", "The before check-in has closed.");
       }
       if (answeredBefore(mine)) {

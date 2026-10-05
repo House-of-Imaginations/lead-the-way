@@ -213,6 +213,15 @@ export async function setRole(
   await ctx.db.patch(person._id, { roleId });
 }
 
+/** A person's own profile fields on their seat (17 and 19). The role is never one of them. */
+export async function updateSeatProfile(
+  ctx: MutationCtx,
+  person: Doc<"people">,
+  fields: Pick<Doc<"people">, "name" | "initials" | "jobTitle" | "timeZone">,
+): Promise<void> {
+  await ctx.db.patch(person._id, fields);
+}
+
 /**
  * Give up a seat, having checked the org keeps an owner. The person's
  * settings row and reminder ledger rows go with it: nothing else would ever
