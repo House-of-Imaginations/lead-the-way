@@ -298,12 +298,16 @@ export const home = timedViewerQuery()({
       agreement: forMe
         ? {
             // 10 reads the list as a sentence; 11's card shows the list.
-            tools: forMe.tools.replace(/\. Anything else, ask first\.$/, ""),
-            neverIn: forMe.neverIn
-              .slice(0, 3)
-              .map((label, i) => (i === 0 ? label : label.toLowerCase()))
-              .join(", "),
-            contact: forMe.contact.replace(/\.$/, ""),
+            tools: forMe.toolList.length
+              ? forMe.toolList.join(", ")
+              : "None agreed yet.",
+            neverIn: [
+              ...forMe.neverIn.slice(0, 3),
+              ...(forMe.neverIn.length > 3
+                ? [`and ${forMe.neverIn.length - 3} more`]
+                : []),
+            ].join(", "),
+            contact: `Ask ${forMe.contactName}`,
           }
         : null,
       agreementUpdated: forMe?.mine === "updated",

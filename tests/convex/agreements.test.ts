@@ -433,6 +433,7 @@ test("forMe shows Dan the saved agreement and a count, never who signed", async 
     heading: "Client Services team, agreed 7 September 2026",
     version: 1,
     tools: "Microsoft Copilot, ChatGPT Enterprise. Anything else, ask first.",
+    toolList: ["Microsoft Copilot", "ChatGPT Enterprise"],
     neverIn: [
       "Client names",
       "Personal information",
@@ -449,6 +450,7 @@ test("forMe shows Dan the saved agreement and a count, never who signed", async 
     ],
     escalation: DEFAULT_ESCALATION,
     contact: "Ask Priya Raman.",
+    contactName: "Priya Raman",
     // Over the seated team without Priya (team:insights), as the overview
     // counts it: the six who signed at 9:00 AM, of seven, Dan not yet.
     signatures: { signed: 6, of: 7 },

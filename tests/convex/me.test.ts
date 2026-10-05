@@ -62,7 +62,7 @@ const NOT_STARTED = { label: "Not started", kind: "gray" };
 const ADDED = { label: "Added", kind: "green" };
 const AGREEMENT = {
   tools: "Microsoft Copilot, ChatGPT Enterprise",
-  neverIn: "Client names, personal information, passwords",
+  neverIn: "Client names, Personal information, Passwords, and 2 more",
   contact: "Ask Priya Raman",
 };
 
@@ -331,6 +331,63 @@ test("13 in week 1, week 4 and once complete", async () => {
     done: 8,
     next: null,
   });
+});
+
+test("the hour stays 2:00 PM after Melbourne's clocks go forward (week 2 on 7 October)", async () => {
+  // After 3 October, so not `mel`: AEDT is +11:00.
+  vi.setSystemTime(Date.parse("2026-10-07T13:00:00+11:00"));
+  const t = harness();
+  const { orgId } = await workspace(t);
+  await t.run(async (ctx) => {
+    const team = (await ctx.db
+      .query("teams")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .unique())!;
+    await ctx.db.insert("sprints", {
+      orgId,
+      teamId: team._id,
+      startDate: "2026-09-30",
+      timeZone: "Australia/Melbourne",
+      weeks: 4,
+      protectedHour: { weekday: 3, start: "14:00", durationMinutes: 60 },
+      courseTitle: COURSE,
+      launchedAt: mel("2026-09-29T10:00"),
+      createdAt: mel("2026-09-22T09:30"),
+    });
+  });
+  const { as } = await seat(t, orgId, "user_dan", []);
+  expect((await as.query(api.me.home, {}))?.intro).toBe(
+    "Week 2 of 4. Your protected hour starts today at 2:00 PM.",
+  );
+});
+
+test("the greeting turns to afternoon at 12:00 PM", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  await clockAt(t, orgId, "2026-09-16T11:59");
+  expect((await as("dan").query(api.me.home, {}))?.greeting).toBe(
+    "Good morning, Dan",
+  );
+  await clockAt(t, orgId, "2026-09-16T12:00");
+  expect((await as("dan").query(api.me.home, {}))?.greeting).toBe(
+    "Good afternoon, Dan",
+  );
+});
+
+test("13 in week 3: a project started in week 2 leaves week 1's Apply undone", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week3");
+  const danId = await personOf(t, orgId, "dan");
+  await t.run(async (ctx) => {
+    const project = (await ctx.db
+      .query("projects")
+      .withIndex("by_person_and_sprint", (q) => q.eq("personId", danId))
+      .first())!;
+    await ctx.db.patch(project._id, { startedWeek: 2 });
+  });
+  const weeks = (await as("dan").query(api.me.sprint, {}))!.weeks;
+  expect(weeks[0]!.activities[1]).toMatchObject({ label: "Apply", state: "todo" });
+  expect(weeks[1]!.activities[1]).toMatchObject({ label: "Apply", state: "done" });
 });
 
 test("before launch there is no week to show", async () => {

@@ -124,7 +124,7 @@ export function Home({
 
       {data.agreementUpdated ? (
         <InlineNotification title="Updated.">
-          <Link href="/me/agreement" className="underline">
+          <Link href="/me/agreement" className={TEXT_LINK}>
             Please review and sign.
           </Link>
         </InlineNotification>
@@ -152,6 +152,7 @@ export function Home({
             action={
               <Button
                 icon={ArrowRight}
+                kind={data.afterCheckIn ? "tertiary" : "primary"}
                 className="w-full justify-between"
                 disabled={pending}
                 onClick={onContinue}
@@ -198,7 +199,7 @@ export function Home({
             <ul className="flex flex-wrap gap-03">
               {IDEAS.map((idea) => (
                 <li key={idea.label}>
-                  <Link href="/me/project" className="ltw-tag hover:underline">
+                  <Link href="/me/project" className="ltw-tag hover:underline max-[672px]:min-h-[48px]">
                     <Twin wide={idea.label} narrow={idea.short} />
                   </Link>
                 </li>

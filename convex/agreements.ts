@@ -89,11 +89,15 @@ const agreementForMeValidator = v.object({
   heading: v.string(),
   version: v.number(),
   tools: v.string(),
+  /** The saved tools alone, for 11's row. */
+  toolList: v.array(v.string()),
   neverIn: v.array(v.string()),
   practise: v.union(v.string(), v.null()),
   checks: v.array(v.string()),
   escalation: v.string(),
   contact: v.string(),
+  /** The bare name, for 11. */
+  contactName: v.string(),
   /** Null for a team:insights holder and below the threshold. */
   signatures: v.union(
     v.null(),
@@ -181,11 +185,13 @@ export async function agreementForViewer(
     tools: saved.tools.length
       ? `${saved.tools.join(", ")}. Anything else, ask first.`
       : "No tools agreed yet. Ask before you use one.",
+    toolList: saved.tools,
     neverIn,
     practise: neverIn.length ? PRACTISE : null,
     checks: saved.checks.filter((c) => c.on).map((c) => c.label),
     escalation: saved.escalation,
     contact: `Ask ${contact}.`,
+    contactName: contact,
     signatures,
     mine,
     initials: viewer.person.initials,

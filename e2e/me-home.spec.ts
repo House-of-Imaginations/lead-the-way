@@ -115,7 +115,7 @@ test.describe.serial("week 2 as Dan", () => {
     ]);
     await expect(agreement.getByRole("definition")).toHaveText([
       "Microsoft Copilot, ChatGPT Enterprise",
-      "Client names, personal information, passwords",
+      "Client names, Personal information, Passwords, and 2 more",
       "Ask Priya Raman",
     ]);
     await expect(

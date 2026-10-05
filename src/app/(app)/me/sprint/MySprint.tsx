@@ -40,7 +40,7 @@ function ActivityRow({ activity }: { activity: Activity }) {
     </>
   );
   return (
-    <li className="flex items-center gap-03 border-t border-border-subtle py-03 text-body-02">
+    <li className="flex items-center gap-03 border-t border-border-subtle py-03 text-body-02 max-[672px]:min-h-[48px]">
       <Icon
         size={16}
         aria-hidden="true"

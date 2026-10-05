@@ -79,9 +79,10 @@ test("the fourth session issues the badge, once", async () => {
   expect(
     await as.mutation(api.learning.continueSession, { expectOrgId: orgId }),
   ).toEqual(finished);
+  // The second press adds nothing and says so.
   expect(
     await as.mutation(api.learning.continueSession, { expectOrgId: orgId }),
-  ).toEqual(finished);
+  ).toEqual({ ...finished, badgeIssued: false });
   const badges = await t.run((ctx) =>
     ctx.db
       .query("badges")
@@ -89,6 +90,29 @@ test("the fourth session issues the badge, once", async () => {
       .collect(),
   );
   expect(badges.map((b) => b.name)).toEqual(["AI Fundamentals"]);
+});
+
+test("a row ahead of the clock keeps its sessions", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "week2" });
+  await t.run(async (ctx) => {
+    const row = (await ctx.db.query("learningProgress").collect())[0]!;
+    await ctx.db.patch(row._id, { sessionsDone: 3, percent: 75 });
+  });
+  expect(
+    await as("dan").mutation(api.learning.continueSession, {
+      expectOrgId: orgId,
+    }),
+  ).toEqual({ sessionsDone: 3, percent: 75, badgeIssued: false });
+});
+
+test("a week 3 press issues no badge", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "week3" });
+  await as("dan").mutation(api.learning.continueSession, {
+    expectOrgId: orgId,
+  });
+  expect(await t.run((ctx) => ctx.db.query("badges").collect())).toHaveLength(0);
 });
 
 test("before week one, Continue learning opens session 1", async () => {

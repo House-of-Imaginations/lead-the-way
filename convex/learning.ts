@@ -71,9 +71,17 @@ export const continueSession = viewerMutation()({
     } else if (sessionsDone > row.sessionsDone || percent > row.percent) {
       await ctx.db.patch(row._id, { sessionsDone, percent, updatedAt: now });
     }
-    const badgeIssued = sessionsDone >= COURSE_SESSIONS;
-    // `issueBadge` returns the existing badge, so a second press adds nothing.
-    if (badgeIssued) await issueBadge(ctx, viewer.person, now);
+    // True only on the press that issues the badge, so a toast fires once.
+    let badgeIssued = false;
+    if (sessionsDone >= COURSE_SESSIONS) {
+      const had = await ctx.db
+        .query("badges")
+        .withIndex("by_person", (q) => q.eq("personId", viewer.person._id))
+        .first();
+      // `issueBadge` returns the existing badge, so a second press adds nothing.
+      await issueBadge(ctx, viewer.person, now);
+      badgeIssued = !had;
+    }
     return { sessionsDone, percent, badgeIssued };
   },
 });
