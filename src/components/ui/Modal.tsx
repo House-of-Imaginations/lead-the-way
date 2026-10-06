@@ -3,7 +3,7 @@
 import { Close } from "@carbon/icons-react";
 import { Dialog } from "radix-ui";
 import { useRef, type ReactElement, type ReactNode } from "react";
-import { Button } from "./Button";
+import { Button, type ButtonKind } from "./Button";
 
 export type ModalProps = {
   title: string;
@@ -21,6 +21,8 @@ export type ModalProps = {
   /** Doesn't close an uncontrolled modal; control `open` to close it. Toast after closing. */
   onPrimary?: () => void;
   primaryDisabled?: boolean;
+  /** The confirm button's kind: "danger" for a destructive action. */
+  primaryKind?: ButtonKind;
   secondaryText?: string;
   /** The secondary runs this instead of closing; control `open` to close. */
   onSecondary?: () => void;
@@ -41,6 +43,7 @@ export function Modal({
   primaryText,
   onPrimary,
   primaryDisabled,
+  primaryKind = "primary",
   secondaryText = "Cancel",
   onSecondary,
   formId,
@@ -103,6 +106,7 @@ export function Modal({
                 )}
                 <Button
                   ref={primary}
+                  kind={primaryKind}
                   type={formId ? "submit" : "button"}
                   form={formId}
                   onClick={formId ? undefined : onPrimary}

@@ -59,6 +59,8 @@ export async function issueBadge(
     completedAt: at,
     skills: COURSE_BADGE.skills,
     shareSlug,
+    holderName: person.name,
+    holderTimeZone: person.timeZone,
   });
   return (await ctx.db.get(id))!;
 }

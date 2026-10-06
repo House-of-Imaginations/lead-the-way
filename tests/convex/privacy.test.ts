@@ -2,13 +2,18 @@ import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { MutationCtx } from "../../convex/_generated/server";
-import type { Permission } from "../../convex/lib/orgs/permissions";
+import {
+  isManager,
+  WORKSPACE_PERMISSIONS,
+  type Permission,
+} from "../../convex/lib/orgs/permissions";
 import {
   aggregate,
   count,
   countSeated,
   loadCountable,
   loadSeated,
+  signatureCount,
 } from "../../convex/lib/privacy";
 import { personFields } from "./testHelpers";
 import { harness, seat, workspace } from "./workspace/helpers";
@@ -252,6 +257,50 @@ test("a sprint manager is not seated and never counts (Ruling 1)", async () => {
   });
   expect(result.seated).toEqual(result.employees);
   expect(result.counted).toEqual(result.employees);
+});
+
+test("workspace control makes a manager: never seated, never counted, no signed count (W-f)", async () => {
+  const t = harness();
+  for (const permission of WORKSPACE_PERMISSIONS) {
+    const result = await t.run(async (ctx) => {
+      const { orgId, org } = await addOrg(ctx);
+      const employees = await addPeople(ctx, orgId, 5);
+      // Runs the workspace, not the sprint: still a manager (W-f).
+      await addPeople(ctx, orgId, 1, [permission]);
+      return {
+        employees,
+        seated: (await loadSeated(ctx, org)).map((p) => p._id),
+        counted: (await loadCountable(ctx, org, null)).map((p) => p._id),
+        // Refused before any read, so a made-up agreement id is enough.
+        signed: await signatureCount(
+          ctx,
+          org,
+          { _id: "agreement" as Id<"agreements">, version: 1 },
+          [permission],
+        ),
+      };
+    });
+    expect(result.seated, permission).toEqual(result.employees);
+    expect(result.counted, permission).toEqual(result.employees);
+    expect(result.signed, permission).toBeNull();
+  }
+});
+
+test("members:read alone is still a teammate (M-e)", async () => {
+  expect(isManager({ permissions: ["members:read"] })).toBe(false);
+  const t = harness();
+  const result = await t.run(async (ctx) => {
+    const { orgId, org } = await addOrg(ctx);
+    const people = [
+      ...(await addPeople(ctx, orgId, 4)),
+      ...(await addPeople(ctx, orgId, 1, ["members:read"])),
+    ];
+    return {
+      people,
+      seated: (await loadSeated(ctx, org)).map((p) => p._id),
+    };
+  });
+  expect(result.seated).toEqual(result.people);
 });
 
 test("countSeated counts the whole seated team, opted out or not, hidden below the threshold", async () => {

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { getShell } from "@/lib/account/queries";
 import { withParams } from "@/lib/url";
 
-/** 18 is for `org:manage` (decision 1); anyone else goes home with the moved note (Ruling 4). */
+/** 18 is for whoever may open one of its tabs (W-g); anyone else goes home with the moved note (Ruling 4). */
 export default async function WorkspaceSettingsLayout({
   children,
 }: {

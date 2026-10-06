@@ -198,6 +198,13 @@ export const sprintTables = {
     skills: v.array(v.string()),
     reflectionProjectId: v.optional(v.id("projects")),
     shareSlug: v.string(),
+    /**
+     * The holder's name and zone at issue, so the public link still reads
+     * after they leave the workspace (M-c). Set by `issueBadge`; older rows
+     * get them from `badges.backfillHolders`.
+     */
+    holderName: v.optional(v.string()),
+    holderTimeZone: v.optional(v.string()),
   })
     .index("by_org", ["orgId"])
     .index("by_person", ["personId"])

@@ -32,7 +32,7 @@ test("mine reads the viewer's own fields, the defaults, the owner's name and the
     email: "dan.okafor@calderlane.com.au",
     jobTitle: "Senior Account Executive",
     timeZone: "Australia/Melbourne",
-    manager: { name: "Priya Raman", firstName: "Priya" },
+    manager: { name: "Priya Raman" },
     threshold: 5,
     settings: { ...DEFAULT_SETTINGS },
   });

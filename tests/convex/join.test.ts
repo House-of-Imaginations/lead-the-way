@@ -92,13 +92,14 @@ test("a withdrawn, declined or used link shows no join facts, even signed in", a
 test("a workspace with no sprint previews without join facts", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);
-  // As workspace/invites.test.ts makes its role.
+  // A manager's role: a team member's invitation would make setup's draft
+  // (M-g), and this workspace must stay without a sprint.
   const roleId = await t.run((ctx) =>
     ctx.db.insert("orgRoles", {
       orgId,
       kind: "custom",
-      name: "Member",
-      permissions: ["members:read"],
+      name: "Admin",
+      permissions: ["org:manage"],
       createdAt: Date.now(),
     }),
   );

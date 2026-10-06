@@ -272,21 +272,27 @@ export const overview = timedViewerQuery()({
       body: null,
     };
     if (saved) {
-      const signatures = await ctx.db
-        .query("agreementSignatures")
-        .withIndex("by_agreement_version_and_person", (q) =>
-          q.eq("agreementId", saved._id).eq("version", saved.version),
-        )
-        .take(MAX_MEMBERS_PER_ORG);
-      const signedBy = new Set(signatures.map((s) => s.personId));
-      // Over the whole seated team, opted out or not, the viewer too: an
-      // opt-out must never flip this title, nor who is looking. Held back
-      // below the threshold (Ruling 15), so it can't single out who hasn't
-      // signed. No number leaves here, only "everyone".
-      const seated = await loadSeated(ctx, org);
-      const everyone =
-        seated.length >= thresholdOf(org) &&
-        seated.every((person) => signedBy.has(person._id));
+      // A team total, so only for team:insights, like the others (F1): a
+      // members:manage seat can move people across the manager line and
+      // must not watch this flip. Over the whole seated team, opted out or
+      // not, the viewer too: an opt-out must never flip this title, nor
+      // which holder is looking. Held back below the threshold (Ruling 15),
+      // so it can't single out who hasn't signed. No number leaves here,
+      // only "everyone".
+      let everyone = false;
+      if (insights) {
+        const signatures = await ctx.db
+          .query("agreementSignatures")
+          .withIndex("by_agreement_version_and_person", (q) =>
+            q.eq("agreementId", saved._id).eq("version", saved.version),
+          )
+          .take(MAX_MEMBERS_PER_ORG);
+        const signedBy = new Set(signatures.map((s) => s.personId));
+        const seated = await loadSeated(ctx, org);
+        everyone =
+          seated.length >= thresholdOf(org) &&
+          seated.every((person) => signedBy.has(person._id));
+      }
       agreement = {
         title: everyone ? "Signed by the team" : "Saved",
         tag: everyone
@@ -338,10 +344,12 @@ export const overview = timedViewerQuery()({
 });
 
 /**
- * 08's and 16's invited and joined. Sprint 1 counts its own invitations. A
- * later sprint carries the seated team over (managers left out), so joined is
- * that team and invited adds its open, unexpired invitations. Membership
- * facts, not activity: no threshold.
+ * 08's and 16's invited and joined. Sprint 1 counts its own invitations, and
+ * joined only those whose person is still seated on the team (M-c, F3). A
+ * row without `personId` names no seat, so it isn't joined. A later sprint
+ * carries the seated team over (managers left out), so joined is that team
+ * and invited adds its open, unexpired invitations. Membership facts, not
+ * activity: no threshold.
  */
 async function sprintHeadcount(
   ctx: QueryCtx,
@@ -352,13 +360,22 @@ async function sprintHeadcount(
   const invites = (await sprintInvites(ctx, org._id, sprint._id)).filter(
     (i) => i.status !== "revoked",
   );
+  const seated = await loadSeated(ctx, org);
   if (!(await isLaterSprint(ctx, org._id, sprint))) {
-    return {
-      invited: invites.length,
-      joined: invites.filter((i) => i.status === "accepted").length,
-    };
+    // M-c: a removed member's accepted invitation stays as history and as
+    // one of the invited, but they are no longer one of the joined, nor is
+    // anyone since moved to a manager's role (F3): joined is the seated
+    // team, as in a later sprint.
+    const ids = new Set(seated.map((p) => p._id));
+    const joined = invites.filter(
+      (i) =>
+        i.status === "accepted" &&
+        i.personId !== undefined &&
+        ids.has(i.personId),
+    ).length;
+    return { invited: invites.length, joined };
   }
-  const joined = (await loadSeated(ctx, org)).length;
+  const joined = seated.length;
   const open = invites.filter(
     (i) => i.status === "pending" && i.expiresAt > now,
   );

@@ -14,7 +14,7 @@ import { nowFor } from "./lib/clock";
 import { profileOf } from "./lib/account/profile";
 import { emailConfigured } from "./lib/email/send";
 import { throwUserError, type ErrorCode } from "./lib/errors";
-import { MAX_MESSAGE, normalEmail } from "./lib/inviteRules";
+import { EMAIL, MAX_MESSAGE, normalEmail } from "./lib/inviteRules";
 import { sendInvite } from "./lib/orgs/email";
 import {
   INVITE_WINDOW_MS,
@@ -27,13 +27,16 @@ import {
   MAX_MEMBERS_PER_ORG,
   assertCanJoin,
   findSeat,
+  isOwnerRole,
   permissionsOf,
   requireWithin,
 } from "./lib/orgs/membership";
 import { firstNameOf, initialsOf, isDemoAccount } from "./lib/orgs/people";
+import { isManager } from "./lib/orgs/permissions";
 import { reserveRateLimit } from "./lib/rateLimits";
 import { getInOrg } from "./lib/tenant";
 import {
+  ensureSprint,
   setupSprint,
   isLaterSprint,
   joinedSprint,
@@ -45,6 +48,7 @@ import {
   hourStart,
   parts,
   spanLabel,
+  sprintPhase,
   startDateOf,
 } from "./lib/sprintTime";
 
@@ -247,7 +251,9 @@ async function usableInvite(ctx: MutationCtx, token: string, userId: string) {
   return { invite, org };
 }
 
+// `orgId` on every Members row: 18 shows only its own workspace's (C2).
 const inviteValidator = v.object({
+  orgId: v.id("orgs"),
   _id: v.id("orgInvites"),
   token: v.string(),
   email: v.union(v.string(), v.null()),
@@ -297,6 +303,7 @@ export const list = timedViewerQuery("members:manage")({
       // shown. An answered row is history and stays.
       if (!role && invite.status === "pending") continue;
       rows.push({
+        orgId,
         _id: invite._id,
         token: invite.token,
         email: invite.email ?? null,
@@ -336,7 +343,7 @@ export const create = viewerMutation("members:manage")({
       throwUserError("NOT_FOUND", "That role no longer exists.");
     }
     // Ownership is handed over deliberately, never by a link.
-    if (role.kind === "owner") {
+    if (isOwnerRole(role)) {
       throwUserError(
         "FORBIDDEN",
         "Ownership cannot be given away with an invitation link.",
@@ -358,11 +365,23 @@ export const create = viewerMutation("members:manage")({
         `A message can be at most ${MAX_MESSAGE} characters.`,
       );
     }
-    if (sprintId) {
-      const sprint = await ctx.db.get(sprintId);
-      if (!sprint || sprint.orgId !== orgId) {
-        throwUserError("NOT_FOUND", "That sprint no longer exists.");
-      }
+    const named = sprintId ? await ctx.db.get(sprintId) : null;
+    if (sprintId && (!named || named.orgId !== orgId)) {
+      throwUserError("NOT_FOUND", "That sprint no longer exists.");
+    }
+    // M-g: an invitation pins a sprint, so its headcount counts it
+    // (`sprintInvites`): the one the caller names, else the newest. Only a
+    // team member, and only while that sprint is not over; naming a finished
+    // one is refused. Before the first sprint, the draft setup would make
+    // anyway (`ensureSprint`), or launch would skip this already-seated
+    // address and sprint 1 never count it.
+    let pinned: Id<"sprints"> | undefined;
+    if (!isManager({ permissions: permissionsOf(role) })) {
+      const sprint = named ?? (await ensureSprint(ctx, ctx.viewer));
+      const over = sprintPhase(sprint, ctx.viewer.now) === "complete";
+      if (over && named)
+        throwUserError("FORBIDDEN", "That sprint has finished.");
+      if (!over) pinned = sprint._id;
     }
 
     const now = ctx.viewer.now;
@@ -370,7 +389,8 @@ export const create = viewerMutation("members:manage")({
     // The cap counts live pending invitations only. Lapsed ones stay in the
     // table (spec 5) but `list` hides them, so counting them would brick
     // `create` with nothing visible to revoke.
-    if ((await livePending(ctx, orgId, now)).length >= MAX_INVITES_PER_ORG) {
+    const pending = await livePending(ctx, orgId, now);
+    if (pending.length >= MAX_INVITES_PER_ORG) {
       throwUserError(
         "FIELD_REQUIRED",
         "There are too many invitations open. Revoke some first.",
@@ -379,16 +399,31 @@ export const create = viewerMutation("members:manage")({
 
     const to = normalEmail(email ?? "") || undefined;
     // Fails closed: an address that normalises to nothing (".") must never
-    // become an open link anyone holding it could take.
-    if (email?.trim() && !to) {
+    // become an open link anyone holding it could take, and a malformed one
+    // never a pending invitation nobody can accept. 18 checks the same rule.
+    if (email?.trim() && !(to && EMAIL.test(to))) {
       throwUserError("FIELD_REQUIRED", "Enter a full email address.");
+    }
+    // F2: one seat or one live invitation per address. A revoked or lapsed
+    // invitation is not live, so it never blocks a new one.
+    if (to) {
+      const people = await ctx.db
+        .query("people")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .take(MAX_MEMBERS_PER_ORG);
+      if (
+        people.some((p) => normalEmail(p.email) === to) ||
+        pending.some((i) => normalEmail(i.email ?? "") === to)
+      ) {
+        throwUserError("FIELD_REQUIRED", "Already in this workspace.");
+      }
     }
     const { inviteId, token, expiresAt } = await insertInvite(ctx, {
       orgId,
       roleId,
       email: to,
       name: who,
-      sprintId,
+      sprintId: pinned,
       message: note,
       invitedBy: ctx.viewer.userId,
       at: now,
@@ -453,6 +488,9 @@ export const resend = viewerMutation("members:manage")({
     requireWithin(permissionsOf(role), ctx.viewer);
     await reserveRateLimit(ctx, "orgInvite", ctx.viewer.userId);
 
+    // Real time, as in `insertInvite`: expiry is judged by the demo clock
+    // (`nowIn`), and a window stamped from it would close as a tester moved
+    // the clock forward. Ruled for P7b-3a (Ruling 17).
     const expiresAt = Date.now() + INVITE_WINDOW_MS;
     await ctx.db.patch(invite._id, { expiresAt });
     const org = await ctx.db.get(orgId);

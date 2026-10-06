@@ -524,3 +524,34 @@ test("seed.invite can invite into a team:insights role, made once", async () => 
   const plain = roles.find((r) => r._id === roleOf("plain@example.com"));
   expect(plain).toMatchObject({ kind: "custom", permissions: [] });
 });
+
+test("seed.invite can invite into a members:manage role, made once", async () => {
+  const t = harness();
+  const accounts = await seedDemoAccounts(t);
+  const orgId = await t.mutation(internal.seed.writeCalderLane, { accounts });
+  for (const email of ["people-one@example.com", "people-two@example.com"]) {
+    await t.mutation(internal.seed.invite, { email, members: true });
+  }
+  await t.mutation(internal.seed.invite, { email: "plain@example.com" });
+  const { roles, invites } = await t.run(async (ctx) => ({
+    roles: await ctx.db
+      .query("orgRoles")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
+    invites: await ctx.db
+      .query("orgInvites")
+      .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
+      .collect(),
+  }));
+  const admins = roles.filter(
+    (r) => r.kind === "custom" && r.name === "People admin",
+  );
+  expect(admins).toHaveLength(1);
+  expect(admins[0]).toMatchObject({ permissions: ["members:manage"] });
+  // F4: a manager's invitation pins no sprint, as Invite member's (M-g); a
+  // team member's pins the newest one.
+  const sprintOf = (email: string) =>
+    invites.find((i) => i.email === email)!.sprintId;
+  expect(sprintOf("people-one@example.com")).toBeUndefined();
+  expect(sprintOf("plain@example.com")).toBeDefined();
+});

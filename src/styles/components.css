@@ -181,6 +181,37 @@
   background: var(--button-disabled);
 }
 
+/* Table: 48px rows, a layer-selected header row in 600, hairlines between rows. */
+.ltw-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.16px;
+  font-variant-numeric: tabular-nums;
+}
+.ltw-table th,
+.ltw-table td {
+  height: var(--size-control-lg);
+  padding: 0 16px;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+.ltw-table th {
+  background: var(--layer-selected);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.ltw-table td {
+  color: var(--text-primary);
+}
+.ltw-table tbody tr:hover {
+  background: var(--layer-hover);
+}
+
 /* Fields */
 .ltw-fld {
   display: flex;
@@ -372,7 +403,11 @@ input.ltw-field:read-only:not(:disabled) {
 /* Tabs */
 .ltw-tabs {
   display: flex;
-  border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+  /* A shadow, not a border plus a negative tab margin: overflow-x also clips
+     y and would cut the selected 2px underline. An inset shadow paints under
+     the tabs, so their underlines sit above the hairline. */
+  box-shadow: inset 0 -1px 0 var(--border-subtle);
 }
 .ltw-tab {
   height: var(--size-control-lg);
@@ -384,7 +419,8 @@ input.ltw-field:read-only:not(:disabled) {
   font: 400 14px var(--font-sans);
   letter-spacing: 0.16px;
   cursor: pointer;
-  margin-bottom: -1px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .ltw-tab:hover {
   color: var(--text-primary);

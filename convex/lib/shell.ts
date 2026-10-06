@@ -39,6 +39,16 @@ const linkValidator = v.object({
   icon: literals(...NAV_ICONS),
 });
 
+/**
+ * W-g: each 18 tab and the one permission that opens it. Roles joins in
+ * P7b-3b as `roles: "roles:manage"`. Order is the tab order.
+ */
+export const WORKSPACE_TABS = {
+  general: "org:manage",
+  members: "members:manage",
+} as const satisfies Record<string, Permission>;
+export type WorkspaceTab = keyof typeof WORKSPACE_TABS;
+
 export const shellValidator = v.object({
   /** Echo it on every product mutation (R6). */
   expectOrgId: v.id("orgs"),
@@ -47,12 +57,19 @@ export const shellValidator = v.object({
   /** The person's Reduce motion setting (P7b-1); AppShell sets `data-reduce-motion`. */
   reduceMotion: v.boolean(),
   /**
-   * 18 (P7b-2): `open` to `org:manage` only (decision 1); everyone else's
-   * account menu shows it disabled, "Managed by {owner}". A name, no number.
+   * 18 (P7b-2, W-g): `tabs` lists the tabs this seat may open ("general"
+   * stands for General, Sprint defaults and Data and privacy, all
+   * `org:manage`). `open` is any tab. Everyone else's account menu shows it
+   * disabled, "Managed by {owner}". A name, no number.
    */
   workspaceSettings: v.object({
     open: v.boolean(),
     owner: v.union(v.null(), v.string()),
+    tabs: v.array(
+      literals(
+        ...(Object.keys(WORKSPACE_TABS) as [WorkspaceTab, ...WorkspaceTab[]]),
+      ),
+    ),
   }),
   area: literals("manager", "employee"),
   home: v.string(),
@@ -111,6 +128,9 @@ export async function homeOf(
   known?: { team: Doc<"teams"> | null; sprint: Doc<"sprints"> | null },
 ): Promise<string> {
   if (!isManager(viewer)) return "/me";
+  // Setup is sprint:manage's. Any other manager's home is the overview, which
+  // every manager may read (W-f), never a setup page that bounces them.
+  if (!viewer.permissions.includes("sprint:manage")) return "/manager";
   const orgId = viewer.org._id;
   const { team, sprint } = known ?? {
     team: await currentTeam(ctx, orgId),
@@ -294,13 +314,17 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
   // A manager's status follows setup, so a clone shows as the draft it is. An
   // employee's stays on the launched sprint (P7a Ruling 15).
   const shown = manager ? sprint : await launchedSprint(ctx, viewer.org._id);
+  const tabs = (Object.keys(WORKSPACE_TABS) as WorkspaceTab[]).filter((tab) =>
+    viewer.permissions.includes(WORKSPACE_TABS[tab]),
+  );
   return {
     expectOrgId: viewer.org._id,
     isDemo,
     reduceMotion: (await settingsOf(ctx, viewer.person._id)).reduceMotion,
     workspaceSettings: {
-      open: viewer.permissions.includes("org:manage"),
+      open: tabs.length > 0,
       owner: (await ownerOf(ctx, viewer.org._id))?.name ?? null,
+      tabs,
     },
     area: manager ? "manager" : "employee",
     home: await homeOf(ctx, viewer, { team, sprint }),

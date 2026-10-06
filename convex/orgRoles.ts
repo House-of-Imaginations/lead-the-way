@@ -2,9 +2,13 @@ import { v } from "convex/values";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import {
+  MAX_ROLES_PER_ORG,
+  isOwnerRole,
   permissionsOf,
+  requireAnyOf,
   requireReach,
   requireWithin,
+  rolesOf,
 } from "./lib/orgs/membership";
 import { permissionValidator } from "./lib/orgs/permissions";
 
@@ -20,43 +24,33 @@ import { permissionValidator } from "./lib/orgs/permissions";
  * stored permission array to edit -- see `convex/tables/orgs.ts`.
  */
 
-/**
- * The ceiling on roles in one workspace.
- *
- * ENFORCED, like the member and org ceilings, not merely a page size:
- * `list` reads `.take(MAX_ROLES_PER_ORG)` and `deleteOrg` `.collect()`s the
- * same range, so a workspace past this would hide roles from the screen that
- * edits them and grow the deletion into a transaction that cannot commit.
- *
- * READ-THEN-INSERT IS NOT A RACE HERE, for exactly the reason the slug check
- * in `convex/orgs.ts` is not one. The `by_org` range lands in the
- * transaction's read set, so two creations at the ceiling conflict, and the
- * loser re-runs against the committed count rather than both squeezing in.
- */
-const MAX_ROLES_PER_ORG = 25;
 const MAX_ROLE_NAME = 40;
 
+// `orgId` on every Members row: 18 shows only its own workspace's (C2).
 const roleValidator = v.object({
+  orgId: v.id("orgs"),
   _id: v.id("orgRoles"),
   name: v.string(),
   isOwner: v.boolean(),
   permissions: v.array(permissionValidator),
 });
 
-export const list = viewerQuery("members:read")({
+/** The roles, for Members' role choices (W-g) and P7b-3b's Roles tab. */
+export const list = viewerQuery()({
   args: {},
   returns: v.array(roleValidator),
   handler: async (ctx) => {
-    const orgId = ctx.viewer.org._id;
-    const roles = await ctx.db
-      .query("orgRoles")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .take(MAX_ROLES_PER_ORG);
-
+    requireAnyOf(ctx.viewer, [
+      "members:read",
+      "members:manage",
+      "roles:manage",
+    ]);
+    const roles = await rolesOf(ctx, ctx.viewer.org._id);
     return roles.map((role) => ({
+      orgId: role.orgId,
       _id: role._id,
       name: role.name,
-      isOwner: role.kind === "owner",
+      isOwner: isOwnerRole(role),
       permissions: [...permissionsOf(role)],
     }));
   },
@@ -83,10 +77,7 @@ export const create = viewerMutation("roles:manage")({
     // The escalation guard. Refused before anything is written.
     requireWithin(permissions, ctx.viewer);
 
-    const existing = await ctx.db
-      .query("orgRoles")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .take(MAX_ROLES_PER_ORG);
+    const existing = await rolesOf(ctx, orgId);
     if (existing.length >= MAX_ROLES_PER_ORG) {
       throwUserError(
         "FIELD_REQUIRED",
@@ -121,7 +112,7 @@ export const update = viewerMutation("roles:manage")({
     if (!role || role.orgId !== orgId) {
       throwUserError("NOT_FOUND", "That role no longer exists.");
     }
-    if (role.kind === "owner") {
+    if (isOwnerRole(role)) {
       throwUserError(
         "FORBIDDEN",
         "The owner role always has every permission and cannot be edited.",
@@ -181,7 +172,7 @@ export const remove = viewerMutation("roles:manage")({
     if (!role || role.orgId !== orgId) {
       throwUserError("NOT_FOUND", "That role no longer exists.");
     }
-    if (role.kind === "owner") {
+    if (isOwnerRole(role)) {
       throwUserError("FORBIDDEN", "The owner role cannot be deleted.");
     }
     // Same rule as `update`. Narrower consequences here, because the check

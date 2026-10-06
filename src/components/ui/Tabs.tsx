@@ -1,7 +1,7 @@
 "use client";
 
 import { Tabs as RadixTabs } from "radix-ui";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 export type TabItem = { value: string; label: string; content: ReactNode };
 export type TabsProps = {
@@ -19,11 +19,20 @@ export function Tabs({
   defaultValue,
   onValueChange,
 }: TabsProps) {
+  const [picked, setPicked] = useState(defaultValue ?? items[0]?.value);
+  const wanted = value ?? picked;
+  // A tab can go while selected (18 losing members:manage on Members): show
+  // the first one left rather than a blank panel.
+  const shown = items.some((i) => i.value === wanted)
+    ? wanted
+    : items[0]?.value;
   return (
     <RadixTabs.Root
-      value={value}
-      defaultValue={defaultValue ?? items[0]?.value}
-      onValueChange={onValueChange}
+      value={shown}
+      onValueChange={(next) => {
+        setPicked(next);
+        onValueChange?.(next);
+      }}
     >
       <RadixTabs.List className="ltw-tabs" aria-label={label}>
         {items.map((item) => (

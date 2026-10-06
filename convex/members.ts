@@ -3,8 +3,11 @@ import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import {
   MAX_MEMBERS_PER_ORG,
+  type Seat,
   dropSeat,
+  isOwnerRole,
   permissionsOf,
+  requireAnyOf,
   requireOutranks,
   requireWithin,
   seatOf,
@@ -23,7 +26,24 @@ import {
  *  - `requireOutranks`: you may not act on somebody stronger than you.
  */
 
+/**
+ * M-b: only an owner moves anybody into or out of the owner role. A custom
+ * role holding all six permissions passes `requireWithin` and
+ * `requireOutranks`, so without this it could promote itself and then demote
+ * or remove the real owner.
+ */
+function requireOwnerFor(caller: Seat, touchesOwner: boolean): void {
+  if (touchesOwner && !isOwnerRole(caller.role)) {
+    throwUserError(
+      "FORBIDDEN",
+      "Only an owner can give or take away the owner role.",
+    );
+  }
+}
+
+// `orgId` on every Members row: 18 shows only its own workspace's (C2).
 const memberValidator = v.object({
+  orgId: v.id("orgs"),
   personId: v.id("people"),
   userId: v.string(),
   name: v.string(),
@@ -32,13 +52,19 @@ const memberValidator = v.object({
   roleName: v.string(),
   isOwner: v.boolean(),
   joinedAt: v.number(),
+  you: v.boolean(),
 });
 
-/** Name, email and role only (privacy rule 7). Never participation data. */
-export const list = viewerQuery("members:read")({
+/**
+ * Name, email and role only (privacy rule 7). Never participation data. The
+ * Members tab reads it with `members:manage` (W-g); `members:read` stays in
+ * code and reads it too (M-e). `you` lets the tab leave your own row alone.
+ */
+export const list = viewerQuery()({
   args: {},
   returns: v.array(memberValidator),
   handler: async (ctx) => {
+    requireAnyOf(ctx.viewer, ["members:read", "members:manage"]);
     const orgId = ctx.viewer.org._id;
     const people = await ctx.db
       .query("people")
@@ -50,14 +76,16 @@ export const list = viewerQuery("members:read")({
       const role = await ctx.db.get(person.roleId);
       if (!role) continue;
       members.push({
+        orgId,
         personId: person._id,
         userId: person.userId,
         name: person.name,
         email: person.email,
         roleId: person.roleId,
         roleName: role.name,
-        isOwner: role.kind === "owner",
+        isOwner: isOwnerRole(role),
         joinedAt: person.createdAt,
+        you: person._id === ctx.viewer.person._id,
       });
     }
     return members;
@@ -82,9 +110,12 @@ export const changeRole = viewerMutation("members:manage")({
       throwUserError("NOT_FOUND", "That role no longer exists.");
     }
     // You may not promote somebody past yourself, and you may not act on
-    // somebody already past you.
+    // somebody already past you. Escalation is checked first, so its message
+    // is the one a non-owner sees for a reach they never had.
+    const target = await seatOf(ctx, person.userId, orgId);
     requireWithin(permissionsOf(role), ctx.viewer);
-    requireOutranks(ctx.viewer, await seatOf(ctx, person.userId, orgId));
+    requireOutranks(ctx.viewer, target);
+    requireOwnerFor(ctx.viewer, isOwnerRole(role) || isOwnerRole(target.role));
 
     await setRole(ctx, person, roleId);
     return null;
@@ -104,7 +135,9 @@ export const remove = viewerMutation("members:manage")({
         "That person is no longer in this workspace.",
       );
     }
-    requireOutranks(ctx.viewer, await seatOf(ctx, person.userId, orgId));
+    const target = await seatOf(ctx, person.userId, orgId);
+    requireOutranks(ctx.viewer, target);
+    requireOwnerFor(ctx.viewer, isOwnerRole(target.role));
 
     await dropSeat(ctx, person);
     return null;

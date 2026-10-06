@@ -63,7 +63,7 @@ export function EmployeeSettings({
               />
               <div className="pt-05">
                 <NeverSees
-                  heading={`${mine.manager?.firstName ?? "Your manager"} never sees`}
+                  heading="Your manager and team never see"
                   items={[
                     "Your course progress",
                     "Time you spent learning",

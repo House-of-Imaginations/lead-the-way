@@ -17,6 +17,8 @@ export type MenuProps = {
   items: MenuItem[];
   side?: "top" | "bottom";
   align?: "start" | "end";
+  /** Runs as the menu closes; `preventDefault` keeps focus off the trigger. */
+  onCloseAutoFocus?: (e: Event) => void;
 };
 
 export function Menu({
@@ -24,6 +26,7 @@ export function Menu({
   items,
   side = "bottom",
   align = "start",
+  onCloseAutoFocus,
 }: MenuProps) {
   return (
     <DropdownMenu.Root>
@@ -34,6 +37,7 @@ export function Menu({
           side={side}
           align={align}
           sideOffset={4}
+          onCloseAutoFocus={onCloseAutoFocus}
         >
           {items.map((item, i) => {
             const body = (

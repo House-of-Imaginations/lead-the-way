@@ -12,18 +12,20 @@ import { useHour } from "./useHour";
  * `useHour()`. A new hour is a new query, which reads undefined until Convex
  * answers; the last answer is kept meanwhile, so the page never flashes back
  * to `initial` (the page-load snapshot) or to a skeleton. `initial` stands in
- * only before the first answer; without it that is undefined.
+ * only before the first answer; without it that is undefined. `skip` holds the
+ * subscription (as Convex's "skip"), and the last answer stands.
  */
 export function useTimedQuery<
   Q extends FunctionReference<"query", "public", { hour?: number }>,
 >(
   query: Q,
   initial?: FunctionReturnType<Q>,
+  skip = false,
 ): FunctionReturnType<Q> | undefined {
   const hour = useHour();
   const result = useQuery(
     query,
-    ...([{ hour }] as unknown as OptionalRestArgs<Q>),
+    ...([skip ? "skip" : { hour }] as unknown as OptionalRestArgs<Q>),
   );
   const [last, setLast] = useState(initial);
   if (result !== undefined && result !== last) setLast(result);

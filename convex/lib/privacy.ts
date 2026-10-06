@@ -94,8 +94,9 @@ export function count(
  * The people a manager-facing number may count: the invited team, less anyone
  * who opted out of team totals (spec rule 5). Manager counts are over the
  * invited ("6 of 7 finished week 1"), so nobody who manages the team counts
- * (`loadSeated`, Ruling 1): not an owner-kind seat (the owner holds every
- * permission), not a custom role with `team:insights` or `sprint:manage`.
+ * (`loadSeated`, Ruling 1 and W-f): not an owner-kind seat (the owner holds
+ * every permission), not a custom role holding any manager permission
+ * (`isManager`).
  * Nor does the asker: they know their own value, so counting it toward their
  * own threshold would lower the floor by one. `askerId` is required so it
  * cannot be forgotten; an internal caller with nobody asking passes null.
@@ -123,13 +124,14 @@ export async function loadCountable(
 /**
  * Everyone seated on the team: each person in the org whose role is the
  * org's and who doesn't manage the team, opted out or not, whoever is asking.
- * Ruling 1: a role with `team:insights` or `sprint:manage` is a manager's, and
- * a manager is in no total. Their pre-launch `normsConfidence` shares its key
+ * Ruling 1 and W-f: a role `isManager` accepts (`team:insights`,
+ * `sprint:manage` or any workspace permission) is a manager's, and a manager
+ * is in no total. Their pre-launch `normsConfidence` shares its key
  * with the team's week 4 answer, and they know their own value, so counting
  * them would lower the floor. Not a `Countable`; `signatureCount` and
  * `countSeated` are the sanctioned counts made from it (Rulings 1 and 24).
  * The agreement's "Signed by the team" reads it, so the title is the same for
- * every viewer and no opt-out flips it.
+ * every team:insights holder and no opt-out flips it.
  */
 export async function loadSeated(
   ctx: QueryCtx,
@@ -172,7 +174,7 @@ export function countSeated(
  * overview counts it (`loadSeated`). Null below the threshold, as the
  * overview's "Signed by the team" is (manager Ruling 15), so a count can't
  * single out who hasn't signed. Null too for anyone who manages the team
- * (`team:insights` or `sprint:manage`): a manager reads the overview, which
+ * (`isManager`, W-f included): a manager reads the overview, which
  * never lets a live number out (manager Ruling 15), so the rule lives here and
  * no caller can forget it.
  *

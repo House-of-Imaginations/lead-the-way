@@ -2,6 +2,7 @@ import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { throwUserError } from "../errors";
 import { normalEmail } from "../inviteRules";
+import { rolesOf } from "./membership";
 
 /**
  * The credential on an invitation link, how long it is good for, and the one
@@ -109,11 +110,7 @@ export async function inviteRoleOf(
   ctx: QueryCtx,
   orgId: Id<"orgs">,
 ): Promise<Doc<"orgRoles">> {
-  // ponytail: a workspace holds at most 25 roles (`MAX_ROLES_PER_ORG`).
-  const roles = await ctx.db
-    .query("orgRoles")
-    .withIndex("by_org", (q) => q.eq("orgId", orgId))
-    .collect();
+  const roles = await rolesOf(ctx, orgId);
   const bare = roles.flatMap((r) =>
     r.kind === "custom" && r.permissions.length === 0 ? [r] : [],
   );

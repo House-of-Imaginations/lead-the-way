@@ -419,6 +419,34 @@ test("an address launched with capitals and a dot joins as an Employee", async (
   ).toEqual([sprint!._id]);
 });
 
+test("an Employee invited before any sprint counts in sprint 1 (M-g)", async () => {
+  const { t, owner, orgId, launch } = await manager();
+  expect(await sprintOf(t, orgId)).toBeNull();
+  const { inviteId, token } = await owner.mutation(api.invites.create, {
+    roleId: await employeeRoleId(t, orgId),
+    email: "dee@example.com",
+    expectOrgId: orgId,
+  });
+  // Pinned to the draft setup would make anyway (`ensureSprint`).
+  const sprint = await sprintOf(t, orgId);
+  expect(sprint).not.toBeNull();
+  expect((await t.run((ctx) => ctx.db.get(inviteId)))?.sprintId).toBe(
+    sprint?._id,
+  );
+  const dee = await seedAuthUser(t, {
+    name: "Dee",
+    email: "dee@example.com",
+    emailVerified: true,
+  });
+  await t.withIdentity(dee).mutation(api.invites.accept, { token });
+  await ready(t, orgId);
+  await launch(["ana@example.com"]);
+  expect((await owner.query(api.manager.overview, {}))!.sprint).toMatchObject({
+    invited: 2,
+    joined: 1,
+  });
+});
+
 test("the demo workspace never sends and returns every link", async () => {
   emailOn();
   const { t, orgId, as } = await calderLane();

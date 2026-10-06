@@ -69,14 +69,31 @@ export function within(
   return grants(outer, inner);
 }
 
-/** The manager area is a matter of permissions, never of a role's name (rule 6). */
+/**
+ * W-f: holding any of these is controlling the workspace, and whoever
+ * controls it manages the team: left out of team totals, in the manager area.
+ */
+export const WORKSPACE_PERMISSIONS = [
+  "org:manage",
+  "members:manage",
+  "roles:manage",
+] as const satisfies readonly Permission[];
+
+const MANAGER_PERMISSIONS: readonly Permission[] = [
+  "team:insights",
+  "sprint:manage",
+  ...WORKSPACE_PERMISSIONS,
+];
+
+/**
+ * The manager area is a matter of permissions, never of a role's name (rule 6).
+ * `members:read` alone is not on the list (M-e): it unlocks nothing.
+ */
 export const isManager = ({
   permissions,
 }: {
   permissions: readonly Permission[];
-}) =>
-  permissions.includes("team:insights") ||
-  permissions.includes("sprint:manage");
+}) => MANAGER_PERMISSIONS.some((p) => permissions.includes(p));
 
 /**
  * The permission each manager page's query needs, or null for any manager

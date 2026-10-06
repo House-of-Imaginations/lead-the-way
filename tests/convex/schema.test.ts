@@ -1,7 +1,12 @@
+import type { GenericValidator } from "convex/values";
 import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { ORG_TABLES, deleteOrg } from "../../convex/lib/orgs/cascade";
+import {
+  ON_REMOVE,
+  ORG_TABLES,
+  deleteOrg,
+} from "../../convex/lib/orgs/cascade";
 import schema from "../../convex/schema";
 import { harness, workspace } from "./workspace/helpers";
 
@@ -12,6 +17,33 @@ test("every table is cleared with its workspace or belongs to the org layer", ()
   expect(Object.keys(schema.tables).sort()).toEqual(
     [...ORG_LAYER, ...ORG_TABLES].sort(),
   );
+});
+
+/** Does this validator hold an id into `table`, at any depth? */
+function holds(validator: GenericValidator, table: string): boolean {
+  switch (validator.kind) {
+    case "id":
+      return validator.tableName === table;
+    case "object":
+      return Object.values(validator.fields).some((f) => holds(f, table));
+    case "array":
+      return holds(validator.element, table);
+    case "union":
+      return validator.members.some((m) => holds(m, table));
+    case "record":
+      return holds(validator.value, table);
+    default:
+      return false;
+  }
+}
+
+test("every table holding a person id says what removing that person does to it (M-c)", () => {
+  // Every table, the org layer's too: orgInvites.personId is one.
+  const holding = Object.entries(schema.tables)
+    .filter(([, table]) => holds(table.validator, "people"))
+    .map(([name]) => name)
+    .sort();
+  expect(Object.keys(ON_REMOVE).sort()).toEqual(holding);
 });
 
 type RunCtx = Parameters<Parameters<ReturnType<typeof harness>["run"]>[0]>[0];

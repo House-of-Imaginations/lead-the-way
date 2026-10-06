@@ -6,6 +6,7 @@ import {
   type DemoTarget,
 } from "../../convex/lib/demo/schedule";
 import { DEFAULT_SETTINGS } from "../../convex/lib/settings";
+import type { Permission } from "../../convex/lib/orgs/permissions";
 import type { Shell } from "../../convex/lib/shell";
 import { personOf } from "./sprintHelpers";
 import {
@@ -305,18 +306,40 @@ test("isDemo is false for a real workspace, and for the demo when DEMO_MODE is o
 test("the area comes from permissions, not the role's name", async () => {
   const t = harness();
   const { orgId } = await workspace(t);
-  const cases: [
-    string,
-    ("team:insights" | "sprint:manage" | "members:read")[],
-    string,
-  ][] = [
+  const cases: [string, Permission[], string][] = [
     ["user_insights", ["team:insights"], "manager"],
     ["user_sprint", ["sprint:manage"], "manager"],
+    // W-f: controlling the workspace is managing the team.
+    ["user_admin", ["org:manage"], "manager"],
+    ["user_people", ["members:manage"], "manager"],
+    ["user_roles", ["roles:manage"], "manager"],
+    // M-e: members:read unlocks nothing.
     ["user_reader", ["members:read"], "employee"],
   ];
   for (const [subject, permissions, area] of cases) {
     const { as } = await seat(t, orgId, subject, permissions);
     expect((await as.query(api.viewer.shell, {}))?.area, subject).toBe(area);
+  }
+});
+
+test("a manager who can't set up is home on the overview, team saved or not (W-f)", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  // The team is unsaved, so the owner still starts at setup.
+  expect(await owner.query(api.viewer.home, {})).toBe("/setup/team");
+  for (const permission of [
+    "team:insights",
+    "org:manage",
+    "members:manage",
+    "roles:manage",
+  ] as const) {
+    const { as } = await seat(
+      t,
+      orgId,
+      `user_${permission.replace(":", "_")}`,
+      [permission],
+    );
+    expect(await as.query(api.viewer.home, {}), permission).toBe("/manager");
   }
 });
 
@@ -428,24 +451,29 @@ test("the shell carries the viewer's reduce motion setting (P7b-1)", async () =>
   expect((await priya.query(api.viewer.shell, {}))?.reduceMotion).toBe(true);
 });
 
-test("the shell opens 18 to org:manage only and names the owner to everyone else", async () => {
+test("the shell opens 18 for its tabs' permissions and names the owner to everyone (W-g)", async () => {
   const { t, orgId, as } = await calderLane();
   // Dan has no seat before the team joins.
   await clock(t, "week1");
-  const { as: lead } = await seat(t, orgId, "user_lead", [
-    "sprint:manage",
-    "team:insights",
-  ]);
-  const wsOf = async (who: typeof lead) =>
+  const seated = async (subject: string, permissions: Permission[]) =>
+    (await seat(t, orgId, subject, permissions)).as;
+  const wsOf = async (who: ReturnType<typeof as>) =>
     (await who.query(api.viewer.shell, {}))?.workspaceSettings;
-  expect(await wsOf(as("priya"))).toEqual({
-    open: true,
-    owner: "Priya Raman",
-  });
-  for (const who of [as("dan"), lead]) {
+  const cases: [ReturnType<typeof as>, string[]][] = [
+    [as("priya"), ["general", "members"]],
+    [await seated("user_admin", ["org:manage"]), ["general"]],
+    [await seated("user_people", ["members:manage"]), ["members"]],
+    // Roles is P7b-3b's tab: roles:manage alone opens nothing yet (Ruling 11).
+    [await seated("user_roles", ["roles:manage"]), []],
+    [await seated("user_reader", ["members:read"]), []],
+    [await seated("user_lead", ["sprint:manage", "team:insights"]), []],
+    [as("dan"), []],
+  ];
+  for (const [who, tabs] of cases) {
     expect(await wsOf(who)).toEqual({
-      open: false,
+      open: tabs.length > 0,
       owner: "Priya Raman",
+      tabs,
     });
   }
 });
