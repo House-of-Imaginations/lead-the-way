@@ -6,6 +6,8 @@ import { api } from "@convex/_generated/api";
 import { Tag } from "@/components/ui";
 import { SettingsFrame } from "@/components/settings/SettingsFrame";
 import { GeneralTab } from "./GeneralTab";
+import { PrivacyTab } from "./PrivacyTab";
+import { SprintDefaultsTab } from "./SprintDefaultsTab";
 
 export type WorkspaceData = FunctionReturnType<typeof api.workspace.settings>;
 
@@ -26,6 +28,16 @@ export function WorkspaceSettings({
           value: "general",
           label: "General",
           content: <GeneralTab data={data} />,
+        },
+        {
+          value: "sprint",
+          label: "Sprint defaults",
+          content: <SprintDefaultsTab data={data} />,
+        },
+        {
+          value: "privacy",
+          label: "Data and privacy",
+          content: <PrivacyTab data={data} />,
         },
       ]}
     />

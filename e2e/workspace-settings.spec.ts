@@ -30,8 +30,11 @@ test.describe("18", () => {
     await expect(
       main(page).getByText("Owner: Priya Raman", { exact: true }),
     ).toBeVisible();
-    // Task 9 adds Sprint defaults and Data and privacy.
-    await expect(page.getByRole("tab")).toHaveText(["General"]);
+    await expect(page.getByRole("tab")).toHaveText([
+      "General",
+      "Sprint defaults",
+      "Data and privacy",
+    ]);
     await expect(
       page.getByRole("tab", { name: "General", selected: true }),
     ).toBeVisible();
@@ -73,6 +76,92 @@ test.describe("18", () => {
     await expect(
       nav(page).getByRole("button", { name: /Calder Lane Studio/ }),
     ).toBeVisible();
+  });
+
+  test("Sprint defaults show the hour new sprints start from, and save", async ({
+    page,
+  }) => {
+    await open(page);
+    await page.getByRole("tab", { name: "Sprint defaults" }).click();
+    const day = page.getByRole("group", { name: "Default learning day" });
+    await expect(day.getByRole("button")).toHaveText([
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+    ]);
+    // No defaults saved: Calder Lane's sprint, Wednesday 2:00 PM in Melbourne.
+    await expect(day.getByRole("button", { name: "Wed" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(page.getByLabel("Default start time")).toHaveValue("14:00");
+    await expect(page.getByLabel("Time zone")).toHaveValue(
+      "Australia/Melbourne",
+    );
+    await expect(page.getByLabel("Sprint length")).toHaveValue("4 weeks");
+    await expect(page.getByLabel("Sprint length")).toBeDisabled();
+    await expect(
+      main(page).getByText("Fixed at four weeks in this prototype"),
+    ).toBeVisible();
+    await expect(page.getByLabel("Course")).toHaveValue(
+      "AI Productivity Fundamentals",
+    );
+    await expect(page.getByLabel("Course")).toBeDisabled();
+
+    await day.getByRole("button", { name: "Thu" }).click();
+    await page.getByLabel("Default start time").selectOption("10:00");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(
+      page.getByText("Changes saved.", { exact: true }),
+    ).toBeVisible();
+    // Saved defaults read back; the running sprint keeps its hour (Task 5's test).
+    await page.reload();
+    await page.getByRole("tab", { name: "Sprint defaults" }).click();
+    await expect(
+      page
+        .getByRole("group", { name: "Default learning day" })
+        .getByRole("button", { name: "Thu" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByLabel("Default start time")).toHaveValue("10:00");
+  });
+
+  test("Data and privacy sets the threshold, never below 5", async ({
+    page,
+  }) => {
+    await open(page);
+    await page.getByRole("tab", { name: "Data and privacy" }).click();
+    const threshold = page.getByLabel("Small-group threshold");
+    await expect(threshold.locator("option")).toHaveText([
+      "5 responses",
+      "6 responses",
+      "7 responses",
+      "8 responses",
+      "9 responses",
+      "10 responses",
+    ]);
+    await expect(threshold).toHaveValue("5");
+    await expect(
+      main(page).getByText(
+        "Team totals stay hidden until this many people respond. It can't go below 5.",
+      ),
+    ).toBeVisible();
+    await expect(
+      main(page).getByRole("complementary", { name: "Managers can see" }),
+    ).toBeVisible();
+    await expect(
+      main(page).getByRole("complementary", { name: "Managers never see" }),
+    ).toContainText("Individual survey answers");
+
+    await threshold.selectOption("6");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(
+      page.getByText("Changes saved.", { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await page.getByRole("tab", { name: "Data and privacy" }).click();
+    await expect(page.getByLabel("Small-group threshold")).toHaveValue("6");
   });
 
   test("Dan is sent from 18 to his home with a note", async ({ page }) => {
