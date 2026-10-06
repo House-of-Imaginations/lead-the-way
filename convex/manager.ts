@@ -345,10 +345,11 @@ export const overview = timedViewerQuery()({
 
 /**
  * 08's and 16's invited and joined. Sprint 1 counts its own invitations, and
- * joined only those whose seat still exists (M-c). A later sprint carries the
- * seated team over (managers left out), so joined is that team and invited
- * adds its open, unexpired invitations. Membership facts, not activity: no
- * threshold.
+ * joined only those whose person is still seated on the team (M-c, F3). A
+ * row without `personId` names no seat, so it isn't joined. A later sprint
+ * carries the seated team over (managers left out), so joined is that team
+ * and invited adds its open, unexpired invitations. Membership facts, not
+ * activity: no threshold.
  */
 async function sprintHeadcount(
   ctx: QueryCtx,
@@ -359,18 +360,22 @@ async function sprintHeadcount(
   const invites = (await sprintInvites(ctx, org._id, sprint._id)).filter(
     (i) => i.status !== "revoked",
   );
+  const seated = await loadSeated(ctx, org);
   if (!(await isLaterSprint(ctx, org._id, sprint))) {
     // M-c: a removed member's accepted invitation stays as history and as
-    // one of the invited, but they are no longer one of the joined. A row
-    // without `personId` predates it and counts as before.
-    let joined = 0;
-    for (const i of invites) {
-      if (i.status !== "accepted") continue;
-      if (i.personId === undefined || (await ctx.db.get(i.personId))) joined++;
-    }
+    // one of the invited, but they are no longer one of the joined, nor is
+    // anyone since moved to a manager's role (F3): joined is the seated
+    // team, as in a later sprint.
+    const ids = new Set(seated.map((p) => p._id));
+    const joined = invites.filter(
+      (i) =>
+        i.status === "accepted" &&
+        i.personId !== undefined &&
+        ids.has(i.personId),
+    ).length;
     return { invited: invites.length, joined };
   }
-  const joined = (await loadSeated(ctx, org)).length;
+  const joined = seated.length;
   const open = invites.filter(
     (i) => i.status === "pending" && i.expiresAt > now,
   );

@@ -306,6 +306,18 @@ test("a declined invitation still counts as invited", async () => {
   ).toMatchObject({ invited: 8, joined: 7 });
 });
 
+test("an employee moved to a members:manage role drops out of sprint 1's joined (F3)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  const dan = await personOf(t, orgId, "dan");
+  const { roleId } = await seat(t, orgId, "user_people", ["members:manage"]);
+  await t.run((ctx) => ctx.db.patch(dan, { roleId }));
+  // Still asked, so still invited; a manager now, so not one of the team.
+  expect(
+    (await as("priya").query(api.manager.overview, {}))!.sprint,
+  ).toMatchObject({ invited: 8, joined: 6 });
+});
+
 test("the week we're in stays current after its hour, until Monday", async () => {
   vi.setSystemTime(mel("2026-09-09T16:00"));
   const t = harness();
