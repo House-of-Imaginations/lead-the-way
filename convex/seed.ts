@@ -18,8 +18,8 @@ import { demoTargetValidator } from "./lib/demo/schedule";
 import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
 import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
-import { rolesOf } from "./lib/orgs/membership";
-import type { Permission } from "./lib/orgs/permissions";
+import { permissionsOf, rolesOf } from "./lib/orgs/membership";
+import { isManager, type Permission } from "./lib/orgs/permissions";
 import { setupSprint } from "./lib/sprint";
 
 /**
@@ -185,13 +185,14 @@ export const invite = internalMutation({
       : members
         ? await customRole(ctx, org._id, "People admin", ["members:manage"], at)
         : (await inviteRoleOf(ctx, org._id))._id;
+    // As Invite member (M-g): only a team member's invitation pins the sprint.
+    const role = (await ctx.db.get(roleId))!;
+    const manager = isManager({ permissions: permissionsOf(role) });
     const { inviteId, token } = await insertInvite(ctx, {
       orgId: org._id,
       roleId,
       email,
-      // As Invite member (M-g): only a team member's invitation pins the
-      // sprint. Team lead and People admin are managers' roles (W-f).
-      sprintId: insights || members ? undefined : sprint?._id,
+      sprintId: manager ? undefined : sprint?._id,
       message: sprint?.inviteMessage ?? INVITE_MESSAGE,
       invitedBy: priya.userId,
       at,
