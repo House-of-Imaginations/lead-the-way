@@ -72,6 +72,18 @@ export function useShell(): Shell {
   return shell;
 }
 
+const SwitchedContext = createContext(false);
+
+/**
+ * True once another tab switched workspace (R6), while the notice shows. A
+ * page whose live queries follow the viewer's workspace stops them then, as
+ * AppShell stops showing the live shell, so it never shows the other
+ * workspace's data under this one's heading.
+ */
+export function useWorkspaceSwitched(): boolean {
+  return useContext(SwitchedContext);
+}
+
 /** The signed-in shell. The (app) layout renders the demo banner above it. */
 export function AppShell({
   initial,
@@ -239,7 +251,9 @@ export function AppShell({
             </div>
           )}
           <ExpectOrgIdProvider value={initial.expectOrgId}>
-            <ShellContext value={shell}>{children}</ShellContext>
+            <ShellContext value={shell}>
+              <SwitchedContext value={switched}>{children}</SwitchedContext>
+            </ShellContext>
           </ExpectOrgIdProvider>
           {/* The disclaimer must be on every surface. The expanded nav carries it; the rail hides
               every label, so here it shows on phones (no side nav) and beside the rail. */}

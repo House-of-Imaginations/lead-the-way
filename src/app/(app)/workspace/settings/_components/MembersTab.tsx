@@ -6,7 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { useShell } from "@/components/app/AppShell";
+import { useShell, useWorkspaceSwitched } from "@/components/app/AppShell";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import {
   Button,
@@ -97,7 +97,12 @@ export function headcount(rows: MemberRow[]): string {
 export function MembersTab({ initial }: { initial: MembersData }) {
   // Losing `members:manage` mid-session must not subscribe again: the server
   // would refuse and the throw would reach error.tsx before the tab goes.
-  const allowed = useShell().workspaceSettings.tabs.includes("members");
+  // Nor after a switch in another tab (R6, C2): the queries follow the live
+  // workspace, so the rows and Copy link would be the other one's. The page's
+  // own rows stay, as the shell does, under AppShell's reload notice.
+  const switched = useWorkspaceSwitched();
+  const allowed =
+    useShell().workspaceSettings.tabs.includes("members") && !switched;
   const people =
     useQuery(api.members.list, allowed ? {} : "skip") ?? initial.people;
   const invites =

@@ -5,6 +5,7 @@ import { MembersTab } from "../../../src/app/(app)/workspace/settings/_component
 import { WorkspaceSettings } from "../../../src/app/(app)/workspace/settings/_components/WorkspaceSettings";
 
 let liveTabs: string[] = [];
+let switched = false;
 const useQuery = vi.fn<(...args: unknown[]) => unknown>();
 vi.mock("convex-helpers/react/cache", () => ({
   useQuery: (...args: unknown[]) => useQuery(...args),
@@ -18,6 +19,7 @@ vi.mock("@/components/app/AppShell", () => ({
     org: { name: "Calder Lane", team: "" },
     workspaceSettings: { open: true, owner: null, tabs: liveTabs },
   }),
+  useWorkspaceSwitched: () => switched,
 }));
 vi.mock("@/components/ui/Toast", () => ({
   ToastProvider: ({ children }: { children: unknown }) => children,
@@ -52,6 +54,7 @@ const render = (tabs: ("general" | "members")[]) =>
 
 beforeEach(() => {
   useQuery.mockClear();
+  switched = false;
 });
 
 test("a seat with only members:manage sees only the Members tab", () => {
@@ -76,6 +79,31 @@ test("Members skips its queries once the live shell drops the permission", () =>
   renderToStaticMarkup(<MembersTab initial={members} />);
   expect(useQuery).toHaveBeenCalled();
   for (const call of useQuery.mock.calls) expect(call[1]).toBe("skip");
+});
+
+test("Members keeps its own workspace's rows after a switch in another tab (C2)", () => {
+  liveTabs = ["members"];
+  switched = true;
+  const html = renderToStaticMarkup(
+    <MembersTab
+      initial={{
+        ...members,
+        people: [
+          {
+            personId: "p1",
+            name: "Priya Raman",
+            email: "priya@example.com",
+            roleId: "r1",
+            roleName: "Owner",
+          } as never,
+        ],
+      }}
+    />,
+  );
+  // The live queries would answer for the other workspace: none run.
+  expect(useQuery).toHaveBeenCalled();
+  for (const call of useQuery.mock.calls) expect(call[1]).toBe("skip");
+  expect(html).toContain("Priya Raman");
 });
 
 test("Members subscribes while the live shell lists members", () => {
