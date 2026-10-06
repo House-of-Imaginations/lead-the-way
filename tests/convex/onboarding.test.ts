@@ -121,12 +121,12 @@ test("a user with no name makes a workspace named My workspace", async () => {
 test("an invited address goes to its invitation and makes no workspace", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);
-  const roles = await owner.query(api.orgRoles.list, { orgId });
+  const roles = await owner.query(api.orgRoles.list, {});
   const roleId = roles.find((r) => r.name === "Employee")!._id;
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "Sam@Example.com",
+    expectOrgId: orgId,
   });
   const sam = await account(t, "Sam Ito", "sam@example.com", true);
 
@@ -139,12 +139,12 @@ test("an invited address goes to its invitation and makes no workspace", async (
 test("an unverified address never learns the invitation token", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);
-  const roles = await owner.query(api.orgRoles.list, { orgId });
+  const roles = await owner.query(api.orgRoles.list, {});
   const roleId = roles.find((r) => r.name === "Employee")!._id;
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "sam@example.com",
+    expectOrgId: orgId,
   });
   const eve = await account(t, "Eve", "sam@example.com", false);
 
@@ -159,12 +159,12 @@ test.each(["revoked", "accepted"] as const)(
   async (status) => {
     const t = harness();
     const { owner, orgId } = await workspace(t);
-    const roles = await owner.query(api.orgRoles.list, { orgId });
+    const roles = await owner.query(api.orgRoles.list, {});
     const roleId = roles.find((r) => r.name === "Employee")!._id;
     const { inviteId } = await owner.mutation(api.invites.create, {
-      orgId,
       roleId,
       email: "sam@example.com",
+      expectOrgId: orgId,
     });
     await t.run((ctx) => ctx.db.patch(inviteId, { status }));
     const sam = await account(t, "Sam Ito", "sam@example.com", true);
@@ -178,12 +178,12 @@ test.each(["revoked", "accepted"] as const)(
 test("an invitation from the demo workspace doesn't hold a verified account back", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);
-  const roles = await owner.query(api.orgRoles.list, { orgId });
+  const roles = await owner.query(api.orgRoles.list, {});
   const roleId = roles.find((r) => r.name === "Employee")!._id;
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "sam@example.com",
+    expectOrgId: orgId,
   });
   await t.run((ctx) => ctx.db.patch(orgId, { isDemo: true }));
   const sam = await account(t, "Sam Ito", "sam@example.com", true);
@@ -213,12 +213,12 @@ test("a seated account that never agreed to the terms is asked to", async () => 
 test("an expired invitation doesn't hold a new account back", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);
-  const roles = await owner.query(api.orgRoles.list, { orgId });
+  const roles = await owner.query(api.orgRoles.list, {});
   const roleId = roles.find((r) => r.name === "Employee")!._id;
   const { inviteId } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "sam@example.com",
+    expectOrgId: orgId,
   });
   await t.run((ctx) => ctx.db.patch(inviteId, { expiresAt: Date.now() - 1 }));
   const sam = await account(t, "Sam Ito", "sam@example.com");
@@ -273,12 +273,12 @@ test.each([
     const { owner, orgId } = await workspace(t);
     let token = "no-such-token";
     if (pinned !== null) {
-      const roles = await owner.query(api.orgRoles.list, { orgId });
+      const roles = await owner.query(api.orgRoles.list, {});
       const roleId = roles.find((r) => r.name === "Employee")!._id;
       ({ token } = await owner.mutation(api.invites.create, {
-        orgId,
         roleId,
         ...(pinned ? { email: pinned } : {}),
+        expectOrgId: orgId,
       }));
     }
     if (demo) await t.run((ctx) => ctx.db.patch(orgId, { isDemo: true }));

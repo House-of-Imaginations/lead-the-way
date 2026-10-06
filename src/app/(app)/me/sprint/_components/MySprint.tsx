@@ -79,7 +79,7 @@ export function MySprint() {
 
   if (data === undefined) {
     return (
-      <div aria-busy="true" className="flex max-w-content-max flex-col gap-07">
+      <div aria-busy="true" className="flex flex-col gap-07">
         {TITLE}
         <Skeleton className="h-[240px] w-full" />
       </div>
@@ -87,7 +87,7 @@ export function MySprint() {
   }
   if (data === null) {
     return (
-      <div className="flex max-w-content-max flex-col gap-07">
+      <div className="flex flex-col gap-07">
         {TITLE}
         <InlineNotification>
           Your sprint appears here once your manager launches it.
@@ -97,11 +97,13 @@ export function MySprint() {
   }
 
   return (
-    <div className="flex max-w-content-max flex-col gap-07">
+    <div className="flex flex-col gap-07">
       <header className="flex items-end justify-between gap-07 max-[900px]:flex-col max-[900px]:items-stretch">
         <div className="flex flex-col gap-03">
           {TITLE}
-          <p className="text-body-01 text-text-secondary">{data.intro}</p>
+          <p className="max-w-[65ch] text-body-01 text-text-secondary">
+            {data.intro}
+          </p>
         </div>
         <div className="w-[280px] max-[900px]:w-full">
           <ProgressBar

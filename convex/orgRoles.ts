@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { orgMutation, orgQuery } from "./lib/customFunctions";
+import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import {
   permissionsOf,
@@ -43,13 +43,14 @@ const roleValidator = v.object({
   permissions: v.array(permissionValidator),
 });
 
-export const list = orgQuery("members:read")({
+export const list = viewerQuery("members:read")({
   args: {},
   returns: v.array(roleValidator),
   handler: async (ctx) => {
+    const orgId = ctx.viewer.org._id;
     const roles = await ctx.db
       .query("orgRoles")
-      .withIndex("by_org", (q) => q.eq("orgId", ctx.orgId))
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .take(MAX_ROLES_PER_ORG);
 
     return roles.map((role) => ({
@@ -73,17 +74,18 @@ function checkName(name: string): string {
   return trimmed;
 }
 
-export const create = orgMutation("roles:manage")({
+export const create = viewerMutation("roles:manage")({
   args: { name: v.string(), permissions: v.array(permissionValidator) },
   returns: v.id("orgRoles"),
   handler: async (ctx, { name, permissions }) => {
+    const orgId = ctx.viewer.org._id;
     const trimmed = checkName(name);
     // The escalation guard. Refused before anything is written.
-    requireWithin(permissions, ctx);
+    requireWithin(permissions, ctx.viewer);
 
     const existing = await ctx.db
       .query("orgRoles")
-      .withIndex("by_org", (q) => q.eq("orgId", ctx.orgId))
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .take(MAX_ROLES_PER_ORG);
     if (existing.length >= MAX_ROLES_PER_ORG) {
       throwUserError(
@@ -93,7 +95,7 @@ export const create = orgMutation("roles:manage")({
     }
 
     return await ctx.db.insert("orgRoles", {
-      orgId: ctx.orgId,
+      orgId,
       kind: "custom",
       name: trimmed,
       // Deduplicated: a role holding the same permission twice is the same
@@ -104,7 +106,7 @@ export const create = orgMutation("roles:manage")({
   },
 });
 
-export const update = orgMutation("roles:manage")({
+export const update = viewerMutation("roles:manage")({
   args: {
     roleId: v.id("orgRoles"),
     name: v.string(),
@@ -112,10 +114,11 @@ export const update = orgMutation("roles:manage")({
   },
   returns: v.null(),
   handler: async (ctx, { roleId, name, permissions }): Promise<null> => {
+    const orgId = ctx.viewer.org._id;
     const role = await ctx.db.get(roleId);
     // Belongs to another org, or does not exist. Indistinguishable on purpose:
     // an id from a different tenant must not be confirmable by probing.
-    if (!role || role.orgId !== ctx.orgId) {
+    if (!role || role.orgId !== orgId) {
       throwUserError("NOT_FOUND", "That role no longer exists.");
     }
     if (role.kind === "owner") {
@@ -136,7 +139,7 @@ export const update = orgMutation("roles:manage")({
     // owner. It is the same rule `members.ts` applies with `requireOutranks`
     // before touching a person -- and editing a role is exactly touching
     // everybody who holds it, one indirection further out.
-    requireReach(ctx, permissionsOf(role));
+    requireReach(ctx.viewer, permissionsOf(role));
 
     const trimmed = checkName(name);
     const next = [...new Set(permissions)];
@@ -147,7 +150,7 @@ export const update = orgMutation("roles:manage")({
     const added = next.filter(
       (permission) => !role.permissions.includes(permission),
     );
-    requireWithin(added, ctx);
+    requireWithin(added, ctx.viewer);
 
     await ctx.db.patch(roleId, { name: trimmed, permissions: next });
 
@@ -169,12 +172,13 @@ export const update = orgMutation("roles:manage")({
   },
 });
 
-export const remove = orgMutation("roles:manage")({
+export const remove = viewerMutation("roles:manage")({
   args: { roleId: v.id("orgRoles") },
   returns: v.null(),
   handler: async (ctx, { roleId }): Promise<null> => {
+    const orgId = ctx.viewer.org._id;
     const role = await ctx.db.get(roleId);
-    if (!role || role.orgId !== ctx.orgId) {
+    if (!role || role.orgId !== orgId) {
       throwUserError("NOT_FOUND", "That role no longer exists.");
     }
     if (role.kind === "owner") {
@@ -183,7 +187,7 @@ export const remove = orgMutation("roles:manage")({
     // Same rule as `update`. Narrower consequences here, because the check
     // below refuses while anybody holds it -- but deleting a role somebody is
     // about to be given is still reaching past yourself.
-    requireReach(ctx, permissionsOf(role));
+    requireReach(ctx.viewer, permissionsOf(role));
 
     // Refused while somebody holds it, rather than cascading or reassigning.
     // A cascade evicts people from the workspace as a side effect of tidying

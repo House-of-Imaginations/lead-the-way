@@ -14,8 +14,8 @@ import type { Permission } from "./orgs/permissions";
 
 /**
  * WHO IS ASKING, AND IN WHICH WORKSPACE. The identity entry point for product
- * functions (AGENTS.md). The org layer's builders (`orgQuery`, `orgMutation`
- * and the `authenticated*` ones) still use `requireUserId`.
+ * functions (AGENTS.md). The `authenticated*` builders, for functions with no
+ * workspace yet, use `requireUserId`.
  *
  * Must not import `convex/auth.ts`: `customFunctions.ts` imports this file,
  * and `auth.ts` imports `customFunctions.ts`.

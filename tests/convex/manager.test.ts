@@ -726,6 +726,84 @@ test("stored rows keep their threshold", async () => {
   });
 });
 
+test("a hidden row's helper never depends on how many answered (threshold probe)", async () => {
+  vi.setSystemTime(mel("2026-09-10T09:00"));
+  /** Week 1's row taken at 7 with `n` seated, then read at `now`. */
+  const helperAt = async (n: number, now: number) => {
+    const t = harness();
+    const { owner, orgId } = await workspace(t);
+    await t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold: 7 }));
+    for (let i = 0; i < n; i++) await seat(t, orgId, `user_${i}`, []);
+    const sprintId = await launchedSprint(t, orgId);
+    await t.mutation(internal.snapshots.take, { orgId, sprintId });
+    await t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold: now }));
+    return (await owner.query(api.manager.overview, {}))!.team?.sessionDone
+      .stat;
+  };
+  // Both rows are stored hidden. Were the helper to turn on n, stepping the
+  // threshold down from 7 would read n back.
+  for (const now of [5, 6]) {
+    const fewer = await helperAt(4, now);
+    expect(fewer, `at ${now}`).toEqual(await helperAt(6, now));
+    expect(fewer).toEqual({
+      kind: "hidden",
+      helper: "Shown from next week's totals",
+    });
+  }
+});
+
+test("the final row's helper never depends on how many answered (threshold probe)", async () => {
+  vi.setSystemTime(mel("2026-09-10T09:00"));
+  /** The outcomes row taken at 7 with `n` seated, then read at `now`. */
+  const finalAt = async (n: number, now: number) => {
+    const t = harness();
+    const { owner, orgId } = await workspace(t);
+    await t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold: 7 }));
+    for (let i = 0; i < n; i++) await seat(t, orgId, `user_${i}`, []);
+    const sprintId = await launchedSprint(t, orgId);
+    await t.mutation(internal.snapshots.take, { orgId, sprintId });
+    vi.setSystemTime(mel("2026-10-02T09:00"));
+    await t.mutation(internal.snapshots.takeOutcomes, { sprintId });
+    vi.setSystemTime(mel("2026-09-10T09:00"));
+    await t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold: now }));
+    return await owner.query(api.manager.outcomes, {});
+  };
+  for (const now of [5, 6]) {
+    const fewer = await finalAt(4, now);
+    expect(fewer, `at ${now}`).toMatchObject({ state: "closed" });
+    expect(fewer, `at ${now}`).toEqual(await finalAt(6, now));
+    expect(JSON.stringify(fewer)).toContain("Hidden until 7 responses");
+  }
+});
+
+test("a row shown at 5 hides when the threshold is raised and shows again when it is lowered", async () => {
+  vi.setSystemTime(mel("2026-09-10T09:00"));
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  for (const subject of ["a", "b", "c", "d", "e", "f"]) {
+    await seat(t, orgId, `user_${subject}`, []);
+  }
+  const sprintId = await launchedSprint(t, orgId);
+  await t.mutation(internal.snapshots.take, { orgId, sprintId });
+  const stat = async () =>
+    (await owner.query(api.manager.overview, {}))!.team?.sessionDone.stat;
+  const setThreshold = (threshold: number) =>
+    owner.mutation(api.workspace.setThreshold, {
+      threshold,
+      expectOrgId: orgId,
+    });
+
+  expect(await stat()).toEqual(shown(0, 6));
+  await setThreshold(8);
+  expect(await stat()).toEqual({
+    kind: "hidden",
+    helper: "Hidden until 8 responses",
+  });
+  // Shown under its own stored threshold, so its value was kept.
+  await setThreshold(5);
+  expect(await stat()).toEqual(shown(0, 6));
+});
+
 test("week 4's row has no next week, so a lowered threshold names the one it was taken under (Q-2)", async () => {
   const { t, orgId, as } = await calderLane();
   // Seven are seated, so at 8 every week's row is stored hidden, n 7.

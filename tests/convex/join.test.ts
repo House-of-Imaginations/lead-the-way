@@ -103,11 +103,14 @@ test("a workspace with no sprint previews without join facts", async () => {
     }),
   );
   const pinned = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "bob@example.com",
+    expectOrgId: orgId,
   });
-  const open = await owner.mutation(api.invites.create, { orgId, roleId });
+  const open = await owner.mutation(api.invites.create, {
+    roleId,
+    expectOrgId: orgId,
+  });
 
   expect(
     await t.query(api.invites.publicPreview, { token: pinned.token }),

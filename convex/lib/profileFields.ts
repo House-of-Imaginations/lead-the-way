@@ -42,3 +42,9 @@ export const TIME_ZONE_LABELS: Record<TimeZone, string> = {
   "America/Los_Angeles": "America/Los_Angeles (PST/PDT)",
   UTC: "UTC",
 };
+
+/** The time zone select's options, on 17, 18 and 19. */
+export const TIME_ZONE_OPTIONS = TIME_ZONES.map((zone) => ({
+  value: zone,
+  label: TIME_ZONE_LABELS[zone],
+}));

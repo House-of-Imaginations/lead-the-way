@@ -197,7 +197,7 @@ test("leaving a workspace takes the person's settings with them", async () => {
   const { orgId } = await workspace(t);
   const member = await seat(t, orgId, "user_member", []);
   await t.run((ctx) => optOut(ctx, orgId, member.personId));
-  await member.as.mutation(api.members.leave, { orgId });
+  await member.as.mutation(api.members.leave, { expectOrgId: orgId });
   const left = await t.run((ctx) =>
     ctx.db
       .query("settings")

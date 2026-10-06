@@ -229,7 +229,7 @@ const EVERY = [
 ];
 
 /** "14:00" plus `minutes`, as "3:00 PM". */
-function clockLabel(time: string, minutes = 0): string {
+export function clockLabel(time: string, minutes = 0): string {
   const [h, m] = time.split(":").map(Number);
   const total = (h! * 60 + m! + minutes) % (24 * 60);
   const hour = Math.floor(total / 60);

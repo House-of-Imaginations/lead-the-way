@@ -1,12 +1,10 @@
 import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
-import type { QueryCtx } from "./_generated/server";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { saveDisplayName } from "./lib/account/profile";
 import { throwUserError } from "./lib/errors";
 import { updateSeatProfile } from "./lib/orgs/membership";
-import { firstNameOf, initialsOf } from "./lib/orgs/people";
+import { initialsOf, ownerOf } from "./lib/orgs/people";
 import { MAX_JOB_TITLE, TIME_ZONES } from "./lib/profileFields";
 import { thresholdOf } from "./lib/privacy";
 import { settingsOf, writeSettings, type Settings } from "./lib/settings";
@@ -36,25 +34,6 @@ const toggleKeyValidator = literals(
   "includeInTeamTotals",
 );
 
-/**
- * Who 19 says manages the workspace: the earliest-seated holder of the owner
- * role (Ruling 14). ponytail: one name; P7b-3's Members tab lists every owner.
- */
-async function managerOf(ctx: QueryCtx, orgId: Id<"orgs">) {
-  // ponytail: a workspace holds a handful of roles; 100 is the ceiling.
-  const roles = await ctx.db
-    .query("orgRoles")
-    .withIndex("by_org", (q) => q.eq("orgId", orgId))
-    .take(100);
-  const owner = roles.find((role) => role.kind === "owner");
-  if (!owner) return null;
-  const person = await ctx.db
-    .query("people")
-    .withIndex("by_role", (q) => q.eq("roleId", owner._id))
-    .first();
-  return person && { name: person.name, firstName: firstNameOf(person.name) };
-}
-
 export const mine = viewerQuery()({
   args: {},
   returns: v.object({
@@ -78,7 +57,7 @@ export const mine = viewerQuery()({
       email: person.email,
       jobTitle: person.jobTitle,
       timeZone: person.timeZone,
-      manager: await managerOf(ctx, viewer.org._id),
+      manager: await ownerOf(ctx, viewer.org._id),
       threshold: thresholdOf(viewer.org),
       settings: await settingsOf(ctx, person._id),
     };

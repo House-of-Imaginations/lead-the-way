@@ -83,7 +83,7 @@ export function Home({
   // No launched sprint yet.
   if (data === null) {
     return (
-      <div className="flex max-w-content-max flex-col gap-07">
+      <div className="flex flex-col gap-07">
         <h1 className="text-heading-01">{greeting}</h1>
         <InlineNotification>
           Your week appears here once your manager launches the sprint.
@@ -111,11 +111,13 @@ export function Home({
 
   const agreement = data.agreement;
   return (
-    <div className="flex max-w-content-max flex-col gap-07">
+    <div className="flex flex-col gap-07">
       <header className="flex items-start justify-between gap-05 max-[672px]:flex-col max-[672px]:gap-03">
         <div className="flex flex-col gap-03">
           <h1 className="text-heading-01">{data.greeting}</h1>
-          <p className="text-body-01 text-text-secondary">{data.intro}</p>
+          <p className="max-w-[65ch] text-body-01 text-text-secondary">
+            {data.intro}
+          </p>
         </div>
         <Tag color="blue">{data.protectedTag}</Tag>
       </header>

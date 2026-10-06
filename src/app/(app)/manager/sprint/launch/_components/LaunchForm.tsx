@@ -251,7 +251,7 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
   }
 
   return (
-    <div className="flex max-w-content-max flex-col gap-07">
+    <div className="flex flex-col gap-07">
       <header className="flex flex-wrap items-end justify-between gap-05">
         <div className="flex max-w-[640px] flex-col gap-03">
           <h1 className="text-heading-01">Launch your 4-week sprint</h1>
@@ -283,39 +283,45 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
             <Heading
               id="invited-title"
               title="Invitations"
-              count={data.invited.length}
+              count={data.invitedCount}
               // Stable, so it runs once when launchedHere flips, not per render.
               focusRef={launchedHere ? focusOnMount : undefined}
             />
-            <ul aria-labelledby="invited-title" className="flex flex-col">
-              {data.invited.map(({ email, status }) => {
-                const token = links.get(email);
-                return (
-                  <li
-                    key={email}
-                    className="flex min-h-control-lg items-center gap-05 border-b border-border-subtle first:border-t"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-body-02">
-                      {email}
-                    </span>
-                    <Tag color={STATUS[status].color}>
-                      {STATUS[status].label}
-                    </Tag>
-                    {token ? (
-                      <Button
-                        kind="ghost"
-                        size="sm"
-                        icon={Copy}
-                        aria-label={`Copy link for ${email}`}
-                        onClick={() => copy(token)}
-                      >
-                        Copy link
-                      </Button>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
+            {data.canInvite ? (
+              <ul aria-labelledby="invited-title" className="flex flex-col">
+                {data.invited.map(({ email, status }) => {
+                  const token = links.get(email);
+                  return (
+                    <li
+                      key={email}
+                      className="flex min-h-control-lg items-center gap-05 border-b border-border-subtle first:border-t"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-body-02">
+                        {email}
+                      </span>
+                      <Tag color={STATUS[status].color}>
+                        {STATUS[status].label}
+                      </Tag>
+                      {token ? (
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          icon={Copy}
+                          aria-label={`Copy link for ${email}`}
+                          onClick={() => copy(token)}
+                        >
+                          Copy link
+                        </Button>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-body-02 text-text-secondary">
+                Only people who manage members see who was invited.
+              </p>
+            )}
             {copyError ? (
               <p
                 role="alert"

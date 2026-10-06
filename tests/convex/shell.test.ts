@@ -427,3 +427,25 @@ test("the shell carries the viewer's reduce motion setting (P7b-1)", async () =>
   );
   expect((await priya.query(api.viewer.shell, {}))?.reduceMotion).toBe(true);
 });
+
+test("the shell opens 18 to org:manage only and names the owner to everyone else", async () => {
+  const { t, orgId, as } = await calderLane();
+  // Dan has no seat before the team joins.
+  await clock(t, "week1");
+  const { as: lead } = await seat(t, orgId, "user_lead", [
+    "sprint:manage",
+    "team:insights",
+  ]);
+  const wsOf = async (who: typeof lead) =>
+    (await who.query(api.viewer.shell, {}))?.workspaceSettings;
+  expect(await wsOf(as("priya"))).toEqual({
+    open: true,
+    owner: "Priya Raman",
+  });
+  for (const who of [as("dan"), lead]) {
+    expect(await wsOf(who)).toEqual({
+      open: false,
+      owner: "Priya Raman",
+    });
+  }
+});

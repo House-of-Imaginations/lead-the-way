@@ -288,9 +288,9 @@ test("launch lowercases, dedupes and skips members", async () => {
   await seat(t, orgId, "user_bob", []); // user_bob@example.com is a member
   const roleId = await employeeRoleId(t, orgId);
   await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "dee@example.com",
+    expectOrgId: orgId,
   });
 
   const result = await launch([
@@ -451,9 +451,9 @@ test("the demo workspace never sends and returns every link", async () => {
   const roleId = await employeeRoleId(t, orgId);
   expect(
     await priya.mutation(api.invites.create, {
-      orgId,
       roleId,
       email: "pal@example.com",
+      expectOrgId: orgId,
     }),
   ).toMatchObject({ emailed: false });
 });
@@ -473,14 +473,14 @@ test("email sends count against inviteEmail and stop at 50", async () => {
   // The 51st real email this hour is refused, and its invitation with it.
   await expect(
     owner.mutation(api.invites.create, {
-      orgId,
       roleId,
       email: "late@example.com",
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "RATE_LIMITED" } });
   // A link sends nothing, so it still works.
   expect(
-    await owner.mutation(api.invites.create, { orgId, roleId }),
+    await owner.mutation(api.invites.create, { roleId, expectOrgId: orgId }),
   ).toMatchObject({ emailed: false });
   expect(await invitesOf(t, orgId)).toHaveLength(51);
 });
@@ -512,6 +512,19 @@ test("an employee can't launch", async () => {
   });
   expect(await invitesOf(t, orgId)).toEqual([]);
   expect((await sprintOf(t, orgId))?.launchedAt).toBeUndefined();
+});
+
+test("a lead without members:manage gets no demo address either", async () => {
+  const { t, orgId } = await calderLane();
+  const { as: lead } = await seat(t, orgId, "user_lead", ["sprint:manage"]);
+  const page = await lead.query(api.sprints.launchPage, {});
+  expect(page).toMatchObject({
+    canInvite: false,
+    suggested: [],
+    invited: [],
+    invitedCount: 0,
+  });
+  expect(JSON.stringify(page)).not.toContain("calderlane.com.au");
 });
 
 test("launchPage suggests the cast only in the demo", async () => {
@@ -568,9 +581,15 @@ test("links need members:manage", async () => {
   // 07 says why the lead can't send, instead of a button that is refused.
   expect((await lead.query(api.sprints.launchPage, {}))?.canInvite).toBe(false);
   expect((await owner.query(api.sprints.launchPage, {}))?.canInvite).toBe(true);
-  expect((await lead.query(api.sprints.launchPage, {}))?.invited).toEqual([
-    { email: "ana@example.com", status: "pending" },
-  ]);
+  // A lead who can't invite sees how many were invited, never who (P7b-2).
+  const forLead = await lead.query(api.sprints.launchPage, {});
+  expect(forLead).toMatchObject({
+    invited: [],
+    suggested: [],
+    invitedCount: 1,
+  });
+  expect(JSON.stringify(forLead)).not.toContain("@example.com");
+  expect((await owner.query(api.sprints.launchPage, {}))?.invitedCount).toBe(1);
   // With email on, the page hands out no links: the invitations were mailed.
   vi.stubEnv("RESEND_FROM", "Lead the Way <hello@example.com>");
   expect((await owner.query(api.sprints.launchPage, {}))?.links).toBeNull();
@@ -791,9 +810,9 @@ test("an address is compared normalised on both sides at launch (Ruling 4)", asy
   await ready(t, orgId);
   const roleId = await employeeRoleId(t, orgId);
   await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: " Omar@Example.com. ",
+    expectOrgId: orgId,
   });
   // A row stored before Ruling 4, with its trailing dot.
   await pendingInvite(t, orgId, "ben@example.com.", Date.now() + 60_000);

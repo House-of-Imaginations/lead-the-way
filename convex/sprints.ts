@@ -26,7 +26,6 @@ import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
 import { reserveRateLimit } from "./lib/rateLimits";
 import { takeOutcomes } from "./lib/snapshots";
 import {
-  HOUR_STARTS,
   isOneOf,
   MAX_DETAIL,
   NOT_READY_REASONS,
@@ -35,16 +34,18 @@ import {
 } from "./lib/setupOptions";
 import {
   setupSprint,
+  checkHour,
   currentTeam,
+  draftHour,
   ensureSprint,
   gateOpen,
   isLaterSprint,
   requireDraft,
   setupGate,
+  sprintDefaultsOf,
   sprintInvites,
 } from "./lib/sprint";
 import {
-  addDays,
   closesAt,
   hourEnd,
   hourPattern,
@@ -132,27 +133,10 @@ async function draftFor(
   viewer: Viewer,
   { weekday, start }: { weekday: number; start: string },
 ) {
-  if (!Number.isInteger(weekday) || weekday < 1 || weekday > 5) {
-    throwUserError("FIELD_REQUIRED", "Choose a day from Monday to Friday.");
-  }
-  if (!isOneOf(HOUR_STARTS, start)) {
-    throwUserError("FIELD_REQUIRED", "Choose a start time from the list.");
-  }
+  checkHour(weekday, start);
   const sprint = await ensureSprint(ctx, viewer);
   requireDraft(sprint);
-  return {
-    sprint,
-    hour: {
-      protectedHour: { weekday, start, durationMinutes: 60 },
-      // The day moves within week one's week: the next working week (Ruling
-      // 17), or the month "Run another sprint" pinned (P7a Ruling 14). 04's
-      // preview draws the same date from `weekOneMonday`.
-      startDate: addDays(
-        mondayOf(startDateOf(sprint, viewer.now)),
-        weekday - 1,
-      ),
-    },
-  };
+  return { sprint, hour: draftHour(sprint, viewer.now, weekday, start) };
 }
 
 /** Save 04's day and time without committing (Save and exit). */
@@ -274,6 +258,8 @@ export const launchPage = timedViewerQuery("sprint:manage")({
           status: literals("pending", "accepted", "declined", "revoked"),
         }),
       ),
+      /** How many were invited: everyone sees it; only members:manage sees who. */
+      invitedCount: v.number(),
       message: v.string(),
       links: v.union(v.null(), v.array(linkValidator)),
       summary: v.object({
@@ -316,10 +302,15 @@ export const launchPage = timedViewerQuery("sprint:manage")({
         agreementSaved: gate.agreementSaved,
       },
       // The demo's list and message are 07's; a real workspace starts empty.
-      suggested: isDemo
-        ? DEMO_CAST.filter((p) => p.key !== "priya").map((p) => p.email)
+      // Addresses go only to whoever may invite (P7b-2).
+      suggested:
+        isDemo && canInvite
+          ? DEMO_CAST.filter((p) => p.key !== "priya").map((p) => p.email)
+          : [],
+      invited: canInvite
+        ? mine.map((i) => ({ email: i.email, status: i.status }))
         : [],
-      invited: mine.map((i) => ({ email: i.email, status: i.status })),
+      invitedCount: mine.length,
       message: sprint.inviteMessage ?? (isDemo ? INVITE_MESSAGE : ""),
       links: showLinks
         ? mine
@@ -518,8 +509,9 @@ export const launch = viewerMutation(
 /**
  * 16's "Run another sprint" (P7a Ruling 14). Once the newest sprint has closed
  * and its outcomes are stored, a draft copy opens setup at 04. It keeps the
- * same team, course, length and hour, from the first such weekday of next
- * month. The newest saved agreement becomes a draft version, so 06 opens on it
+ * same team, course and length, and takes its day, start and zone from the
+ * sprint defaults (the closed sprint's when none are saved), from the first
+ * such weekday of next month. The newest saved agreement becomes a draft version, so 06 opens on it
  * while employees keep reading the saved one. There are no invitations and no
  * new team row: 07 invites again, and may launch with no addresses because the
  * team carries over. It logs nothing; launching does. A closed sprint whose
@@ -549,17 +541,18 @@ export const runAnother = viewerMutation("sprint:manage")({
     }
     // A missed scheduled run is recovered here.
     await takeOutcomes(ctx, viewer.org, sprint, now);
+    const d = await sprintDefaultsOf(ctx, viewer.org, sprint.timeZone);
     await ctx.db.insert("sprints", {
       orgId,
       teamId: sprint.teamId,
-      startDate: nextMonthDate(
-        sprint.protectedHour.weekday,
-        now,
-        sprint.timeZone,
-      ),
-      timeZone: sprint.timeZone,
+      startDate: nextMonthDate(d.weekday, now, d.timeZone),
+      timeZone: d.timeZone,
       weeks: sprint.weeks,
-      protectedHour: sprint.protectedHour,
+      protectedHour: {
+        ...sprint.protectedHour,
+        weekday: d.weekday,
+        start: d.start,
+      },
       courseTitle: sprint.courseTitle,
       createdAt: now,
     });

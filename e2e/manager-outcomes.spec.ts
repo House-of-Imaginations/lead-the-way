@@ -344,3 +344,76 @@ test.describe("who sees 16", () => {
     ).toHaveCount(0);
   });
 });
+
+/**
+ * GB-M8b: at threshold 10 every total on 16 hides. Seven are seated and
+ * counted at most, so nothing reaches 10. Membership stays, as the
+ * invitation is a fact. Priya sets it on 18, as a manager would.
+ */
+test.describe("hidden totals (GB-M8b)", () => {
+  test.describe.configure({ mode: "serial" });
+  test.beforeAll(() => resetDemo("complete"));
+  test.afterAll(() => resetDemo());
+
+  // Tagged @mobile too: the 390 test below needs this to have run first.
+  test("Priya raises the threshold to 10 on 18 @mobile", async ({ page }) => {
+    await signInAs(page, "priya");
+    await page.goto("/workspace/settings");
+    await page.getByRole("tab", { name: "Data and privacy" }).click();
+    await page.getByLabel("Small-group threshold").selectOption("10");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(
+      page.getByText("Changes saved.", { exact: true }),
+    ).toBeVisible();
+  });
+
+  for (const [width, scheme] of [
+    [1440, "light"],
+    [1440, "dark"],
+    [390, "light"],
+  ] as const) {
+    test(`16 hides every total at ${width}, ${scheme}${width === 390 ? " @mobile" : ""}`, async ({
+      page,
+      expectAxeClean,
+    }) => {
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 1040 });
+      await page.emulateMedia({ colorScheme: scheme });
+      await open(page);
+      const hidden = "Hidden until 10 responses";
+      await expect(tile(page, "Invited")).toHaveText(/^Invited\s*8$/);
+      for (const label of [
+        "Completed the sprint",
+        "Applied projects presented",
+      ]) {
+        await expect(tile(page, label)).toContainText("Hidden");
+        await expect(tile(page, label)).toContainText(hidden);
+      }
+      for (const question of [CONFIDENCE, COMFORT]) {
+        for (const phase of [BEFORE, AFTER]) {
+          await expect(bar(page, question, phase)).toContainText("Hidden");
+          await expect(bar(page, question, phase)).toContainText(hidden);
+        }
+      }
+      // With every phase hidden the caption names no n.
+      await expect(
+        region(page, "Before and after").getByText(
+          "Team average on a 1 to 5 scale",
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(categories(page)).toHaveCount(0);
+      const text = await main(page).innerText();
+      for (const name of NAMES) expect(text, name).not.toContain(name);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+      await expectAxeClean(page);
+      await page.screenshot({
+        path: `output/screens/16-hidden-${width}-${scheme}.png`,
+        fullPage: true,
+      });
+    });
+  }
+});

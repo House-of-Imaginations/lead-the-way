@@ -132,7 +132,7 @@ export function Outcomes({
   const data = usePreloadedQuery(preloaded);
   if (!data) {
     return (
-      <div className="flex max-w-content-max flex-col gap-07">
+      <div className="flex flex-col gap-07">
         <h1 className="text-heading-01">Outcomes</h1>
         <InlineNotification>
           Outcomes appear after your first sprint.
@@ -142,7 +142,7 @@ export function Outcomes({
   }
   if (data.state === "pending") {
     return (
-      <div className="flex max-w-content-max flex-col gap-07">
+      <div className="flex flex-col gap-07">
         <Header
           title={data.title}
           link={data.inviteLink}
@@ -160,14 +160,16 @@ function ClosedOutcomes({ data }: { data: Closed }) {
   const most = Math.max(1, ...projects.categories.map((c) => c.count));
   const presented = participation.presented;
   return (
-    <div className="flex max-w-content-max flex-col gap-07">
+    <div className="flex flex-col gap-07">
       <Header
         title={data.title}
         tag={data.tag}
         link={data.inviteLink}
         action={data.canRunAnother ? <RunAnother /> : null}
       >
-        <p className="text-body-01 text-text-secondary">{data.intro}</p>
+        <p className="max-w-[65ch] text-body-01 text-text-secondary">
+          {data.intro}
+        </p>
       </Header>
 
       <section

@@ -194,7 +194,7 @@ test("a person who leaves gets nothing, and their ledger rows go with them", asy
   const { orgId, a, b, sprintId } = await team(t);
   await t.mutation(internal.reminders.send, { orgId, sprintId, week: 3 });
   expect((await sent(t, orgId)).map((r) => r.personId)).toContain(a.personId);
-  await a.as.mutation(api.members.leave, { orgId });
+  await a.as.mutation(api.members.leave, { expectOrgId: orgId });
   expect((await sent(t, orgId)).map((r) => r.personId)).not.toContain(
     a.personId,
   );

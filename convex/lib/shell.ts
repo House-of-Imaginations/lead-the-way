@@ -11,7 +11,7 @@ import {
   type ManagerRoute,
   type Permission,
 } from "./orgs/permissions";
-import { firstNameOf, initialsOf } from "./orgs/people";
+import { firstNameOf, initialsOf, ownerOf } from "./orgs/people";
 import { settingsOf } from "./settings";
 import { SETUP_STEPS } from "./setupSteps";
 import { setupSprint, currentTeam, launchedSprint, setupGate } from "./sprint";
@@ -46,6 +46,14 @@ export const shellValidator = v.object({
   isDemo: v.boolean(),
   /** The person's Reduce motion setting (P7b-1); AppShell sets `data-reduce-motion`. */
   reduceMotion: v.boolean(),
+  /**
+   * 18 (P7b-2): `open` to `org:manage` only (decision 1); everyone else's
+   * account menu shows it disabled, "Managed by {owner}". A name, no number.
+   */
+  workspaceSettings: v.object({
+    open: v.boolean(),
+    owner: v.union(v.null(), v.string()),
+  }),
   area: literals("manager", "employee"),
   home: v.string(),
   greeting: v.string(),
@@ -290,6 +298,10 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
     expectOrgId: viewer.org._id,
     isDemo,
     reduceMotion: (await settingsOf(ctx, viewer.person._id)).reduceMotion,
+    workspaceSettings: {
+      open: viewer.permissions.includes("org:manage"),
+      owner: (await ownerOf(ctx, viewer.org._id))?.name ?? null,
+    },
     area: manager ? "manager" : "employee",
     home: await homeOf(ctx, viewer, { team, sprint }),
     greeting: greetingOf(viewer, now),

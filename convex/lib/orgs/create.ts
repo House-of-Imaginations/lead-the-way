@@ -15,6 +15,20 @@ import {
 
 export const MAX_ORG_NAME = 60;
 
+/** A workspace name, cleaned, or a refusal that says how to fix it. */
+export function orgNameOf(name: string): string {
+  const trimmed = cleanOrgName(name);
+  if (!trimmed)
+    throwUserError("ORG_NAME_REQUIRED", "A workspace needs a name.");
+  if (trimmed.length > MAX_ORG_NAME) {
+    throwUserError(
+      "ORG_NAME_REQUIRED",
+      `A workspace name can be at most ${MAX_ORG_NAME} characters.`,
+    );
+  }
+  return trimmed;
+}
+
 /**
  * The one starter role besides the owner. Employee holds nothing: everything
  * an employee does is their own rows, which need a seat and no permission.
@@ -75,15 +89,7 @@ export async function createWorkspace(
       "Demo accounts can't make a workspace. If you were invited, open your invitation link.",
     );
   }
-  const trimmed = cleanOrgName(name);
-  if (!trimmed)
-    throwUserError("ORG_NAME_REQUIRED", "A workspace needs a name.");
-  if (trimmed.length > MAX_ORG_NAME) {
-    throwUserError(
-      "ORG_NAME_REQUIRED",
-      `A workspace name can be at most ${MAX_ORG_NAME} characters.`,
-    );
-  }
+  const trimmed = orgNameOf(name);
   const base = slugify(trimmed);
   if (!slugIsAvailableShape(base)) {
     throwUserError(

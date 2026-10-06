@@ -94,7 +94,11 @@ test("no public function reads another workspace's ids", async () => {
     t,
     "Birch Studio",
   );
-  const theirs = new Set<unknown>(Object.values(ids) as unknown[]);
+  // Storage ids aren't tenant rows: `setImage`'s guard is `isAdoptable`,
+  // pinned in orgs.test.ts, so here it meets the workspace check like any call.
+  const theirs = new Set<unknown>(
+    Object.values(ids).filter((id) => id !== ids.storageId),
+  );
   const calls = callsFor(ids);
   const before = await rowsOf(t, ids.orgId);
 
@@ -102,6 +106,7 @@ test("no public function reads another workspace's ids", async () => {
   const wrong: string[] = [];
   let swept = 0;
   let reached = 0;
+  let read = 0;
   for (const fn of publicFunctions()) {
     const fixed = calls[fn.name];
     if (!fixed) continue;
@@ -118,6 +123,14 @@ test("no public function reads another workspace's ids", async () => {
       // check, whose NOT_A_MEMBER also covers "no such org" (errors.ts).
       expected = "orgId" in fixed ? "NOT_A_MEMBER" : "NOT_FOUND";
       reached++;
+    } else if (!("expectOrgId" in fixed)) {
+      // A query that names no workspace answers from the caller's own open
+      // one, so whatever it returns must hold none of the victim's ids.
+      if (fn.kind !== "query") continue;
+      read++;
+      const answer: unknown = await call(attacker, fn, fixed);
+      if (holdsId(answer, theirs)) leaked.push(`${fn.name} answered theirs`);
+      continue;
     } else if (fixed.expectOrgId !== ids.orgId) {
       continue;
     }
@@ -143,9 +156,18 @@ test("no public function reads another workspace's ids", async () => {
   expect(leaked).toEqual([]);
   expect(wrong).toEqual([]);
   expect(await rowsOf(t, ids.orgId)).toEqual(before);
-  // The sweep reached every function that takes an id (21 before P4, 29
-  // after Task 5), and 20 of them hold one past the workspace check. Raise
-  // these as functions join.
-  expect(swept).toBeGreaterThanOrEqual(29);
-  expect(reached).toBeGreaterThanOrEqual(20);
+  // Every function that takes an id or `expectOrgId` (40 after P7b-2: 23
+  // product mutations, the 14 the org layer moved over, and 18's three).
+  // Nine hold an id past the workspace check: orgRoles.update and remove,
+  // members.changeRole and remove, invites.create, resend and revoke,
+  // agreements.save, and profiles.setActiveOrg, which names the workspace
+  // itself. Raise these as functions join.
+  // P7b-2 re-baselined `reached` (20 to 9) when the org layer moved to
+  // `expectOrgId`. Never lower a floor.
+  expect(swept).toBeGreaterThanOrEqual(40);
+  expect(reached).toBeGreaterThanOrEqual(9);
+  // Every query that takes no `expectOrgId` (25 after P7b-2), among them
+  // members.list, orgRoles.list, invites.list, workspace.settings and
+  // orgs.myPermissions. Never lower a floor.
+  expect(read).toBeGreaterThanOrEqual(25);
 });

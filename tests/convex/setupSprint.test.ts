@@ -20,6 +20,7 @@ const SETUP_SPRINT_FILES = [
   "seed.ts",
   "sprints.ts",
   "teams.ts",
+  "workspace.ts",
 ];
 
 function convexSources() {

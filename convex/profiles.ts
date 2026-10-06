@@ -1,12 +1,9 @@
 import { v } from "convex/values";
 import schema from "./schema";
-import {
-  authenticatedMutation,
-  orgMutation,
-  publicQuery,
-} from "./lib/customFunctions";
+import { authenticatedMutation, publicQuery } from "./lib/customFunctions";
 import { profileOf, saveDisplayName } from "./lib/account/profile";
 import { setActiveOrgOf } from "./lib/account/ensureProfile";
+import { seatOf } from "./lib/orgs/membership";
 
 /**
  * The account-level record. Auth owns identity; this owns the display name and
@@ -31,12 +28,17 @@ export const saveProfile = authenticatedMutation({
   },
 });
 
-/** Open this workspace next time. Requires a seat in it. */
-export const setActiveOrg = orgMutation()({
-  args: {},
+/**
+ * Open this workspace next time. It names a workspace other than the open
+ * one, so there is no workspace check to pass: the seat is checked here, and
+ * NOT_A_MEMBER also covers "no such workspace".
+ */
+export const setActiveOrg = authenticatedMutation({
+  args: { orgId: v.id("orgs") },
   returns: v.null(),
-  handler: async (ctx): Promise<null> => {
-    await setActiveOrgOf(ctx, ctx.userId, ctx.orgId);
+  handler: async (ctx, { orgId }): Promise<null> => {
+    await seatOf(ctx, ctx.userId, orgId);
+    await setActiveOrgOf(ctx, ctx.userId, orgId);
     return null;
   },
 });

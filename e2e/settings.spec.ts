@@ -15,7 +15,7 @@ test.describe("settings", () => {
     await signInAs(page, "priya");
     await page.goto("/manager");
     await nav(page).getByRole("button", { name: "Priya Raman" }).click();
-    await page.getByRole("menuitem", { name: "Settings" }).click();
+    await page.getByRole("menuitem", { name: "Settings", exact: true }).click();
     await expect(page).toHaveURL("/settings");
     await expect(
       page.getByRole("heading", { level: 1, name: "Settings" }),

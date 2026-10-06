@@ -120,12 +120,14 @@ const COHORT_CHANGED = "Hidden after a change to who is counted";
 
 /**
  * A stored total on a tile (Ruling 7), checked against the threshold now and
- * the one it was taken under (a row with none was taken at 5). A total hidden
- * under an older, higher threshold has no value stored, so lowering the
- * threshold can't show it: a weekly row says the next row will; the final
- * row (`final`: the outcomes row, or week 4's) has no next row, so it says
- * what it was taken under. Whether the row exists and may be compared at all
- * (Ruling FX) is the caller's to decide.
+ * the one it was taken under (a row with none was taken at 5). A hidden
+ * row's helper turns on those two thresholds only, never on its n: if it did,
+ * stepping the threshold between 5 and 10 would read n back (P7b-2). A total
+ * hidden under an older, higher threshold has no value stored, so lowering
+ * the threshold can't show it: a weekly row says the next row will; the
+ * final row (`final`: the outcomes row, or week 4's) has no next row, so it
+ * says what it was taken under. Whether the row exists and may be compared
+ * at all (Ruling FX) is the caller's to decide.
  */
 function statOf(
   total: Aggregate,
@@ -135,15 +137,18 @@ function statOf(
 ): Stat {
   const now = thresholdOf(org);
   const taken = rowThreshold ?? MIN_THRESHOLD;
-  if (total.hidden && total.n >= now && taken > now) {
+  if (total.hidden) {
     return {
       kind: "hidden",
-      helper: final
-        ? `Hidden until ${taken} responses`
-        : "Shown from next week's totals",
+      helper:
+        taken <= now
+          ? `Hidden until ${now} responses`
+          : final
+            ? `Hidden until ${taken} responses`
+            : "Shown from next week's totals",
     };
   }
-  if (total.hidden || total.n < now) {
+  if (total.n < now) {
     return { kind: "hidden", helper: `Hidden until ${now} responses` };
   }
   return { kind: "shown", value: total.value, of: total.n };

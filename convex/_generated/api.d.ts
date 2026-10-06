@@ -88,6 +88,7 @@ import type * as tables_profiles from "../tables/profiles.js";
 import type * as tables_sprint from "../tables/sprint.js";
 import type * as teams from "../teams.js";
 import type * as viewer from "../viewer.js";
+import type * as workspace from "../workspace.js";
 
 import type {
   ApiFromModules,
@@ -176,6 +177,7 @@ declare const fullApi: ApiFromModules<{
   "tables/sprint": typeof tables_sprint;
   teams: typeof teams;
   viewer: typeof viewer;
+  workspace: typeof workspace;
 }>;
 
 /**
