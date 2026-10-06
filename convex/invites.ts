@@ -365,6 +365,9 @@ export const create = viewerMutation("members:manage")({
         throwUserError("NOT_FOUND", "That sprint no longer exists.");
       }
     }
+    // M-g: Invite member pins the newest sprint, so its headcount counts the
+    // invitation (`sprintInvites`). A caller may still name one.
+    const pinned = sprintId ?? (await setupSprint(ctx, orgId))?._id;
 
     const now = ctx.viewer.now;
 
@@ -389,7 +392,7 @@ export const create = viewerMutation("members:manage")({
       roleId,
       email: to,
       name: who,
-      sprintId,
+      sprintId: pinned,
       message: note,
       invitedBy: ctx.viewer.userId,
       at: now,

@@ -5,6 +5,7 @@ import {
   MAX_ROLES_PER_ORG,
   isOwnerRole,
   permissionsOf,
+  requireAnyOf,
   requireReach,
   requireWithin,
 } from "./lib/orgs/membership";
@@ -31,10 +32,16 @@ const roleValidator = v.object({
   permissions: v.array(permissionValidator),
 });
 
-export const list = viewerQuery("members:read")({
+/** The roles, for Members' role choices (W-g) and P7b-3b's Roles tab. */
+export const list = viewerQuery()({
   args: {},
   returns: v.array(roleValidator),
   handler: async (ctx) => {
+    requireAnyOf(ctx.viewer, [
+      "members:read",
+      "members:manage",
+      "roles:manage",
+    ]);
     const orgId = ctx.viewer.org._id;
     const roles = await ctx.db
       .query("orgRoles")

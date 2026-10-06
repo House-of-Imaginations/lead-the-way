@@ -7,6 +7,7 @@ import {
   dropSeat,
   isOwnerRole,
   permissionsOf,
+  requireAnyOf,
   requireOutranks,
   requireWithin,
   seatOf,
@@ -49,13 +50,19 @@ const memberValidator = v.object({
   roleName: v.string(),
   isOwner: v.boolean(),
   joinedAt: v.number(),
+  you: v.boolean(),
 });
 
-/** Name, email and role only (privacy rule 7). Never participation data. */
-export const list = viewerQuery("members:read")({
+/**
+ * Name, email and role only (privacy rule 7). Never participation data. The
+ * Members tab reads it with `members:manage` (W-g); `members:read` stays in
+ * code and reads it too (M-e). `you` lets the tab leave your own row alone.
+ */
+export const list = viewerQuery()({
   args: {},
   returns: v.array(memberValidator),
   handler: async (ctx) => {
+    requireAnyOf(ctx.viewer, ["members:read", "members:manage"]);
     const orgId = ctx.viewer.org._id;
     const people = await ctx.db
       .query("people")
@@ -75,6 +82,7 @@ export const list = viewerQuery("members:read")({
         roleName: role.name,
         isOwner: isOwnerRole(role),
         joinedAt: person.createdAt,
+        you: person._id === ctx.viewer.person._id,
       });
     }
     return members;

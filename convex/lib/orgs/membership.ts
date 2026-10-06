@@ -122,6 +122,22 @@ export function requirePermissions(
 }
 
 /**
+ * Refuse unless this seat holds at least one of the permissions named. For a
+ * read that more than one 18 tab needs (W-g): a builder's list is all-of.
+ */
+export function requireAnyOf(
+  seat: { permissions: readonly Permission[] },
+  any: readonly Permission[],
+): void {
+  if (!any.some((p) => seat.permissions.includes(p))) {
+    throwUserError(
+      "FORBIDDEN",
+      "Your role in this workspace does not allow that.",
+    );
+  }
+}
+
+/**
  * Refuse to hand out more than you hold.
  *
  * Called on every write that could widen somebody's reach: creating or editing
