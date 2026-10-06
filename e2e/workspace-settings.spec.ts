@@ -182,3 +182,53 @@ test.describe("18", () => {
     ).toBeVisible();
   });
 });
+
+test.describe("18 axe and phone", () => {
+  test.describe.configure({ mode: "serial" });
+  test.beforeAll(() => resetDemo("week2"));
+  test.afterAll(() => resetDemo());
+
+  for (const scheme of ["light", "dark"] as const) {
+    test(`18 is axe clean on every tab, ${scheme}`, async ({
+      page,
+      expectAxeClean,
+    }) => {
+      await page.setViewportSize({ width: 1440, height: 1040 });
+      await page.emulateMedia({ colorScheme: scheme });
+      await open(page);
+      for (const [tab, file] of [
+        ["General", "general"],
+        ["Sprint defaults", "sprint"],
+        ["Data and privacy", "privacy"],
+      ] as const) {
+        await page.getByRole("tab", { name: tab }).click();
+        await expectAxeClean(page);
+        await page.screenshot({
+          path: `output/screens/18-${file}-${scheme}.png`,
+          fullPage: true,
+        });
+      }
+    });
+  }
+
+  test("18 fits a phone @mobile", async ({ page, expectAxeClean }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page);
+    const name = await page.getByLabel("Workspace name").boundingBox();
+    const team = await page.getByLabel("Team name").boundingBox();
+    expect(team!.y).toBeGreaterThan(name!.y);
+    const save = await page
+      .getByRole("button", { name: "Save changes" })
+      .boundingBox();
+    expect(save!.height).toBeGreaterThanOrEqual(48);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    for (const tab of ["General", "Sprint defaults", "Data and privacy"]) {
+      await page.getByRole("tab", { name: tab }).click();
+      await expectAxeClean(page);
+    }
+  });
+});
