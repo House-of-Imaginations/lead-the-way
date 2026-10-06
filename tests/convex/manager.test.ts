@@ -340,6 +340,31 @@ test("sprint:manage without team:insights gets team: null", async () => {
   });
 });
 
+test("workspace control alone reads the overview with no team totals (W-f)", async () => {
+  const { t, orgId } = await calderLane();
+  await move(t, "week2");
+  for (const permission of [
+    "org:manage",
+    "members:manage",
+    "roles:manage",
+  ] as const) {
+    const { as } = await seat(
+      t,
+      orgId,
+      `user_${permission.replace(":", "_")}`,
+      [permission],
+    );
+    const overview = (await as.query(api.manager.overview, {}))!;
+    expect(overview.team, permission).toBeNull();
+    expect(overview.canManage, permission).toBe(false);
+    // Not seated, and not one of sprint 1's invitations: the counts don't move.
+    expect(overview.sprint, permission).toMatchObject({
+      invited: 8,
+      joined: 7,
+    });
+  }
+});
+
 test("an employee can't read the overview", async () => {
   const { t, as } = await calderLane();
   await move(t, "week1");

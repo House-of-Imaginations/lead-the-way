@@ -111,6 +111,9 @@ export async function homeOf(
   known?: { team: Doc<"teams"> | null; sprint: Doc<"sprints"> | null },
 ): Promise<string> {
   if (!isManager(viewer)) return "/me";
+  // Setup is sprint:manage's. Any other manager's home is the overview, which
+  // every manager may read (W-f), never a setup page that bounces them.
+  if (!viewer.permissions.includes("sprint:manage")) return "/manager";
   const orgId = viewer.org._id;
   const { team, sprint } = known ?? {
     team: await currentTeam(ctx, orgId),

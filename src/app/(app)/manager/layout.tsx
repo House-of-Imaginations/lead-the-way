@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { getShell } from "@/lib/account/queries";
 import { withParams } from "@/lib/url";
 
-/** R4: the manager area is for `team:insights` or `sprint:manage` (`shell.area`). */
+/** R4 and W-f: the manager area is for anyone `isManager` accepts (`shell.area`). */
 export default async function ManagerLayout({
   children,
 }: {
