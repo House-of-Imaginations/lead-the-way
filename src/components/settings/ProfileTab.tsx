@@ -12,16 +12,10 @@ import {
   type TimeZone,
 } from "@convex/lib/profileFields";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
-import {
-  Button,
-  ButtonLink,
-  Checkbox,
-  Select,
-  TextInput,
-  useToast,
-} from "@/components/ui";
+import { Checkbox, Select, TextInput, useToast } from "@/components/ui";
 import { errorCode, userMessage } from "@/lib/errors";
 import { setThemeMode, storedThemeMode, type ThemeMode } from "@/lib/theme";
+import { SaveBar } from "./SaveBar";
 
 export type Mine = FunctionReturnType<typeof api.settings.mine>;
 
@@ -163,29 +157,7 @@ export function ProfileTab({ mine }: { mine: Mine }) {
           onChange={(e) => setForm({ ...form, reduceMotion: e.target.checked })}
         />
       </fieldset>
-      {errors.form ? (
-        <p role="alert" className="text-label-01 text-support-error">
-          {errors.form}
-        </p>
-      ) : null}
-      <div className="flex justify-end border-t border-border-subtle pt-07 max-md:flex-col">
-        <ButtonLink
-          href="/home"
-          kind="secondary"
-          size="xl"
-          className="w-[200px] max-md:w-full"
-        >
-          Cancel
-        </ButtonLink>
-        <Button
-          type="submit"
-          size="xl"
-          disabled={saving}
-          className="w-[200px] max-md:w-full"
-        >
-          Save changes
-        </Button>
-      </div>
+      <SaveBar saving={saving} error={errors.form ?? null} />
     </form>
   );
 }
