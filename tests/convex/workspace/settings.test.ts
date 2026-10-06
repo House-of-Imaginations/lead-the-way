@@ -57,7 +57,6 @@ test("18's functions need org:manage, and nobody else reads or writes them", asy
     name: "Aster Network",
     slug: "aster-network",
     partner: null,
-    owner: "Someone",
     teamName: "Your team",
     industry: null,
     teamFunction: null,
@@ -66,15 +65,17 @@ test("18's functions need org:manage, and nobody else reads or writes them", asy
   });
 });
 
-test("Calder Lane's partner and owner read as 18 shows them", async () => {
+test("Calder Lane's partner reads as 18 shows it", async () => {
   const { as } = await calderLane();
-  expect(await as("priya").query(api.workspace.settings, {})).toMatchObject({
+  const settings = await as("priya").query(api.workspace.settings, {});
+  expect(settings).toMatchObject({
     name: "Calder Lane",
     slug: "calder-lane",
     partner: "Southbank Business Collective, delivered with IBM SkillsBuild",
-    owner: "Priya Raman",
     teamName: "Client Services team",
   });
+  // The owner tag reads the shell's, so settings names nobody (F7).
+  expect(settings).not.toHaveProperty("owner");
 });
 
 test("the threshold can't be set below 5, above 10 or between whole numbers", async () => {

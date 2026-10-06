@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { orgNameOf } from "./lib/orgs/create";
-import { ownerOf } from "./lib/orgs/people";
 import { grants } from "./lib/orgs/permissions";
 import { thresholdOf } from "./lib/privacy";
 import { TIME_ZONES } from "./lib/profileFields";
@@ -24,8 +23,8 @@ import {
 
 /**
  * 18, Workspace settings (P7b-2). Workspace fields live on `orgs` and the
- * team's on `teams`. The whole page needs `org:manage` (decision 1). The one
- * person it names is the owner, with no number beside it.
+ * team's on `teams`. The whole page needs `org:manage` (decision 1). It names
+ * nobody: the owner tag reads the shell's `workspaceSettings.owner`.
  */
 export const settings = viewerQuery("org:manage")({
   args: {},
@@ -34,7 +33,6 @@ export const settings = viewerQuery("org:manage")({
     /** The Workspace ID. Links use it, so it never changes. */
     slug: v.string(),
     partner: v.union(v.null(), v.string()),
-    owner: v.union(v.null(), v.string()),
     teamName: v.string(),
     industry: v.union(v.null(), v.string()),
     teamFunction: v.union(v.null(), v.string()),
@@ -57,7 +55,6 @@ export const settings = viewerQuery("org:manage")({
       partner: org.partnerName
         ? `${org.partnerName}, delivered with IBM SkillsBuild`
         : null,
-      owner: (await ownerOf(ctx, org._id))?.name ?? null,
       teamName: team?.name ?? "",
       industry: team?.industry ?? null,
       teamFunction: team?.teamFunction ?? null,
