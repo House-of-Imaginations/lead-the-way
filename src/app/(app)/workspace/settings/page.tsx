@@ -11,9 +11,11 @@ export const metadata: Metadata = {
 export default async function WorkspaceSettingsPage() {
   // The layout redirects everyone else; the page renders in parallel.
   const shell = await getShell();
-  if (!shell?.workspaceSettings.open) return null;
-  const preloaded = await openOrHome(() =>
-    preloadAuthQuery(api.workspace.settings, {}),
-  );
-  return <WorkspaceSettings preloaded={preloaded} />;
+  const tabs = shell?.workspaceSettings.tabs ?? [];
+  if (tabs.length === 0) return null;
+  // Each tab's read only for a seat that may open it (W-g).
+  const settings = tabs.includes("general")
+    ? await openOrHome(() => preloadAuthQuery(api.workspace.settings, {}))
+    : null;
+  return <WorkspaceSettings tabs={tabs} settings={settings} />;
 }

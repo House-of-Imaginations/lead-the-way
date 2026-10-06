@@ -451,24 +451,29 @@ test("the shell carries the viewer's reduce motion setting (P7b-1)", async () =>
   expect((await priya.query(api.viewer.shell, {}))?.reduceMotion).toBe(true);
 });
 
-test("the shell opens 18 to org:manage only and names the owner to everyone else", async () => {
+test("the shell opens 18 for its tabs' permissions and names the owner to everyone (W-g)", async () => {
   const { t, orgId, as } = await calderLane();
   // Dan has no seat before the team joins.
   await clock(t, "week1");
-  const { as: lead } = await seat(t, orgId, "user_lead", [
-    "sprint:manage",
-    "team:insights",
-  ]);
-  const wsOf = async (who: typeof lead) =>
+  const seated = async (subject: string, permissions: Permission[]) =>
+    (await seat(t, orgId, subject, permissions)).as;
+  const wsOf = async (who: ReturnType<typeof as>) =>
     (await who.query(api.viewer.shell, {}))?.workspaceSettings;
-  expect(await wsOf(as("priya"))).toEqual({
-    open: true,
-    owner: "Priya Raman",
-  });
-  for (const who of [as("dan"), lead]) {
+  const cases: [ReturnType<typeof as>, string[]][] = [
+    [as("priya"), ["general", "members"]],
+    [await seated("user_admin", ["org:manage"]), ["general"]],
+    [await seated("user_people", ["members:manage"]), ["members"]],
+    // Roles is P7b-3b's tab: roles:manage alone opens nothing yet (Ruling 11).
+    [await seated("user_roles", ["roles:manage"]), []],
+    [await seated("user_reader", ["members:read"]), []],
+    [await seated("user_lead", ["sprint:manage", "team:insights"]), []],
+    [as("dan"), []],
+  ];
+  for (const [who, tabs] of cases) {
     expect(await wsOf(who)).toEqual({
-      open: false,
+      open: tabs.length > 0,
       owner: "Priya Raman",
+      tabs,
     });
   }
 });

@@ -16,7 +16,14 @@ import {
 import { useConvex, useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache";
 import { usePathname } from "next/navigation";
-import { Suspense, useEffect, useState, type ReactNode } from "react";
+import {
+  Suspense,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   InlineNotification,
   SideNav,
@@ -53,6 +60,19 @@ const WARM: Record<string, typeof api.me.sprint | typeof api.projects.mine> = {
 };
 
 /** The signed-in shell. The (app) layout renders the demo banner above it. */
+const ShellContext = createContext<Shell | null>(null);
+
+/**
+ * The shell AppShell shows: live, or the page's own after a workspace switch
+ * in another tab (as the notice says). For page headers that name the
+ * workspace, so a rename on General shows at once.
+ */
+export function useShell(): Shell {
+  const shell = useContext(ShellContext);
+  if (!shell) throw new Error("useShell needs AppShell above it.");
+  return shell;
+}
+
 export function AppShell({
   initial,
   hour,
@@ -111,7 +131,7 @@ export function AppShell({
     window.location.assign(to);
   }
 
-  // 18 for org:manage; everyone else is told who manages it (MASTER_PROMPT 115).
+  // 18 for whoever holds one of its tabs (W-g); everyone else is told who manages it.
   const ws = shell.workspaceSettings;
   const workspaceItem: MenuItem = ws.open
     ? { label: "Workspace settings", href: "/workspace/settings" }
@@ -219,7 +239,7 @@ export function AppShell({
             </div>
           )}
           <ExpectOrgIdProvider value={initial.expectOrgId}>
-            {children}
+            <ShellContext value={shell}>{children}</ShellContext>
           </ExpectOrgIdProvider>
           {/* The disclaimer must be on every surface. The expanded nav carries it; the rail hides
               every label, so here it shows on phones (no side nav) and beside the rail. */}
