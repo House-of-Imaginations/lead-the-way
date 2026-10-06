@@ -213,6 +213,43 @@ test("Invite member pins only team members, never a manager role (M-g, W-f)", as
   expect(await invite(employee, "hire@example.com")).toBe(base + 1);
 });
 
+test("a named sprint keeps the same pin rules (M-g)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "week2" });
+  const priya = as("priya");
+  const sprintId = await t.run(
+    async (ctx) =>
+      (await ctx.db
+        .query("sprints")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .first())!._id,
+  );
+  const insights = await seat(t, orgId, "user_lead3", ["team:insights"]);
+  const invited = async () =>
+    (await priya.query(api.manager.overview, {}))!.sprint!.invited;
+  const base = await invited();
+  await priya.mutation(api.invites.create, {
+    roleId: insights.roleId,
+    email: "lead@example.com",
+    sprintId,
+    expectOrgId: orgId,
+  });
+  expect(await invited()).toBe(base);
+
+  await t.mutation(internal.seed.clock, { target: "complete" });
+  const employee = (await priya.query(api.orgRoles.list, {})).find(
+    (r) => r.name === "Employee",
+  )!._id;
+  await expect(
+    priya.mutation(api.invites.create, {
+      roleId: employee,
+      email: "late@example.com",
+      sprintId,
+      expectOrgId: orgId,
+    }),
+  ).rejects.toThrow("That sprint has finished.");
+});
+
 type Lane = Awaited<ReturnType<typeof calderLane>>;
 
 async function personOf(t: Lane["t"], orgId: Id<"orgs">, key: "dan" | "sarah") {

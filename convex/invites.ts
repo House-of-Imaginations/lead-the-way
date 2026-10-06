@@ -365,23 +365,23 @@ export const create = viewerMutation("members:manage")({
         `A message can be at most ${MAX_MESSAGE} characters.`,
       );
     }
-    if (sprintId) {
-      const sprint = await ctx.db.get(sprintId);
-      if (!sprint || sprint.orgId !== orgId) {
-        throwUserError("NOT_FOUND", "That sprint no longer exists.");
-      }
+    const named = sprintId ? await ctx.db.get(sprintId) : null;
+    if (sprintId && (!named || named.orgId !== orgId)) {
+      throwUserError("NOT_FOUND", "That sprint no longer exists.");
     }
-    // M-g: Invite member pins the newest sprint, so its headcount counts the
-    // invitation (`sprintInvites`). Only a team member, and only while that
-    // sprint is not over. A caller may still name one. Before the first
-    // sprint, the draft setup would make anyway (`ensureSprint`), or launch
-    // would skip this already-seated address and sprint 1 never count it.
-    let pinned = sprintId;
-    if (!pinned && !isManager({ permissions: permissionsOf(role) })) {
-      const newest = await ensureSprint(ctx, ctx.viewer);
-      if (sprintPhase(newest, ctx.viewer.now) !== "complete") {
-        pinned = newest._id;
-      }
+    // M-g: an invitation pins a sprint, so its headcount counts it
+    // (`sprintInvites`): the one the caller names, else the newest. Only a
+    // team member, and only while that sprint is not over; naming a finished
+    // one is refused. Before the first sprint, the draft setup would make
+    // anyway (`ensureSprint`), or launch would skip this already-seated
+    // address and sprint 1 never count it.
+    let pinned: Id<"sprints"> | undefined;
+    if (!isManager({ permissions: permissionsOf(role) })) {
+      const sprint = named ?? (await ensureSprint(ctx, ctx.viewer));
+      const over = sprintPhase(sprint, ctx.viewer.now) === "complete";
+      if (over && named)
+        throwUserError("FORBIDDEN", "That sprint has finished.");
+      if (!over) pinned = sprint._id;
     }
 
     const now = ctx.viewer.now;
