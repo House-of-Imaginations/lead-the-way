@@ -188,6 +188,17 @@ export function requireOutranks(caller: Seat, target: Seat): void {
   }
 }
 
+/** Every role in the org: a workspace holds at most `MAX_ROLES_PER_ORG`. */
+export async function rolesOf(
+  ctx: QueryCtx | MutationCtx,
+  orgId: Id<"orgs">,
+): Promise<Doc<"orgRoles">[]> {
+  return await ctx.db
+    .query("orgRoles")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .take(MAX_ROLES_PER_ORG);
+}
+
 /**
  * The org's owner role, or null. Exactly one exists, created with the org, so
  * it is the first `by_org` row and always inside the window.
@@ -196,11 +207,7 @@ export async function findOwnerRole(
   ctx: QueryCtx | MutationCtx,
   orgId: Id<"orgs">,
 ): Promise<Doc<"orgRoles"> | null> {
-  const roles = await ctx.db
-    .query("orgRoles")
-    .withIndex("by_org", (q) => q.eq("orgId", orgId))
-    .take(MAX_ROLES_PER_ORG);
-  return roles.find(isOwnerRole) ?? null;
+  return (await rolesOf(ctx, orgId)).find(isOwnerRole) ?? null;
 }
 
 /** `findOwnerRole` for writers, which must never carry on without one. */

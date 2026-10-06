@@ -18,7 +18,7 @@ import { demoTargetValidator } from "./lib/demo/schedule";
 import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
 import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
-import { MAX_ROLES_PER_ORG } from "./lib/orgs/membership";
+import { rolesOf } from "./lib/orgs/membership";
 import type { Permission } from "./lib/orgs/permissions";
 import { setupSprint } from "./lib/sprint";
 
@@ -125,11 +125,7 @@ async function customRole(
   permissions: Permission[],
   at: number,
 ): Promise<Id<"orgRoles">> {
-  // A workspace holds at most `MAX_ROLES_PER_ORG` roles.
-  const roles = await ctx.db
-    .query("orgRoles")
-    .withIndex("by_org", (q) => q.eq("orgId", orgId))
-    .take(MAX_ROLES_PER_ORG);
+  const roles = await rolesOf(ctx, orgId);
   const found = roles.find((r) => r.kind === "custom" && r.name === name);
   if (found) return found._id;
   return await ctx.db.insert("orgRoles", {

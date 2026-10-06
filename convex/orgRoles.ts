@@ -8,6 +8,7 @@ import {
   requireAnyOf,
   requireReach,
   requireWithin,
+  rolesOf,
 } from "./lib/orgs/membership";
 import { permissionValidator } from "./lib/orgs/permissions";
 
@@ -42,12 +43,7 @@ export const list = viewerQuery()({
       "members:manage",
       "roles:manage",
     ]);
-    const orgId = ctx.viewer.org._id;
-    const roles = await ctx.db
-      .query("orgRoles")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .take(MAX_ROLES_PER_ORG);
-
+    const roles = await rolesOf(ctx, ctx.viewer.org._id);
     return roles.map((role) => ({
       _id: role._id,
       name: role.name,
@@ -78,10 +74,7 @@ export const create = viewerMutation("roles:manage")({
     // The escalation guard. Refused before anything is written.
     requireWithin(permissions, ctx.viewer);
 
-    const existing = await ctx.db
-      .query("orgRoles")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .take(MAX_ROLES_PER_ORG);
+    const existing = await rolesOf(ctx, orgId);
     if (existing.length >= MAX_ROLES_PER_ORG) {
       throwUserError(
         "FIELD_REQUIRED",
