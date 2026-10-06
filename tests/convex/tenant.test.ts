@@ -147,9 +147,8 @@ test("no public function reads another workspace's ids", async () => {
   expect(leaked).toEqual([]);
   expect(wrong).toEqual([]);
   expect(await rowsOf(t, ids.orgId)).toEqual(before);
-  // Every function that takes an id or `expectOrgId` (38 with setThreshold,
-  // 40 after P7b-2: 23 product mutations, the 14 the org layer moved over,
-  // and 18's three).
+  // Every function that takes an id or `expectOrgId` (40 after P7b-2: 23
+  // product mutations, the 14 the org layer moved over, and 18's three).
   // Nine hold an id past the workspace check: orgRoles.update and remove,
   // members.changeRole and remove, invites.create, resend and revoke,
   // agreements.save, and profiles.setActiveOrg, which names the workspace

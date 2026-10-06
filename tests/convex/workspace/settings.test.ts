@@ -37,12 +37,27 @@ test("18's functions need org:manage, and nobody else reads or writes them", asy
         expectOrgId: orgId,
       }),
     ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+    await expect(
+      who.mutation(api.workspace.saveGeneral, {
+        name: "Aster Network",
+        teamName: "Your team",
+        expectOrgId: orgId,
+      }),
+    ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+    await expect(
+      who.mutation(api.workspace.saveSprintDefaults, {
+        weekday: 3,
+        start: "14:00",
+        timeZone: "Australia/Melbourne",
+        expectOrgId: orgId,
+      }),
+    ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
   }
   expect(await owner.query(api.workspace.settings, {})).toMatchObject({
     name: "Aster Network",
     slug: "aster-network",
     partner: null,
-    owner: expect.any(String),
+    owner: "Someone",
     teamName: "Your team",
     industry: null,
     teamFunction: null,

@@ -287,36 +287,37 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
               // Stable, so it runs once when launchedHere flips, not per render.
               focusRef={launchedHere ? focusOnMount : undefined}
             />
-            <ul aria-labelledby="invited-title" className="flex flex-col">
-              {data.invited.map(({ email, status }) => {
-                const token = links.get(email);
-                return (
-                  <li
-                    key={email}
-                    className="flex min-h-control-lg items-center gap-05 border-b border-border-subtle first:border-t"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-body-02">
-                      {email}
-                    </span>
-                    <Tag color={STATUS[status].color}>
-                      {STATUS[status].label}
-                    </Tag>
-                    {token ? (
-                      <Button
-                        kind="ghost"
-                        size="sm"
-                        icon={Copy}
-                        aria-label={`Copy link for ${email}`}
-                        onClick={() => copy(token)}
-                      >
-                        Copy link
-                      </Button>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-            {data.canInvite ? null : (
+            {data.canInvite ? (
+              <ul aria-labelledby="invited-title" className="flex flex-col">
+                {data.invited.map(({ email, status }) => {
+                  const token = links.get(email);
+                  return (
+                    <li
+                      key={email}
+                      className="flex min-h-control-lg items-center gap-05 border-b border-border-subtle first:border-t"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-body-02">
+                        {email}
+                      </span>
+                      <Tag color={STATUS[status].color}>
+                        {STATUS[status].label}
+                      </Tag>
+                      {token ? (
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          icon={Copy}
+                          aria-label={`Copy link for ${email}`}
+                          onClick={() => copy(token)}
+                        >
+                          Copy link
+                        </Button>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
               <p className="text-body-02 text-text-secondary">
                 Only people who manage members see who was invited.
               </p>

@@ -752,6 +752,30 @@ test("a hidden row's helper never depends on how many answered (threshold probe)
   }
 });
 
+test("the final row's helper never depends on how many answered (threshold probe)", async () => {
+  vi.setSystemTime(mel("2026-09-10T09:00"));
+  /** The outcomes row taken at 7 with `n` seated, then read at `now`. */
+  const finalAt = async (n: number, now: number) => {
+    const t = harness();
+    const { owner, orgId } = await workspace(t);
+    await t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold: 7 }));
+    for (let i = 0; i < n; i++) await seat(t, orgId, `user_${i}`, []);
+    const sprintId = await launchedSprint(t, orgId);
+    await t.mutation(internal.snapshots.take, { orgId, sprintId });
+    vi.setSystemTime(mel("2026-10-02T09:00"));
+    await t.mutation(internal.snapshots.takeOutcomes, { sprintId });
+    vi.setSystemTime(mel("2026-09-10T09:00"));
+    await t.run((ctx) => ctx.db.patch(orgId, { privacyThreshold: now }));
+    return await owner.query(api.manager.outcomes, {});
+  };
+  for (const now of [5, 6]) {
+    const fewer = await finalAt(4, now);
+    expect(fewer, `at ${now}`).toMatchObject({ state: "closed" });
+    expect(fewer, `at ${now}`).toEqual(await finalAt(6, now));
+    expect(JSON.stringify(fewer)).toContain("Hidden until 7 responses");
+  }
+});
+
 test("a row shown at 5 hides when the threshold is raised and shows again when it is lowered", async () => {
   vi.setSystemTime(mel("2026-09-10T09:00"));
   const t = harness();

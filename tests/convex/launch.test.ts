@@ -514,6 +514,19 @@ test("an employee can't launch", async () => {
   expect((await sprintOf(t, orgId))?.launchedAt).toBeUndefined();
 });
 
+test("a lead without members:manage gets no demo address either", async () => {
+  const { t, orgId } = await calderLane();
+  const { as: lead } = await seat(t, orgId, "user_lead", ["sprint:manage"]);
+  const page = await lead.query(api.sprints.launchPage, {});
+  expect(page).toMatchObject({
+    canInvite: false,
+    suggested: [],
+    invited: [],
+    invitedCount: 0,
+  });
+  expect(JSON.stringify(page)).not.toContain("calderlane.com.au");
+});
+
 test("launchPage suggests the cast only in the demo", async () => {
   const { t, orgId, as } = await calderLane();
   const page = await as("priya").query(api.sprints.launchPage, {});
