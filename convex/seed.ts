@@ -84,7 +84,12 @@ export const reset = internalAction({
   returns: v.id("orgs"),
   handler: async (ctx): Promise<Id<"orgs">> => {
     const accounts = await ensureDemoAccounts(ctx);
-    return await ctx.runMutation(internal.seed.writeCalderLane, { accounts });
+    const orgId = await ctx.runMutation(internal.seed.writeCalderLane, {
+      accounts,
+    });
+    // Calder Lane's badges come from issueBadge; other workspaces' may be older.
+    await ctx.runMutation(internal.badges.backfillHolders, {});
+    return orgId;
   },
 });
 

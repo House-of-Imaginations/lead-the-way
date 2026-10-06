@@ -270,9 +270,9 @@ export async function updateSeatProfile(
 }
 
 /**
- * Give up a seat, having checked the org keeps an owner. The person's
- * settings row and reminder ledger rows go with it: nothing else would ever
- * read them again.
+ * Give up a seat, having checked the org keeps an owner. The tables
+ * `ON_REMOVE` (`cascade.ts`) marks "dropped" go with it; every other row
+ * holding this person stays, orphaned (M-c).
  */
 export async function dropSeat(
   ctx: MutationCtx,

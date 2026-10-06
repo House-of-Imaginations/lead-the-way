@@ -1,6 +1,7 @@
 import { v, type Infer } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
-import type { QueryCtx } from "./_generated/server";
+import { internalMutation, type QueryCtx } from "./_generated/server";
 import {
   publicQuery,
   viewerMutation,
@@ -78,7 +79,7 @@ async function reflectionOf(
 
 function credentialOf(
   badge: Doc<"badges">,
-  holder: Doc<"people">,
+  holder: Pick<Doc<"people">, "timeZone">,
   reflection: Reflection,
 ) {
   return {
@@ -140,15 +141,62 @@ export const publicBySlug = publicQuery({
       .unique();
     if (!badge) return null;
     const holder = await ctx.db.get(badge.personId);
-    if (!holder) return null;
-    const allowed = (await settingsOf(ctx, holder._id)).reflectionsOnCredential;
+    if (holder) {
+      const allowed = (await settingsOf(ctx, holder._id))
+        .reflectionsOnCredential;
+      return {
+        ...credentialOf(
+          badge,
+          holder,
+          allowed ? await reflectionOf(ctx, badge, holder) : null,
+        ),
+        holder: holder.name,
+      };
+    }
+    // M-c: the holder left the workspace. The link they shared still opens,
+    // from what was stored at issue. The reflection goes with the seat:
+    // nobody is left to turn it off.
+    if (badge.holderName === undefined || badge.holderTimeZone === undefined)
+      return null;
     return {
-      ...credentialOf(
-        badge,
-        holder,
-        allowed ? await reflectionOf(ctx, badge, holder) : null,
-      ),
-      holder: holder.name,
+      ...credentialOf(badge, { timeZone: badge.holderTimeZone }, null),
+      holder: badge.holderName,
     };
+  },
+});
+
+const BACKFILL_BATCH = 100;
+
+/**
+ * M-c: stamp the holder's name and zone on badges issued before `issueBadge`
+ * stored them. Idempotent: a stamped badge is skipped, and so is one whose
+ * holder already left (nothing is left to copy). One batch a transaction,
+ * rescheduling itself until done. `seed:reset` runs it; elsewhere run
+ * `pnpm exec convex run badges:backfillHolders` once.
+ */
+export const backfillHolders = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: v.number(),
+  handler: async (ctx, { cursor }): Promise<number> => {
+    const page = await ctx.db
+      .query("badges")
+      .paginate({ cursor: cursor ?? null, numItems: BACKFILL_BATCH });
+    let stamped = 0;
+    for (const badge of page.page) {
+      if (badge.holderName !== undefined) continue;
+      const holder = await ctx.db.get(badge.personId);
+      if (!holder) continue;
+      await ctx.db.patch(badge._id, {
+        holderName: holder.name,
+        holderTimeZone: holder.timeZone,
+      });
+      stamped++;
+    }
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.badges.backfillHolders, {
+        cursor: page.continueCursor,
+      });
+    }
+    return stamped;
   },
 });

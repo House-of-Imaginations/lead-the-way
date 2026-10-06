@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { castOf } from "../../../convex/lib/demo/cast";
+import { ON_REMOVE } from "../../../convex/lib/orgs/cascade";
 import { ALL_PERMISSIONS } from "../../../convex/lib/orgs/permissions";
+import { writeSettings } from "../../../convex/lib/settings";
 import { calderLane, harness, seat, workspace } from "./helpers";
 
 /**
@@ -137,5 +141,164 @@ test("Invite member pins the newest sprint, so sprint 1 counts it (M-g)", async 
   expect((await priya.query(api.manager.overview, {}))!.sprint).toMatchObject({
     invited: 9,
     joined: 7,
+  });
+});
+
+type Lane = Awaited<ReturnType<typeof calderLane>>;
+
+async function personOf(t: Lane["t"], orgId: Id<"orgs">, key: "dan" | "sarah") {
+  return await t.run(async (ctx) => {
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    return people.find((p) => p.email === castOf(key).email)!._id;
+  });
+}
+
+/** Whether `personId` still has a row in each table read here. */
+async function rowsOf(t: Lane["t"], personId: Id<"people">) {
+  return await t.run(async (ctx) => {
+    const one = async (rows: Promise<unknown[]>) => (await rows).length > 0;
+    return {
+      settings: await one(
+        ctx.db
+          .query("settings")
+          .withIndex("by_person", (q) => q.eq("personId", personId))
+          .take(1),
+      ),
+      reminders: await one(
+        ctx.db
+          .query("reminders")
+          .withIndex("by_person", (q) => q.eq("personId", personId))
+          .take(1),
+      ),
+      badges: await one(
+        ctx.db
+          .query("badges")
+          .withIndex("by_person", (q) => q.eq("personId", personId))
+          .take(1),
+      ),
+      projects: await one(
+        ctx.db
+          .query("projects")
+          .withIndex("by_person_and_sprint", (q) => q.eq("personId", personId))
+          .take(1),
+      ),
+      learningProgress: await one(
+        ctx.db
+          .query("learningProgress")
+          .withIndex("by_person_and_sprint", (q) => q.eq("personId", personId))
+          .take(1),
+      ),
+    };
+  });
+}
+
+test("removing a member drops only the dropped tables' rows (M-c)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "complete" });
+  const dan = await personOf(t, orgId, "dan");
+  // Dan finished (badge, project, progress). Give him a settings row and a
+  // reminder sent, the two tables a removal deletes.
+  await t.run(async (ctx) => {
+    const sprint = (await ctx.db
+      .query("sprints")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first())!;
+    // The one settings writer upserts, so this never makes a second row.
+    await writeSettings(ctx, { _id: dan, orgId }, { reduceMotion: true });
+    await ctx.db.insert("reminders", {
+      orgId,
+      sprintId: sprint._id,
+      personId: dan,
+      week: 1,
+      kind: "weekly",
+      at: 0,
+      emailed: false,
+    });
+  });
+  const before = await rowsOf(t, dan);
+  expect(Object.values(before).every(Boolean)).toBe(true);
+
+  await as("priya").mutation(api.members.remove, {
+    personId: dan,
+    expectOrgId: orgId,
+  });
+  const after = await rowsOf(t, dan);
+  for (const [table, left] of Object.entries(after)) {
+    expect(left, table).toBe(
+      ON_REMOVE[table as keyof typeof ON_REMOVE] === "kept",
+    );
+  }
+});
+
+test("a removed member's credential link still opens, without the reflection (M-c)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "complete" });
+  // Signed out, as the public page reads it.
+  const read = () =>
+    t.query(api.badges.publicBySlug, { slug: "dan-okafor-ai-fundamentals" });
+  const before = await read();
+  expect(before?.reflection).not.toBeNull();
+
+  await as("priya").mutation(api.members.remove, {
+    personId: await personOf(t, orgId, "dan"),
+    expectOrgId: orgId,
+  });
+  // Name, badge and date from what was stored at issue; the reflection goes
+  // with the seat, since nobody can turn it off any more.
+  expect(await read()).toEqual({ ...before, reflection: null });
+});
+
+test("a removed member leaves sprint 1's joined count and Members (M-c)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "week2" });
+  const priya = as("priya");
+  await priya.mutation(api.members.remove, {
+    personId: await personOf(t, orgId, "sarah"),
+    expectOrgId: orgId,
+  });
+  // Still one of the eight invited (she was), no longer one of the joined.
+  expect((await priya.query(api.manager.overview, {}))!.sprint).toMatchObject({
+    invited: 8,
+    joined: 6,
+  });
+  expect(
+    (await priya.query(api.members.list, {})).map((m) => m.name),
+  ).not.toContain("Sarah Whitlock");
+});
+
+test("the holder backfill stamps older badges once", async () => {
+  const { t, orgId } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "complete" });
+  // As badges issued before issueBadge stored the holder.
+  const issued = await t.run(async (ctx) => {
+    const badges = await ctx.db
+      .query("badges")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    for (const b of badges) {
+      await ctx.db.patch(b._id, {
+        holderName: undefined,
+        holderTimeZone: undefined,
+      });
+    }
+    return badges.length;
+  });
+  expect(issued).toBeGreaterThan(0);
+  expect(await t.mutation(internal.badges.backfillHolders, {})).toBe(issued);
+  expect(await t.mutation(internal.badges.backfillHolders, {})).toBe(0);
+  const dan = await personOf(t, orgId, "dan");
+  const { badge, person } = await t.run(async (ctx) => ({
+    badge: await ctx.db
+      .query("badges")
+      .withIndex("by_person", (q) => q.eq("personId", dan))
+      .unique(),
+    person: (await ctx.db.get(dan))!,
+  }));
+  expect(badge).toMatchObject({
+    holderName: person.name,
+    holderTimeZone: person.timeZone,
   });
 });

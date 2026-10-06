@@ -338,8 +338,8 @@ export const overview = timedViewerQuery()({
 });
 
 /**
- * 08's and 16's invited and joined. Sprint 1 counts its own invitations. A
- * later sprint carries the seated team over (managers left out), so joined is
+ * 08's and 16's invited and joined. Sprint 1 counts its own invitations, and
+ * joined only those whose seat still exists (M-c). A later sprint carries the seated team over (managers left out), so joined is
  * that team and invited adds its open, unexpired invitations. Membership
  * facts, not activity: no threshold.
  */
@@ -353,10 +353,15 @@ async function sprintHeadcount(
     (i) => i.status !== "revoked",
   );
   if (!(await isLaterSprint(ctx, org._id, sprint))) {
-    return {
-      invited: invites.length,
-      joined: invites.filter((i) => i.status === "accepted").length,
-    };
+    // M-c: a removed member's accepted invitation stays as history and as
+    // one of the invited, but they are no longer one of the joined. A row
+    // without `personId` predates it and counts as before.
+    let joined = 0;
+    for (const i of invites) {
+      if (i.status !== "accepted") continue;
+      if (i.personId === undefined || (await ctx.db.get(i.personId))) joined++;
+    }
+    return { invited: invites.length, joined };
   }
   const joined = (await loadSeated(ctx, org)).length;
   const open = invites.filter(

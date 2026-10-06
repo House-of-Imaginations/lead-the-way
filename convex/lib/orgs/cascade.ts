@@ -25,6 +25,36 @@ export const ORG_TABLES = [
 ] as const;
 
 /**
+ * What removing a member (`dropSeat`) does to each table holding a person id
+ * (M-c). Dropped rows go with the seat. Kept rows stay, orphaned, and their
+ * readers must survive a missing person, as each note says.
+ * `tests/convex/schema.test.ts` fails when a table gains a person id and
+ * isn't listed here.
+ */
+export const ON_REMOVE = {
+  settings: "dropped",
+  reminders: "dropped",
+  // Private: only the holder ever reads them.
+  pathwayProgress: "kept",
+  learningProgress: "kept",
+  // Live totals count seated people only (`loadCountable`).
+  surveyResponses: "kept",
+  // 14's board drops a project whose owner left (`showAndTell.ts`).
+  projects: "kept",
+  // The public link reads the stored `holderName` and `holderTimeZone`.
+  badges: "kept",
+  // A contact who left reads as none on 06 and as the manager on 10.
+  agreements: "kept",
+  // The live signature count counts seated people only (`lib/agreement.ts`).
+  agreementSignatures: "kept",
+  // Stored cohorts: a new `seated` hides the rest of the sprint (Ruling FX).
+  teamSnapshots: "kept",
+  sprintOutcomes: "kept",
+  // History. Sprint 1's joined counts only seats that still exist.
+  orgInvites: "kept",
+} as const satisfies Record<string, "dropped" | "kept">;
+
+/**
  * Erase a workspace and everything filed under it: its rows, its people and
  * invitations, its roles, and the files its projects and picture point at.
  */
