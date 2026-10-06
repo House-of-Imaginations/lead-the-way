@@ -9,6 +9,7 @@ import { useShell } from "@/components/app/AppShell";
 import { Tag, type TabItem } from "@/components/ui";
 import { SettingsFrame } from "@/components/settings/SettingsFrame";
 import { GeneralTab } from "./GeneralTab";
+import { MembersTab, type MembersData } from "./MembersTab";
 import { PrivacyTab } from "./PrivacyTab";
 import { SprintDefaultsTab } from "./SprintDefaultsTab";
 
@@ -32,31 +33,50 @@ function SettingsTab({
 export function WorkspaceSettings({
   tabs,
   settings,
+  members,
 }: {
   tabs: WorkspaceTab[];
   settings: Preloaded<typeof api.workspace.settings> | null;
+  members: MembersData | null;
 }) {
   const { org, workspaceSettings } = useShell();
-  const items: TabItem[] = [];
-  if (tabs.includes("general") && settings) {
-    items.push(
-      {
-        value: "general",
-        label: "General",
-        content: <SettingsTab preloaded={settings} Tab={GeneralTab} />,
-      },
-      {
-        value: "sprint",
-        label: "Sprint defaults",
-        content: <SettingsTab preloaded={settings} Tab={SprintDefaultsTab} />,
-      },
-      {
-        value: "privacy",
-        label: "Data and privacy",
-        content: <SettingsTab preloaded={settings} Tab={PrivacyTab} />,
-      },
-    );
-  }
+  const general = tabs.includes("general") ? settings : null;
+  const items: TabItem[] = [
+    ...(general
+      ? [
+          {
+            value: "general",
+            label: "General",
+            content: <SettingsTab preloaded={general} Tab={GeneralTab} />,
+          },
+        ]
+      : []),
+    ...(tabs.includes("members") && members
+      ? [
+          {
+            value: "members",
+            label: "Members",
+            content: <MembersTab initial={members} />,
+          },
+        ]
+      : []),
+    ...(general
+      ? [
+          {
+            value: "sprint",
+            label: "Sprint defaults",
+            content: (
+              <SettingsTab preloaded={general} Tab={SprintDefaultsTab} />
+            ),
+          },
+          {
+            value: "privacy",
+            label: "Data and privacy",
+            content: <SettingsTab preloaded={general} Tab={PrivacyTab} />,
+          },
+        ]
+      : []),
+  ];
   return (
     <SettingsFrame
       title="Workspace settings"

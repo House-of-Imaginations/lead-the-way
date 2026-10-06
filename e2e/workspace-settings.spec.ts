@@ -34,6 +34,7 @@ test.describe("18", () => {
     ).toBeVisible();
     await expect(page.getByRole("tab")).toHaveText([
       "General",
+      "Members",
       "Sprint defaults",
       "Data and privacy",
     ]);
