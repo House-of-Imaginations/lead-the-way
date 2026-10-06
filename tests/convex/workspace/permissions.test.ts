@@ -5,8 +5,8 @@ import { harness, seat, workspace } from "./helpers";
 
 test("owners hold every permission without a migration", async () => {
   const t = harness();
-  const { owner, orgId } = await workspace(t);
-  const permissions = await owner.query(api.orgs.myPermissions, { orgId });
+  const { owner } = await workspace(t);
+  const permissions = await owner.query(api.orgs.myPermissions, {});
   expect([...permissions].sort()).toEqual([...PERMISSIONS].sort());
 });
 
@@ -16,9 +16,9 @@ test("a role cannot grant what its creator does not hold", async () => {
   const { as: admin } = await seat(t, orgId, "user_admin", ["roles:manage"]);
   await expect(
     admin.mutation(api.orgRoles.create, {
-      orgId,
       name: "Manager",
       permissions: ["members:manage"],
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 });
@@ -31,12 +31,12 @@ test("a custom role with team:insights has it and cannot escalate", async () => 
     "roles:manage",
   ]);
 
-  expect(await lead.query(api.orgs.myPermissions, { orgId })).toEqual([
+  expect(await lead.query(api.orgs.myPermissions, {})).toEqual([
     "team:insights",
     "roles:manage",
   ]);
   // The owner holds both new permissions without a migration.
-  expect(await owner.query(api.orgs.myPermissions, { orgId })).toEqual(
+  expect(await owner.query(api.orgs.myPermissions, {})).toEqual(
     expect.arrayContaining(["sprint:manage", "team:insights"]),
   );
 
@@ -44,31 +44,31 @@ test("a custom role with team:insights has it and cannot escalate", async () => 
   // a new role or by widening its own.
   await expect(
     lead.mutation(api.orgRoles.create, {
-      orgId,
       name: "Planner",
       permissions: ["sprint:manage"],
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
   await expect(
     lead.mutation(api.orgRoles.update, {
-      orgId,
       roleId,
       name: "Lead",
       permissions: ["team:insights", "roles:manage", "members:manage"],
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 
   // team:insights is aggregates, not the member list.
-  await expect(lead.query(api.members.list, { orgId })).rejects.toMatchObject({
+  await expect(lead.query(api.members.list, {})).rejects.toMatchObject({
     data: { code: "FORBIDDEN" },
   });
 
   // It may hand out exactly what it holds.
   await expect(
     lead.mutation(api.orgRoles.create, {
-      orgId,
       name: "Insights",
       permissions: ["team:insights"],
+      expectOrgId: orgId,
     }),
   ).resolves.toBeDefined();
 });

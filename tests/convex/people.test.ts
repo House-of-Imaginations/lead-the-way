@@ -20,7 +20,7 @@ test("a first name survives stray whitespace", () => {
 test("joining makes a people row with a name, initials and email", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);
-  const roles = await owner.query(api.orgRoles.list, { orgId });
+  const roles = await owner.query(api.orgRoles.list, {});
   const roleId = roles.find((role) => !role.isOwner)!._id;
   const bob = await seedAuthUser(t, {
     name: "Bob Stone",
@@ -34,7 +34,7 @@ test("joining makes a people row with a name, initials and email", async () => {
   });
   await t.withIdentity(bob).mutation(api.invites.accept, { token });
 
-  const members = await owner.query(api.members.list, { orgId });
+  const members = await owner.query(api.members.list, {});
   expect(members.find((m) => m.userId === bob.subject)).toMatchObject({
     name: "Bob Stone",
     email: "bob@example.com",

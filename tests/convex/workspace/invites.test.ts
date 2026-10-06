@@ -124,12 +124,10 @@ test("accept refuses revoked and mismatched invitations", async () => {
   await refused({ subject: "user_owner" }, open.token, "ALREADY_A_MEMBER");
 
   // No refusal moved anybody's role, and every row says what happened to it.
-  expect(
-    await t.withIdentity(bob).query(api.orgs.myPermissions, { orgId }),
-  ).toEqual(["members:read"]);
-  expect(await owner.query(api.orgs.myPermissions, { orgId })).toContain(
-    "org:manage",
-  );
+  expect(await t.withIdentity(bob).query(api.orgs.myPermissions, {})).toEqual([
+    "members:read",
+  ]);
+  expect(await owner.query(api.orgs.myPermissions, {})).toContain("org:manage");
   const statuses = await t.run(async (ctx) =>
     (await ctx.db.query("orgInvites").collect())
       .map((row) => row.status)
@@ -517,9 +515,9 @@ test("a row stored before Ruling 4, with its trailing dot, still seats its addre
   await t
     .withIdentity(dana)
     .mutation(api.invites.accept, { token: "tok-dana" });
-  expect(
-    await t.withIdentity(dana).query(api.orgs.myPermissions, { orgId }),
-  ).toEqual(["members:read"]);
+  expect(await t.withIdentity(dana).query(api.orgs.myPermissions, {})).toEqual([
+    "members:read",
+  ]);
 });
 
 test("an address that normalises to nothing is refused, never an open link", async () => {

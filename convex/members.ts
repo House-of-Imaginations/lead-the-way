@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { orgMutation, orgQuery } from "./lib/customFunctions";
+import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import {
   MAX_MEMBERS_PER_ORG,
@@ -35,13 +35,14 @@ const memberValidator = v.object({
 });
 
 /** Name, email and role only (privacy rule 7). Never participation data. */
-export const list = orgQuery("members:read")({
+export const list = viewerQuery("members:read")({
   args: {},
   returns: v.array(memberValidator),
   handler: async (ctx) => {
+    const orgId = ctx.viewer.org._id;
     const people = await ctx.db
       .query("people")
-      .withIndex("by_org", (q) => q.eq("orgId", ctx.orgId))
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .take(MAX_MEMBERS_PER_ORG);
 
     const members = [];
@@ -64,25 +65,26 @@ export const list = orgQuery("members:read")({
 });
 
 /** Move somebody to another role. */
-export const changeRole = orgMutation("members:manage")({
+export const changeRole = viewerMutation("members:manage")({
   args: { personId: v.id("people"), roleId: v.id("orgRoles") },
   returns: v.null(),
   handler: async (ctx, { personId, roleId }): Promise<null> => {
+    const orgId = ctx.viewer.org._id;
     const person = await ctx.db.get(personId);
-    if (!person || person.orgId !== ctx.orgId) {
+    if (!person || person.orgId !== orgId) {
       throwUserError(
         "NOT_FOUND",
         "That person is no longer in this workspace.",
       );
     }
     const role = await ctx.db.get(roleId);
-    if (!role || role.orgId !== ctx.orgId) {
+    if (!role || role.orgId !== orgId) {
       throwUserError("NOT_FOUND", "That role no longer exists.");
     }
     // You may not promote somebody past yourself, and you may not act on
     // somebody already past you.
-    requireWithin(permissionsOf(role), ctx);
-    requireOutranks(ctx, await seatOf(ctx, person.userId, ctx.orgId));
+    requireWithin(permissionsOf(role), ctx.viewer);
+    requireOutranks(ctx.viewer, await seatOf(ctx, person.userId, orgId));
 
     await setRole(ctx, person, roleId);
     return null;
@@ -90,18 +92,19 @@ export const changeRole = orgMutation("members:manage")({
 });
 
 /** Take somebody's seat away. */
-export const remove = orgMutation("members:manage")({
+export const remove = viewerMutation("members:manage")({
   args: { personId: v.id("people") },
   returns: v.null(),
   handler: async (ctx, { personId }): Promise<null> => {
+    const orgId = ctx.viewer.org._id;
     const person = await ctx.db.get(personId);
-    if (!person || person.orgId !== ctx.orgId) {
+    if (!person || person.orgId !== orgId) {
       throwUserError(
         "NOT_FOUND",
         "That person is no longer in this workspace.",
       );
     }
-    requireOutranks(ctx, await seatOf(ctx, person.userId, ctx.orgId));
+    requireOutranks(ctx.viewer, await seatOf(ctx, person.userId, orgId));
 
     await dropSeat(ctx, person);
     return null;
@@ -109,11 +112,11 @@ export const remove = orgMutation("members:manage")({
 });
 
 /** Show yourself out. The last owner is refused and has to hand over first. */
-export const leave = orgMutation()({
+export const leave = viewerMutation()({
   args: {},
   returns: v.null(),
   handler: async (ctx): Promise<null> => {
-    await dropSeat(ctx, ctx.person);
+    await dropSeat(ctx, ctx.viewer.person);
     return null;
   },
 });

@@ -71,11 +71,11 @@ test("creating a workspace makes a Manager, an Employee role and one seat", asyn
 
 test("the owner role has every permission without storing any", async () => {
   const t = harness();
-  const { orgId } = await workspace(t);
+  await workspace(t);
 
   const permissions = await t
     .withIdentity(ALICE)
-    .query(api.orgs.myPermissions, { orgId });
+    .query(api.orgs.myPermissions, {});
 
   // Resolved from the code constant, so a permission added later reaches every
   // existing owner on deploy rather than needing a migration.
@@ -91,25 +91,38 @@ test("the owner role has every permission without storing any", async () => {
 
 test("a signed-out caller reaches nothing", async () => {
   const t = harness();
-  const { orgId } = await workspace(t);
+  await workspace(t);
 
   await expect(t.query(api.orgs.mine, {})).rejects.toThrow(ConvexError);
-  await expect(t.query(api.members.list, { orgId })).rejects.toThrow(
-    ConvexError,
-  );
+  await expect(t.query(api.members.list, {})).rejects.toThrow(ConvexError);
 });
 
-test("a stranger is not told whether the workspace exists", async () => {
+test("a stranger has no workspace, and a member of another can only act on their own", async () => {
   const t = harness();
   const { orgId } = await workspace(t);
+  const bob = t.withIdentity(BOB);
 
-  // Same code for "no such org" and "not yours", so probing ids learns nothing.
+  // No seat anywhere: nothing to read, and a slug says nothing either.
+  await expect(bob.query(api.members.list, {})).rejects.toMatchObject({
+    data: { code: "NO_WORKSPACE" },
+  });
   await expect(
-    t.withIdentity(BOB).query(api.members.list, { orgId }),
+    bob.query(api.orgs.bySlug, { slug: "acme" }),
+  ).resolves.toBeNull();
+
+  // Bob's own workspace open: Aster's id stops at the workspace check, and
+  // opening Aster stops at the seat check.
+  const { orgId: birch } = await bob.mutation(api.orgs.create, {
+    name: "Birch Studio",
+  });
+  await expect(
+    bob.mutation(api.orgs.clearImage, { expectOrgId: orgId }),
+  ).rejects.toMatchObject({ data: { code: "WORKSPACE_CHANGED" } });
+  await expect(
+    bob.mutation(api.profiles.setActiveOrg, { orgId }),
   ).rejects.toMatchObject({ data: { code: "NOT_A_MEMBER" } });
-
   await expect(
-    t.withIdentity(BOB).query(api.orgs.bySlug, { slug: "acme" }),
+    bob.mutation(api.profiles.setActiveOrg, { orgId: birch }),
   ).resolves.toBeNull();
 });
 
@@ -143,9 +156,9 @@ test("a role cannot be created with more than the caller holds", async () => {
 
   // Alice gives Bob a role that can manage roles, and nothing else.
   const editorId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Editor",
     permissions: ["roles:manage"],
+    expectOrgId: orgId,
   });
   const token = await alice.mutation(api.invites.create, {
     orgId,
@@ -158,9 +171,9 @@ test("a role cannot be created with more than the caller holds", async () => {
   // Bob may make roles, but not ones that reach further than his own.
   await expect(
     t.withIdentity(BOB).mutation(api.orgRoles.create, {
-      orgId,
       name: "Sneaky",
       permissions: ["org:manage"],
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 });
@@ -171,9 +184,9 @@ test("a role cannot be widened past the caller's own reach", async () => {
   const alice = t.withIdentity(ALICE);
 
   const editorId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Editor",
     permissions: ["roles:manage"],
+    expectOrgId: orgId,
   });
   const token = await alice.mutation(api.invites.create, {
     orgId,
@@ -186,10 +199,10 @@ test("a role cannot be widened past the caller's own reach", async () => {
   // Bob editing his own role to add everything is the whole attack.
   await expect(
     t.withIdentity(BOB).mutation(api.orgRoles.update, {
-      orgId,
       roleId: editorId,
       name: "Editor",
       permissions: ["roles:manage", "org:manage", "members:manage"],
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 });
@@ -200,9 +213,9 @@ test("an admin cannot promote somebody past themselves, or evict an owner", asyn
   const alice = t.withIdentity(ALICE);
 
   const adminId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Admin",
     permissions: ["members:read", "members:manage"],
+    expectOrgId: orgId,
   });
   const token = await alice.mutation(api.invites.create, {
     orgId,
@@ -212,23 +225,23 @@ test("an admin cannot promote somebody past themselves, or evict an owner", asyn
     .withIdentity(BOB)
     .mutation(api.invites.accept, { token: token.token });
 
-  const members = await t.withIdentity(BOB).query(api.members.list, { orgId });
+  const members = await t.withIdentity(BOB).query(api.members.list, {});
   const aliceSeat = members.find((m) => m.userId === ALICE.subject)!;
 
   // Bob manages members, but Alice reaches further than he does.
   await expect(
     t.withIdentity(BOB).mutation(api.members.remove, {
-      orgId,
       personId: aliceSeat.personId,
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 
   const bobSeat = members.find((m) => m.userId === BOB.subject)!;
   await expect(
     t.withIdentity(BOB).mutation(api.members.changeRole, {
-      orgId,
       personId: bobSeat.personId,
       roleId: aliceSeat.roleId,
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 });
@@ -242,19 +255,22 @@ test("the owner role cannot be deleted or edited", async () => {
   const { orgId } = await workspace(t);
   const alice = t.withIdentity(ALICE);
 
-  const roles = await alice.query(api.orgRoles.list, { orgId });
+  const roles = await alice.query(api.orgRoles.list, {});
   const owner = roles.find((r) => r.isOwner)!;
 
   await expect(
-    alice.mutation(api.orgRoles.remove, { orgId, roleId: owner._id }),
+    alice.mutation(api.orgRoles.remove, {
+      roleId: owner._id,
+      expectOrgId: orgId,
+    }),
   ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
 
   await expect(
     alice.mutation(api.orgRoles.update, {
-      orgId,
       roleId: owner._id,
       name: "Owner",
       permissions: [],
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
 });
@@ -265,27 +281,27 @@ test("the last owner cannot leave, be removed, or be demoted", async () => {
   const alice = t.withIdentity(ALICE);
 
   const memberId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Member",
     permissions: ["members:read"],
+    expectOrgId: orgId,
   });
-  const members = await alice.query(api.members.list, { orgId });
+  const members = await alice.query(api.members.list, {});
   const seat = members[0];
 
   await expect(
-    alice.mutation(api.members.leave, { orgId }),
+    alice.mutation(api.members.leave, { expectOrgId: orgId }),
   ).rejects.toMatchObject({ data: { code: "LAST_OWNER" } });
   await expect(
     alice.mutation(api.members.remove, {
-      orgId,
       personId: seat.personId,
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "LAST_OWNER" } });
   await expect(
     alice.mutation(api.members.changeRole, {
-      orgId,
       personId: seat.personId,
       roleId: memberId,
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "LAST_OWNER" } });
 });
@@ -296,9 +312,9 @@ test("a role somebody still holds cannot be deleted", async () => {
   const alice = t.withIdentity(ALICE);
 
   const memberId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Member",
     permissions: ["members:read"],
+    expectOrgId: orgId,
   });
   const token = await alice.mutation(api.invites.create, {
     orgId,
@@ -312,7 +328,10 @@ test("a role somebody still holds cannot be deleted", async () => {
   // would silently change what he can do. Refusing is the only one that isn't
   // a surprise.
   await expect(
-    alice.mutation(api.orgRoles.remove, { orgId, roleId: memberId }),
+    alice.mutation(api.orgRoles.remove, {
+      roleId: memberId,
+      expectOrgId: orgId,
+    }),
   ).rejects.toMatchObject({ data: { code: "ROLE_IN_USE" } });
 });
 
@@ -323,9 +342,9 @@ test("an invitation is single use and cannot be replayed", async () => {
   const alice = t.withIdentity(ALICE);
 
   const memberId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Member",
     permissions: ["members:read"],
+    expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
     orgId,
@@ -342,7 +361,7 @@ test("an invitation cannot hand over ownership", async () => {
   const t = harness();
   const { orgId } = await workspace(t);
   const alice = t.withIdentity(ALICE);
-  const roles = await alice.query(api.orgRoles.list, { orgId });
+  const roles = await alice.query(api.orgRoles.list, {});
   const owner = roles.find((r) => r.isOwner)!;
 
   await expect(
@@ -361,9 +380,9 @@ test("accepting an invitation never changes a role you already have", async () =
   const alice = t.withIdentity(ALICE);
 
   const memberId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Member",
     permissions: ["members:read"],
+    expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
     orgId,
@@ -375,7 +394,7 @@ test("accepting an invitation never changes a role you already have", async () =
     alice.mutation(api.invites.accept, { token }),
   ).rejects.toMatchObject({ data: { code: "ALREADY_A_MEMBER" } });
 
-  const permissions = await alice.query(api.orgs.myPermissions, { orgId });
+  const permissions = await alice.query(api.orgs.myPermissions, {});
   expect(permissions).toContain("org:manage");
 });
 
@@ -385,9 +404,9 @@ test("an expired invitation is refused", async () => {
   const alice = t.withIdentity(ALICE);
 
   const memberId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Member",
     permissions: ["members:read"],
+    expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
     orgId,
@@ -410,9 +429,9 @@ test("widening a role revokes the invitations written for what it was", async ()
   const alice = t.withIdentity(ALICE);
 
   const memberId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Member",
     permissions: ["members:read"],
+    expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
     orgId,
@@ -420,10 +439,10 @@ test("widening a role revokes the invitations written for what it was", async ()
   });
 
   await alice.mutation(api.orgRoles.update, {
-    orgId,
     roleId: memberId,
     name: "Member",
     permissions: ["members:read", "members:manage"],
+    expectOrgId: orgId,
   });
 
   // The link promised a reader's seat. It does not silently become an admin's.
@@ -456,9 +475,9 @@ test("a pinned invitation is refused for anybody but its address", async () => {
   });
 
   const memberId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Member",
     permissions: ["members:read"],
+    expectOrgId: orgId,
   });
   const { token, emailed } = await alice.mutation(api.invites.create, {
     orgId,
@@ -502,7 +521,7 @@ test("resending a pinned invitation keeps its link and restarts its week", async
   const t = harness();
   const { orgId } = await workspace(t);
   const alice = t.withIdentity(ALICE);
-  const roles = await alice.query(api.orgRoles.list, { orgId });
+  const roles = await alice.query(api.orgRoles.list, {});
   const employee = roles.find((role) => role.name === "Employee")!;
 
   const pinned = await alice.mutation(api.invites.create, {
@@ -542,9 +561,9 @@ test("only somebody who may manage members can read the tokens", async () => {
   const alice = t.withIdentity(ALICE);
 
   const memberId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Member",
     permissions: ["members:read"],
+    expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
     orgId,
@@ -570,14 +589,14 @@ test("narrowing a stronger role is escalation, not housekeeping", async () => {
 
   // Bob may edit roles and nothing else.
   const editorId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Editor",
     permissions: ["roles:manage"],
+    expectOrgId: orgId,
   });
   const adminId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Admin",
     permissions: ["org:manage", "members:manage"],
+    expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
     orgId,
@@ -589,10 +608,10 @@ test("narrowing a stronger role is escalation, not housekeeping", async () => {
   // Adding is refused, which `requireWithin` already covered.
   await expect(
     bob.mutation(api.orgRoles.update, {
-      orgId,
       roleId: editorId,
       name: "Editor",
       permissions: ["roles:manage", "org:manage"],
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 
@@ -601,16 +620,16 @@ test("narrowing a stronger role is escalation, not housekeeping", async () => {
   // disarm every administrator in the workspace.
   await expect(
     bob.mutation(api.orgRoles.update, {
-      orgId,
       roleId: adminId,
       name: "Admin",
       permissions: [],
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 
   // And so is deleting it outright, which is the same act with fewer steps.
   await expect(
-    bob.mutation(api.orgRoles.remove, { orgId, roleId: adminId }),
+    bob.mutation(api.orgRoles.remove, { roleId: adminId, expectOrgId: orgId }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 });
 
@@ -620,9 +639,9 @@ test("a lapsed invitation does not hold a slot forever", async () => {
   const alice = t.withIdentity(ALICE);
 
   const memberId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Member",
     permissions: ["members:read"],
+    expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
     orgId,
@@ -689,9 +708,9 @@ test("accepting an invite gives the new member a display name", async () => {
   const alice = t.withIdentity(ALICE);
 
   const memberId = await alice.mutation(api.orgRoles.create, {
-    orgId,
     name: "Member",
     permissions: ["members:read"],
+    expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
     orgId,
@@ -705,7 +724,7 @@ test("accepting an invite gives the new member a display name", async () => {
   });
   await t.withIdentity(bob).mutation(api.invites.accept, { token });
 
-  const members = await alice.query(api.members.list, { orgId });
+  const members = await alice.query(api.members.list, {});
   const seat = members.find((member) => member.userId === bob.subject);
   // `insertPerson` names the seat from his profile, which `ensureProfile`
   // creates from his auth account.
@@ -754,9 +773,9 @@ test("a member without org:manage cannot touch the workspace picture", async () 
 
   // Bob joins with a role that can read members and nothing else.
   const roleId = await t.withIdentity(ALICE).mutation(api.orgRoles.create, {
-    orgId,
     name: "Reader",
     permissions: ["members:read"],
+    expectOrgId: orgId,
   });
   await t.run(async (ctx) => {
     await ctx.db.insert("people", {
@@ -771,16 +790,20 @@ test("a member without org:manage cannot touch the workspace picture", async () 
   );
 
   await expect(
-    t.withIdentity(BOB).mutation(api.orgs.setImage, { orgId, storageId: file }),
+    t
+      .withIdentity(BOB)
+      .mutation(api.orgs.setImage, { storageId: file, expectOrgId: orgId }),
   ).rejects.toThrow(ConvexError);
   await expect(
-    t.withIdentity(BOB).mutation(api.orgs.clearImage, { orgId }),
+    t.withIdentity(BOB).mutation(api.orgs.clearImage, { expectOrgId: orgId }),
   ).rejects.toThrow(ConvexError);
   // Minting an upload URL is write access to this deployment's storage, so it
   // is gated on `org:manage` rather than on membership alone -- otherwise every
   // member of every workspace could fill the deployment with files.
   await expect(
-    t.withIdentity(BOB).mutation(api.orgs.generateImageUploadUrl, { orgId }),
+    t
+      .withIdentity(BOB)
+      .mutation(api.orgs.generateImageUploadUrl, { expectOrgId: orgId }),
   ).rejects.toThrow(ConvexError);
 });
 
@@ -803,7 +826,9 @@ test("clearing a workspace picture deletes the bytes", async () => {
   // a stored Convex storage URL is signed and expiring.
   expect(before?.org).not.toHaveProperty("imageId");
 
-  await t.withIdentity(ALICE).mutation(api.orgs.clearImage, { orgId });
+  await t
+    .withIdentity(ALICE)
+    .mutation(api.orgs.clearImage, { expectOrgId: orgId });
 
   const after = await t.run(async (ctx) => ({
     file: await ctx.db.system.get(file),
@@ -825,7 +850,7 @@ test("deleting a workspace takes its picture with it", async () => {
     return stored;
   });
 
-  await t.withIdentity(ALICE).mutation(api.orgs.remove, { orgId });
+  await t.withIdentity(ALICE).mutation(api.orgs.remove, { expectOrgId: orgId });
 
   const after = await t.run(async (ctx) => ({
     file: await ctx.db.system.get(file),
@@ -865,7 +890,7 @@ test("a file another workspace shows as its logo is refused and kept", async () 
   await expect(
     t
       .withIdentity(ALICE)
-      .mutation(api.orgs.setImage, { orgId: mine, storageId: logo }),
+      .mutation(api.orgs.setImage, { storageId: logo, expectOrgId: mine }),
   ).rejects.toThrow(ConvexError);
 
   const after = await t.run(async (ctx) => ({
@@ -927,7 +952,7 @@ test("a project screenshot is refused as a workspace picture", async () => {
   await expect(
     t
       .withIdentity(ALICE)
-      .mutation(api.orgs.setImage, { orgId: mine, storageId: shot }),
+      .mutation(api.orgs.setImage, { storageId: shot, expectOrgId: mine }),
   ).rejects.toThrow(ConvexError);
   expect(await t.run((ctx) => ctx.db.system.get(shot))).not.toBeNull();
 });
@@ -941,14 +966,20 @@ test("a stale upload is refused, a fresh one adopted and re-saving it is a no-op
     const old = await pngUpload(t);
     vi.setSystemTime(Date.now() + 16 * 60_000);
     await expect(
-      alice.mutation(api.orgs.setImage, { orgId, storageId: old }),
+      alice.mutation(api.orgs.setImage, { storageId: old, expectOrgId: orgId }),
     ).rejects.toThrow(ConvexError);
 
     const fresh = await pngUpload(t);
-    await alice.mutation(api.orgs.setImage, { orgId, storageId: fresh });
+    await alice.mutation(api.orgs.setImage, {
+      storageId: fresh,
+      expectOrgId: orgId,
+    });
     // Past the window, the file the workspace already shows is still its own.
     vi.setSystemTime(Date.now() + 16 * 60_000);
-    await alice.mutation(api.orgs.setImage, { orgId, storageId: fresh });
+    await alice.mutation(api.orgs.setImage, {
+      storageId: fresh,
+      expectOrgId: orgId,
+    });
     const after = await t.run(async (ctx) => ({
       file: await ctx.db.system.get(fresh),
       org: await ctx.db.get(orgId),

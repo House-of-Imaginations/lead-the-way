@@ -898,7 +898,7 @@ test("a broken demo workspace says to reset, in words the client gets", async ()
 test("the demo workspace can't be deleted in the app", async () => {
   const { t, orgId, as } = await calderLane();
   await expect(
-    as("priya").mutation(api.orgs.remove, { orgId }),
+    as("priya").mutation(api.orgs.remove, { expectOrgId: orgId }),
   ).rejects.toMatchObject({
     data: { code: "FORBIDDEN", message: "Reset the demo instead." },
   });
@@ -972,7 +972,7 @@ test("a demo persona can't make a workspace while the demo is on", async () => {
 test("a demo persona can't join a real workspace while the demo is on", async () => {
   const { t, as } = await calderLane();
   const { owner, orgId } = await workspace(t);
-  const roles = await owner.query(api.orgRoles.list, { orgId });
+  const roles = await owner.query(api.orgRoles.list, {});
   const employee = roles.find((r) => r.name === "Employee")!._id;
   const { token } = await owner.mutation(api.invites.create, {
     orgId,
@@ -1050,7 +1050,7 @@ test("seed:clock says to seed first when there is no demo", async () => {
 test("a demo persona is refused a real workspace's invitation up front", async () => {
   const { t, as } = await calderLane();
   const { owner, orgId } = await workspace(t);
-  const roles = await owner.query(api.orgRoles.list, { orgId });
+  const roles = await owner.query(api.orgRoles.list, {});
   const roleId = roles.find((r) => r.name === "Employee")!._id;
   const { inviteId, token } = await owner.mutation(api.invites.create, {
     orgId,

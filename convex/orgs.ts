@@ -3,15 +3,14 @@ import type { Doc, Id } from "./_generated/dataModel";
 import {
   authenticatedMutation,
   authenticatedQuery,
-  orgMutation,
-  orgQuery,
+  viewerMutation,
+  viewerQuery,
 } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { permissionValidator } from "./lib/orgs/permissions";
 import { deleteOrg } from "./lib/orgs/cascade";
 import { findSeat, seatsOfUser } from "./lib/orgs/membership";
-import { createWorkspace, MAX_ORG_NAME } from "./lib/orgs/create";
-import { cleanOrgName } from "./lib/orgs/slug";
+import { createWorkspace } from "./lib/orgs/create";
 import { isAdoptable } from "./lib/storage";
 import { getViewer } from "./lib/viewer";
 // The workspace picture obeys the SAME rules as an account picture -- PNG/JPEG/
@@ -31,9 +30,9 @@ import {
  *
  *  - `create` and `mine` are `authenticatedQuery`/`authenticatedMutation`.
  *    There is no org to be a member of yet, so the org gate cannot apply.
- *  - everything else is `orgQuery(...)`/`orgMutation(...)`, which takes `orgId`
- *    as an argument, proves membership, and refuses without the permissions
- *    named. See `convex/lib/customFunctions.ts` for why that is a factory.
+ *  - everything else is `viewerQuery(...)`/`viewerMutation(...)`: the
+ *    caller's open workspace, proved by `getViewer`, and refused without the
+ *    permissions named. A mutation also takes `expectOrgId` (R6).
  */
 
 /**
@@ -167,26 +166,6 @@ export const create = authenticatedMutation({
     await createWorkspace(ctx, ctx.userId, name),
 });
 
-/** Rename a workspace. The slug is not touched -- links already exist. */
-export const rename = orgMutation("org:manage")({
-  args: { name: v.string() },
-  returns: v.null(),
-  handler: async (ctx, { name }): Promise<null> => {
-    const trimmed = cleanOrgName(name);
-    if (!trimmed) {
-      throwUserError("ORG_NAME_REQUIRED", "A workspace needs a name.");
-    }
-    if (trimmed.length > MAX_ORG_NAME) {
-      throwUserError(
-        "ORG_NAME_REQUIRED",
-        `A workspace name can be at most ${MAX_ORG_NAME} characters.`,
-      );
-    }
-    await ctx.db.patch(ctx.orgId, { name: trimmed });
-    return null;
-  },
-});
-
 /**
  * Step one of two for a workspace picture: a URL the browser may POST bytes to.
  *
@@ -200,7 +179,7 @@ export const rename = orgMutation("org:manage")({
  * ability to write into this deployment's storage, and every member of every
  * workspace is a much wider door than the people who may change the workspace.
  */
-export const generateImageUploadUrl = orgMutation("org:manage")({
+export const generateImageUploadUrl = viewerMutation("org:manage")({
   args: {},
   returns: v.string(),
   handler: async (ctx): Promise<string> => {
@@ -222,10 +201,11 @@ export const generateImageUploadUrl = orgMutation("org:manage")({
  * `ctx.storage.delete`: deleting-then-throwing deletes nothing and only reads
  * as though it does. Hence the refusals come first and the swap comes last.
  */
-export const setImage = orgMutation("org:manage")({
+export const setImage = viewerMutation("org:manage")({
   args: { storageId: v.id("_storage") },
   returns: v.null(),
   handler: async (ctx, { storageId }): Promise<null> => {
+    const orgId = ctx.viewer.org._id;
     const uploaded = await ctx.db.system.get(storageId);
     if (!uploaded) {
       throwUserError(
@@ -246,14 +226,14 @@ export const setImage = orgMutation("org:manage")({
       );
     }
 
-    const org = await ctx.db.get(ctx.orgId);
+    const org = await ctx.db.get(orgId);
     // Re-saving the file this workspace already shows is a no-op: it is no
     // longer fresh, and the swap below would delete it.
     if (org?.imageId === storageId) return null;
     // A stale file, or one another row holds (another workspace's logo, a
     // project screenshot), is not ours to take: the swap below deletes what it
     // replaces, and the missing-row branch deletes this file.
-    if (!(await isAdoptable(ctx, uploaded, { orgId: ctx.orgId }))) {
+    if (!(await isAdoptable(ctx, uploaded, { orgId }))) {
       throwUserError(
         "ORG_IMAGE_MISSING",
         "That upload did not finish. Please try again.",
@@ -269,7 +249,7 @@ export const setImage = orgMutation("org:manage")({
     }
 
     const previous = org.imageId;
-    await ctx.db.patch(ctx.orgId, { imageId: storageId });
+    await ctx.db.patch(orgId, { imageId: storageId });
     // Deleted only after the row points somewhere else, so a failure between
     // the two leaves an orphan file rather than a workspace pointing at nothing.
     if (previous) await ctx.storage.delete(previous);
@@ -278,15 +258,16 @@ export const setImage = orgMutation("org:manage")({
 });
 
 /** Back to initials, and the bytes go with it. */
-export const clearImage = orgMutation("org:manage")({
+export const clearImage = viewerMutation("org:manage")({
   args: {},
   returns: v.null(),
   handler: async (ctx): Promise<null> => {
-    const org = await ctx.db.get(ctx.orgId);
+    const orgId = ctx.viewer.org._id;
+    const org = await ctx.db.get(orgId);
     if (!org?.imageId) return null;
 
     const previous = org.imageId;
-    await ctx.db.patch(ctx.orgId, { imageId: undefined });
+    await ctx.db.patch(orgId, { imageId: undefined });
     await ctx.storage.delete(previous);
     return null;
   },
@@ -300,25 +281,26 @@ export const clearImage = orgMutation("org:manage")({
  * "you may edit the name" must not quietly mean "you may end the workspace for
  * everybody in it".
  */
-export const remove = orgMutation("org:manage")({
+export const remove = viewerMutation("org:manage")({
   args: {},
   returns: v.null(),
   handler: async (ctx): Promise<null> => {
-    if (ctx.role.kind !== "owner") {
+    const orgId = ctx.viewer.org._id;
+    if (ctx.viewer.role.kind !== "owner") {
       throwUserError("FORBIDDEN", "Only an owner can delete a workspace.");
     }
     // Only a reset brings the demo back, and a reset needs the workspace.
-    if ((await ctx.db.get(ctx.orgId))?.isDemo) {
+    if ((await ctx.db.get(orgId))?.isDemo) {
       throwUserError("FORBIDDEN", "Reset the demo instead.");
     }
-    await deleteOrg(ctx, ctx.orgId);
+    await deleteOrg(ctx, orgId);
     return null;
   },
 });
 
 /** What the caller may do here. Read by screens to decide what to offer. */
-export const myPermissions = orgQuery()({
+export const myPermissions = viewerQuery()({
   args: {},
   returns: v.array(permissionValidator),
-  handler: async (ctx) => [...ctx.permissions],
+  handler: async (ctx) => [...ctx.viewer.permissions],
 });
