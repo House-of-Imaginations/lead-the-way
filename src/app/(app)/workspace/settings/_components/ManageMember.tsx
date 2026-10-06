@@ -99,6 +99,8 @@ export function ManageMember({
       void run(async () => {
         if (row.kind !== "invite") return;
         await revoke({ inviteId: row.invite._id, expectOrgId });
+        // The row and its Manage button go, so focus would fall to the page.
+        document.getElementById("members-heading")?.focus();
         toast({ title: "Invitation revoked." });
       }, "The invitation wasn't revoked. Try again."),
   };

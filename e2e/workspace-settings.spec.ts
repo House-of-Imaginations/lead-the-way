@@ -242,6 +242,8 @@ test.describe("18", () => {
       page.getByText("Invitation revoked.", { exact: true }),
     ).toBeVisible();
     await expect(heading(page, 9)).toBeVisible();
+    // Its row is gone, so focus lands on the heading, not the page (F5).
+    await expect(heading(page, 9)).toBeFocused();
 
     // Change role says what a mid-sprint change does; Cancel leaves it.
     await manage(page, "Dan Okafor").click();
