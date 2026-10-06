@@ -51,6 +51,11 @@ export function GeneralTab({ data }: { data: WorkspaceData }) {
         teamFunction: form.teamFunction || undefined,
         expectOrgId,
       });
+      setForm({
+        ...form,
+        name: form.name.trim(),
+        teamName: form.teamName.trim(),
+      });
       toast({ title: "Changes saved." });
     } catch (error) {
       const message = userMessage(
@@ -98,20 +103,24 @@ export function GeneralTab({ data }: { data: WorkspaceData }) {
           onChange={(e) => setForm({ ...form, teamFunction: e.target.value })}
         />
         {data.partner ? (
-          <TextInput
-            id="workspace-partner"
-            label="Partner program"
-            value={data.partner}
-            readOnly
-            helper="Set by your partner. Contact them to change it."
-          />
+          <div className="col-span-2 max-[900px]:col-span-1">
+            <TextInput
+              id="workspace-partner"
+              label="Partner program"
+              value={data.partner}
+              readOnly
+              helper="Set by your partner. Contact them to change it."
+            />
+          </div>
         ) : null}
-        <TextInput
-          id="workspace-id"
-          label="Workspace ID"
-          value={data.slug}
-          readOnly
-        />
+        <div className="col-start-1">
+          <TextInput
+            id="workspace-id"
+            label="Workspace ID"
+            value={data.slug}
+            readOnly
+          />
+        </div>
       </div>
       <SaveBar saving={saving} error={errors.form ?? null} />
     </form>

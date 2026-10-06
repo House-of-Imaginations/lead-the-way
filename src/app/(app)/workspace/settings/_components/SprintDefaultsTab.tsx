@@ -91,7 +91,7 @@ export function SprintDefaultsTab({ data }: { data: WorkspaceData }) {
             <Select
               id="defaults-zone"
               label="Time zone"
-              helper="Each sprint runs in this zone."
+              helper="New sprints run in this zone."
               options={ZONES}
               value={form.timeZone}
               onChange={(e) =>
@@ -103,13 +103,14 @@ export function SprintDefaultsTab({ data }: { data: WorkspaceData }) {
               label="Sprint length"
               value="4 weeks"
               disabled
-              helper="Fixed at four weeks in this prototype"
+              helper="Fixed at four weeks in this prototype."
             />
             <TextInput
               id="defaults-course"
               label="Course"
               value={data.course}
               disabled
+              helper="Fixed in this prototype."
             />
           </div>
         </div>

@@ -24,7 +24,9 @@ test.describe("18", () => {
     await signInAs(page, "priya");
     await page.goto("/manager");
     await nav(page).getByRole("button", { name: "Calder Lane" }).click();
-    await page.getByRole("menuitem", { name: "Workspace settings" }).click();
+    await page
+      .getByRole("menuitem", { name: "Workspace settings", exact: true })
+      .click();
     await expect(page).toHaveURL("/workspace/settings");
     await expect(main(page).getByText(LEAD, { exact: true })).toBeVisible();
     await expect(
@@ -48,7 +50,9 @@ test.describe("18", () => {
     );
     await expect(partner).not.toBeEditable();
     await expect(
-      main(page).getByText("Set by your partner. Contact them to change it."),
+      main(page).getByText("Set by your partner. Contact them to change it.", {
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(page.getByLabel("Workspace ID")).toHaveValue("calder-lane");
     await expect(page.getByLabel("Workspace ID")).not.toBeEditable();
@@ -63,7 +67,7 @@ test.describe("18", () => {
     await name.fill(" ");
     await page.getByRole("button", { name: "Save changes" }).click();
     await expect(
-      main(page).getByText("A workspace needs a name."),
+      main(page).getByText("A workspace needs a name.", { exact: true }),
     ).toBeVisible();
     await expect(name).toBeFocused();
 
@@ -103,7 +107,9 @@ test.describe("18", () => {
     await expect(page.getByLabel("Sprint length")).toHaveValue("4 weeks");
     await expect(page.getByLabel("Sprint length")).toBeDisabled();
     await expect(
-      main(page).getByText("Fixed at four weeks in this prototype"),
+      main(page).getByText("Fixed at four weeks in this prototype.", {
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(page.getByLabel("Course")).toHaveValue(
       "AI Productivity Fundamentals",
@@ -145,6 +151,7 @@ test.describe("18", () => {
     await expect(
       main(page).getByText(
         "Team totals stay hidden until this many people respond. It can't go below 5.",
+        { exact: true },
       ),
     ).toBeVisible();
     await expect(
@@ -169,7 +176,9 @@ test.describe("18", () => {
     await page.goto("/workspace/settings");
     await expect(page).toHaveURL("/me");
     await expect(
-      page.getByText("That page is for your team. You're back on your home."),
+      page.getByText("That page is for your team. You're back on your home.", {
+        exact: true,
+      }),
     ).toBeVisible();
   });
 });

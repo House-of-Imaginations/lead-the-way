@@ -426,6 +426,17 @@ input.ltw-field:read-only:not(:disabled) {
   background: var(--layer-inverse);
   color: var(--text-inverse);
 }
+.ltw-cs button:disabled {
+  cursor: not-allowed;
+  color: var(--text-disabled);
+}
+.ltw-cs button:disabled:hover:not([aria-pressed="true"]) {
+  background: var(--background);
+  color: var(--text-disabled);
+}
+.ltw-cs button[aria-pressed="true"]:disabled {
+  color: var(--text-inverse);
+}
 /* local: on phones the switcher spans its parent with equal segments. 671px: below DESIGN.md's 672px (md). */
 @media (max-width: 671px) {
   .ltw-cs {
