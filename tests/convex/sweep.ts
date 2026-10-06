@@ -171,6 +171,11 @@ export const callsFor = ({
   },
   "workspace:settings": {},
   "workspace:setThreshold": { threshold: 6, expectOrgId: orgId },
+  "workspace:saveGeneral": {
+    name: "Aster",
+    teamName: "Team",
+    expectOrgId: orgId,
+  },
   "teams:current": {},
   "teams:saveProfile": { challenges: [], finish: false, expectOrgId: orgId },
   "sprints:current": {},

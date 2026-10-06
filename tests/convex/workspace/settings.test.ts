@@ -108,3 +108,58 @@ test("a threshold change mid-sprint changes no row's comparability (Ruling FX)",
     (await as("priya").query(api.manager.overview, {}))?.team?.sessionDone.stat,
   ).toEqual({ kind: "hidden", helper: "Hidden until 8 responses" });
 });
+
+test("General saves the workspace and team names and the team's profile, never the slug", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  await owner.mutation(api.workspace.saveGeneral, {
+    name: "Aster Studio  ",
+    teamName: "  Client services",
+    industry: "Marketing",
+    teamFunction: "Client service",
+    expectOrgId: orgId,
+  });
+  expect(await owner.query(api.workspace.settings, {})).toMatchObject({
+    name: "Aster Studio",
+    slug: "aster-network",
+    teamName: "Client services",
+    industry: "Marketing",
+    teamFunction: "Client service",
+  });
+});
+
+test("General says how to fix a name, refuses a choice off the list, and writes nothing", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const save = (patch: Record<string, string>) =>
+    owner.mutation(api.workspace.saveGeneral, {
+      name: "Aster",
+      teamName: "Team",
+      expectOrgId: orgId,
+      ...patch,
+    });
+  for (const [patch, code] of [
+    [{ name: " " }, "ORG_NAME_REQUIRED"],
+    [{ name: "x".repeat(61) }, "ORG_NAME_REQUIRED"],
+    [{ teamName: " " }, "NAME_REQUIRED"],
+    [{ teamName: "x".repeat(61) }, "NAME_REQUIRED"],
+    [{ industry: "Mining" }, "FIELD_REQUIRED"],
+    [{ teamFunction: "Sales" }, "FIELD_REQUIRED"],
+  ] as const) {
+    await expect(save(patch), JSON.stringify(patch)).rejects.toMatchObject({
+      data: { code },
+    });
+  }
+  expect(await owner.query(api.workspace.settings, {})).toMatchObject({
+    name: "Aster Network",
+    teamName: "Your team",
+  });
+  const { as: lead } = await seat(t, orgId, "user_lead", ["sprint:manage"]);
+  await expect(
+    lead.mutation(api.workspace.saveGeneral, {
+      name: "Aster",
+      teamName: "Team",
+      expectOrgId: orgId,
+    }),
+  ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+});

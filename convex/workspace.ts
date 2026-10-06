@@ -1,9 +1,15 @@
 import { v } from "convex/values";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
+import { orgNameOf } from "./lib/orgs/create";
 import { ownerOf } from "./lib/orgs/people";
 import { thresholdOf } from "./lib/privacy";
-import { THRESHOLDS } from "./lib/setupOptions";
+import {
+  INDUSTRIES,
+  TEAM_FUNCTIONS,
+  THRESHOLDS,
+  isOneOf,
+} from "./lib/setupOptions";
 import { currentTeam, DEFAULT_COURSE } from "./lib/sprint";
 
 /**
@@ -61,6 +67,53 @@ export const setThreshold = viewerMutation("org:manage")({
       throwUserError("FIELD_REQUIRED", "Choose a threshold from 5 to 10.");
     }
     await ctx.db.patch(ctx.viewer.org._id, { privacyThreshold: threshold });
+    return null;
+  },
+});
+
+const MAX_TEAM_NAME = 60;
+
+/**
+ * General's Save changes. The workspace name is on `orgs` (the slug never
+ * changes: links already use it), and the team's name and profile on its one
+ * `teams` row. Partner program and Workspace ID are read-only.
+ */
+export const saveGeneral = viewerMutation("org:manage")({
+  args: {
+    name: v.string(),
+    teamName: v.string(),
+    industry: v.optional(v.string()),
+    teamFunction: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    const orgId = ctx.viewer.org._id;
+    const name = orgNameOf(args.name);
+    const teamName = args.teamName.trim();
+    if (!teamName) throwUserError("NAME_REQUIRED", "A team needs a name.");
+    if (teamName.length > MAX_TEAM_NAME) {
+      throwUserError(
+        "NAME_REQUIRED",
+        `A team name can be at most ${MAX_TEAM_NAME} characters.`,
+      );
+    }
+    if (args.industry !== undefined && !isOneOf(INDUSTRIES, args.industry)) {
+      throwUserError("FIELD_REQUIRED", "Choose an industry from the list.");
+    }
+    if (
+      args.teamFunction !== undefined &&
+      !isOneOf(TEAM_FUNCTIONS, args.teamFunction)
+    ) {
+      throwUserError("FIELD_REQUIRED", "Choose a team function from the list.");
+    }
+    const team = await currentTeam(ctx, orgId);
+    if (!team) throwUserError("NOT_FOUND", "That no longer exists.");
+    await ctx.db.patch(orgId, { name });
+    await ctx.db.patch(team._id, {
+      name: teamName,
+      industry: args.industry,
+      teamFunction: args.teamFunction,
+    });
     return null;
   },
 });
