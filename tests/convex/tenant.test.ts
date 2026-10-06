@@ -94,7 +94,11 @@ test("no public function reads another workspace's ids", async () => {
     t,
     "Birch Studio",
   );
-  const theirs = new Set<unknown>(Object.values(ids) as unknown[]);
+  // Storage ids aren't tenant rows: `setImage`'s guard is `isAdoptable`,
+  // pinned in orgs.test.ts, so here it meets the workspace check like any call.
+  const theirs = new Set<unknown>(
+    Object.values(ids).filter((id) => id !== ids.storageId),
+  );
   const calls = callsFor(ids);
   const before = await rowsOf(t, ids.orgId);
 
@@ -143,9 +147,13 @@ test("no public function reads another workspace's ids", async () => {
   expect(leaked).toEqual([]);
   expect(wrong).toEqual([]);
   expect(await rowsOf(t, ids.orgId)).toEqual(before);
-  // The sweep reached every function that takes an id (21 before P4, 29
-  // after Task 5), and 20 of them hold one past the workspace check. Raise
-  // these as functions join.
-  expect(swept).toBeGreaterThanOrEqual(29);
-  expect(reached).toBeGreaterThanOrEqual(20);
+  // Every function that takes an id or `expectOrgId` (40 after P7b-2: 23
+  // product mutations, the 14 the org layer moved over, and 18's three).
+  // Nine hold an id past the workspace check: orgRoles.update and remove,
+  // members.changeRole and remove, invites.create, resend and revoke,
+  // agreements.save, and profiles.setActiveOrg, which names the workspace
+  // itself. Raise these as functions join.
+  // This task re-baselines `reached` once; from here on, never lower a floor.
+  expect(swept).toBeGreaterThanOrEqual(37);
+  expect(reached).toBeGreaterThanOrEqual(9);
 });

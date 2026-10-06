@@ -19,8 +19,8 @@ test("an invite seats the person and opens the workspace", async () => {
   const { owner, orgId, slug } = await workspace(t);
   const roleId = await memberRole(t, orgId);
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
+    expectOrgId: orgId,
   });
 
   expect(await t.query(api.invites.publicPreview, { token })).toEqual({
@@ -75,7 +75,7 @@ test("accept refuses revoked and mismatched invitations", async () => {
     emailVerified: true,
   });
   const invite = (email?: string) =>
-    owner.mutation(api.invites.create, { orgId, roleId, email });
+    owner.mutation(api.invites.create, { roleId, email, expectOrgId: orgId });
 
   const refused = async (
     who: { subject: string },
@@ -101,9 +101,16 @@ test("accept refuses revoked and mismatched invitations", async () => {
 
   const revoked = await invite("bob@example.com");
   await owner.mutation(api.invites.revoke, {
-    orgId,
     inviteId: revoked.inviteId,
+    expectOrgId: orgId,
   });
+  // Revoking twice is a double tap, not an error.
+  await expect(
+    owner.mutation(api.invites.revoke, {
+      inviteId: revoked.inviteId,
+      expectOrgId: orgId,
+    }),
+  ).resolves.toBeNull();
   await refused(bob, revoked.token, "INVITE_REVOKED");
 
   const declined = await invite("bob@example.com");
@@ -151,7 +158,7 @@ test("preview names each accept state", async () => {
     emailVerified: true,
   });
   const create = (email?: string) =>
-    owner.mutation(api.invites.create, { orgId, roleId, email });
+    owner.mutation(api.invites.create, { roleId, email, expectOrgId: orgId });
   const pinned = await create("carol@example.com");
   const open = await create();
   const stateOf = async (who: { subject: string }, token: string) =>
@@ -168,8 +175,8 @@ test("preview names each accept state", async () => {
 
   const revoked = await create();
   await owner.mutation(api.invites.revoke, {
-    orgId,
     inviteId: revoked.inviteId,
+    expectOrgId: orgId,
   });
   expect(await stateOf(dan, revoked.token)).toBe("REVOKED");
 
@@ -218,8 +225,8 @@ test("somebody already seated cannot burn an open link by declining it", async (
   const roleId = await memberRole(t, orgId);
   const member = await seat(t, orgId, "user_member", ["members:read"]);
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
+    expectOrgId: orgId,
   });
 
   for (const who of [owner, member.as]) {
@@ -253,11 +260,11 @@ test("old answered invitations never push a pending one off the list", async () 
     }
   });
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
+    expectOrgId: orgId,
   });
 
-  const rows = await owner.query(api.invites.list, { orgId });
+  const rows = await owner.query(api.invites.list, {});
   expect(rows.find((row) => row.token === token)?.status).toBe("pending");
 });
 
@@ -266,9 +273,9 @@ test("a resent invitation stays listed and counted however many newer ones lapse
   const { owner, orgId } = await workspace(t);
   const roleId = await memberRole(t, orgId);
   const old = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "pat@example.com",
+    expectOrgId: orgId,
   });
   const insert = (n: number, prefix: string, expiresAt: number) =>
     t.run(async (ctx) => {
@@ -286,15 +293,18 @@ test("a resent invitation stays listed and counted however many newer ones lapse
     });
   // 100 newer invitations, all lapsed, then the old one is resent.
   await insert(100, "lapsed", Date.now() - 1);
-  await owner.mutation(api.invites.resend, { orgId, inviteId: old.inviteId });
+  await owner.mutation(api.invites.resend, {
+    inviteId: old.inviteId,
+    expectOrgId: orgId,
+  });
 
-  const rows = await owner.query(api.invites.list, { orgId });
+  const rows = await owner.query(api.invites.list, {});
   expect(rows.map((row) => row.token)).toEqual([old.token]);
 
   // 99 more live ones make 100 open with the resent one: the cap is reached.
   await insert(99, "live", Date.now() + 60_000);
   await expect(
-    owner.mutation(api.invites.create, { orgId, roleId }),
+    owner.mutation(api.invites.create, { roleId, expectOrgId: orgId }),
   ).rejects.toMatchObject({ data: { code: "FIELD_REQUIRED" } });
 });
 
@@ -304,16 +314,19 @@ test("resend refuses a lapsed invitation and a role wider than the sender's", as
   const roleId = await memberRole(t, orgId);
   const invite = () =>
     owner.mutation(api.invites.create, {
-      orgId,
       roleId,
       email: "pat@example.com",
+      expectOrgId: orgId,
     });
 
   // Holds members:manage but not the members:read the Member role grants.
   const admin = await seat(t, orgId, "user_admin", ["members:manage"]);
   const wide = await invite();
   await expect(
-    admin.as.mutation(api.invites.resend, { orgId, inviteId: wide.inviteId }),
+    admin.as.mutation(api.invites.resend, {
+      inviteId: wide.inviteId,
+      expectOrgId: orgId,
+    }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 
   const lapsed = await invite();
@@ -321,7 +334,10 @@ test("resend refuses a lapsed invitation and a role wider than the sender's", as
     ctx.db.patch(lapsed.inviteId, { expiresAt: Date.now() - 1 }),
   );
   await expect(
-    owner.mutation(api.invites.resend, { orgId, inviteId: lapsed.inviteId }),
+    owner.mutation(api.invites.resend, {
+      inviteId: lapsed.inviteId,
+      expectOrgId: orgId,
+    }),
   ).rejects.toMatchObject({
     data: {
       code: "INVITE_EXPIRED",
@@ -337,7 +353,8 @@ test("list shows answered rows and hides revoked and lapsed ones", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);
   const roleId = await memberRole(t, orgId);
-  const create = () => owner.mutation(api.invites.create, { orgId, roleId });
+  const create = () =>
+    owner.mutation(api.invites.create, { roleId, expectOrgId: orgId });
 
   const accepted = await create();
   await t
@@ -349,8 +366,8 @@ test("list shows answered rows and hides revoked and lapsed ones", async () => {
     .mutation(api.invites.decline, { token: declined.token });
   const revoked = await create();
   await owner.mutation(api.invites.revoke, {
-    orgId,
     inviteId: revoked.inviteId,
+    expectOrgId: orgId,
   });
   const lapsed = await create();
   await t.run((ctx) =>
@@ -360,7 +377,7 @@ test("list shows answered rows and hides revoked and lapsed ones", async () => {
 
   const statusOf = async () =>
     Object.fromEntries(
-      (await owner.query(api.invites.list, { orgId })).map((row) => [
+      (await owner.query(api.invites.list, {})).map((row) => [
         row.token,
         [row.status, row.roleName],
       ]),
@@ -395,9 +412,9 @@ test("decline refuses the wrong account and finished links", async () => {
   });
   const invite = () =>
     owner.mutation(api.invites.create, {
-      orgId,
       roleId,
       email: "bob@example.com",
+      expectOrgId: orgId,
     });
   const declineAs = (who: { subject: string }, token: string) =>
     t.withIdentity(who).mutation(api.invites.decline, { token });
@@ -409,8 +426,8 @@ test("decline refuses the wrong account and finished links", async () => {
 
   const revoked = await invite();
   await owner.mutation(api.invites.revoke, {
-    orgId,
     inviteId: revoked.inviteId,
+    expectOrgId: orgId,
   });
   await expect(declineAs(bob, revoked.token)).rejects.toMatchObject({
     data: { code: "INVITE_REVOKED" },
@@ -440,8 +457,8 @@ test("a seat whose role is gone still counts as seated", async () => {
   const { owner, orgId } = await workspace(t);
   const roleId = await memberRole(t, orgId);
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
+    expectOrgId: orgId,
   });
   // Corrupt on purpose: bob's seat points at a role that no longer exists.
   await t.run(async (ctx) => {
@@ -526,14 +543,14 @@ test("an address that normalises to nothing is refused, never an open link", asy
   const roleId = await memberRole(t, orgId);
   for (const email of [".", " . "]) {
     await expect(
-      owner.mutation(api.invites.create, { orgId, roleId, email }),
+      owner.mutation(api.invites.create, { roleId, email, expectOrgId: orgId }),
     ).rejects.toMatchObject({ data: { code: "FIELD_REQUIRED" } });
   }
   // A blank field is still a shareable link, as before.
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "  ",
+    expectOrgId: orgId,
   });
   expect(await t.query(api.invites.publicPreview, { token })).toMatchObject({
     emailPinned: false,

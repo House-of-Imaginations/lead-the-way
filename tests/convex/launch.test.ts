@@ -288,9 +288,9 @@ test("launch lowercases, dedupes and skips members", async () => {
   await seat(t, orgId, "user_bob", []); // user_bob@example.com is a member
   const roleId = await employeeRoleId(t, orgId);
   await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "dee@example.com",
+    expectOrgId: orgId,
   });
 
   const result = await launch([
@@ -451,9 +451,9 @@ test("the demo workspace never sends and returns every link", async () => {
   const roleId = await employeeRoleId(t, orgId);
   expect(
     await priya.mutation(api.invites.create, {
-      orgId,
       roleId,
       email: "pal@example.com",
+      expectOrgId: orgId,
     }),
   ).toMatchObject({ emailed: false });
 });
@@ -473,14 +473,14 @@ test("email sends count against inviteEmail and stop at 50", async () => {
   // The 51st real email this hour is refused, and its invitation with it.
   await expect(
     owner.mutation(api.invites.create, {
-      orgId,
       roleId,
       email: "late@example.com",
+      expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "RATE_LIMITED" } });
   // A link sends nothing, so it still works.
   expect(
-    await owner.mutation(api.invites.create, { orgId, roleId }),
+    await owner.mutation(api.invites.create, { roleId, expectOrgId: orgId }),
   ).toMatchObject({ emailed: false });
   expect(await invitesOf(t, orgId)).toHaveLength(51);
 });
@@ -791,9 +791,9 @@ test("an address is compared normalised on both sides at launch (Ruling 4)", asy
   await ready(t, orgId);
   const roleId = await employeeRoleId(t, orgId);
   await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: " Omar@Example.com. ",
+    expectOrgId: orgId,
   });
   // A row stored before Ruling 4, with its trailing dot.
   await pendingInvite(t, orgId, "ben@example.com.", Date.now() + 60_000);

@@ -161,8 +161,8 @@ test("a role cannot be created with more than the caller holds", async () => {
     expectOrgId: orgId,
   });
   const token = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: editorId,
+    expectOrgId: orgId,
   });
   await t
     .withIdentity(BOB)
@@ -189,8 +189,8 @@ test("a role cannot be widened past the caller's own reach", async () => {
     expectOrgId: orgId,
   });
   const token = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: editorId,
+    expectOrgId: orgId,
   });
   await t
     .withIdentity(BOB)
@@ -218,8 +218,8 @@ test("an admin cannot promote somebody past themselves, or evict an owner", asyn
     expectOrgId: orgId,
   });
   const token = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: adminId,
+    expectOrgId: orgId,
   });
   await t
     .withIdentity(BOB)
@@ -317,8 +317,8 @@ test("a role somebody still holds cannot be deleted", async () => {
     expectOrgId: orgId,
   });
   const token = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: memberId,
+    expectOrgId: orgId,
   });
   await t
     .withIdentity(BOB)
@@ -347,8 +347,8 @@ test("an invitation is single use and cannot be replayed", async () => {
     expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: memberId,
+    expectOrgId: orgId,
   });
 
   await t.withIdentity(BOB).mutation(api.invites.accept, { token });
@@ -365,7 +365,10 @@ test("an invitation cannot hand over ownership", async () => {
   const owner = roles.find((r) => r.isOwner)!;
 
   await expect(
-    alice.mutation(api.invites.create, { orgId, roleId: owner._id }),
+    alice.mutation(api.invites.create, {
+      roleId: owner._id,
+      expectOrgId: orgId,
+    }),
   ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
 });
 
@@ -385,8 +388,8 @@ test("accepting an invitation never changes a role you already have", async () =
     expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: memberId,
+    expectOrgId: orgId,
   });
 
   // The owner opens a member-level link for her own workspace.
@@ -409,8 +412,8 @@ test("an expired invitation is refused", async () => {
     expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: memberId,
+    expectOrgId: orgId,
   });
 
   await t.run(async (ctx) => {
@@ -434,8 +437,8 @@ test("widening a role revokes the invitations written for what it was", async ()
     expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: memberId,
+    expectOrgId: orgId,
   });
 
   await alice.mutation(api.orgRoles.update, {
@@ -480,9 +483,9 @@ test("a pinned invitation is refused for anybody but its address", async () => {
     expectOrgId: orgId,
   });
   const { token, emailed } = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: memberId,
     email: "Bob@Example.com ",
+    expectOrgId: orgId,
   });
 
   // No sending domain in the test environment, so nothing goes out and the
@@ -495,9 +498,9 @@ test("a pinned invitation is refused for anybody but its address", async () => {
 
   // His own address, unverified: the link in his inbox is the proof (spec 5).
   const pinnedToDan = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: memberId,
     email: "dan@example.com",
+    expectOrgId: orgId,
   });
   await expect(
     t
@@ -525,33 +528,39 @@ test("resending a pinned invitation keeps its link and restarts its week", async
   const employee = roles.find((role) => role.name === "Employee")!;
 
   const pinned = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: employee._id,
     email: "bob@example.com",
+    expectOrgId: orgId,
   });
-  const [before] = await alice.query(api.invites.list, { orgId });
+  const [before] = await alice.query(api.invites.list, {});
   await t.run(async (ctx) => {
     await ctx.db.patch(before._id, { expiresAt: Date.now() + 1000 });
   });
 
   const { emailed } = await alice.mutation(api.invites.resend, {
-    orgId,
     inviteId: before._id,
+    expectOrgId: orgId,
   });
   // No sending domain in tests, and the resend says so rather than pretending.
   expect(emailed).toBe(false);
 
-  const [after] = await alice.query(api.invites.list, { orgId });
+  const [after] = await alice.query(api.invites.list, {});
   expect(after.token).toBe(pinned.token);
   expect(after.expiresAt).toBeGreaterThan(Date.now() + 6 * 24 * 60 * 60 * 1000);
 
   // A plain link has no address to resend to.
-  await alice.mutation(api.invites.create, { orgId, roleId: employee._id });
-  const link = (await alice.query(api.invites.list, { orgId })).find(
+  await alice.mutation(api.invites.create, {
+    roleId: employee._id,
+    expectOrgId: orgId,
+  });
+  const link = (await alice.query(api.invites.list, {})).find(
     (invite) => invite.email === null,
   )!;
   await expect(
-    alice.mutation(api.invites.resend, { orgId, inviteId: link._id }),
+    alice.mutation(api.invites.resend, {
+      inviteId: link._id,
+      expectOrgId: orgId,
+    }),
   ).rejects.toMatchObject({ data: { code: "FIELD_REQUIRED" } });
 });
 
@@ -566,13 +575,13 @@ test("only somebody who may manage members can read the tokens", async () => {
     expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: memberId,
+    expectOrgId: orgId,
   });
   await t.withIdentity(BOB).mutation(api.invites.accept, { token });
 
   await expect(
-    t.withIdentity(BOB).query(api.invites.list, { orgId }),
+    t.withIdentity(BOB).query(api.invites.list, {}),
   ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
 });
 
@@ -599,8 +608,8 @@ test("narrowing a stronger role is escalation, not housekeeping", async () => {
     expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: editorId,
+    expectOrgId: orgId,
   });
   await t.withIdentity(BOB).mutation(api.invites.accept, { token });
   const bob = t.withIdentity(BOB);
@@ -644,8 +653,8 @@ test("a lapsed invitation does not hold a slot forever", async () => {
     expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: memberId,
+    expectOrgId: orgId,
   });
 
   // Age it past its window, and fill the rest of the cap (100) straight into
@@ -677,10 +686,16 @@ test("a lapsed invitation does not hold a slot forever", async () => {
   ).rejects.toMatchObject({ data: { code: "INVITE_EXPIRED" } });
 
   // 99 live and one lapsed: the lapsed one frees its slot...
-  await alice.mutation(api.invites.create, { orgId, roleId: memberId });
+  await alice.mutation(api.invites.create, {
+    roleId: memberId,
+    expectOrgId: orgId,
+  });
   // ...and now the cap is really full.
   await expect(
-    alice.mutation(api.invites.create, { orgId, roleId: memberId }),
+    alice.mutation(api.invites.create, {
+      roleId: memberId,
+      expectOrgId: orgId,
+    }),
   ).rejects.toMatchObject({ data: { code: "FIELD_REQUIRED" } });
 
   // Nothing was deleted to make room: the row keeps its history (spec 5).
@@ -713,8 +728,8 @@ test("accepting an invite gives the new member a display name", async () => {
     expectOrgId: orgId,
   });
   const { token } = await alice.mutation(api.invites.create, {
-    orgId,
     roleId: memberId,
+    expectOrgId: orgId,
   });
 
   const bob = await seedAuthUser(t, {

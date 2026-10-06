@@ -124,9 +124,9 @@ test("an invited address goes to its invitation and makes no workspace", async (
   const roles = await owner.query(api.orgRoles.list, {});
   const roleId = roles.find((r) => r.name === "Employee")!._id;
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "Sam@Example.com",
+    expectOrgId: orgId,
   });
   const sam = await account(t, "Sam Ito", "sam@example.com", true);
 
@@ -142,9 +142,9 @@ test("an unverified address never learns the invitation token", async () => {
   const roles = await owner.query(api.orgRoles.list, {});
   const roleId = roles.find((r) => r.name === "Employee")!._id;
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "sam@example.com",
+    expectOrgId: orgId,
   });
   const eve = await account(t, "Eve", "sam@example.com", false);
 
@@ -162,9 +162,9 @@ test.each(["revoked", "accepted"] as const)(
     const roles = await owner.query(api.orgRoles.list, {});
     const roleId = roles.find((r) => r.name === "Employee")!._id;
     const { inviteId } = await owner.mutation(api.invites.create, {
-      orgId,
       roleId,
       email: "sam@example.com",
+      expectOrgId: orgId,
     });
     await t.run((ctx) => ctx.db.patch(inviteId, { status }));
     const sam = await account(t, "Sam Ito", "sam@example.com", true);
@@ -181,9 +181,9 @@ test("an invitation from the demo workspace doesn't hold a verified account back
   const roles = await owner.query(api.orgRoles.list, {});
   const roleId = roles.find((r) => r.name === "Employee")!._id;
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "sam@example.com",
+    expectOrgId: orgId,
   });
   await t.run((ctx) => ctx.db.patch(orgId, { isDemo: true }));
   const sam = await account(t, "Sam Ito", "sam@example.com", true);
@@ -216,9 +216,9 @@ test("an expired invitation doesn't hold a new account back", async () => {
   const roles = await owner.query(api.orgRoles.list, {});
   const roleId = roles.find((r) => r.name === "Employee")!._id;
   const { inviteId } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
     email: "sam@example.com",
+    expectOrgId: orgId,
   });
   await t.run((ctx) => ctx.db.patch(inviteId, { expiresAt: Date.now() - 1 }));
   const sam = await account(t, "Sam Ito", "sam@example.com");
@@ -276,9 +276,9 @@ test.each([
       const roles = await owner.query(api.orgRoles.list, {});
       const roleId = roles.find((r) => r.name === "Employee")!._id;
       ({ token } = await owner.mutation(api.invites.create, {
-        orgId,
         roleId,
         ...(pinned ? { email: pinned } : {}),
+        expectOrgId: orgId,
       }));
     }
     if (demo) await t.run((ctx) => ctx.db.patch(orgId, { isDemo: true }));

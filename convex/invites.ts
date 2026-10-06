@@ -4,10 +4,9 @@ import { authComponent } from "./auth";
 import {
   authenticatedMutation,
   authenticatedQuery,
-  orgMutation,
-  orgQuery,
   publicQuery,
   timedViewerQuery,
+  viewerMutation,
 } from "./lib/customFunctions";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
@@ -33,6 +32,7 @@ import {
 } from "./lib/orgs/membership";
 import { firstNameOf, initialsOf, isDemoAccount } from "./lib/orgs/people";
 import { reserveRateLimit } from "./lib/rateLimits";
+import { getInOrg } from "./lib/tenant";
 import {
   setupSprint,
   isLaterSprint,
@@ -258,11 +258,16 @@ const inviteValidator = v.object({
   expiresAt: v.number(),
 });
 
-/** Invitations and what became of them. Gated, because the token is in the answer. */
-export const list = orgQuery("members:manage")({
+/**
+ * Invitations and what became of them. Gated, because the token is in the
+ * answer. `hour` is never read: a new one makes the cached answer read the
+ * clock again (Ruling 16).
+ */
+export const list = timedViewerQuery("members:manage")({
   args: {},
   returns: v.array(inviteValidator),
   handler: async (ctx) => {
+    const orgId = ctx.viewer.org._id;
     // One bounded read per status, so old answered rows can never push a live
     // one out of a shared window. Revoked is never read. Every live pending row
     // is read, since the cap bounds them; lapsed ones are outside the range.
@@ -275,18 +280,14 @@ export const list = orgQuery("members:manage")({
         await ctx.db
           .query("orgInvites")
           .withIndex("by_org_status_and_expiresAt", (q) =>
-            q.eq("orgId", ctx.orgId).eq("status", status),
+            q.eq("orgId", orgId).eq("status", status),
           )
           .order("desc")
           .take(limit)
       ).reverse();
     const accepted = await newest("accepted", MAX_MEMBERS_PER_ORG);
     const declined = await newest("declined", MAX_INVITES_PER_ORG);
-    const pending = await livePending(
-      ctx,
-      ctx.orgId,
-      await nowIn(ctx, ctx.orgId),
-    );
+    const pending = await livePending(ctx, orgId, ctx.viewer.now);
 
     const rows = [];
     for (const invite of [...accepted, ...declined, ...pending]) {
@@ -310,7 +311,7 @@ export const list = orgQuery("members:manage")({
   },
 });
 
-export const create = orgMutation("members:manage")({
+export const create = viewerMutation("members:manage")({
   args: {
     roleId: v.id("orgRoles"),
     email: v.optional(v.string()),
@@ -326,11 +327,12 @@ export const create = orgMutation("members:manage")({
     emailed: v.boolean(),
   }),
   handler: async (ctx, { roleId, email, name, message, sprintId }) => {
+    const orgId = ctx.viewer.org._id;
     // Before any write, so a refusal costs nothing.
-    await reserveRateLimit(ctx, "orgInvite", ctx.userId);
+    await reserveRateLimit(ctx, "orgInvite", ctx.viewer.userId);
 
     const role = await ctx.db.get(roleId);
-    if (!role || role.orgId !== ctx.orgId) {
+    if (!role || role.orgId !== orgId) {
       throwUserError("NOT_FOUND", "That role no longer exists.");
     }
     // Ownership is handed over deliberately, never by a link.
@@ -340,7 +342,7 @@ export const create = orgMutation("members:manage")({
         "Ownership cannot be given away with an invitation link.",
       );
     }
-    requireWithin(permissionsOf(role), ctx);
+    requireWithin(permissionsOf(role), ctx.viewer);
 
     const who = name?.trim() || undefined;
     const note = message?.trim() || undefined;
@@ -358,19 +360,17 @@ export const create = orgMutation("members:manage")({
     }
     if (sprintId) {
       const sprint = await ctx.db.get(sprintId);
-      if (!sprint || sprint.orgId !== ctx.orgId) {
+      if (!sprint || sprint.orgId !== orgId) {
         throwUserError("NOT_FOUND", "That sprint no longer exists.");
       }
     }
 
-    const now = await nowIn(ctx, ctx.orgId);
+    const now = ctx.viewer.now;
 
     // The cap counts live pending invitations only. Lapsed ones stay in the
     // table (spec 5) but `list` hides them, so counting them would brick
     // `create` with nothing visible to revoke.
-    if (
-      (await livePending(ctx, ctx.orgId, now)).length >= MAX_INVITES_PER_ORG
-    ) {
+    if ((await livePending(ctx, orgId, now)).length >= MAX_INVITES_PER_ORG) {
       throwUserError(
         "FIELD_REQUIRED",
         "There are too many invitations open. Revoke some first.",
@@ -384,13 +384,13 @@ export const create = orgMutation("members:manage")({
       throwUserError("FIELD_REQUIRED", "Enter a full email address.");
     }
     const { inviteId, token, expiresAt } = await insertInvite(ctx, {
-      orgId: ctx.orgId,
+      orgId,
       roleId,
       email: to,
       name: who,
       sprintId,
       message: note,
-      invitedBy: ctx.userId,
+      invitedBy: ctx.viewer.userId,
       at: now,
     });
 
@@ -398,16 +398,16 @@ export const create = orgMutation("members:manage")({
     // and the demo workspace never sends: its links are copied instead.
     let emailed = false;
     if (to) {
-      const org = await ctx.db.get(ctx.orgId);
+      const org = await ctx.db.get(orgId);
       if (org && !org.isDemo) {
         emailed = await sendInvite(ctx, {
           to,
           orgName: org.name,
           roleName: role.name,
-          inviterName: await nameOf(ctx, ctx.userId),
+          inviterName: await nameOf(ctx, ctx.viewer.userId),
           token,
           message: note,
-          senderId: ctx.userId,
+          senderId: ctx.viewer.userId,
         });
       }
       if (emailed) await ctx.db.patch(inviteId, { sentAt: now });
@@ -422,16 +422,17 @@ export const create = orgMutation("members:manage")({
  * email says "expires in seven days", and an email wrong about its own link is
  * worse than none.
  */
-export const resend = orgMutation("members:manage")({
+export const resend = viewerMutation("members:manage")({
   args: { inviteId: v.id("orgInvites") },
   returns: v.object({ emailed: v.boolean() }),
   handler: async (ctx, { inviteId }) => {
+    const orgId = ctx.viewer.org._id;
     const invite = await ctx.db.get(inviteId);
-    if (!invite || invite.orgId !== ctx.orgId || invite.status !== "pending") {
+    if (!invite || invite.orgId !== orgId || invite.status !== "pending") {
       throwUserError("NOT_FOUND", "That invitation is no longer open.");
     }
     // A lapsed link is not revived: it is hidden from `list` and uncounted.
-    const now = await nowIn(ctx, ctx.orgId);
+    const now = ctx.viewer.now;
     if (invite.expiresAt <= now) {
       throwUserError(
         "INVITE_EXPIRED",
@@ -449,12 +450,12 @@ export const resend = orgMutation("members:manage")({
       throwUserError("NOT_FOUND", "That invitation's role no longer exists.");
     }
     // As in `create`: nobody extends a link into a role they could not grant.
-    requireWithin(permissionsOf(role), ctx);
-    await reserveRateLimit(ctx, "orgInvite", ctx.userId);
+    requireWithin(permissionsOf(role), ctx.viewer);
+    await reserveRateLimit(ctx, "orgInvite", ctx.viewer.userId);
 
     const expiresAt = Date.now() + INVITE_WINDOW_MS;
     await ctx.db.patch(invite._id, { expiresAt });
-    const org = await ctx.db.get(ctx.orgId);
+    const org = await ctx.db.get(orgId);
     // The demo workspace never sends.
     const emailed =
       org !== null &&
@@ -463,24 +464,27 @@ export const resend = orgMutation("members:manage")({
         to: invite.email,
         orgName: org.name,
         roleName: role.name,
-        inviterName: await nameOf(ctx, ctx.userId),
+        inviterName: await nameOf(ctx, ctx.viewer.userId),
         token: invite.token,
         message: invite.message,
-        senderId: ctx.userId,
+        senderId: ctx.viewer.userId,
       }));
     if (emailed) await ctx.db.patch(invite._id, { sentAt: now });
     return { emailed };
   },
 });
 
-/** Withdraw a pending invitation. Anything already answered is left as it is. */
-export const revoke = orgMutation("members:manage")({
+/**
+ * Withdraw a pending invitation. Another workspace's, or a missing one, is
+ * NOT_FOUND (`getInOrg`), so an id can't be probed. One already withdrawn or
+ * answered is left as it is: revoking twice is a double tap.
+ */
+export const revoke = viewerMutation("members:manage")({
   args: { inviteId: v.id("orgInvites") },
   returns: v.null(),
   handler: async (ctx, { inviteId }): Promise<null> => {
-    const invite = await ctx.db.get(inviteId);
-    // Already withdrawn is not an error: revoking twice is a double tap.
-    if (invite && invite.orgId === ctx.orgId && invite.status === "pending") {
+    const invite = await getInOrg(ctx, ctx.viewer.org._id, inviteId);
+    if (invite.status === "pending") {
       await ctx.db.patch(invite._id, { status: "revoked" });
     }
     return null;

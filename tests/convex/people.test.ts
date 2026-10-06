@@ -29,8 +29,8 @@ test("joining makes a people row with a name, initials and email", async () => {
   });
 
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
+    expectOrgId: orgId,
   });
   await t.withIdentity(bob).mutation(api.invites.accept, { token });
 

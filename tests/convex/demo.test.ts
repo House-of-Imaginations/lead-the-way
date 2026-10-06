@@ -773,11 +773,11 @@ test("a revoked invitation keeps that teammate out", async () => {
   );
   // As Priya: she invites Sarah, then thinks better of it.
   const { inviteId } = await priya.mutation(api.invites.create, {
-    orgId,
     roleId: employee._id,
     email: "sarah.whitlock@calderlane.com.au",
+    expectOrgId: orgId,
   });
-  await priya.mutation(api.invites.revoke, { orgId, inviteId });
+  await priya.mutation(api.invites.revoke, { inviteId, expectOrgId: orgId });
 
   await priya.mutation(api.demo.setClock, {
     target: "week1",
@@ -914,7 +914,7 @@ test("demo invitations expire by the demo clock, not real time", async () => {
   });
   // Omar never joins, so his invitation stays open.
   const pending = async () =>
-    (await priya.query(api.invites.list, { orgId }))
+    (await priya.query(api.invites.list, {}))
       .filter((i) => i.status === "pending")
       .map((i) => i.name);
   expect(await pending()).toEqual(["Omar Haddad"]);
@@ -936,8 +936,8 @@ test("what a tester does in the demo is stamped with demo time", async () => {
   });
   // A shareable link, made and taken up on Tuesday 1 September.
   const { inviteId, token } = await as("priya").mutation(api.invites.create, {
-    orgId,
     roleId: employee,
+    expectOrgId: orgId,
   });
   await as("dan").mutation(api.invites.accept, { token });
 
@@ -975,8 +975,8 @@ test("a demo persona can't join a real workspace while the demo is on", async ()
   const roles = await owner.query(api.orgRoles.list, {});
   const employee = roles.find((r) => r.name === "Employee")!._id;
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId: employee,
+    expectOrgId: orgId,
   });
   await expect(
     as("dan").mutation(api.invites.accept, { token }),
@@ -1053,8 +1053,8 @@ test("a demo persona is refused a real workspace's invitation up front", async (
   const roles = await owner.query(api.orgRoles.list, {});
   const roleId = roles.find((r) => r.name === "Employee")!._id;
   const { inviteId, token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId,
+    expectOrgId: orgId,
   });
   const dan = as("dan");
 

@@ -11,7 +11,7 @@ import { harness, workspace } from "./workspace/helpers";
  */
 const dir = new URL("../../convex/", import.meta.url);
 const QUERY =
-  /^(?:publicQuery|authenticatedQuery|viewerQuery|timedViewerQuery|orgQuery|query)$/;
+  /^(?:publicQuery|authenticatedQuery|viewerQuery|timedViewerQuery|query)$/;
 
 /**
  * Helpers that read the clock for their caller. Add a new one here when you
@@ -25,12 +25,6 @@ const CLOCK_HELPERS = [
   "joinFacts",
   "weekNow",
 ];
-
-/**
- * Frozen orgQuery functions (their file is not to change), so they cannot take
- * `hour`: `invites.list` reads the clock through `nowIn`.
- */
-const FROZEN = ["invites.ts:list"];
 
 const READS_CLOCK = new RegExp(
   `\\.now\\b|nowIn\\(|nowFor\\(|\\b(?:${CLOCK_HELPERS.join("|")})\\(`,
@@ -55,9 +49,7 @@ function exportedQueries() {
 }
 
 test("every query that reads the clock takes hour (Ruling 16)", () => {
-  const timed = exportedQueries().filter(
-    (q) => READS_CLOCK.test(q.body) && !FROZEN.includes(q.name),
-  );
+  const timed = exportedQueries().filter((q) => READS_CLOCK.test(q.body));
   // Nothing found would pass vacuously.
   expect(timed.map((q) => q.name)).toEqual(
     expect.arrayContaining([
@@ -67,6 +59,7 @@ test("every query that reads the clock takes hour (Ruling 16)", () => {
       "invites.ts:publicPreview",
       "invites.ts:preview",
       "invites.ts:teamPreview",
+      "invites.ts:list",
       "me.ts:home",
       "me.ts:sprint",
       "projects.ts:mine",

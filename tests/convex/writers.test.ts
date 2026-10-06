@@ -81,8 +81,8 @@ test("invites.accept logs invite.accepted", async () => {
   const { owner, orgId } = await workspace(t);
   const role = await employeeRole(t, orgId);
   const { token } = await owner.mutation(api.invites.create, {
-    orgId,
     roleId: role._id,
+    expectOrgId: orgId,
   });
   await t.withIdentity({ subject: "bob" }).mutation(api.invites.accept, {
     token,
