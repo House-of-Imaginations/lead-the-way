@@ -7,8 +7,7 @@ import { api } from "@convex/_generated/api";
 import {
   MAX_DISPLAY_NAME,
   MAX_JOB_TITLE,
-  TIME_ZONES,
-  TIME_ZONE_LABELS,
+  TIME_ZONE_OPTIONS,
   type TimeZone,
 } from "@convex/lib/profileFields";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
@@ -19,10 +18,6 @@ import { SaveBar } from "./SaveBar";
 
 export type Mine = FunctionReturnType<typeof api.settings.mine>;
 
-const ZONES = TIME_ZONES.map((zone) => ({
-  value: zone,
-  label: TIME_ZONE_LABELS[zone],
-}));
 const THEMES = [
   { value: "system", label: "System" },
   { value: "light", label: "Light" },
@@ -125,7 +120,7 @@ export function ProfileTab({ mine }: { mine: Mine }) {
         <Select
           id="settings-zone"
           label="Time zone"
-          options={ZONES}
+          options={TIME_ZONE_OPTIONS}
           value={form.timeZone}
           onChange={(e) =>
             setForm({ ...form, timeZone: e.target.value as TimeZone })

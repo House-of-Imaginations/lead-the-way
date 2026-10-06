@@ -101,7 +101,9 @@ export function MySprint() {
       <header className="flex items-end justify-between gap-07 max-[900px]:flex-col max-[900px]:items-stretch">
         <div className="flex flex-col gap-03">
           {TITLE}
-          <p className="text-body-01 text-text-secondary">{data.intro}</p>
+          <p className="max-w-[65ch] text-body-01 text-text-secondary">
+            {data.intro}
+          </p>
         </div>
         <div className="w-[280px] max-[900px]:w-full">
           <ProgressBar

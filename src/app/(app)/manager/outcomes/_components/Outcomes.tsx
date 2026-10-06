@@ -167,7 +167,9 @@ function ClosedOutcomes({ data }: { data: Closed }) {
         link={data.inviteLink}
         action={data.canRunAnother ? <RunAnother /> : null}
       >
-        <p className="text-body-01 text-text-secondary">{data.intro}</p>
+        <p className="max-w-[65ch] text-body-01 text-text-secondary">
+          {data.intro}
+        </p>
       </Header>
 
       <section

@@ -115,7 +115,9 @@ export function Home({
       <header className="flex items-start justify-between gap-05 max-[672px]:flex-col max-[672px]:gap-03">
         <div className="flex flex-col gap-03">
           <h1 className="text-heading-01">{data.greeting}</h1>
-          <p className="text-body-01 text-text-secondary">{data.intro}</p>
+          <p className="max-w-[65ch] text-body-01 text-text-secondary">
+            {data.intro}
+          </p>
         </div>
         <Tag color="blue">{data.protectedTag}</Tag>
       </header>

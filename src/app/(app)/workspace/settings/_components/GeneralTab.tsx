@@ -51,11 +51,12 @@ export function GeneralTab({ data }: { data: WorkspaceData }) {
         teamFunction: form.teamFunction || undefined,
         expectOrgId,
       });
-      setForm({
-        ...form,
-        name: form.name.trim(),
-        teamName: form.teamName.trim(),
-      });
+      // From the latest form, so edits made while saving stay.
+      setForm((f) => ({
+        ...f,
+        name: f.name.trim(),
+        teamName: f.teamName.trim(),
+      }));
       toast({ title: "Changes saved." });
     } catch (error) {
       const message = userMessage(

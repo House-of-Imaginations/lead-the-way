@@ -3,12 +3,8 @@
 import { useMutation } from "convex/react";
 import { useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
-import {
-  TIME_ZONES,
-  TIME_ZONE_LABELS,
-  type TimeZone,
-} from "@convex/lib/profileFields";
-import { HOUR_STARTS } from "@convex/lib/setupOptions";
+import { TIME_ZONE_OPTIONS, type TimeZone } from "@convex/lib/profileFields";
+import { HOUR_STARTS, WEEKDAYS } from "@convex/lib/setupOptions";
 import { clockLabel } from "@convex/lib/sprintTime";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import { SaveBar } from "@/components/settings/SaveBar";
@@ -16,15 +12,11 @@ import { ContentSwitcher, Select, TextInput, useToast } from "@/components/ui";
 import { userMessage } from "@/lib/errors";
 import type { WorkspaceData } from "./WorkspaceSettings";
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"].map((label, i) => ({
+const DAYS = WEEKDAYS.map((label, i) => ({
   value: String(i + 1),
   label,
 }));
 const STARTS = HOUR_STARTS.map((s) => ({ value: s, label: clockLabel(s) }));
-const ZONES = TIME_ZONES.map((zone) => ({
-  value: zone,
-  label: TIME_ZONE_LABELS[zone],
-}));
 
 /**
  * 18's Sprint defaults: the day, start and zone a new sprint starts from. A
@@ -92,7 +84,7 @@ export function SprintDefaultsTab({ data }: { data: WorkspaceData }) {
               id="defaults-zone"
               label="Time zone"
               helper="New sprints run in this zone."
-              options={ZONES}
+              options={TIME_ZONE_OPTIONS}
               value={form.timeZone}
               onChange={(e) =>
                 setForm({ ...form, timeZone: e.target.value as TimeZone })

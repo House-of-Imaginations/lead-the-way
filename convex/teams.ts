@@ -5,7 +5,7 @@ import {
   AI_USE,
   CHALLENGES,
   INDUSTRIES,
-  isOneOf,
+  mustBeOneOf,
   TEAM_FUNCTIONS,
   TEAM_SIZES,
 } from "./lib/setupOptions";
@@ -66,16 +66,6 @@ export const current = viewerQuery("sprint:manage")({
     };
   },
 });
-
-function mustBeOneOf(
-  options: readonly string[],
-  value: string | undefined,
-  message: string,
-) {
-  if (value !== undefined && !isOneOf(options, value)) {
-    throwUserError("FIELD_REQUIRED", message);
-  }
-}
 
 /**
  * Save 03. Page 1's Continue and Save and exit pass `finish: false` (a draft);

@@ -18,14 +18,13 @@ import {
 import type { CalendarHour } from "@/lib/calendar";
 import { userMessage } from "@/lib/errors";
 import { api } from "@convex/_generated/api";
-import { HOUR_STARTS } from "@convex/lib/setupOptions";
-import { addDays, hourPattern } from "@convex/lib/sprintTime";
+import { HOUR_STARTS, WEEKDAYS } from "@convex/lib/setupOptions";
+import { addDays, clockLabel, hourPattern } from "@convex/lib/sprintTime";
 import { CalendarMenu } from "@/components/app/CalendarMenu";
 import { NotReadyDialog } from "./NotReadyDialog";
 
 type Current = NonNullable<FunctionReturnType<typeof api.sprints.current>>;
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const MONTHS = [
   "Jan",
   "Feb",
@@ -44,12 +43,6 @@ const MONTHS = [
 /** "2026-09-07" as "7 Sep". */
 function dayMonth(date: string) {
   return `${Number(date.slice(8))} ${MONTHS[Number(date.slice(5, 7)) - 1]}`;
-}
-
-/** "14:00" as "2:00 PM". */
-function timeLabel(start: string) {
-  const h = Number(start.slice(0, 2));
-  return `${h % 12 || 12}:${start.slice(3)} ${h < 12 ? "AM" : "PM"}`;
 }
 
 /**
@@ -79,7 +72,7 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
     title: "Protected learning hour",
     weeks: initial.weeks,
   };
-  const block = `Learn ${timeLabel(start).replace(":00", "")}`;
+  const block = `Learn ${clockLabel(start).replace(":00", "")}`;
 
   function onSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -136,7 +129,7 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
             <div className="[&_button]:h-auto [&_button]:flex-1 [&_button]:py-03 [&_button]:text-label-01 [&_button]:whitespace-pre-line [&>div]:w-full">
               <ContentSwitcher
                 label="Weekly learning day"
-                options={DAYS.map((d, i) => ({
+                options={WEEKDAYS.map((d, i) => ({
                   value: String(i + 1),
                   label: `${d}\n${dayMonth(addDays(monday, i))}`,
                 }))}
@@ -151,7 +144,7 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
               label="Start time"
               options={HOUR_STARTS.map((s) => ({
                 value: s,
-                label: timeLabel(s),
+                label: clockLabel(s),
               }))}
               value={start}
               onChange={(e) => setStart(e.currentTarget.value)}
@@ -214,7 +207,7 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
           {/* On a phone the week column and paddings shrink, so "Learn 2 PM" fits. */}
           <div className="grid grid-cols-[64px_repeat(5,minmax(0,1fr))] gap-01 text-label-01 tabular-nums max-md:grid-cols-[48px_repeat(5,minmax(0,1fr))]">
             <span />
-            {DAYS.map((d) => (
+            {WEEKDAYS.map((d) => (
               <span
                 key={d}
                 className="px-03 pb-02 text-text-secondary max-md:px-02"
@@ -227,7 +220,7 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
                 <span className="flex items-center text-text-secondary">
                   Week {w + 1}
                 </span>
-                {DAYS.map((d, i) => {
+                {WEEKDAYS.map((d, i) => {
                   const on = i + 1 === weekday;
                   return (
                     <div

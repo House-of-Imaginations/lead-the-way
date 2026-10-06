@@ -1,3 +1,5 @@
+import { throwUserError } from "./errors";
+
 /**
  * The choices on setup screens 03 and 04, as the wireframes write them. The
  * server refuses anything else, so a stored value is always one a screen can
@@ -55,6 +57,9 @@ export const CHALLENGES = [
   "Other",
 ] as const;
 
+/** 04's and 18's days, Monday (weekday 1) to Friday (5). */
+export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
+
 /** 04's start times: on the hour, 9:00 AM to 4:00 PM. */
 export const HOUR_STARTS = [
   "09:00",
@@ -95,4 +100,15 @@ export function isOneOf<T extends string>(
   value: string,
 ): value is T {
   return (options as readonly string[]).includes(value);
+}
+
+/** Refuse a chosen `value` that isn't one of `options`; no choice is fine. */
+export function mustBeOneOf(
+  options: readonly string[],
+  value: string | undefined,
+  message: string,
+) {
+  if (value !== undefined && !isOneOf(options, value)) {
+    throwUserError("FIELD_REQUIRED", message);
+  }
 }

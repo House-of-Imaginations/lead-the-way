@@ -11,7 +11,7 @@ import {
   INDUSTRIES,
   TEAM_FUNCTIONS,
   THRESHOLDS,
-  isOneOf,
+  mustBeOneOf,
 } from "./lib/setupOptions";
 import {
   checkHour,
@@ -120,15 +120,12 @@ export const saveGeneral = viewerMutation("org:manage")({
         `A team name can be at most ${MAX_TEAM_NAME} characters.`,
       );
     }
-    if (args.industry !== undefined && !isOneOf(INDUSTRIES, args.industry)) {
-      throwUserError("FIELD_REQUIRED", "Choose an industry from the list.");
-    }
-    if (
-      args.teamFunction !== undefined &&
-      !isOneOf(TEAM_FUNCTIONS, args.teamFunction)
-    ) {
-      throwUserError("FIELD_REQUIRED", "Choose a team function from the list.");
-    }
+    mustBeOneOf(INDUSTRIES, args.industry, "Choose an industry from the list.");
+    mustBeOneOf(
+      TEAM_FUNCTIONS,
+      args.teamFunction,
+      "Choose a team function from the list.",
+    );
     const team = await currentTeam(ctx, orgId);
     if (!team) throwUserError("NOT_FOUND", "That no longer exists.");
     await ctx.db.patch(orgId, { name });
