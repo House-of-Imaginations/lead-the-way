@@ -572,6 +572,32 @@ test("an address that normalises to nothing is refused, never an open link", asy
   });
 });
 
+test("a malformed address is refused on the field, never a pending invitation", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  for (const email of [
+    "not-an-email",
+    "ana@example",
+    "ana@example..",
+    "a b@c.d",
+  ]) {
+    await expect(
+      owner.mutation(api.invites.create, { roleId, email, expectOrgId: orgId }),
+      email,
+    ).rejects.toMatchObject({
+      data: { code: "FIELD_REQUIRED", message: "Enter a full email address." },
+    });
+  }
+  expect(await owner.query(api.invites.list, {})).toEqual([]);
+  // The one trailing dot a domain may carry still delivers (`normalEmail`).
+  await owner.mutation(api.invites.create, {
+    roleId,
+    email: "Ana@Example.com.",
+    expectOrgId: orgId,
+  });
+});
+
 test("an address already in this workspace is refused (F2)", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);
@@ -595,8 +621,10 @@ test("an address already in this workspace is refused (F2)", async () => {
     roleId,
     expectOrgId: orgId,
   });
-  await t.run((ctx) => ctx.db.patch(old.inviteId, { email: "ann@example." }));
-  await expect(create("ann@example")).rejects.toMatchObject(already);
+  await t.run((ctx) =>
+    ctx.db.patch(old.inviteId, { email: "ann@example.com." }),
+  );
+  await expect(create("ann@example.com")).rejects.toMatchObject(already);
 });
 
 test("a revoked or lapsed invitation doesn't block a new one (F2)", async () => {

@@ -14,7 +14,7 @@ import { nowFor } from "./lib/clock";
 import { profileOf } from "./lib/account/profile";
 import { emailConfigured } from "./lib/email/send";
 import { throwUserError, type ErrorCode } from "./lib/errors";
-import { MAX_MESSAGE, normalEmail } from "./lib/inviteRules";
+import { EMAIL, MAX_MESSAGE, normalEmail } from "./lib/inviteRules";
 import { sendInvite } from "./lib/orgs/email";
 import {
   INVITE_WINDOW_MS,
@@ -396,8 +396,9 @@ export const create = viewerMutation("members:manage")({
 
     const to = normalEmail(email ?? "") || undefined;
     // Fails closed: an address that normalises to nothing (".") must never
-    // become an open link anyone holding it could take.
-    if (email?.trim() && !to) {
+    // become an open link anyone holding it could take, and a malformed one
+    // never a pending invitation nobody can accept. 18 checks the same rule.
+    if (email?.trim() && !(to && EMAIL.test(to))) {
       throwUserError("FIELD_REQUIRED", "Enter a full email address.");
     }
     // F2: one seat or one live invitation per address. A revoked or lapsed

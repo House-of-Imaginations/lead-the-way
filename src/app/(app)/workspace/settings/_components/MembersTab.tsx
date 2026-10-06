@@ -6,6 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { EMAIL, normalEmail } from "@convex/lib/inviteRules";
 import { useShell, useWorkspaceSwitched } from "@/components/app/AppShell";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import {
@@ -199,6 +200,11 @@ function InviteMember({ roles }: { roles: Role[] }) {
     if (pending) return;
     if (!email.trim()) {
       setEmailError("Enter the email address to send the invitation to.");
+      return;
+    }
+    // The server's rule, on the address as the server compares it.
+    if (!EMAIL.test(normalEmail(email))) {
+      setEmailError("Enter a full email address.");
       return;
     }
     setEmailError(null);
