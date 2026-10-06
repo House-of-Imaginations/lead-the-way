@@ -27,6 +27,7 @@ import {
   MAX_MEMBERS_PER_ORG,
   assertCanJoin,
   findSeat,
+  isOwnerRole,
   permissionsOf,
   requireWithin,
 } from "./lib/orgs/membership";
@@ -336,7 +337,7 @@ export const create = viewerMutation("members:manage")({
       throwUserError("NOT_FOUND", "That role no longer exists.");
     }
     // Ownership is handed over deliberately, never by a link.
-    if (role.kind === "owner") {
+    if (isOwnerRole(role)) {
       throwUserError(
         "FORBIDDEN",
         "Ownership cannot be given away with an invitation link.",

@@ -2,6 +2,8 @@ import { v } from "convex/values";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import {
+  MAX_ROLES_PER_ORG,
+  isOwnerRole,
   permissionsOf,
   requireReach,
   requireWithin,
@@ -20,20 +22,6 @@ import { permissionValidator } from "./lib/orgs/permissions";
  * stored permission array to edit -- see `convex/tables/orgs.ts`.
  */
 
-/**
- * The ceiling on roles in one workspace.
- *
- * ENFORCED, like the member and org ceilings, not merely a page size:
- * `list` reads `.take(MAX_ROLES_PER_ORG)` and `deleteOrg` `.collect()`s the
- * same range, so a workspace past this would hide roles from the screen that
- * edits them and grow the deletion into a transaction that cannot commit.
- *
- * READ-THEN-INSERT IS NOT A RACE HERE, for exactly the reason the slug check
- * in `convex/orgs.ts` is not one. The `by_org` range lands in the
- * transaction's read set, so two creations at the ceiling conflict, and the
- * loser re-runs against the committed count rather than both squeezing in.
- */
-const MAX_ROLES_PER_ORG = 25;
 const MAX_ROLE_NAME = 40;
 
 const roleValidator = v.object({
@@ -56,7 +44,7 @@ export const list = viewerQuery("members:read")({
     return roles.map((role) => ({
       _id: role._id,
       name: role.name,
-      isOwner: role.kind === "owner",
+      isOwner: isOwnerRole(role),
       permissions: [...permissionsOf(role)],
     }));
   },
@@ -121,7 +109,7 @@ export const update = viewerMutation("roles:manage")({
     if (!role || role.orgId !== orgId) {
       throwUserError("NOT_FOUND", "That role no longer exists.");
     }
-    if (role.kind === "owner") {
+    if (isOwnerRole(role)) {
       throwUserError(
         "FORBIDDEN",
         "The owner role always has every permission and cannot be edited.",
@@ -181,7 +169,7 @@ export const remove = viewerMutation("roles:manage")({
     if (!role || role.orgId !== orgId) {
       throwUserError("NOT_FOUND", "That role no longer exists.");
     }
-    if (role.kind === "owner") {
+    if (isOwnerRole(role)) {
       throwUserError("FORBIDDEN", "The owner role cannot be deleted.");
     }
     // Same rule as `update`. Narrower consequences here, because the check

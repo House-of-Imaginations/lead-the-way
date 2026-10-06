@@ -18,6 +18,7 @@ import { demoTargetValidator } from "./lib/demo/schedule";
 import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
 import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
+import { MAX_ROLES_PER_ORG } from "./lib/orgs/membership";
 import { setupSprint } from "./lib/sprint";
 
 /**
@@ -120,11 +121,11 @@ async function insightsRole(
   orgId: Id<"orgs">,
   at: number,
 ): Promise<Id<"orgRoles">> {
-  // ponytail: a workspace holds at most 25 roles (`MAX_ROLES_PER_ORG`).
+  // A workspace holds at most `MAX_ROLES_PER_ORG` roles.
   const roles = await ctx.db
     .query("orgRoles")
     .withIndex("by_org", (q) => q.eq("orgId", orgId))
-    .take(25);
+    .take(MAX_ROLES_PER_ORG);
   const found = roles.find(
     (r) => r.kind === "custom" && r.name === "Team lead",
   );

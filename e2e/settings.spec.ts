@@ -168,7 +168,9 @@ test.describe("settings", () => {
         "Always anonymous. Hidden when fewer than 5 people respond. Changing this during a sprint hides the rest of that sprint's team totals.",
       ),
     ).toBeVisible();
-    const aside = page.getByRole("complementary", { name: "Priya never sees" });
+    const aside = page.getByRole("complementary", {
+      name: "Your manager and team never see",
+    });
     for (const item of [
       "Your course progress",
       "Time you spent learning",

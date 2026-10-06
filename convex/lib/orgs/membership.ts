@@ -9,6 +9,27 @@ import {
 } from "./permissions";
 
 /**
+ * The ceiling on roles in one workspace.
+ *
+ * ENFORCED, like the member and org ceilings, not merely a page size:
+ * `orgRoles.list` reads `.take(MAX_ROLES_PER_ORG)` and `deleteOrg`
+ * `.collect()`s the same range, so a workspace past this would hide roles from
+ * the screen that edits them and grow the deletion into a transaction that
+ * cannot commit.
+ *
+ * READ-THEN-INSERT IS NOT A RACE HERE, for exactly the reason the slug check
+ * in `convex/orgs.ts` is not one. The `by_org` range lands in the
+ * transaction's read set, so two creations at the ceiling conflict, and the
+ * loser re-runs against the committed count rather than both squeezing in.
+ */
+export const MAX_ROLES_PER_ORG = 25;
+
+/** The one test for the owner role. Every other file asks this, never `kind`. */
+export const isOwnerRole = (
+  role: Doc<"orgRoles">,
+): role is Extract<Doc<"orgRoles">, { kind: "owner" }> => role.kind === "owner";
+
+/**
  * Every read and every write of a `people` row, in one file.
  *
  * THE REASON IT IS A CHOKEPOINT. The invariant this product cannot survive
@@ -39,7 +60,7 @@ export type Seat = {
  * vocabulary grows.
  */
 export function permissionsOf(role: Doc<"orgRoles">): readonly Permission[] {
-  return role.kind === "owner" ? ALL_PERMISSIONS : role.permissions;
+  return isOwnerRole(role) ? ALL_PERMISSIONS : role.permissions;
 }
 
 /**
@@ -151,17 +172,27 @@ export function requireOutranks(caller: Seat, target: Seat): void {
   }
 }
 
-/** The org's owner role. Exactly one exists, created with the org. */
+/**
+ * The org's owner role, or null. Exactly one exists, created with the org, so
+ * it is the first `by_org` row and always inside the window.
+ */
+export async function findOwnerRole(
+  ctx: QueryCtx | MutationCtx,
+  orgId: Id<"orgs">,
+): Promise<Doc<"orgRoles"> | null> {
+  const roles = await ctx.db
+    .query("orgRoles")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .take(MAX_ROLES_PER_ORG);
+  return roles.find(isOwnerRole) ?? null;
+}
+
+/** `findOwnerRole` for writers, which must never carry on without one. */
 export async function ownerRoleOf(
   ctx: QueryCtx | MutationCtx,
   orgId: Id<"orgs">,
 ): Promise<Doc<"orgRoles">> {
-  const roles = await ctx.db
-    .query("orgRoles")
-    .withIndex("by_org", (q) => q.eq("orgId", orgId))
-    .collect();
-
-  const owner = roles.find((role) => role.kind === "owner");
+  const owner = await findOwnerRole(ctx, orgId);
   if (!owner) {
     // Unreachable through any mutation here, so it is a broken deployment
     // rather than something a person did. Loud, not silently permissive.

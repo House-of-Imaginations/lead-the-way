@@ -9,7 +9,7 @@ import {
 import { throwUserError } from "./lib/errors";
 import { permissionValidator } from "./lib/orgs/permissions";
 import { deleteOrg } from "./lib/orgs/cascade";
-import { findSeat, seatsOfUser } from "./lib/orgs/membership";
+import { findSeat, isOwnerRole, seatsOfUser } from "./lib/orgs/membership";
 import { createWorkspace } from "./lib/orgs/create";
 import { isAdoptable } from "./lib/storage";
 import { getViewer } from "./lib/viewer";
@@ -125,7 +125,7 @@ export const bySlug = authenticatedQuery({
     return {
       org: await publicOrg(ctx, org),
       roleName: seat.role.name,
-      isOwner: seat.role.kind === "owner",
+      isOwner: isOwnerRole(seat.role),
       permissions: [...seat.permissions],
     };
   },
@@ -141,7 +141,7 @@ export const active = authenticatedQuery({
     return {
       org: await publicOrg(ctx, viewer.org),
       roleName: viewer.role.name,
-      isOwner: viewer.role.kind === "owner",
+      isOwner: isOwnerRole(viewer.role),
       permissions: [...viewer.permissions],
     };
   },
@@ -286,7 +286,7 @@ export const remove = viewerMutation("org:manage")({
   returns: v.null(),
   handler: async (ctx): Promise<null> => {
     const orgId = ctx.viewer.org._id;
-    if (ctx.viewer.role.kind !== "owner") {
+    if (!isOwnerRole(ctx.viewer.role)) {
       throwUserError("FORBIDDEN", "Only an owner can delete a workspace.");
     }
     // Only a reset brings the demo back, and a reset needs the workspace.

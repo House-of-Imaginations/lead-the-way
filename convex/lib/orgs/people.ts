@@ -4,6 +4,7 @@ import { flagOn } from "../../app";
 import { authComponent } from "../../auth";
 import { ensureProfile } from "../account/ensureProfile";
 import { isDemoAddress } from "../demo/cast";
+import { findOwnerRole } from "./membership";
 
 export const DEFAULT_TIME_ZONE = "Australia/Melbourne";
 
@@ -26,12 +27,7 @@ export function initialsOf(name: string): string {
  * put beside it. ponytail: one name; P7b-3's Members tab lists every owner.
  */
 export async function ownerOf(ctx: QueryCtx, orgId: Id<"orgs">) {
-  // ponytail: a workspace holds a handful of roles; 100 is the ceiling.
-  const roles = await ctx.db
-    .query("orgRoles")
-    .withIndex("by_org", (q) => q.eq("orgId", orgId))
-    .take(100);
-  const owner = roles.find((role) => role.kind === "owner");
+  const owner = await findOwnerRole(ctx, orgId);
   if (!owner) return null;
   const person = await ctx.db
     .query("people")

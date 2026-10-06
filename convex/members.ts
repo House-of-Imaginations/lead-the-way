@@ -3,13 +3,30 @@ import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import {
   MAX_MEMBERS_PER_ORG,
+  type Seat,
   dropSeat,
+  isOwnerRole,
   permissionsOf,
   requireOutranks,
   requireWithin,
   seatOf,
   setRole,
 } from "./lib/orgs/membership";
+
+/**
+ * M-b: only an owner moves anybody into or out of the owner role. A custom
+ * role holding all six permissions passes `requireWithin` and
+ * `requireOutranks`, so without this it could promote itself and then demote
+ * or remove the real owner.
+ */
+function requireOwnerFor(caller: Seat, touchesOwner: boolean): void {
+  if (touchesOwner && !isOwnerRole(caller.role)) {
+    throwUserError(
+      "FORBIDDEN",
+      "Only an owner can give or take away the owner role.",
+    );
+  }
+}
 
 /**
  * Who is in a workspace, and the writes that change that.
@@ -56,7 +73,7 @@ export const list = viewerQuery("members:read")({
         email: person.email,
         roleId: person.roleId,
         roleName: role.name,
-        isOwner: role.kind === "owner",
+        isOwner: isOwnerRole(role),
         joinedAt: person.createdAt,
       });
     }
@@ -82,9 +99,12 @@ export const changeRole = viewerMutation("members:manage")({
       throwUserError("NOT_FOUND", "That role no longer exists.");
     }
     // You may not promote somebody past yourself, and you may not act on
-    // somebody already past you.
+    // somebody already past you. Escalation is checked first, so its message
+    // is the one a non-owner sees for a reach they never had.
+    const target = await seatOf(ctx, person.userId, orgId);
     requireWithin(permissionsOf(role), ctx.viewer);
-    requireOutranks(ctx.viewer, await seatOf(ctx, person.userId, orgId));
+    requireOutranks(ctx.viewer, target);
+    requireOwnerFor(ctx.viewer, isOwnerRole(role) || isOwnerRole(target.role));
 
     await setRole(ctx, person, roleId);
     return null;
@@ -104,7 +124,9 @@ export const remove = viewerMutation("members:manage")({
         "That person is no longer in this workspace.",
       );
     }
-    requireOutranks(ctx.viewer, await seatOf(ctx, person.userId, orgId));
+    const target = await seatOf(ctx, person.userId, orgId);
+    requireOutranks(ctx.viewer, target);
+    requireOwnerFor(ctx.viewer, isOwnerRole(target.role));
 
     await dropSeat(ctx, person);
     return null;
