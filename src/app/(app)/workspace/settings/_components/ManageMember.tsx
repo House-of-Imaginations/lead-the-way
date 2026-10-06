@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
@@ -47,6 +47,9 @@ export function ManageMember({
   const resend = useMutation(api.invites.resend);
   const revoke = useMutation(api.invites.revoke);
   const [dialog, setDialog] = useState<"role" | "remove" | null>(null);
+  // The menu closes after a dialog is chosen and would pull focus back to its
+  // trigger, past the dialog's own return to the header.
+  const toDialog = useRef(false);
 
   const actions = actionsFor(row);
   if (actions.length === 0) return null;
@@ -61,8 +64,14 @@ export function ManageMember({
   }
 
   const handlers: Record<Action, () => void> = {
-    "Change role": () => setDialog("role"),
-    "Remove member": () => setDialog("remove"),
+    "Change role": () => {
+      toDialog.current = true;
+      setDialog("role");
+    },
+    "Remove member": () => {
+      toDialog.current = true;
+      setDialog("remove");
+    },
     "Copy link": () =>
       void (async () => {
         if (row.kind !== "invite") return;
@@ -103,6 +112,10 @@ export function ManageMember({
       <Menu
         align="end"
         items={items}
+        onCloseAutoFocus={(e) => {
+          if (toDialog.current) e.preventDefault();
+          toDialog.current = false;
+        }}
         trigger={
           <Button
             kind="ghost"

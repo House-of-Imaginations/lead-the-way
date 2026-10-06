@@ -126,7 +126,7 @@ export function MembersTab({ initial }: { initial: MembersData }) {
         role="region"
         aria-label="Members"
         tabIndex={0}
-        className="overflow-x-auto"
+        className="relative overflow-x-auto"
       >
         <table className="ltw-table">
           <thead>

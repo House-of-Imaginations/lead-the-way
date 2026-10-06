@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { resetDemo, signInAs } from "./demo";
+import { convex, resetDemo, signInAs } from "./demo";
 
 const main = (page: Page) => page.getByRole("main");
 const nav = (page: Page) => page.getByRole("navigation", { name: "Main" });
@@ -14,6 +14,15 @@ async function open(page: Page) {
     page.getByRole("heading", { level: 1, name: "Workspace settings" }),
   ).toBeVisible();
 }
+
+const members = (page: Page) => page.getByRole("region", { name: "Members" });
+const heading = (page: Page, n: number) =>
+  main(page).getByRole("heading", {
+    level: 2,
+    name: `${n} people in this workspace`,
+  });
+const manage = (page: Page, name: string) =>
+  page.getByRole("button", { name: `Manage ${name}` });
 
 test.describe("18", () => {
   test.describe.configure({ mode: "serial" });
@@ -172,6 +181,98 @@ test.describe("18", () => {
     await expect(page.getByLabel("Small-group threshold")).toHaveValue("6");
   });
 
+  test("Members lists everyone once, invites, revokes and removes", async ({
+    page,
+  }) => {
+    await open(page);
+    await page.getByRole("tab", { name: "Members" }).click();
+    // Priya and seven who joined, and Omar still invited (spec: 9).
+    await expect(heading(page, 9)).toBeVisible();
+    await expect(
+      members(page).getByRole("row", { name: /Dan Okafor/ }),
+    ).toContainText("Joined");
+    await expect(
+      members(page).getByRole("row", { name: /Omar Haddad/ }),
+    ).toContainText("Invited");
+    // Name, email, role and state only (privacy rule 7).
+    await expect(members(page).getByRole("columnheader")).toHaveText([
+      "Name",
+      "Email",
+      "Role",
+      "Status",
+      "Manage",
+    ]);
+    // Nothing to manage on your own row.
+    await expect(manage(page, "Priya Raman")).toHaveCount(0);
+
+    // Invite: a refusal says how to fix it, then a link is made.
+    await page.getByRole("button", { name: "Invite member" }).click();
+    const dialog = page.getByRole("dialog", { name: "Invite member" });
+    await dialog.getByLabel("Email").fill(".");
+    await dialog.getByRole("button", { name: "Send invitation" }).click();
+    await expect(dialog.getByLabel("Email")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(
+      dialog.getByText("Enter a full email address.", { exact: true }),
+    ).toBeVisible();
+    const email = `e2e-member-${Date.now()}@example.com`;
+    await dialog.getByLabel("Email").fill(email);
+    await dialog.getByRole("button", { name: "Send invitation" }).click();
+    // The demo workspace never sends.
+    await expect(
+      page.getByText("Invitation created.", { exact: true }),
+    ).toBeVisible();
+    await expect(heading(page, 10)).toBeVisible();
+
+    await manage(page, email).click();
+    await page.getByRole("menuitem", { name: "Revoke" }).click();
+    await expect(
+      page.getByText("Invitation revoked.", { exact: true }),
+    ).toBeVisible();
+    await expect(heading(page, 9)).toBeVisible();
+
+    // Change role says what a mid-sprint change does; Cancel leaves it.
+    await manage(page, "Dan Okafor").click();
+    await page.getByRole("menuitem", { name: "Change role" }).click();
+    const role = page.getByRole("dialog", { name: "Change role" });
+    await expect(role).toContainText(
+      "Changing a role during a sprint can hide the rest of that sprint's team totals.",
+    );
+    await role.getByRole("button", { name: "Cancel" }).click();
+    await expect(role).toHaveCount(0);
+    await expect(heading(page, 9)).toBeFocused();
+
+    // Remove: the page still takes clicks after a dialog from the menu.
+    await manage(page, "Grace Oyelaran").click();
+    await page.getByRole("menuitem", { name: "Remove member" }).click();
+    const remove = page.getByRole("dialog", {
+      name: "Remove Grace Oyelaran?",
+    });
+    await expect(remove).toContainText(
+      "Removing someone during a sprint can hide the rest of that sprint's team totals.",
+    );
+    await remove.getByRole("button", { name: "Remove member" }).click();
+    await expect(
+      page.getByText("Member removed.", { exact: true }),
+    ).toBeVisible();
+    await expect(heading(page, 8)).toBeVisible();
+    await expect(
+      members(page).getByRole("row", { name: /Grace Oyelaran/ }),
+    ).toHaveCount(0);
+    // The removed row's menu is gone, so focus lands on the header.
+    await expect(heading(page, 8)).toBeFocused();
+    // And nothing is left blocking the page (pointer-events).
+    await manage(page, "Dan Okafor").click();
+    await expect(
+      page.getByRole("menuitem", { name: "Change role" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByRole("tab", { name: "General" }).click();
+    await expect(page.getByLabel("Workspace name")).toBeVisible();
+  });
+
   test("Dan is sent from 18 to his home with a note", async ({ page }) => {
     await signInAs(page, "dan");
     await page.goto("/workspace/settings");
@@ -199,6 +300,7 @@ test.describe("18 axe and phone", () => {
       await open(page);
       for (const [tab, file] of [
         ["General", "general"],
+        ["Members", "members"],
         ["Sprint defaults", "sprint"],
         ["Data and privacy", "privacy"],
       ] as const) {
@@ -227,9 +329,66 @@ test.describe("18 axe and phone", () => {
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
-    for (const tab of ["General", "Sprint defaults", "Data and privacy"]) {
+    for (const tab of [
+      "General",
+      "Members",
+      "Sprint defaults",
+      "Data and privacy",
+    ]) {
       await page.getByRole("tab", { name: tab }).click();
       await expectAxeClean(page);
+      // Only the members table scrolls sideways, inside its own region.
+      expect(
+        await page.evaluate(() => {
+          const main = document.querySelector("main")!;
+          return main.scrollWidth <= main.clientWidth;
+        }),
+        tab,
+      ).toBe(true);
     }
+    await page.getByRole("tab", { name: "Members" }).click();
+    const invite = await page
+      .getByRole("button", { name: "Invite member" })
+      .boundingBox();
+    expect(invite!.height).toBeGreaterThanOrEqual(48);
+    const manageBtn = await page
+      .getByRole("button", { name: /^Manage / })
+      .first()
+      .boundingBox();
+    expect(manageBtn!.height).toBeGreaterThanOrEqual(48);
+  });
+});
+
+test.describe("18 for a members:manage seat", () => {
+  test.describe.configure({ mode: "serial" });
+  test.beforeAll(() => resetDemo("complete"));
+  test.afterAll(() => resetDemo());
+
+  test("a members:manage seat sees only the Members tab (W-g)", async ({
+    page,
+  }) => {
+    const email = `e2e-people-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
+    const token = JSON.parse(
+      convex(["run", "seed:invite", JSON.stringify({ email, members: true })]),
+    ) as string;
+    const res = await page.request.post("/api/auth/sign-up/email", {
+      data: { name: "Noor Aziz", email, password: "a long enough password" },
+      headers: { origin: "http://localhost:3000" },
+    });
+    expect(res.ok()).toBe(true);
+    await page.goto(`/join/${token}`);
+    await page.getByRole("button", { name: "Join team sprint" }).click();
+    // A manager by W-f, without sprint:manage: home is the overview.
+    await expect(page).toHaveURL("/manager");
+
+    await page.goto("/workspace/settings");
+    await expect(page).toHaveURL("/workspace/settings");
+    await expect(page.getByRole("tab")).toHaveText(["Members"]);
+    await expect(
+      main(page).getByText("Owner: Priya Raman", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      main(page).getByRole("heading", { level: 2, name: /in this workspace$/ }),
+    ).toBeVisible();
   });
 });

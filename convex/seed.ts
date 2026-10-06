@@ -19,6 +19,7 @@ import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
 import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
 import { MAX_ROLES_PER_ORG } from "./lib/orgs/membership";
+import type { Permission } from "./lib/orgs/permissions";
 import { setupSprint } from "./lib/sprint";
 
 /**
@@ -116,14 +117,12 @@ export const clock = internalMutation({
   },
 });
 
-/**
- * A custom "Team lead" role holding only `team:insights`, made the first time
- * e2e needs one: a reader in no stored cohort, so 16 shows them values (P7a
- * Task 8). Demo only, like `invite`.
- */
-async function insightsRole(
+/** A custom role by name, made once, for e2e seats that test a permission alone. */
+async function customRole(
   ctx: MutationCtx,
   orgId: Id<"orgs">,
+  name: string,
+  permissions: Permission[],
   at: number,
 ): Promise<Id<"orgRoles">> {
   // A workspace holds at most `MAX_ROLES_PER_ORG` roles.
@@ -131,15 +130,13 @@ async function insightsRole(
     .query("orgRoles")
     .withIndex("by_org", (q) => q.eq("orgId", orgId))
     .take(MAX_ROLES_PER_ORG);
-  const found = roles.find(
-    (r) => r.kind === "custom" && r.name === "Team lead",
-  );
+  const found = roles.find((r) => r.kind === "custom" && r.name === name);
   if (found) return found._id;
   return await ctx.db.insert("orgRoles", {
     orgId,
     kind: "custom",
-    name: "Team lead",
-    permissions: ["team:insights"],
+    name,
+    permissions,
     createdAt: at,
   });
 }
@@ -151,15 +148,17 @@ async function insightsRole(
  * ponytail: e2e has no other way to hold a token. Demo addresses can't sign
  * up, and the demo holds no open links. Demo only, like `clock`.
  * `insights` grants the Team lead role (`team:insights` only) instead of Employee.
+ * `members` grants the People admin role (`members:manage` only) instead.
  */
 export const invite = internalMutation({
   args: {
     email: v.optional(v.string()),
     status: v.optional(literals("revoked", "declined", "accepted")),
     insights: v.optional(v.boolean()),
+    members: v.optional(v.boolean()),
   },
   returns: v.string(),
-  handler: async (ctx, { email, status, insights }) => {
+  handler: async (ctx, { email, status, insights, members }) => {
     assertFlag("demo", true);
     const org = await ctx.db
       .query("orgs")
@@ -184,9 +183,12 @@ export const invite = internalMutation({
       );
     }
     const sprint = await setupSprint(ctx, org._id);
+    const at = nowFor(org);
     const roleId = insights
-      ? await insightsRole(ctx, org._id, nowFor(org))
-      : (await inviteRoleOf(ctx, org._id))._id;
+      ? await customRole(ctx, org._id, "Team lead", ["team:insights"], at)
+      : members
+        ? await customRole(ctx, org._id, "People admin", ["members:manage"], at)
+        : (await inviteRoleOf(ctx, org._id))._id;
     const { inviteId, token } = await insertInvite(ctx, {
       orgId: org._id,
       roleId,
@@ -194,7 +196,7 @@ export const invite = internalMutation({
       sprintId: sprint?._id,
       message: sprint?.inviteMessage ?? INVITE_MESSAGE,
       invitedBy: priya.userId,
-      at: nowFor(org),
+      at,
     });
     if (status) await ctx.db.patch(inviteId, { status });
     return token;
