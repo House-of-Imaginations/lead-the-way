@@ -588,6 +588,14 @@ test("an address already in this workspace is refused (F2)", async () => {
   // A live pending invitation.
   await create("sam@example.com");
   await expect(create("SAM@example.com")).rejects.toMatchObject(already);
+
+  // A live row stored before Ruling 4, with its trailing dot.
+  const old = await owner.mutation(api.invites.create, {
+    roleId,
+    expectOrgId: orgId,
+  });
+  await t.run((ctx) => ctx.db.patch(old.inviteId, { email: "ann@example." }));
+  await expect(create("ann@example")).rejects.toMatchObject(already);
 });
 
 test("a revoked or lapsed invitation doesn't block a new one (F2)", async () => {

@@ -406,7 +406,7 @@ export const create = viewerMutation("members:manage")({
         .take(MAX_MEMBERS_PER_ORG);
       if (
         people.some((p) => normalEmail(p.email) === to) ||
-        pending.some((i) => i.email === to)
+        pending.some((i) => normalEmail(i.email ?? "") === to)
       ) {
         throwUserError("FIELD_REQUIRED", "Already in this workspace.");
       }
