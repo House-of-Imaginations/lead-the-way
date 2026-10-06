@@ -219,6 +219,7 @@ for (const c of CASES) {
         "lead manager:outcomes",
         "priya viewer:shell",
         "priya settings:mine",
+        "priya workspace:settings",
         "priya members:list",
         "priya invites:list",
         "priya sprints:launchPage",

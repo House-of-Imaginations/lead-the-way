@@ -21,6 +21,26 @@ export function initialsOf(name: string): string {
 }
 
 /**
+ * Who runs the workspace, by name: the earliest-seated holder of the owner
+ * role. 18's tag, the shell's "Managed by" and 19 read it. No number is ever
+ * put beside it. ponytail: one name; P7b-3's Members tab lists every owner.
+ */
+export async function ownerOf(ctx: QueryCtx, orgId: Id<"orgs">) {
+  // ponytail: a workspace holds a handful of roles; 100 is the ceiling.
+  const roles = await ctx.db
+    .query("orgRoles")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .take(100);
+  const owner = roles.find((role) => role.kind === "owner");
+  if (!owner) return null;
+  const person = await ctx.db
+    .query("people")
+    .withIndex("by_role", (q) => q.eq("roleId", owner._id))
+    .first();
+  return person && { name: person.name, firstName: firstNameOf(person.name) };
+}
+
+/**
  * Seat somebody in a workspace. The only insert into `people`.
  *
  * Callers have done their own checks (`assertCanJoin`, the invitation rules).

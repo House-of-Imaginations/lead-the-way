@@ -67,6 +67,9 @@ export const HOUR_STARTS = [
   "16:00",
 ] as const;
 
+/** 18's small-group threshold choices (spec rule 3: never below 5). */
+export const THRESHOLDS = [5, 6, 7, 8, 9, 10] as const;
+
 /** The "not ready" dialog's reasons. The screen's "Choose a reason" is no reason. */
 export const NOT_READY_REASONS = [
   "I need approval from my own manager",

@@ -1,0 +1,66 @@
+import { v } from "convex/values";
+import { viewerMutation, viewerQuery } from "./lib/customFunctions";
+import { throwUserError } from "./lib/errors";
+import { ownerOf } from "./lib/orgs/people";
+import { thresholdOf } from "./lib/privacy";
+import { THRESHOLDS } from "./lib/setupOptions";
+import { currentTeam, DEFAULT_COURSE } from "./lib/sprint";
+
+/**
+ * 18, Workspace settings (P7b-2). Workspace fields live on `orgs` and the
+ * team's on `teams`. The whole page needs `org:manage` (decision 1). The one
+ * person it names is the owner, with no number beside it.
+ */
+export const settings = viewerQuery("org:manage")({
+  args: {},
+  returns: v.object({
+    name: v.string(),
+    /** The Workspace ID. Links use it, so it never changes. */
+    slug: v.string(),
+    partner: v.union(v.null(), v.string()),
+    owner: v.union(v.null(), v.string()),
+    teamName: v.string(),
+    industry: v.union(v.null(), v.string()),
+    teamFunction: v.union(v.null(), v.string()),
+    course: v.string(),
+    threshold: v.number(),
+  }),
+  handler: async (ctx) => {
+    const { org } = ctx.viewer;
+    const team = await currentTeam(ctx, org._id);
+    return {
+      name: org.name,
+      slug: org.slug,
+      partner: org.partnerName
+        ? `${org.partnerName}, delivered with IBM SkillsBuild`
+        : null,
+      owner: (await ownerOf(ctx, org._id))?.name ?? null,
+      teamName: team?.name ?? "",
+      industry: team?.industry ?? null,
+      teamFunction: team?.teamFunction ?? null,
+      course: DEFAULT_COURSE,
+      threshold: thresholdOf(org),
+    };
+  },
+});
+
+/**
+ * Data and privacy's small-group threshold (spec rule 3). It applies at once
+ * (decision 3): `statOf` reads a stored row against the higher of its own
+ * threshold and this one, and a row stored hidden has no value to show when
+ * it is lowered. It never touches a stored row, so Ruling FX holds.
+ * Live facts, such as the agreement's 'Signed by the team', follow today's
+ * threshold both ways. 'Never reveals' governs stored totals.
+ */
+export const setThreshold = viewerMutation("org:manage")({
+  args: { threshold: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { threshold }): Promise<null> => {
+    // `includes` is false for 4, 11, 5.5 and NaN alike.
+    if (!(THRESHOLDS as readonly number[]).includes(threshold)) {
+      throwUserError("FIELD_REQUIRED", "Choose a threshold from 5 to 10.");
+    }
+    await ctx.db.patch(ctx.viewer.org._id, { privacyThreshold: threshold });
+    return null;
+  },
+});
