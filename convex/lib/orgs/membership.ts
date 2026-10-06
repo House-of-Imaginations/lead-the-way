@@ -12,10 +12,10 @@ import {
  * The ceiling on roles in one workspace.
  *
  * ENFORCED, like the member and org ceilings, not merely a page size:
- * `orgRoles.list` reads `.take(MAX_ROLES_PER_ORG)` and `deleteOrg`
- * `.collect()`s the same range, so a workspace past this would hide roles from
- * the screen that edits them and grow the deletion into a transaction that
- * cannot commit.
+ * `rolesOf` (which `orgRoles.list` reads) takes `MAX_ROLES_PER_ORG` and
+ * `deleteOrg` `.collect()`s the same range, so a workspace past this would
+ * hide roles from the screen that edits them and grow the deletion into a
+ * transaction that cannot commit.
  *
  * READ-THEN-INSERT IS NOT A RACE HERE, for exactly the reason the slug check
  * in `convex/orgs.ts` is not one. The `by_org` range lands in the
