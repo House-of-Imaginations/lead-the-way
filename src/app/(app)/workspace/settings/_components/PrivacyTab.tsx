@@ -41,36 +41,39 @@ export function PrivacyTab({ data }: { data: WorkspaceData }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-07" noValidate>
-      <div className="flex max-w-[640px] flex-col gap-06">
-        <Select
-          id="privacy-threshold"
-          label="Small-group threshold"
-          helper="Team totals stay hidden until this many people respond. It can't go below 5."
-          options={OPTIONS}
-          value={threshold}
-          onChange={(e) => setValue(e.target.value)}
-        />
-        <div className="grid grid-cols-2 gap-05 max-[900px]:grid-cols-1">
-          <NeverSees
-            heading="Managers can see"
-            items={[
-              "Team totals once enough people respond",
-              "How many people joined and finished",
-              "Projects people chose to present",
-            ]}
+      {/* Locked while saving, so nothing typed then is shown as saved. */}
+      <fieldset disabled={saving} className="contents">
+        <div className="flex max-w-[640px] flex-col gap-06">
+          <Select
+            id="privacy-threshold"
+            label="Small-group threshold"
+            helper="Team totals stay hidden until this many people respond. It can't go below 5."
+            options={OPTIONS}
+            value={threshold}
+            onChange={(e) => setValue(e.target.value)}
           />
-          <NeverSees
-            heading="Managers never see"
-            items={[
-              "Anyone's course progress",
-              "Time anyone spent learning",
-              "Quiz scores",
-              "Individual survey answers",
-              "Anything people haven't shared",
-            ]}
-          />
+          <div className="grid grid-cols-2 gap-05 max-[900px]:grid-cols-1">
+            <NeverSees
+              heading="Managers can see"
+              items={[
+                "Team totals once enough people respond",
+                "How many people joined and finished",
+                "Projects people chose to present",
+              ]}
+            />
+            <NeverSees
+              heading="Managers never see"
+              items={[
+                "Anyone's course progress",
+                "Time anyone spent learning",
+                "Quiz scores",
+                "Individual survey answers",
+                "Anything people haven't shared",
+              ]}
+            />
+          </div>
         </div>
-      </div>
+      </fieldset>
       <SaveBar saving={saving} error={error} />
     </form>
   );

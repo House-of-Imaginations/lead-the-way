@@ -51,9 +51,10 @@ export function SprintDefaultsTab({ data }: { data: WorkspaceData }) {
   return (
     <form onSubmit={onSubmit} noValidate>
       {/* Saving also rewrites a draft sprint, so it needs sprint:manage too. A
-          disabled fieldset disables every field and Save in one place. */}
+          disabled fieldset disables every field and Save in one place, and
+          locks them while saving. */}
       <fieldset
-        disabled={!data.canSetDefaults}
+        disabled={!data.canSetDefaults || saving}
         className="m-0 flex min-w-0 flex-col gap-07 border-0 p-0"
       >
         <div className="flex max-w-[640px] flex-col gap-06">

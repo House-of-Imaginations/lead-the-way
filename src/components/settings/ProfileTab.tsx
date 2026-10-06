@@ -3,6 +3,7 @@
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { flushSync } from "react-dom";
 import { api } from "@convex/_generated/api";
 import {
   MAX_DISPLAY_NAME,
@@ -76,7 +77,8 @@ export function ProfileTab({ mine }: { mine: Mine }) {
             ? { jobTitle: message }
             : { form: message },
       );
-      // Focus the invalid field so its error is read.
+      // Focus the invalid field so its error is read, once it is unlocked.
+      flushSync(() => setSaving(false));
       const invalid =
         code === "NAME_REQUIRED"
           ? "settings-name"
@@ -91,66 +93,71 @@ export function ProfileTab({ mine }: { mine: Mine }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-07" noValidate>
-      <div className="grid max-w-[640px] grid-cols-2 gap-06 max-[900px]:grid-cols-1">
-        <TextInput
-          id="settings-name"
-          label="Full name"
-          value={form.name}
-          maxLength={MAX_DISPLAY_NAME}
-          autoComplete="name"
-          error={errors.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-        />
-        <TextInput
-          id="settings-email"
-          label="Work email"
-          value={mine.email}
-          readOnly
-          helper="Your sign-in address. It can't be changed here."
-        />
-        <TextInput
-          id="settings-job"
-          label="Job title"
-          value={form.jobTitle}
-          maxLength={MAX_JOB_TITLE}
-          autoComplete="organization-title"
-          error={errors.jobTitle}
-          onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
-        />
-        <Select
-          id="settings-zone"
-          label="Time zone"
-          options={TIME_ZONE_OPTIONS}
-          value={form.timeZone}
-          onChange={(e) =>
-            setForm({ ...form, timeZone: e.target.value as TimeZone })
-          }
-        />
-        <Select
-          id="settings-theme"
-          label="Theme"
-          helper="Saved in this browser only."
-          options={THEMES}
-          value={theme ?? stored}
-          onChange={(e) => setTheme(e.target.value as ThemeMode)}
-        />
-      </div>
-      <fieldset className="flex flex-col gap-05">
-        <legend className="mb-05 text-label-01 text-text-secondary">
-          Accessibility
-        </legend>
-        <Checkbox
-          label="Turn captions on by default"
-          checked={form.captionsByDefault}
-          onChange={(e) =>
-            setForm({ ...form, captionsByDefault: e.target.checked })
-          }
-        />
-        <Checkbox
-          label="Reduce motion"
-          checked={form.reduceMotion}
-          onChange={(e) => setForm({ ...form, reduceMotion: e.target.checked })}
-        />
+      {/* Locked while saving, so nothing typed then is shown as saved. */}
+      <fieldset disabled={saving} className="contents">
+        <div className="grid max-w-[640px] grid-cols-2 gap-06 max-[900px]:grid-cols-1">
+          <TextInput
+            id="settings-name"
+            label="Full name"
+            value={form.name}
+            maxLength={MAX_DISPLAY_NAME}
+            autoComplete="name"
+            error={errors.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <TextInput
+            id="settings-email"
+            label="Work email"
+            value={mine.email}
+            readOnly
+            helper="Your sign-in address. It can't be changed here."
+          />
+          <TextInput
+            id="settings-job"
+            label="Job title"
+            value={form.jobTitle}
+            maxLength={MAX_JOB_TITLE}
+            autoComplete="organization-title"
+            error={errors.jobTitle}
+            onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
+          />
+          <Select
+            id="settings-zone"
+            label="Time zone"
+            options={TIME_ZONE_OPTIONS}
+            value={form.timeZone}
+            onChange={(e) =>
+              setForm({ ...form, timeZone: e.target.value as TimeZone })
+            }
+          />
+          <Select
+            id="settings-theme"
+            label="Theme"
+            helper="Saved in this browser only."
+            options={THEMES}
+            value={theme ?? stored}
+            onChange={(e) => setTheme(e.target.value as ThemeMode)}
+          />
+        </div>
+        <fieldset className="flex flex-col gap-05">
+          <legend className="mb-05 text-label-01 text-text-secondary">
+            Accessibility
+          </legend>
+          <Checkbox
+            label="Turn captions on by default"
+            checked={form.captionsByDefault}
+            onChange={(e) =>
+              setForm({ ...form, captionsByDefault: e.target.checked })
+            }
+          />
+          <Checkbox
+            label="Reduce motion"
+            checked={form.reduceMotion}
+            onChange={(e) =>
+              setForm({ ...form, reduceMotion: e.target.checked })
+            }
+          />
+        </fieldset>
       </fieldset>
       <SaveBar saving={saving} error={errors.form ?? null} />
     </form>
