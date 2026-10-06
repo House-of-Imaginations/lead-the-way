@@ -30,7 +30,8 @@ import type { StepKey } from "./schedule";
  * THE CONTRACT WITH THE PRODUCT'S WRITERS. The script and the product write
  * the same rows, so each reads what the other wrote. Every later writer (P3
  * onwards) keeps these twelve rules, or the script and the screens disagree:
- *  1. One `teams` row per org, and one current sprint.
+ *  1. One `teams` row per org, and at most one unlaunched sprint, always the
+ *     newest (the one-draft rule, pinned in `tests/convex/sources.test.ts`).
  *  2. The team is done when `teams.savedAt` is set.
  *  3. The hour is decided when `sprints.committedAt` or `sprints.notReady`
  *     is set.

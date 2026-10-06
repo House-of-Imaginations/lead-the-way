@@ -457,6 +457,9 @@ export const resend = viewerMutation("members:manage")({
     requireWithin(permissionsOf(role), ctx.viewer);
     await reserveRateLimit(ctx, "orgInvite", ctx.viewer.userId);
 
+    // Real time, as in `insertInvite`: expiry is judged by the demo clock
+    // (`nowIn`), and a window stamped from it would close as a tester moved
+    // the clock forward. Ruled for P7b-3a (Ruling 17).
     const expiresAt = Date.now() + INVITE_WINDOW_MS;
     await ctx.db.patch(invite._id, { expiresAt });
     const org = await ctx.db.get(orgId);
