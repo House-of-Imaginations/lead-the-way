@@ -50,6 +50,16 @@ export const orgTables = {
     // Aggregates built from fewer responses than this are hidden. Never below
     // 5, whatever this says: `thresholdOf` in `convex/lib/privacy.ts` clamps it.
     privacyThreshold: v.number(),
+    // 18's Sprint defaults (P7b-2): the day, start and zone a new sprint
+    // starts from, and an open draft takes. Absent until saved:
+    // `sprintDefaultsOf` in lib/sprint.ts falls back.
+    sprintDefaults: v.optional(
+      v.object({
+        weekday: v.number(),
+        start: v.string(),
+        timeZone: v.string(),
+      }),
+    ),
     // The seeded Calder Lane workspace. Only a demo workspace has a script, and
     // only there does `demoNow` replace real time (`nowFor` in `lib/clock.ts`).
     isDemo: v.boolean(),

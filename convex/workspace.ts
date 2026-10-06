@@ -1,16 +1,26 @@
+import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { orgNameOf } from "./lib/orgs/create";
 import { ownerOf } from "./lib/orgs/people";
+import { grants } from "./lib/orgs/permissions";
 import { thresholdOf } from "./lib/privacy";
+import { TIME_ZONES } from "./lib/profileFields";
 import {
   INDUSTRIES,
   TEAM_FUNCTIONS,
   THRESHOLDS,
   isOneOf,
 } from "./lib/setupOptions";
-import { currentTeam, DEFAULT_COURSE } from "./lib/sprint";
+import {
+  checkHour,
+  currentTeam,
+  DEFAULT_COURSE,
+  draftHour,
+  setupSprint,
+  sprintDefaultsOf,
+} from "./lib/sprint";
 
 /**
  * 18, Workspace settings (P7b-2). Workspace fields live on `orgs` and the
@@ -30,9 +40,16 @@ export const settings = viewerQuery("org:manage")({
     teamFunction: v.union(v.null(), v.string()),
     course: v.string(),
     threshold: v.number(),
+    sprintDefaults: v.object({
+      weekday: v.number(),
+      start: v.string(),
+      timeZone: v.string(),
+    }),
+    /** Sprint defaults' Save needs sprint:manage too (`saveSprintDefaults`). */
+    canSetDefaults: v.boolean(),
   }),
   handler: async (ctx) => {
-    const { org } = ctx.viewer;
+    const { org, permissions } = ctx.viewer;
     const team = await currentTeam(ctx, org._id);
     return {
       name: org.name,
@@ -46,6 +63,12 @@ export const settings = viewerQuery("org:manage")({
       teamFunction: team?.teamFunction ?? null,
       course: DEFAULT_COURSE,
       threshold: thresholdOf(org),
+      sprintDefaults: await sprintDefaultsOf(
+        ctx,
+        org,
+        ctx.viewer.person.timeZone,
+      ),
+      canSetDefaults: grants(permissions, ["sprint:manage"]),
     };
   },
 });
@@ -114,6 +137,40 @@ export const saveGeneral = viewerMutation("org:manage")({
       industry: args.industry,
       teamFunction: args.teamFunction,
     });
+    return null;
+  },
+});
+
+/**
+ * Sprint defaults' Save changes. They own the day, start and zone a new
+ * sprint starts from, and an open draft takes them too, keeping its
+ * commitment. A launched sprint never does: its runs are scheduled in its own
+ * zone (R-h). Never makes a sprint (writer contract: one draft, the newest).
+ * Writes a sprint, so it needs sprint:manage as well (decision 5).
+ */
+export const saveSprintDefaults = viewerMutation(
+  "org:manage",
+  "sprint:manage",
+)({
+  args: {
+    weekday: v.number(),
+    start: v.string(),
+    timeZone: literals(...TIME_ZONES),
+  },
+  returns: v.null(),
+  handler: async (ctx, { weekday, start, timeZone }): Promise<null> => {
+    checkHour(weekday, start);
+    const { org } = ctx.viewer;
+    await ctx.db.patch(org._id, {
+      sprintDefaults: { weekday, start, timeZone },
+    });
+    const draft = await setupSprint(ctx, org._id);
+    if (draft && draft.launchedAt === undefined) {
+      await ctx.db.patch(draft._id, {
+        ...draftHour({ ...draft, timeZone }, ctx.viewer.now, weekday, start),
+        timeZone,
+      });
+    }
     return null;
   },
 });

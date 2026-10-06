@@ -176,6 +176,12 @@ export const callsFor = ({
     teamName: "Team",
     expectOrgId: orgId,
   },
+  "workspace:saveSprintDefaults": {
+    weekday: 3,
+    start: "14:00",
+    timeZone: "UTC",
+    expectOrgId: orgId,
+  },
   "teams:current": {},
   "teams:saveProfile": { challenges: [], finish: false, expectOrgId: orgId },
   "sprints:current": {},

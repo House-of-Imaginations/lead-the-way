@@ -2,7 +2,8 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { throwUserError } from "./errors";
 import { requiredDone } from "./pathway";
-import { weekOneDate } from "./sprintTime";
+import { HOUR_STARTS, isOneOf } from "./setupOptions";
+import { addDays, mondayOf, startDateOf, weekOneDate } from "./sprintTime";
 import type { Viewer } from "./viewer";
 
 export const DEFAULT_COURSE = "AI Productivity Fundamentals";
@@ -67,11 +68,62 @@ export async function joinedSprint(
   return (await launchedSprint(ctx, orgId)) ?? (await setupSprint(ctx, orgId));
 }
 
+export type SprintDefaults = {
+  weekday: number;
+  start: string;
+  timeZone: string;
+};
+
+/**
+ * What a new sprint starts from (18's Sprint defaults): the saved defaults,
+ * else the newest sprint's day, start and zone, else Wednesday 2:00 PM in
+ * `zone`, the zone of the person setting up.
+ */
+export async function sprintDefaultsOf(
+  ctx: QueryCtx,
+  org: Doc<"orgs">,
+  zone: string,
+): Promise<SprintDefaults> {
+  if (org.sprintDefaults) return org.sprintDefaults;
+  const newest = await setupSprint(ctx, org._id);
+  if (!newest) return { weekday: 3, start: "14:00", timeZone: zone };
+  const { weekday, start } = newest.protectedHour;
+  return { weekday, start, timeZone: newest.timeZone };
+}
+
+/** 04's and 18's day and start, checked. */
+export function checkHour(weekday: number, start: string): void {
+  if (!Number.isInteger(weekday) || weekday < 1 || weekday > 5) {
+    throwUserError("FIELD_REQUIRED", "Choose a day from Monday to Friday.");
+  }
+  if (!isOneOf(HOUR_STARTS, start)) {
+    throwUserError("FIELD_REQUIRED", "Choose a start time from the list.");
+  }
+}
+
+/**
+ * A draft's hour moved to `weekday` at `start`. The day moves within week
+ * one's week: the next working week (Ruling 17), or the month "Run another
+ * sprint" pinned (P7a Ruling 14). 04's preview draws the same date from
+ * `weekOneMonday`.
+ */
+export function draftHour(
+  sprint: Doc<"sprints">,
+  now: number,
+  weekday: number,
+  start: string,
+): Pick<Doc<"sprints">, "protectedHour" | "startDate"> {
+  return {
+    protectedHour: { weekday, start, durationMinutes: 60 },
+    startDate: addDays(mondayOf(startDateOf(sprint, now)), weekday - 1),
+  };
+}
+
 /**
  * The current sprint, made as a draft the first time setup needs one: a
- * workspace starts with a team and no sprint (`createWorkspace`). Wednesday
- * 2:00 PM for an hour, four weeks, in the manager's time zone, from the next
- * working week.
+ * workspace starts with a team and no sprint (`createWorkspace`). It starts
+ * from the workspace's sprint defaults (`sprintDefaultsOf`), for four weeks,
+ * from the next working week.
  */
 export async function ensureSprint(
   ctx: MutationCtx,
@@ -83,14 +135,14 @@ export async function ensureSprint(
   const team = await currentTeam(ctx, orgId);
   if (!team) throwUserError("NOT_FOUND", "That no longer exists.");
   const now = viewer.now;
-  const timeZone = viewer.person.timeZone;
+  const d = await sprintDefaultsOf(ctx, viewer.org, viewer.person.timeZone);
   const id = await ctx.db.insert("sprints", {
     orgId,
     teamId: team._id,
-    startDate: weekOneDate(3, now, timeZone),
-    timeZone,
+    startDate: weekOneDate(d.weekday, now, d.timeZone),
+    timeZone: d.timeZone,
     weeks: 4,
-    protectedHour: { weekday: 3, start: "14:00", durationMinutes: 60 },
+    protectedHour: { weekday: d.weekday, start: d.start, durationMinutes: 60 },
     courseTitle: DEFAULT_COURSE,
     createdAt: now,
   });

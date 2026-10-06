@@ -156,6 +156,6 @@ test("no public function reads another workspace's ids", async () => {
   // itself. Raise these as functions join.
   // P7b-2 re-baselined `reached` (20 to 9) when the org layer moved to
   // `expectOrgId`. Never lower a floor.
-  expect(swept).toBeGreaterThanOrEqual(39);
+  expect(swept).toBeGreaterThanOrEqual(40);
   expect(reached).toBeGreaterThanOrEqual(9);
 });
