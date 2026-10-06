@@ -258,6 +258,8 @@ export const launchPage = timedViewerQuery("sprint:manage")({
           status: literals("pending", "accepted", "declined", "revoked"),
         }),
       ),
+      /** How many were invited: everyone sees it; only members:manage sees who. */
+      invitedCount: v.number(),
       message: v.string(),
       links: v.union(v.null(), v.array(linkValidator)),
       summary: v.object({
@@ -300,10 +302,15 @@ export const launchPage = timedViewerQuery("sprint:manage")({
         agreementSaved: gate.agreementSaved,
       },
       // The demo's list and message are 07's; a real workspace starts empty.
-      suggested: isDemo
-        ? DEMO_CAST.filter((p) => p.key !== "priya").map((p) => p.email)
+      // Addresses go only to whoever may invite (P7b-2).
+      suggested:
+        isDemo && canInvite
+          ? DEMO_CAST.filter((p) => p.key !== "priya").map((p) => p.email)
+          : [],
+      invited: canInvite
+        ? mine.map((i) => ({ email: i.email, status: i.status }))
         : [],
-      invited: mine.map((i) => ({ email: i.email, status: i.status })),
+      invitedCount: mine.length,
       message: sprint.inviteMessage ?? (isDemo ? INVITE_MESSAGE : ""),
       links: showLinks
         ? mine

@@ -283,7 +283,7 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
             <Heading
               id="invited-title"
               title="Invitations"
-              count={data.invited.length}
+              count={data.invitedCount}
               // Stable, so it runs once when launchedHere flips, not per render.
               focusRef={launchedHere ? focusOnMount : undefined}
             />
@@ -316,6 +316,11 @@ export function LaunchForm({ initial }: { initial: LaunchPage }) {
                 );
               })}
             </ul>
+            {data.canInvite ? null : (
+              <p className="text-body-02 text-text-secondary">
+                Only people who manage members see who was invited.
+              </p>
+            )}
             {copyError ? (
               <p
                 role="alert"

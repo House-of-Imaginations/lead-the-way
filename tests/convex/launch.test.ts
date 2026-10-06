@@ -568,9 +568,15 @@ test("links need members:manage", async () => {
   // 07 says why the lead can't send, instead of a button that is refused.
   expect((await lead.query(api.sprints.launchPage, {}))?.canInvite).toBe(false);
   expect((await owner.query(api.sprints.launchPage, {}))?.canInvite).toBe(true);
-  expect((await lead.query(api.sprints.launchPage, {}))?.invited).toEqual([
-    { email: "ana@example.com", status: "pending" },
-  ]);
+  // A lead who can't invite sees how many were invited, never who (P7b-2).
+  const forLead = await lead.query(api.sprints.launchPage, {});
+  expect(forLead).toMatchObject({
+    invited: [],
+    suggested: [],
+    invitedCount: 1,
+  });
+  expect(JSON.stringify(forLead)).not.toContain("@example.com");
+  expect((await owner.query(api.sprints.launchPage, {}))?.invitedCount).toBe(1);
   // With email on, the page hands out no links: the invitations were mailed.
   vi.stubEnv("RESEND_FROM", "Lead the Way <hello@example.com>");
   expect((await owner.query(api.sprints.launchPage, {}))?.links).toBeNull();
