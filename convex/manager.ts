@@ -272,21 +272,27 @@ export const overview = timedViewerQuery()({
       body: null,
     };
     if (saved) {
-      const signatures = await ctx.db
-        .query("agreementSignatures")
-        .withIndex("by_agreement_version_and_person", (q) =>
-          q.eq("agreementId", saved._id).eq("version", saved.version),
-        )
-        .take(MAX_MEMBERS_PER_ORG);
-      const signedBy = new Set(signatures.map((s) => s.personId));
-      // Over the whole seated team, opted out or not, the viewer too: an
-      // opt-out must never flip this title, nor who is looking. Held back
-      // below the threshold (Ruling 15), so it can't single out who hasn't
-      // signed. No number leaves here, only "everyone".
-      const seated = await loadSeated(ctx, org);
-      const everyone =
-        seated.length >= thresholdOf(org) &&
-        seated.every((person) => signedBy.has(person._id));
+      // A team total, so only for team:insights, like the others (F1): a
+      // members:manage seat can move people across the manager line and
+      // must not watch this flip. Over the whole seated team, opted out or
+      // not, the viewer too: an opt-out must never flip this title, nor
+      // which holder is looking. Held back below the threshold (Ruling 15),
+      // so it can't single out who hasn't signed. No number leaves here,
+      // only "everyone".
+      let everyone = false;
+      if (insights) {
+        const signatures = await ctx.db
+          .query("agreementSignatures")
+          .withIndex("by_agreement_version_and_person", (q) =>
+            q.eq("agreementId", saved._id).eq("version", saved.version),
+          )
+          .take(MAX_MEMBERS_PER_ORG);
+        const signedBy = new Set(signatures.map((s) => s.personId));
+        const seated = await loadSeated(ctx, org);
+        everyone =
+          seated.length >= thresholdOf(org) &&
+          seated.every((person) => signedBy.has(person._id));
+      }
       agreement = {
         title: everyone ? "Signed by the team" : "Saved",
         tag: everyone

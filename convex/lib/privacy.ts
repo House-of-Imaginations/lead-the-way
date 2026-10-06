@@ -131,7 +131,7 @@ export async function loadCountable(
  * them would lower the floor. Not a `Countable`; `signatureCount` and
  * `countSeated` are the sanctioned counts made from it (Rulings 1 and 24).
  * The agreement's "Signed by the team" reads it, so the title is the same for
- * every viewer and no opt-out flips it.
+ * every team:insights holder and no opt-out flips it.
  */
 export async function loadSeated(
   ctx: QueryCtx,

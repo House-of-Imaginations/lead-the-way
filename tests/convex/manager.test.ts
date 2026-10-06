@@ -221,19 +221,38 @@ test("an opt-out never flips the agreement to signed by the team", async () => {
   expect(await title()).toBe("Saved");
 });
 
-test("a planner isn't on the team, so the title never waits for their signature (Ruling 1)", async () => {
+test("a lead isn't on the team, so the title never waits for their signature (Ruling 1)", async () => {
   const { t, orgId, as } = await calderLane();
   await move(t, "week2");
-  const { as: planner } = await seat(t, orgId, "user_planner", [
-    "sprint:manage",
-  ]);
-  // The title doesn't depend on who is looking.
-  for (const viewer of [planner, as("priya")]) {
+  const { as: lead } = await seat(t, orgId, "user_lead", ["team:insights"]);
+  // The title doesn't depend on which team:insights holder is looking.
+  for (const viewer of [lead, as("priya")]) {
     expect(
       (await viewer.query(api.manager.overview, {}))!.agreement,
     ).toMatchObject({
       title: "Signed by the team",
       tag: { label: "Completed", kind: "green" },
+    });
+  }
+});
+
+test("without team:insights the agreement reads Saved, even when everyone has signed (F1)", async () => {
+  const { t, orgId } = await calderLane();
+  await move(t, "week2");
+  // Everyone seated has signed: Priya sees "Signed by the team" above.
+  for (const permission of ["members:manage", "sprint:manage"] as const) {
+    const { as } = await seat(
+      t,
+      orgId,
+      `user_${permission.replace(":", "_")}`,
+      [permission],
+    );
+    expect(
+      (await as.query(api.manager.overview, {}))!.agreement,
+      permission,
+    ).toMatchObject({
+      title: "Saved",
+      tag: { label: "Saved", kind: "green" },
     });
   }
 });
