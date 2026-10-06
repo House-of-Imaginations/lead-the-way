@@ -251,7 +251,9 @@ async function usableInvite(ctx: MutationCtx, token: string, userId: string) {
   return { invite, org };
 }
 
+// `orgId` on every Members row: 18 shows only its own workspace's (C2).
 const inviteValidator = v.object({
+  orgId: v.id("orgs"),
   _id: v.id("orgInvites"),
   token: v.string(),
   email: v.union(v.string(), v.null()),
@@ -301,6 +303,7 @@ export const list = timedViewerQuery("members:manage")({
       // shown. An answered row is history and stays.
       if (!role && invite.status === "pending") continue;
       rows.push({
+        orgId,
         _id: invite._id,
         token: invite.token,
         email: invite.email ?? null,

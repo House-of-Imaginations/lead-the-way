@@ -118,12 +118,35 @@ test("the member list is name, email and role, and marks your own row", async ()
     "isOwner",
     "joinedAt",
     "name",
+    "orgId",
     "personId",
     "roleId",
     "roleName",
     "userId",
     "you",
   ]);
+});
+
+test("each Members read names the workspace it read, for 18's switch check", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  await owner.mutation(api.invites.create, {
+    roleId: (await owner.query(api.orgRoles.list, {})).find((r) => !r.isOwner)!
+      ._id,
+    email: "dee@example.com",
+    expectOrgId: orgId,
+  });
+  const reads = [
+    await owner.query(api.members.list, {}),
+    await owner.query(api.invites.list, {}),
+    await owner.query(api.orgRoles.list, {}),
+  ];
+  for (const rows of reads) {
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.map((r) => (r as { orgId?: string }).orgId)).toEqual(
+      rows.map(() => orgId),
+    );
+  }
 });
 
 test("Invite member pins the newest sprint, so sprint 1 counts it (M-g)", async () => {

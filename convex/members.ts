@@ -41,7 +41,9 @@ function requireOwnerFor(caller: Seat, touchesOwner: boolean): void {
   }
 }
 
+// `orgId` on every Members row: 18 shows only its own workspace's (C2).
 const memberValidator = v.object({
+  orgId: v.id("orgs"),
   personId: v.id("people"),
   userId: v.string(),
   name: v.string(),
@@ -74,6 +76,7 @@ export const list = viewerQuery()({
       const role = await ctx.db.get(person.roleId);
       if (!role) continue;
       members.push({
+        orgId,
         personId: person._id,
         userId: person.userId,
         name: person.name,

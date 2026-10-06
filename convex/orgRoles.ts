@@ -26,7 +26,9 @@ import { permissionValidator } from "./lib/orgs/permissions";
 
 const MAX_ROLE_NAME = 40;
 
+// `orgId` on every Members row: 18 shows only its own workspace's (C2).
 const roleValidator = v.object({
+  orgId: v.id("orgs"),
   _id: v.id("orgRoles"),
   name: v.string(),
   isOwner: v.boolean(),
@@ -45,6 +47,7 @@ export const list = viewerQuery()({
     ]);
     const roles = await rolesOf(ctx, ctx.viewer.org._id);
     return roles.map((role) => ({
+      orgId: role.orgId,
       _id: role._id,
       name: role.name,
       isOwner: isOwnerRole(role),

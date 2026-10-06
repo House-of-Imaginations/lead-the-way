@@ -101,16 +101,26 @@ export function MembersTab({ initial }: { initial: MembersData }) {
   // Nor after a switch in another tab (R6, C2): the queries follow the live
   // workspace, so the rows and Copy link would be the other one's. The page's
   // own rows stay, as the shell does, under AppShell's reload notice.
+  // A list read from another workspace, by the server render or live before
+  // the shell notices the switch, is the switched state too: never shown.
   const switched = useWorkspaceSwitched();
+  const expectOrgId = useExpectOrgId();
+  const own = <R extends { orgId: string }>(rows: R[] | undefined) =>
+    rows?.every((r) => r.orgId === expectOrgId) ? rows : undefined;
   const allowed =
     useShell().workspaceSettings.tabs.includes("members") && !switched;
   const people =
-    useQuery(api.members.list, allowed ? {} : "skip") ?? initial.people;
+    own(useQuery(api.members.list, allowed ? {} : "skip")) ??
+    own(initial.people) ??
+    [];
   const invites =
-    useTimedQuery(api.invites.list, initial.invites, !allowed) ??
-    initial.invites;
+    own(useTimedQuery(api.invites.list, initial.invites, !allowed)) ??
+    own(initial.invites) ??
+    [];
   const roles =
-    useQuery(api.orgRoles.list, allowed ? {} : "skip") ?? initial.roles;
+    own(useQuery(api.orgRoles.list, allowed ? {} : "skip")) ??
+    own(initial.roles) ??
+    [];
   const rows = memberRows(people, invites);
   // A refusal from a row's menu (resend, revoke, copy), said once above the table.
   const [error, setError] = useState<string | null>(null);

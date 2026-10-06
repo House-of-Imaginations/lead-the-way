@@ -90,6 +90,7 @@ test("Members keeps its own workspace's rows after a switch in another tab (C2)"
         ...members,
         people: [
           {
+            orgId: "org1",
             personId: "p1",
             name: "Priya Raman",
             email: "priya@example.com",
@@ -104,6 +105,35 @@ test("Members keeps its own workspace's rows after a switch in another tab (C2)"
   expect(useQuery).toHaveBeenCalled();
   for (const call of useQuery.mock.calls) expect(call[1]).toBe("skip");
   expect(html).toContain("Priya Raman");
+});
+
+const person = (orgId: string, name: string) =>
+  ({
+    orgId,
+    personId: `p-${name}`,
+    name,
+    email: `${name}@example.com`,
+    roleId: "r1",
+    roleName: "Employee",
+  }) as never;
+
+test("Members never renders another workspace's rows read during a switch (C2)", () => {
+  liveTabs = ["members"];
+  // The server read the lists after a switch in another tab: org2's rows.
+  const html = renderToStaticMarkup(
+    <MembersTab
+      initial={{ ...members, people: [person("org2", "Other Person")] }}
+    />,
+  );
+  expect(html).not.toContain("Other Person");
+  // A live answer from org2 keeps the page's own rows.
+  useQuery.mockReturnValue([person("org2", "Other Live")]);
+  const live = renderToStaticMarkup(
+    <MembersTab initial={{ ...members, people: [person("org1", "Own")] }} />,
+  );
+  useQuery.mockReset();
+  expect(live).not.toContain("Other Live");
+  expect(live).toContain("Own");
 });
 
 test("Members subscribes while the live shell lists members", () => {
