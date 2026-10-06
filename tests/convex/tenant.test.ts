@@ -106,6 +106,7 @@ test("no public function reads another workspace's ids", async () => {
   const wrong: string[] = [];
   let swept = 0;
   let reached = 0;
+  let read = 0;
   for (const fn of publicFunctions()) {
     const fixed = calls[fn.name];
     if (!fixed) continue;
@@ -122,6 +123,14 @@ test("no public function reads another workspace's ids", async () => {
       // check, whose NOT_A_MEMBER also covers "no such org" (errors.ts).
       expected = "orgId" in fixed ? "NOT_A_MEMBER" : "NOT_FOUND";
       reached++;
+    } else if (!("expectOrgId" in fixed)) {
+      // A query that names no workspace answers from the caller's own open
+      // one, so whatever it returns must hold none of the victim's ids.
+      if (fn.kind !== "query") continue;
+      read++;
+      const answer: unknown = await call(attacker, fn, fixed);
+      if (holdsId(answer, theirs)) leaked.push(`${fn.name} answered theirs`);
+      continue;
     } else if (fixed.expectOrgId !== ids.orgId) {
       continue;
     }
@@ -157,4 +166,8 @@ test("no public function reads another workspace's ids", async () => {
   // `expectOrgId`. Never lower a floor.
   expect(swept).toBeGreaterThanOrEqual(40);
   expect(reached).toBeGreaterThanOrEqual(9);
+  // Every query that takes no `expectOrgId` (25 after P7b-2), among them
+  // members.list, orgRoles.list, invites.list, workspace.settings and
+  // orgs.myPermissions. Never lower a floor.
+  expect(read).toBeGreaterThanOrEqual(25);
 });

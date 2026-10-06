@@ -293,6 +293,39 @@ test("the seated team and the live signature count are read only where the allow
 });
 
 /**
+ * The files that may name the stored-total tables: the snapshot writer and
+ * reader, and the workspace delete cascade. And the one file that may import
+ * their readers: the manager queries. Raising the threshold hides a stored
+ * total (W-b) only because every read goes through `statOf` in manager.ts,
+ * so a new reader of a stored total has to be added here on purpose.
+ */
+const STORED_TOTAL_FILES = ["lib/snapshots.ts", "lib/orgs/cascade.ts"];
+const STORED_TOTAL_READERS = ["manager.ts"];
+
+test("stored totals are read only through the manager queries", () => {
+  const dir = new URL("../../convex/", import.meta.url);
+  const tables = /["'](?:teamSnapshots|sprintOutcomes)["']/;
+  // Any import of the readers, named, renamed or destructured, or the whole module.
+  const imports =
+    /import\s*\{[^}]*\b(?:snapshotSeries|outcomesOf)\b[^}]*\}\s*from|import\s*\*\s*as\s+\w+\s+from\s*["'][^"']*snapshots["']/;
+  const named: string[] = [];
+  const reading: string[] = [];
+  for (const file of readdirSync(dir, { recursive: true }) as string[]) {
+    if (!file.endsWith(".ts") || file.startsWith("_generated")) continue;
+    if (file === "schema.ts" || file.startsWith("tables")) continue;
+    const source = readFileSync(new URL(file, dir), "utf8");
+    if (tables.test(source)) named.push(file);
+    if (imports.test(source)) reading.push(file);
+  }
+  // Nothing found would pass vacuously; today's files must be seen.
+  expect(named).toEqual(expect.arrayContaining(STORED_TOTAL_FILES));
+  expect(named.filter((file) => !STORED_TOTAL_FILES.includes(file))).toEqual(
+    [],
+  );
+  expect(reading).toEqual(STORED_TOTAL_READERS);
+});
+
+/**
  * The files that may call the privacy layer's `count` and `aggregate`: its
  * own, and the weekly snapshot writer. A manager query reads `teamSnapshots`
  * instead of counting live (see lib/privacy.ts), so a later phase that needs
