@@ -36,6 +36,7 @@ import { isManager } from "./lib/orgs/permissions";
 import { reserveRateLimit } from "./lib/rateLimits";
 import { getInOrg } from "./lib/tenant";
 import {
+  ensureSprint,
   setupSprint,
   isLaterSprint,
   joinedSprint,
@@ -369,11 +370,13 @@ export const create = viewerMutation("members:manage")({
     }
     // M-g: Invite member pins the newest sprint, so its headcount counts the
     // invitation (`sprintInvites`). Only a team member, and only while that
-    // sprint is not over. A caller may still name one.
+    // sprint is not over. A caller may still name one. Before the first
+    // sprint, the draft setup would make anyway (`ensureSprint`), or launch
+    // would skip this already-seated address and sprint 1 never count it.
     let pinned = sprintId;
     if (!pinned && !isManager({ permissions: permissionsOf(role) })) {
-      const newest = await setupSprint(ctx, orgId);
-      if (newest && sprintPhase(newest, ctx.viewer.now) !== "complete") {
+      const newest = await ensureSprint(ctx, ctx.viewer);
+      if (sprintPhase(newest, ctx.viewer.now) !== "complete") {
         pinned = newest._id;
       }
     }

@@ -31,7 +31,8 @@ test("an invite seats the person and opens the workspace", async () => {
     name: null,
     message: null,
     email: null,
-    join: null,
+    // A team member's invitation makes and pins setup's draft (M-g).
+    join: expect.objectContaining({ course: "AI Productivity Fundamentals" }),
   });
   expect(
     await t.query(api.invites.publicPreview, { token: "nope" }),
