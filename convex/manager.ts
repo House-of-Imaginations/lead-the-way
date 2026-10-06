@@ -339,9 +339,10 @@ export const overview = timedViewerQuery()({
 
 /**
  * 08's and 16's invited and joined. Sprint 1 counts its own invitations, and
- * joined only those whose seat still exists (M-c). A later sprint carries the seated team over (managers left out), so joined is
- * that team and invited adds its open, unexpired invitations. Membership
- * facts, not activity: no threshold.
+ * joined only those whose seat still exists (M-c). A later sprint carries the
+ * seated team over (managers left out), so joined is that team and invited
+ * adds its open, unexpired invitations. Membership facts, not activity: no
+ * threshold.
  */
 async function sprintHeadcount(
   ctx: QueryCtx,

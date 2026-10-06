@@ -15,6 +15,18 @@ import {
 } from "./lib/orgs/membership";
 
 /**
+ * Who is in a workspace, and the writes that change that.
+ *
+ * Every mutation goes through `convex/lib/orgs/membership.ts` rather than
+ * touching a `people` row itself, because "this workspace still has an owner"
+ * has to be re-checked by every path that could break it.
+ *
+ * Two escalation guards apply to every write:
+ *  - `requireWithin`: you may not grant a role stronger than your own.
+ *  - `requireOutranks`: you may not act on somebody stronger than you.
+ */
+
+/**
  * M-b: only an owner moves anybody into or out of the owner role. A custom
  * role holding all six permissions passes `requireWithin` and
  * `requireOutranks`, so without this it could promote itself and then demote
@@ -28,18 +40,6 @@ function requireOwnerFor(caller: Seat, touchesOwner: boolean): void {
     );
   }
 }
-
-/**
- * Who is in a workspace, and the writes that change that.
- *
- * Every mutation goes through `convex/lib/orgs/membership.ts` rather than
- * touching a `people` row itself, because "this workspace still has an owner"
- * has to be re-checked by every path that could break it.
- *
- * Two escalation guards apply to every write:
- *  - `requireWithin`: you may not grant a role stronger than your own.
- *  - `requireOutranks`: you may not act on somebody stronger than you.
- */
 
 const memberValidator = v.object({
   personId: v.id("people"),

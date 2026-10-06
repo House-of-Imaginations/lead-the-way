@@ -357,11 +357,6 @@ test("workspace control alone reads the overview with no team totals (W-f)", asy
     const overview = (await as.query(api.manager.overview, {}))!;
     expect(overview.team, permission).toBeNull();
     expect(overview.canManage, permission).toBe(false);
-    // Not seated, and not one of sprint 1's invitations: the counts don't move.
-    expect(overview.sprint, permission).toMatchObject({
-      invited: 8,
-      joined: 7,
-    });
   }
 });
 

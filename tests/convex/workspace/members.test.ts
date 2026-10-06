@@ -148,9 +148,12 @@ test("Invite member leaves a finished sprint's headcount alone (M-g)", async () 
   const { t, orgId, as } = await calderLane();
   await t.mutation(internal.seed.clock, { target: "complete" });
   const priya = as("priya");
-  const invited = async () =>
-    (await priya.query(api.manager.outcomes, {}))!.participation.invited;
+  const invited = async () => {
+    const outcomes = (await priya.query(api.manager.outcomes, {}))!;
+    return "participation" in outcomes ? outcomes.participation.invited : -1;
+  };
   const before = await invited();
+  expect(before).toBeGreaterThan(0);
   const employee = (await priya.query(api.orgRoles.list, {})).find(
     (r) => r.name === "Employee",
   )!._id;
@@ -199,42 +202,19 @@ async function personOf(t: Lane["t"], orgId: Id<"orgs">, key: "dan" | "sarah") {
   });
 }
 
-/** Whether `personId` still has a row in each table read here. */
+/**
+ * Whether any row of each `ON_REMOVE` table still holds `personId`, in any
+ * field (the tables differ in where, and two keep it in an array). Walking
+ * the map itself means it and `dropSeat` can't drift apart unnoticed.
+ */
 async function rowsOf(t: Lane["t"], personId: Id<"people">) {
   return await t.run(async (ctx) => {
-    const one = async (rows: Promise<unknown[]>) => (await rows).length > 0;
-    return {
-      settings: await one(
-        ctx.db
-          .query("settings")
-          .withIndex("by_person", (q) => q.eq("personId", personId))
-          .take(1),
-      ),
-      reminders: await one(
-        ctx.db
-          .query("reminders")
-          .withIndex("by_person", (q) => q.eq("personId", personId))
-          .take(1),
-      ),
-      badges: await one(
-        ctx.db
-          .query("badges")
-          .withIndex("by_person", (q) => q.eq("personId", personId))
-          .take(1),
-      ),
-      projects: await one(
-        ctx.db
-          .query("projects")
-          .withIndex("by_person_and_sprint", (q) => q.eq("personId", personId))
-          .take(1),
-      ),
-      learningProgress: await one(
-        ctx.db
-          .query("learningProgress")
-          .withIndex("by_person_and_sprint", (q) => q.eq("personId", personId))
-          .take(1),
-      ),
-    };
+    const held: Record<string, boolean> = {};
+    for (const table of Object.keys(ON_REMOVE) as (keyof typeof ON_REMOVE)[]) {
+      const rows = await ctx.db.query(table).collect();
+      held[table] = rows.some((r) => JSON.stringify(r).includes(personId));
+    }
+    return held;
   });
 }
 
@@ -262,7 +242,16 @@ test("removing a member drops only the dropped tables' rows (M-c)", async () => 
     });
   });
   const before = await rowsOf(t, dan);
-  expect(Object.values(before).every(Boolean)).toBe(true);
+  // The two a removal deletes, and three it keeps, are all filled for Dan.
+  for (const table of [
+    "settings",
+    "reminders",
+    "badges",
+    "projects",
+    "learningProgress",
+  ]) {
+    expect(before[table], table).toBe(true);
+  }
 
   await as("priya").mutation(api.members.remove, {
     personId: dan,
@@ -271,7 +260,7 @@ test("removing a member drops only the dropped tables' rows (M-c)", async () => 
   const after = await rowsOf(t, dan);
   for (const [table, left] of Object.entries(after)) {
     expect(left, table).toBe(
-      ON_REMOVE[table as keyof typeof ON_REMOVE] === "kept",
+      ON_REMOVE[table as keyof typeof ON_REMOVE] === "kept" && before[table]!,
     );
   }
 });

@@ -59,7 +59,7 @@ test("sprints are inserted in three places only, so one draft at most (one-draft
     convexSources()
       .map(({ file, source }) => [
         file,
-        (source.match(/insert\("sprints"/g) ?? []).length,
+        (source.match(/insert\(\s*"sprints"/g) ?? []).length,
       ])
       .filter(([, n]) => n),
   );
@@ -80,12 +80,12 @@ test("only onboarding.start reads the viewer outside the viewer builders", () =>
       .split(/^(?=export const \w+ = )/m)
       .map((block) => ({
         block,
-        head: /^export const (\w+) = (\w+)\(/.exec(block),
+        head: /^export const (\w+) = (\w+)(?:<[^(]*>)?\(/.exec(block),
       }))
       .filter(
         ({ block, head }) =>
           head !== null &&
-          /^(authenticated|public)Mutation$/.test(head[2]) &&
+          /^(mutation|authenticatedMutation|publicMutation)$/.test(head[2]) &&
           /\b(getViewer|requireViewer)\(/.test(block),
       )
       .map(({ head }) => `${file} ${head![1]}`),
@@ -94,9 +94,15 @@ test("only onboarding.start reads the viewer outside the viewer builders", () =>
 });
 
 test("the owner role is asked about in one place (isOwnerRole)", () => {
+  // `kind` against "owner" or "custom", either way round, or a `case "owner"`.
+  // The other two files look up a custom role by name or by having no
+  // permissions: they never ask whether somebody is an owner.
+  const asksKind =
+    /\bkind\s*[!=]==?\s*"(owner|custom)"|"(owner|custom)"\s*[!=]==?\s*[\w.?]*\bkind\b|case\s+"owner"/;
   expect(
     convexSources()
-      .filter(({ source }) => /\.kind\s*[!=]==\s*"owner"/.test(source))
-      .map(({ file }) => file),
-  ).toEqual(["lib/orgs/membership.ts"]);
+      .filter(({ source }) => asksKind.test(source))
+      .map(({ file }) => file)
+      .sort(),
+  ).toEqual(["lib/orgs/invites.ts", "lib/orgs/membership.ts", "seed.ts"]);
 });

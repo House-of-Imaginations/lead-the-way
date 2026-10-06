@@ -171,7 +171,9 @@ const BACKFILL_BATCH = 100;
  * M-c: stamp the holder's name and zone on badges issued before `issueBadge`
  * stored them. Idempotent: a stamped badge is skipped, and so is one whose
  * holder already left (nothing is left to copy). One batch a transaction,
- * rescheduling itself until done. `seed:reset` runs it; elsewhere run
+ * rescheduling itself until done. Returns only the first batch's count: later
+ * batches run by rescheduling, so their counts are not added in.
+ * `seed:reset` runs it; elsewhere run
  * `pnpm exec convex run badges:backfillHolders` once.
  */
 export const backfillHolders = internalMutation({

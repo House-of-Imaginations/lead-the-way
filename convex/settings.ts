@@ -41,10 +41,7 @@ export const mine = viewerQuery()({
     email: v.string(),
     jobTitle: v.string(),
     timeZone: v.string(),
-    manager: v.union(
-      v.null(),
-      v.object({ name: v.string(), firstName: v.string() }),
-    ),
+    manager: v.union(v.null(), v.object({ name: v.string() })),
     /** "Hidden when fewer than 5 people respond", from the workspace's own threshold. */
     threshold: v.number(),
     settings: settingsValidator,
@@ -57,7 +54,9 @@ export const mine = viewerQuery()({
       email: person.email,
       jobTitle: person.jobTitle,
       timeZone: person.timeZone,
-      manager: await ownerOf(ctx, viewer.org._id),
+      manager: await ownerOf(ctx, viewer.org._id).then(
+        (o) => o && { name: o.name },
+      ),
       threshold: thresholdOf(viewer.org),
       settings: await settingsOf(ctx, person._id),
     };
