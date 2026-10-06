@@ -17,6 +17,7 @@ import {
 } from "@/components/ui";
 import { userMessage } from "@/lib/errors";
 import { useTimedQuery } from "@/lib/useTimedQuery";
+import { ManageMember } from "./ManageMember";
 
 export type Member = FunctionReturnType<typeof api.members.list>[number];
 export type Invite = FunctionReturnType<typeof api.invites.list>[number];
@@ -98,14 +99,21 @@ export function MembersTab({ initial }: { initial: MembersData }) {
     useTimedQuery(api.invites.list, initial.invites) ?? initial.invites;
   const roles = useQuery(api.orgRoles.list, {}) ?? initial.roles;
   const rows = memberRows(people, invites);
+  // A refusal from a row's menu (resend, revoke, copy), said once above the table.
+  const [error, setError] = useState<string | null>(null);
   return (
     <section aria-labelledby="members-heading" className="flex flex-col gap-05">
       <div className="flex flex-wrap items-center justify-between gap-05">
-        <h2 id="members-heading" className="text-heading-03">
+        <h2 id="members-heading" tabIndex={-1} className="text-heading-03">
           {headcount(rows)}
         </h2>
         <InviteMember roles={roles} />
       </div>
+      {error && (
+        <p role="alert" className="text-label-01 text-support-error">
+          {error}
+        </p>
+      )}
       {/* Only a table scrolls sideways, inside its own container. */}
       <div
         role="region"
@@ -120,6 +128,9 @@ export function MembersTab({ initial }: { initial: MembersData }) {
               <th scope="col">Email</th>
               <th scope="col">Role</th>
               <th scope="col">Status</th>
+              <th scope="col">
+                <span className="sr-only">Manage</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -132,6 +143,9 @@ export function MembersTab({ initial }: { initial: MembersData }) {
                   <Tag color={row.state === "Joined" ? "green" : "gray"}>
                     {row.state}
                   </Tag>
+                </td>
+                <td className="text-right">
+                  <ManageMember row={row} roles={roles} onError={setError} />
                 </td>
               </tr>
             ))}

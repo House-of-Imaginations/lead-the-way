@@ -6,6 +6,7 @@ import {
   type Invite,
   type Member,
 } from "../../../src/app/(app)/workspace/settings/_components/MembersTab";
+import { actionsFor } from "../../../src/app/(app)/workspace/settings/_components/ManageMember";
 
 const member = (name: string, email: string): Member =>
   ({
@@ -63,4 +64,25 @@ test("the header counts people and open invitations, never declined ones", () =>
     ],
   );
   expect(headcount(rows)).toBe("2 people in this workspace");
+});
+
+test("each row offers only what can be done to it", () => {
+  const [you, other, open, link, declined] = memberRows(
+    [
+      { ...member("Priya Raman", "priya@example.com"), you: true },
+      member("Dan Okafor", "dan@example.com"),
+    ],
+    [
+      invite("i1", "pending", "omar@example.com"),
+      invite("i2", "pending", null),
+      invite("i3", "declined", "luca@example.com"),
+    ],
+  );
+  // Your own row has no menu: 18 is not where you leave.
+  expect(actionsFor(you)).toEqual([]);
+  expect(actionsFor(other)).toEqual(["Change role", "Remove member"]);
+  expect(actionsFor(open)).toEqual(["Copy link", "Resend", "Revoke"]);
+  // A link has no address to send to again.
+  expect(actionsFor(link)).toEqual(["Copy link", "Revoke"]);
+  expect(actionsFor(declined)).toEqual([]);
 });
