@@ -808,10 +808,10 @@ test("a member without org:manage cannot touch the workspace picture", async () 
     t
       .withIdentity(BOB)
       .mutation(api.orgs.setImage, { storageId: file, expectOrgId: orgId }),
-  ).rejects.toThrow(ConvexError);
+  ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
   await expect(
     t.withIdentity(BOB).mutation(api.orgs.clearImage, { expectOrgId: orgId }),
-  ).rejects.toThrow(ConvexError);
+  ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
   // Minting an upload URL is write access to this deployment's storage, so it
   // is gated on `org:manage` rather than on membership alone -- otherwise every
   // member of every workspace could fill the deployment with files.
@@ -819,7 +819,7 @@ test("a member without org:manage cannot touch the workspace picture", async () 
     t
       .withIdentity(BOB)
       .mutation(api.orgs.generateImageUploadUrl, { expectOrgId: orgId }),
-  ).rejects.toThrow(ConvexError);
+  ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
 });
 
 test("clearing a workspace picture deletes the bytes", async () => {

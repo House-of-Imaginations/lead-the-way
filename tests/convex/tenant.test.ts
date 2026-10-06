@@ -154,7 +154,8 @@ test("no public function reads another workspace's ids", async () => {
   // members.changeRole and remove, invites.create, resend and revoke,
   // agreements.save, and profiles.setActiveOrg, which names the workspace
   // itself. Raise these as functions join.
-  // This task re-baselines `reached` once; from here on, never lower a floor.
+  // P7b-2 re-baselined `reached` (20 to 9) when the org layer moved to
+  // `expectOrgId`. Never lower a floor.
   expect(swept).toBeGreaterThanOrEqual(38);
   expect(reached).toBeGreaterThanOrEqual(9);
 });

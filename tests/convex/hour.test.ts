@@ -93,6 +93,9 @@ test("the timed queries take hour and ignore it", async () => {
   expect(await owner.query(api.manager.overview, { hour: 1 })).toEqual(
     await owner.query(api.manager.overview, {}),
   );
+  expect(await owner.query(api.invites.list, { hour: 1 })).toEqual(
+    await owner.query(api.invites.list, {}),
+  );
   expect(await owner.query(api.invites.preview, { token: "t", hour: 1 })).toBe(
     null,
   );
