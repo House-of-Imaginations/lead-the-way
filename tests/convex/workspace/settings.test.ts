@@ -126,6 +126,21 @@ test("a threshold change mid-sprint changes no row's comparability (Ruling FX)",
   ).toEqual({ kind: "hidden", helper: "Hidden until 8 responses" });
 });
 
+// The tenant sweep catches leaked ids only, and 18's read returns names, so
+// pin by name that each owner reads their own workspace.
+test("each owner reads their own workspace, never the other's", async () => {
+  const t = harness();
+  const { owner } = await workspace(t, "Aster Network");
+  const other = t.withIdentity({ subject: "user_other_owner" });
+  await other.mutation(api.orgs.create, { name: "Birch Partners" });
+  expect((await owner.query(api.workspace.settings, {})).name).toBe(
+    "Aster Network",
+  );
+  expect((await other.query(api.workspace.settings, {})).name).toBe(
+    "Birch Partners",
+  );
+});
+
 test("General saves the workspace and team names and the team's profile, never the slug", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);
