@@ -193,7 +193,9 @@ export const invite = internalMutation({
       orgId: org._id,
       roleId,
       email,
-      sprintId: sprint?._id,
+      // As Invite member (M-g): only a team member's invitation pins the
+      // sprint. Team lead and People admin are managers' roles (W-f).
+      sprintId: insights || members ? undefined : sprint?._id,
       message: sprint?.inviteMessage ?? INVITE_MESSAGE,
       invitedBy: priya.userId,
       at,
