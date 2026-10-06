@@ -59,7 +59,6 @@ const WARM: Record<string, typeof api.me.sprint | typeof api.projects.mine> = {
   "/me/project": api.projects.mine,
 };
 
-/** The signed-in shell. The (app) layout renders the demo banner above it. */
 const ShellContext = createContext<Shell | null>(null);
 
 /**
@@ -73,6 +72,7 @@ export function useShell(): Shell {
   return shell;
 }
 
+/** The signed-in shell. The (app) layout renders the demo banner above it. */
 export function AppShell({
   initial,
   hour,

@@ -65,7 +65,11 @@ export const shellValidator = v.object({
   workspaceSettings: v.object({
     open: v.boolean(),
     owner: v.union(v.null(), v.string()),
-    tabs: v.array(literals("general", "members")),
+    tabs: v.array(
+      literals(
+        ...(Object.keys(WORKSPACE_TABS) as [WorkspaceTab, ...WorkspaceTab[]]),
+      ),
+    ),
   }),
   area: literals("manager", "employee"),
   home: v.string(),
