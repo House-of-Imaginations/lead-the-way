@@ -20,6 +20,7 @@ vi.mock("@/lib/account/auth-client", () => ({ authClient: {} }));
 
 const shell = {
   expectOrgId: "org1",
+  workspaceSettings: { open: false, owner: null },
   home: "/home",
   area: "employee",
   org: { name: "Calder Lane" },

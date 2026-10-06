@@ -132,6 +132,29 @@ test.describe("week 2", () => {
     ).toHaveAttribute("href", "/workspace/settings");
   });
 
+  test("the account menu offers workspace settings to Priya", async ({
+    page,
+  }) => {
+    await signInAs(page, "priya");
+    await page.goto("/manager");
+    await openAccount(page, "Priya Raman");
+    await expect(
+      page.getByRole("menuitem", { name: "Workspace settings" }),
+    ).toHaveAttribute("href", "/workspace/settings");
+  });
+
+  test("Dan sees workspace settings disabled, and who manages it", async ({
+    page,
+  }) => {
+    await signInAs(page, "dan");
+    await page.goto("/me");
+    await openAccount(page, "Dan Okafor");
+    const item = page.getByRole("menuitem", { name: /Workspace settings/ });
+    await expect(item).toHaveAttribute("aria-disabled", "true");
+    await expect(item).toContainText("Managed by Priya Raman");
+    await expect(item).not.toHaveAttribute("href", /.*/);
+  });
+
   test("the persona switch keeps the demo where it was", async ({ page }) => {
     await signInAs(page, "priya");
     await page.goto("/manager");

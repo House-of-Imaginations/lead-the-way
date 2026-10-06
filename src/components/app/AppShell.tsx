@@ -111,6 +111,16 @@ export function AppShell({
     window.location.assign(to);
   }
 
+  // 18 for org:manage; everyone else is told who manages it (MASTER_PROMPT 115).
+  const ws = shell.workspaceSettings;
+  const workspaceItem: MenuItem = ws.open
+    ? { label: "Workspace settings", href: "/workspace/settings" }
+    : {
+        label: "Workspace settings",
+        disabled: true,
+        helper: `Managed by ${ws.owner ?? "your workspace owner"}`,
+      };
+
   const orgMenu: MenuItem[] = [
     ...shell.workspaces
       .filter((w) => !w.current)
@@ -127,10 +137,7 @@ export function AppShell({
             );
         },
       })),
-    // Ruling 18: the employee's disabled "Workspace settings" item is P7b-2.
-    ...(shell.area === "manager"
-      ? [{ label: "Workspace settings", href: "/workspace/settings" }]
-      : []),
+    ...(ws.open ? [workspaceItem] : []),
   ];
   const switchTo = shell.switchTo;
   const accountMenu: MenuItem[] = [
@@ -147,6 +154,7 @@ export function AppShell({
       // 17 for the manager area, 19 for everyone else (Ruling 10).
       href: shell.area === "manager" ? "/settings" : "/me/settings",
     },
+    workspaceItem,
     {
       label: "Sign out",
       // /signed-out drops the cookies and goes to log in, so a sign-out that
