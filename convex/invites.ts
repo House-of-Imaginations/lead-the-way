@@ -32,6 +32,7 @@ import {
   requireWithin,
 } from "./lib/orgs/membership";
 import { firstNameOf, initialsOf, isDemoAccount } from "./lib/orgs/people";
+import { isManager } from "./lib/orgs/permissions";
 import { reserveRateLimit } from "./lib/rateLimits";
 import { getInOrg } from "./lib/tenant";
 import {
@@ -46,6 +47,7 @@ import {
   hourStart,
   parts,
   spanLabel,
+  sprintPhase,
   startDateOf,
 } from "./lib/sprintTime";
 
@@ -366,8 +368,15 @@ export const create = viewerMutation("members:manage")({
       }
     }
     // M-g: Invite member pins the newest sprint, so its headcount counts the
-    // invitation (`sprintInvites`). A caller may still name one.
-    const pinned = sprintId ?? (await setupSprint(ctx, orgId))?._id;
+    // invitation (`sprintInvites`). Only a team member, and only while that
+    // sprint is not over. A caller may still name one.
+    let pinned = sprintId;
+    if (!pinned && !isManager({ permissions: permissionsOf(role) })) {
+      const newest = await setupSprint(ctx, orgId);
+      if (newest && sprintPhase(newest, ctx.viewer.now) !== "complete") {
+        pinned = newest._id;
+      }
+    }
 
     const now = ctx.viewer.now;
 

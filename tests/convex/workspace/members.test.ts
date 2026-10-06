@@ -144,6 +144,49 @@ test("Invite member pins the newest sprint, so sprint 1 counts it (M-g)", async 
   });
 });
 
+test("Invite member leaves a finished sprint's headcount alone (M-g)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "complete" });
+  const priya = as("priya");
+  const invited = async () =>
+    (await priya.query(api.manager.outcomes, {}))!.participation.invited;
+  const before = await invited();
+  const employee = (await priya.query(api.orgRoles.list, {})).find(
+    (r) => r.name === "Employee",
+  )!._id;
+  await priya.mutation(api.invites.create, {
+    roleId: employee,
+    email: "late.hire@example.com",
+    expectOrgId: orgId,
+  });
+  expect(await invited()).toBe(before);
+});
+
+test("Invite member pins only team members, never a manager role (M-g, W-f)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "week2" });
+  const priya = as("priya");
+  const insights = await seat(t, orgId, "user_lead2", ["team:insights"]);
+  const admin = await seat(t, orgId, "user_admin2", ["org:manage"]);
+  const employee = (await priya.query(api.orgRoles.list, {})).find(
+    (r) => r.name === "Employee",
+  )!._id;
+  const invited = async () =>
+    (await priya.query(api.manager.overview, {}))!.sprint!.invited;
+  const invite = async (roleId: Id<"orgRoles">, email: string) => {
+    await priya.mutation(api.invites.create, {
+      roleId,
+      email,
+      expectOrgId: orgId,
+    });
+    return await invited();
+  };
+  const base = await invited();
+  expect(await invite(insights.roleId, "lead@example.com")).toBe(base);
+  expect(await invite(admin.roleId, "admin@example.com")).toBe(base);
+  expect(await invite(employee, "hire@example.com")).toBe(base + 1);
+});
+
 type Lane = Awaited<ReturnType<typeof calderLane>>;
 
 async function personOf(t: Lane["t"], orgId: Id<"orgs">, key: "dan" | "sarah") {
