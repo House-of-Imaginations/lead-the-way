@@ -96,6 +96,9 @@ test("only the server's email refusal belongs to the email field", () => {
     isAddressRefusal(refusal("FIELD_REQUIRED", "Enter a full email address.")),
   ).toBe(true);
   expect(
+    isAddressRefusal(refusal("FIELD_REQUIRED", "Already in this workspace.")),
+  ).toBe(true);
+  expect(
     isAddressRefusal(
       refusal("FIELD_REQUIRED", "There are too many invitations open."),
     ),

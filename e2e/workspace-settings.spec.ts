@@ -217,6 +217,16 @@ test.describe("18", () => {
     await expect(
       dialog.getByText("Enter a full email address.", { exact: true }),
     ).toBeVisible();
+    // Omar's invitation is still open, so his address is refused (F2).
+    await dialog.getByLabel("Email").fill("Omar.Haddad@calderlane.com.au");
+    await dialog.getByRole("button", { name: "Send invitation" }).click();
+    await expect(dialog.getByLabel("Email")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(
+      dialog.getByText("Already in this workspace.", { exact: true }),
+    ).toBeVisible();
     const email = `e2e-member-${Date.now()}@example.com`;
     await dialog.getByLabel("Email").fill(email);
     await dialog.getByRole("button", { name: "Send invitation" }).click();

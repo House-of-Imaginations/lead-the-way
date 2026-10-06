@@ -74,8 +74,16 @@ test("accept refuses revoked and mismatched invitations", async () => {
     email: "carol@example.com",
     emailVerified: true,
   });
-  const invite = (email?: string) =>
-    owner.mutation(api.invites.create, { roleId, email, expectOrgId: orgId });
+  // `create` refuses a second live invitation for one address (F2), so each
+  // is made as a link and pinned after: they stand for rows made before it.
+  const invite = async (email?: string) => {
+    const made = await owner.mutation(api.invites.create, {
+      roleId,
+      expectOrgId: orgId,
+    });
+    if (email) await t.run((ctx) => ctx.db.patch(made.inviteId, { email }));
+    return made;
+  };
 
   const refused = async (
     who: { subject: string },
@@ -312,16 +320,16 @@ test("resend refuses a lapsed invitation and a role wider than the sender's", as
   const t = harness();
   const { owner, orgId } = await workspace(t);
   const roleId = await memberRole(t, orgId);
-  const invite = () =>
+  const invite = (email: string) =>
     owner.mutation(api.invites.create, {
       roleId,
-      email: "pat@example.com",
+      email,
       expectOrgId: orgId,
     });
 
   // Holds members:manage but not the members:read the Member role grants.
   const admin = await seat(t, orgId, "user_admin", ["members:manage"]);
-  const wide = await invite();
+  const wide = await invite("pat@example.com");
   await expect(
     admin.as.mutation(api.invites.resend, {
       inviteId: wide.inviteId,
@@ -329,7 +337,7 @@ test("resend refuses a lapsed invitation and a role wider than the sender's", as
     }),
   ).rejects.toMatchObject({ data: { code: "PERMISSION_ESCALATION" } });
 
-  const lapsed = await invite();
+  const lapsed = await invite("kim@example.com");
   await t.run((ctx) =>
     ctx.db.patch(lapsed.inviteId, { expiresAt: Date.now() - 1 }),
   );
@@ -410,12 +418,18 @@ test("decline refuses the wrong account and finished links", async () => {
     email: "carol@example.com",
     emailVerified: true,
   });
-  const invite = () =>
-    owner.mutation(api.invites.create, {
+  // `create` refuses a second live invitation for one address (F2), so each
+  // is made as a link and pinned after: they stand for rows made before it.
+  const invite = async () => {
+    const made = await owner.mutation(api.invites.create, {
       roleId,
-      email: "bob@example.com",
       expectOrgId: orgId,
     });
+    await t.run((ctx) =>
+      ctx.db.patch(made.inviteId, { email: "bob@example.com" }),
+    );
+    return made;
+  };
   const declineAs = (who: { subject: string }, token: string) =>
     t.withIdentity(who).mutation(api.invites.decline, { token });
 
@@ -554,5 +568,49 @@ test("an address that normalises to nothing is refused, never an open link", asy
   });
   expect(await t.query(api.invites.publicPreview, { token })).toMatchObject({
     emailPinned: false,
+  });
+});
+
+test("an address already in this workspace is refused (F2)", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  const create = (email: string) =>
+    owner.mutation(api.invites.create, { roleId, email, expectOrgId: orgId });
+  const already = {
+    data: { code: "FIELD_REQUIRED", message: "Already in this workspace." },
+  };
+
+  // A seated person, however the address is cased.
+  await seat(t, orgId, "user_pat", []);
+  await expect(create(" User_Pat@Example.com ")).rejects.toMatchObject(already);
+
+  // A live pending invitation.
+  await create("sam@example.com");
+  await expect(create("SAM@example.com")).rejects.toMatchObject(already);
+});
+
+test("a revoked or lapsed invitation doesn't block a new one (F2)", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roleId = await memberRole(t, orgId);
+  const create = (email: string) =>
+    owner.mutation(api.invites.create, { roleId, email, expectOrgId: orgId });
+
+  const revoked = await create("rae@example.com");
+  await owner.mutation(api.invites.revoke, {
+    inviteId: revoked.inviteId,
+    expectOrgId: orgId,
+  });
+  await expect(create("rae@example.com")).resolves.toMatchObject({
+    emailed: false,
+  });
+
+  const lapsed = await create("lee@example.com");
+  await t.run((ctx) =>
+    ctx.db.patch(lapsed.inviteId, { expiresAt: Date.now() - 1 }),
+  );
+  await expect(create("lee@example.com")).resolves.toMatchObject({
+    emailed: false,
   });
 });

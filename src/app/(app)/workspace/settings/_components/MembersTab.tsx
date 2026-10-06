@@ -163,11 +163,14 @@ export function MembersTab({ initial }: { initial: MembersData }) {
   );
 }
 
-/** The server refuses a malformed address with FIELD_REQUIRED, about the email. */
+/**
+ * The server refuses a malformed address, or one already in the workspace,
+ * with FIELD_REQUIRED: both are about the email.
+ */
 export function isAddressRefusal(error: unknown): boolean {
   return (
     errorCode(error) === "FIELD_REQUIRED" &&
-    /email/i.test(userMessage(error, ""))
+    /email|already in this workspace/i.test(userMessage(error, ""))
   );
 }
 
