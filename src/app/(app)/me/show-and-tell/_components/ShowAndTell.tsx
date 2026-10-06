@@ -266,7 +266,7 @@ export function ShowAndTell({
   const board = usePreloadedQuery(preloaded);
   const expectOrgId = useExpectOrgId();
   return (
-    <div className="flex max-w-content-max flex-col gap-07">
+    <div className="flex flex-col gap-07">
       <header className="flex flex-col gap-03">
         <div className="flex flex-wrap items-center gap-04">
           <h1 className="text-heading-01">Team AI show and tell</h1>

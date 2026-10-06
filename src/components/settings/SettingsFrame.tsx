@@ -17,7 +17,7 @@ export function SettingsFrame({
   defaultTab?: string;
 }) {
   return (
-    <div className="flex max-w-[936px] flex-col gap-07">
+    <div className="flex flex-col gap-07">
       <header className="flex flex-wrap items-start justify-between gap-05">
         <div className="flex flex-col gap-03">
           <h1 className="text-heading-01 text-balance">{title}</h1>

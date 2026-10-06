@@ -246,7 +246,7 @@ export function Overview({
   // No team or sprint yet (a fresh workspace before its first setup save).
   if (data === null) {
     return (
-      <div className="flex max-w-content-max flex-col gap-07">
+      <div className="flex flex-col gap-07">
         <h1 className="text-heading-01">{greeting}</h1>
         <InlineNotification>
           Your team&apos;s totals appear here after you launch the sprint.
@@ -263,7 +263,7 @@ export function Overview({
   if (sprint.projects) facts.push(["Projects", statValue(sprint.projects)]);
 
   return (
-    <div className="flex max-w-content-max flex-col gap-07">
+    <div className="flex flex-col gap-07">
       <header className="flex items-start justify-between gap-07 max-[900px]:flex-col">
         <div className="flex max-w-[720px] flex-col gap-03">
           <h1 className="text-heading-01">{greeting}</h1>

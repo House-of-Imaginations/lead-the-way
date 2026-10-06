@@ -256,7 +256,7 @@ export function ProjectForm({ initial }: { initial: MyProject }) {
   }
 
   return (
-    <div className="grid max-w-content-max grid-cols-[minmax(0,1fr)_320px] items-start gap-09 max-[900px]:grid-cols-1 max-[900px]:gap-07">
+    <div className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-09 max-[900px]:grid-cols-1 max-[900px]:gap-07">
       <div className="flex min-w-0 flex-col">
         <header className="flex flex-wrap items-end justify-between gap-x-07 gap-y-03 pb-06">
           <div className="flex max-w-[560px] flex-col gap-03">

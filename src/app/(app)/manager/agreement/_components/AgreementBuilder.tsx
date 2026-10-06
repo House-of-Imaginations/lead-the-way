@@ -253,7 +253,7 @@ export function AgreementBuilder({ initial }: { initial: Agreement }) {
   }
 
   return (
-    <div className="flex max-w-content-max flex-col gap-07">
+    <div className="flex flex-col gap-07">
       <header className="flex flex-wrap items-end justify-between gap-05">
         <div className="flex max-w-[640px] flex-col gap-03">
           <div className="flex flex-wrap items-center gap-03">

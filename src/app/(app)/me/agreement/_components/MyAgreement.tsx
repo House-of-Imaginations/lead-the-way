@@ -50,7 +50,7 @@ export function MyAgreement({
 
   if (!a) {
     return (
-      <div className="flex max-w-content-max flex-col gap-05">
+      <div className="flex flex-col gap-05">
         <h1 className="text-heading-01">Our Team AI Agreement</h1>
         <p className="max-w-[65ch] text-body-01 text-text-secondary">
           {
@@ -62,7 +62,7 @@ export function MyAgreement({
   }
 
   return (
-    <div className="grid max-w-content-max grid-cols-[minmax(0,1fr)_320px] items-start gap-09 max-[900px]:grid-cols-1 max-[900px]:gap-07">
+    <div className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-09 max-[900px]:grid-cols-1 max-[900px]:gap-07">
       <article
         aria-labelledby="agreement-title"
         className="flex flex-col gap-06"

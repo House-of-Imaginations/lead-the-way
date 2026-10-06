@@ -187,7 +187,7 @@ export function PathwayView({ initial }: { initial: Pathway }) {
   }
 
   return (
-    <div className="flex max-w-content-max flex-col gap-07">
+    <div className="flex flex-col gap-07">
       <header className="flex items-end justify-between gap-07 max-[900px]:flex-col max-[900px]:items-stretch">
         <div className="flex max-w-[640px] flex-col gap-03">
           <nav aria-label="Breadcrumb" className="text-body-02">

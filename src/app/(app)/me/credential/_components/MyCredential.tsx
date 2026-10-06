@@ -33,7 +33,7 @@ export function MyCredential({
   }
 
   return (
-    <div className="grid max-w-content-max grid-cols-[minmax(0,1fr)_auto] items-start gap-07 max-[900px]:grid-cols-1">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-07 max-[900px]:grid-cols-1">
       <header className="flex flex-col gap-03">
         <h1 className="text-heading-01">Your credential</h1>
         <p className="text-body-01 text-text-secondary">
