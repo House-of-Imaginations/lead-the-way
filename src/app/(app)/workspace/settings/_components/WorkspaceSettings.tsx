@@ -40,7 +40,11 @@ export function WorkspaceSettings({
   members: MembersData | null;
 }) {
   const { org, workspaceSettings } = useShell();
-  const general = tabs.includes("general") ? settings : null;
+  // Both the page's tabs and the live shell's: a seat that loses a permission
+  // mid-session loses the tab at once, before the server's next render.
+  const open = (tab: WorkspaceTab) =>
+    tabs.includes(tab) && workspaceSettings.tabs.includes(tab);
+  const general = open("general") ? settings : null;
   const items: TabItem[] = [
     ...(general
       ? [
@@ -51,7 +55,7 @@ export function WorkspaceSettings({
           },
         ]
       : []),
-    ...(tabs.includes("members") && members
+    ...(open("members") && members
       ? [
           {
             value: "members",

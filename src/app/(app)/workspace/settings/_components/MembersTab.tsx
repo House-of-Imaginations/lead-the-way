@@ -6,6 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { useState, type FormEvent } from "react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { useShell } from "@/components/app/AppShell";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import {
   Button,
@@ -15,7 +16,7 @@ import {
   TextInput,
   useToast,
 } from "@/components/ui";
-import { userMessage } from "@/lib/errors";
+import { errorCode, userMessage } from "@/lib/errors";
 import { useTimedQuery } from "@/lib/useTimedQuery";
 import { ManageMember } from "./ManageMember";
 
@@ -94,10 +95,16 @@ export function headcount(rows: MemberRow[]): string {
 
 /** 18's Members (P7b-3a): who is in the workspace, and inviting more. */
 export function MembersTab({ initial }: { initial: MembersData }) {
-  const people = useQuery(api.members.list, {}) ?? initial.people;
+  // Losing `members:manage` mid-session must not subscribe again: the server
+  // would refuse and the throw would reach error.tsx before the tab goes.
+  const allowed = useShell().workspaceSettings.tabs.includes("members");
+  const people =
+    useQuery(api.members.list, allowed ? {} : "skip") ?? initial.people;
   const invites =
-    useTimedQuery(api.invites.list, initial.invites) ?? initial.invites;
-  const roles = useQuery(api.orgRoles.list, {}) ?? initial.roles;
+    useTimedQuery(api.invites.list, initial.invites, !allowed) ??
+    initial.invites;
+  const roles =
+    useQuery(api.orgRoles.list, allowed ? {} : "skip") ?? initial.roles;
   const rows = memberRows(people, invites);
   // A refusal from a row's menu (resend, revoke, copy), said once above the table.
   const [error, setError] = useState<string | null>(null);
@@ -156,6 +163,14 @@ export function MembersTab({ initial }: { initial: MembersData }) {
   );
 }
 
+/** The server refuses a malformed address with FIELD_REQUIRED, about the email. */
+export function isAddressRefusal(error: unknown): boolean {
+  return (
+    errorCode(error) === "FIELD_REQUIRED" &&
+    /email/i.test(userMessage(error, ""))
+  );
+}
+
 /** "Invite member": an address and a role. The owner role is never offered. */
 function InviteMember({ roles }: { roles: Role[] }) {
   const expectOrgId = useExpectOrgId();
@@ -192,7 +207,12 @@ function InviteMember({ roles }: { roles: Role[] }) {
       setOpen(false);
       setEmail("");
     } catch (e) {
-      setError(userMessage(e, "The invitation wasn't created. Try again."));
+      const message = userMessage(
+        e,
+        "The invitation wasn't created. Try again.",
+      );
+      if (isAddressRefusal(e)) setEmailError(message);
+      else setError(message);
     } finally {
       setPending(false);
     }
@@ -235,7 +255,10 @@ function InviteMember({ roles }: { roles: Role[] }) {
           placeholder="name@example.com"
           value={email}
           error={emailError ?? undefined}
-          onChange={(e) => setEmail(e.currentTarget.value)}
+          onChange={(e) => {
+            setEmail(e.currentTarget.value);
+            setEmailError(null);
+          }}
           className="bg-background"
         />
         <Select

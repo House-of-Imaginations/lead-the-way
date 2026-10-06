@@ -1,7 +1,9 @@
 // @vitest-environment node
+import { ConvexError } from "convex/values";
 import { expect, test } from "vitest";
 import {
   headcount,
+  isAddressRefusal,
   memberRows,
   type Invite,
   type Member,
@@ -85,4 +87,19 @@ test("each row offers only what can be done to it", () => {
   // A link has no address to send to again.
   expect(actionsFor(link)).toEqual(["Copy link", "Revoke"]);
   expect(actionsFor(declined)).toEqual([]);
+});
+
+test("only the server's email refusal belongs to the email field", () => {
+  const refusal = (code: string, message: string) =>
+    new ConvexError({ code, message });
+  expect(
+    isAddressRefusal(refusal("FIELD_REQUIRED", "Enter a full email address.")),
+  ).toBe(true);
+  expect(
+    isAddressRefusal(
+      refusal("FIELD_REQUIRED", "There are too many invitations open."),
+    ),
+  ).toBe(false);
+  expect(isAddressRefusal(refusal("FORBIDDEN", "Enter an email."))).toBe(false);
+  expect(isAddressRefusal(new Error("boom"))).toBe(false);
 });

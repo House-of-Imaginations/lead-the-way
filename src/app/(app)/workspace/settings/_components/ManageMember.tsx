@@ -117,6 +117,7 @@ export function ManageMember({
       {row.kind === "person" && (
         <>
           <ChangeRole
+            key={row.member.roleId}
             member={row.member}
             roles={roles}
             open={dialog === "role"}
@@ -140,7 +141,7 @@ const focusHeader = (e: Event) => {
 };
 
 const MID_SPRINT =
-  "during a sprint hides the rest of that sprint's team totals.";
+  "during a sprint can hide the rest of that sprint's team totals.";
 
 function ChangeRole({
   member,
@@ -260,6 +261,8 @@ function RemoveMember({
     <Modal
       open={open}
       onOpenChange={(next) => {
+        // Cancel, Escape and the close button all wait for the removal.
+        if (pending) return;
         onOpenChange(next);
         if (!next) setError(null);
       }}
