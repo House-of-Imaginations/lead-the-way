@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "convex-helpers/react/cache";
+import { useState } from "react";
 import { api } from "@convex/_generated/api";
 import {
   HIDDEN_PERMISSIONS,
@@ -8,8 +9,9 @@ import {
 } from "@convex/lib/orgs/permissions";
 import { useShell, useWorkspaceSwitched } from "@/components/app/AppShell";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
-import { Tag } from "@/components/ui";
+import { Button, Tag } from "@/components/ui";
 import type { Role } from "./MembersTab";
+import { ManageRole, RoleModal } from "./RoleModal";
 
 /** A role's permissions as M-i's words, the hidden ones left out (M-e). */
 function labelsOf(role: Role): string[] {
@@ -33,12 +35,25 @@ export function RolesTab({ initial }: { initial: Role[] }) {
     own(useQuery(api.orgRoles.list, allowed ? {} : "skip")) ??
     own(initial) ??
     [];
+  const [creating, setCreating] = useState(false);
   return (
     <section aria-labelledby="roles-heading" className="flex flex-col gap-05">
       <div className="flex flex-wrap items-center justify-between gap-05">
         <h2 id="roles-heading" tabIndex={-1} className="text-heading-03">
           {`${roles.length} ${roles.length === 1 ? "role" : "roles"}`}
         </h2>
+        <RoleModal
+          open={creating}
+          onOpenChange={setCreating}
+          trigger={
+            <Button
+              size="md"
+              className="max-md:h-size-control-lg max-md:w-full"
+            >
+              Create role
+            </Button>
+          }
+        />
       </div>
       {/* Only a table scrolls sideways, inside its own container. */}
       <div
@@ -89,7 +104,9 @@ export function RolesTab({ initial }: { initial: Role[] }) {
                     )}
                   </td>
                   <td className="tabular-nums">{role.holders}</td>
-                  <td className="text-right" />
+                  <td className="text-right">
+                    <ManageRole role={role} />
+                  </td>
                 </tr>
               );
             })}
