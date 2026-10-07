@@ -53,7 +53,8 @@ export type MemberRow =
 /**
  * One row per person (privacy rule 7: name, email, role and state, nothing
  * about participation). People first, then open invitations, then declined
- * ones; an address already shown is not shown again.
+ * ones; an address already shown is not shown again (so an older duplicate
+ * pending invitation stays hidden, P7b R-i).
  */
 export function memberRows(people: Member[], invites: Invite[]): MemberRow[] {
   const seen = new Set(people.map((p) => p.email.toLowerCase()));

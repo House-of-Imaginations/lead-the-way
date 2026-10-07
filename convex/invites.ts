@@ -406,6 +406,9 @@ export const create = viewerMutation("members:manage")({
     }
     // F2: one seat or one live invitation per address. A revoked or lapsed
     // invitation is not live, so it never blocks a new one.
+    // P7b R-i, accepted: a duplicate pending invitation made before F2 stays as it
+    // is. 18 shows one row per address (`memberRows`), so the older one is
+    // hidden; either link still works. Spec 5.1 says so.
     if (to) {
       const people = await ctx.db
         .query("people")

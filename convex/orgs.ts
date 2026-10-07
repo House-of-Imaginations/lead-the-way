@@ -9,7 +9,12 @@ import {
 import { throwUserError } from "./lib/errors";
 import { permissionValidator } from "./lib/orgs/permissions";
 import { deleteOrg } from "./lib/orgs/cascade";
-import { findSeat, isOwnerRole, seatsOfUser } from "./lib/orgs/membership";
+import {
+  findSeat,
+  isOwnerRole,
+  requireOwner,
+  seatsOfUser,
+} from "./lib/orgs/membership";
 import { createWorkspace } from "./lib/orgs/create";
 import { isAdoptable } from "./lib/storage";
 import { getViewer } from "./lib/viewer";
@@ -286,9 +291,7 @@ export const remove = viewerMutation("org:manage")({
   returns: v.null(),
   handler: async (ctx): Promise<null> => {
     const orgId = ctx.viewer.org._id;
-    if (!isOwnerRole(ctx.viewer.role)) {
-      throwUserError("FORBIDDEN", "Only an owner can delete a workspace.");
-    }
+    requireOwner(ctx.viewer, "Only an owner can delete a workspace.");
     // Only a reset brings the demo back, and a reset needs the workspace.
     if ((await ctx.db.get(orgId))?.isDemo) {
       throwUserError("FORBIDDEN", "Reset the demo instead.");
