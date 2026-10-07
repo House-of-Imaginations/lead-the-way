@@ -11,7 +11,7 @@ import {
   type ManagerRoute,
   type Permission,
 } from "./orgs/permissions";
-import { firstNameOf, initialsOf, ownerOf } from "./orgs/people";
+import { firstNameOf, initialsOf, isDemoAccount, ownerOf } from "./orgs/people";
 import { settingsOf } from "./settings";
 import { SETUP_STEPS } from "./setupSteps";
 import { setupSprint, currentTeam, launchedSprint, setupGate } from "./sprint";
@@ -56,6 +56,8 @@ export const shellValidator = v.object({
   expectOrgId: v.id("orgs"),
   /** The demo banner and the persona switch: the demo workspace with DEMO_MODE on. */
   isDemo: v.boolean(),
+  /** M-h: the org menu's Create workspace. Never a shared demo persona. */
+  canCreateWorkspace: v.boolean(),
   /** The person's Reduce motion setting (P7b-1); AppShell sets `data-reduce-motion`. */
   reduceMotion: v.boolean(),
   /**
@@ -322,6 +324,7 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
   return {
     expectOrgId: viewer.org._id,
     isDemo,
+    canCreateWorkspace: !(await isDemoAccount(ctx, viewer.userId)),
     reduceMotion: (await settingsOf(ctx, viewer.person._id)).reduceMotion,
     workspaceSettings: {
       open: tabs.length > 0,

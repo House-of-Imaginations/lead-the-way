@@ -1,6 +1,11 @@
 import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import { firstNameOf, initialsOf } from "../../convex/lib/orgs/people";
+import {
+  DEFAULT_SETTINGS,
+  settingsOf,
+  writeSettings,
+} from "../../convex/lib/settings";
 import { seedAuthUser } from "./testHelpers";
 import { harness, workspace } from "./workspace/helpers";
 
@@ -71,4 +76,63 @@ test("a profile is only a name and the workspace the app opens", async () => {
     "userId",
   ]);
   expect(profile).toMatchObject({ displayName: "Pat", activeOrgId: orgId });
+});
+
+test("a new seat starts from your open seat's time zone and display settings", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  await t.run(async (ctx) => {
+    const seat = (await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first())!;
+    // A first seat starts from the defaults.
+    expect(seat.timeZone).toBe("Australia/Melbourne");
+    expect(await settingsOf(ctx, seat._id)).toEqual(DEFAULT_SETTINGS);
+    await ctx.db.patch(seat._id, { timeZone: "Europe/London" });
+    await writeSettings(ctx, seat, {
+      reduceMotion: true,
+      captionsByDefault: false,
+      includeInTeamTotals: false,
+      weeklyReminder: false,
+    });
+  });
+  const { orgId: birch } = await owner.mutation(api.orgs.create, {
+    name: "Birch",
+  });
+  const next = await t.run(async (ctx) => {
+    const seat = (await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", birch))
+      .first())!;
+    return {
+      timeZone: seat.timeZone,
+      settings: await settingsOf(ctx, seat._id),
+    };
+  });
+  // Display settings follow; privacy and reminders start fresh.
+  expect(next).toEqual({
+    timeZone: "Europe/London",
+    settings: {
+      ...DEFAULT_SETTINGS,
+      reduceMotion: true,
+      captionsByDefault: false,
+    },
+  });
+});
+
+// Guard test: passes before the change too (the defaults write no row).
+test("a new seat from a default open seat writes no settings row", async () => {
+  const t = harness();
+  const { owner } = await workspace(t);
+  const { orgId: birch } = await owner.mutation(api.orgs.create, {
+    name: "Birch",
+  });
+  const rows = await t.run((ctx) =>
+    ctx.db
+      .query("settings")
+      .filter((q) => q.eq(q.field("orgId"), birch))
+      .collect(),
+  );
+  expect(rows).toEqual([]);
 });

@@ -14,6 +14,7 @@ import {
 } from "./slug";
 
 export const MAX_ORG_NAME = 60;
+export const MAX_TEAM_NAME = 60;
 
 /** A workspace name, cleaned, or a refusal that says how to fix it. */
 export function orgNameOf(name: string): string {
@@ -79,7 +80,7 @@ export async function createWorkspace(
   ctx: MutationCtx,
   userId: string,
   name: string,
-  { suffix = false }: { suffix?: boolean } = {},
+  { suffix = false, teamName }: { suffix?: boolean; teamName?: string } = {},
 ): Promise<{ orgId: Id<"orgs">; slug: string }> {
   // Every tester shares the demo accounts, and a reset clears only the demo
   // workspace, so a demo persona's workspace would be anybody's and forever.
@@ -90,6 +91,14 @@ export async function createWorkspace(
     );
   }
   const trimmed = orgNameOf(name);
+  // R-e: /workspace/new names the team; sign-up leaves it for 03.
+  const team = teamName?.trim() || "Your team";
+  if (team.length > MAX_TEAM_NAME) {
+    throwUserError(
+      "NAME_REQUIRED",
+      `A team name can be at most ${MAX_TEAM_NAME} characters.`,
+    );
+  }
   const base = slugify(trimmed);
   if (!slugIsAvailableShape(base)) {
     throwUserError(
@@ -136,7 +145,7 @@ export async function createWorkspace(
   // One team per workspace (spec 4.2). 03 fills it in and sets `savedAt`.
   await ctx.db.insert("teams", {
     orgId,
-    name: "Your team",
+    name: team,
     challenges: [],
     createdAt: now,
   });

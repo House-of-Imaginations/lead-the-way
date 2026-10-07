@@ -159,16 +159,16 @@ export const active = authenticatedQuery({
  * existing with no owner role, or an owner role with nobody in it. A mutation
  * is a transaction; this is the clearest reason in the codebase to care.
  *
- * THE UNIQUENESS CHECK IS NOT A RACE, though it reads like one. Convex
- * transactions are serializable and the `by_slug` range is in this
- * transaction's read set, so a second creation of the same slug conflicts with
- * this one's insert, retries, and sees the row that won.
+ * A taken name gets a suffix, as sign-up's does (M-h): "Acme", then
+ * "acme-2". A name that would shadow a route is still refused. This is not a
+ * race: `freeSlug`'s `by_slug` reads are in this transaction's read set, so a
+ * second creation of the same slug conflicts, retries and sees the row that won.
  */
 export const create = authenticatedMutation({
-  args: { name: v.string() },
+  args: { name: v.string(), teamName: v.optional(v.string()) },
   returns: v.object({ orgId: v.id("orgs"), slug: v.string() }),
-  handler: async (ctx, { name }) =>
-    await createWorkspace(ctx, ctx.userId, name),
+  handler: async (ctx, { name, teamName }) =>
+    await createWorkspace(ctx, ctx.userId, name, { suffix: true, teamName }),
 });
 
 /**

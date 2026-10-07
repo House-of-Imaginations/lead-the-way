@@ -476,3 +476,14 @@ test("the shell opens 18 for its tabs' permissions and names the owner to everyo
     });
   }
 });
+
+test("Create workspace is offered to everyone but a demo account (M-h)", async () => {
+  const { as } = await calderLane();
+  expect(
+    (await as("priya").query(api.viewer.shell, {}))?.canCreateWorkspace,
+  ).toBe(false);
+  const { owner } = await workspace(harness());
+  expect((await owner.query(api.viewer.shell, {}))?.canCreateWorkspace).toBe(
+    true,
+  );
+});

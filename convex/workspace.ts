@@ -2,7 +2,7 @@ import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
-import { orgNameOf } from "./lib/orgs/create";
+import { MAX_TEAM_NAME, orgNameOf } from "./lib/orgs/create";
 import { grants } from "./lib/orgs/permissions";
 import { thresholdOf } from "./lib/privacy";
 import { TIME_ZONES } from "./lib/profileFields";
@@ -93,8 +93,6 @@ export const setThreshold = viewerMutation("org:manage")({
     return null;
   },
 });
-
-const MAX_TEAM_NAME = 60;
 
 /**
  * General's Save changes. The workspace name is on `orgs` (the slug never
