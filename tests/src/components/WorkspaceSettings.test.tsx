@@ -3,6 +3,7 @@ import { getFunctionName } from "convex/server";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 import { MembersTab } from "../../../src/app/(app)/workspace/settings/_components/MembersTab";
+import { RolesTab } from "../../../src/app/(app)/workspace/settings/_components/RolesTab";
 import { WorkspaceSettings } from "../../../src/app/(app)/workspace/settings/_components/WorkspaceSettings";
 
 let liveTabs: string[] = [];
@@ -48,12 +49,13 @@ vi.mock(
 
 const members = { people: [], invites: [], roles: [] };
 const settings = (orgId: string) => ({ orgId }) as never;
-const render = (tabs: ("general" | "members")[], from = "org1") =>
+const render = (tabs: ("general" | "members" | "roles")[], from = "org1") =>
   renderToStaticMarkup(
     <WorkspaceSettings
       tabs={tabs}
       settings={tabs.includes("general") ? settings(from) : null}
       members={tabs.includes("members") ? members : null}
+      roles={tabs.includes("roles") ? [] : null}
     />,
   );
 const calls = (name: string) =>
@@ -169,4 +171,64 @@ test("Members subscribes while the live shell lists members", () => {
   renderToStaticMarkup(<MembersTab initial={members} />);
   expect(useQuery).toHaveBeenCalled();
   for (const call of useQuery.mock.calls) expect(call[1]).not.toBe("skip");
+});
+
+const role = (over: Record<string, unknown>) =>
+  ({
+    orgId: "org1",
+    _id: "r1",
+    name: "Coordinator",
+    isOwner: false,
+    permissions: [],
+    holders: 0,
+    launch: false,
+    makesManager: false,
+    assignable: true,
+    editable: true,
+    deletable: true,
+    ...over,
+  }) as never;
+
+test("a roles:manage seat sees only the Roles tab", () => {
+  liveTabs = ["roles"];
+  const html = render(["roles"]);
+  expect(html).toContain(">Roles<");
+  expect(html).not.toContain(">General<");
+  expect(html).not.toContain(">Members<");
+});
+
+test("Roles lists each role's permissions in plain words, and a count", () => {
+  liveTabs = ["roles"];
+  const html = renderToStaticMarkup(
+    <RolesTab
+      initial={[
+        role({ _id: "r0", name: "Manager", isOwner: true, holders: 1 }),
+        role({ _id: "r1", name: "Employee", launch: true, holders: 7 }),
+        role({
+          _id: "r2",
+          name: "Coordinator",
+          permissions: ["members:read", "team:insights"],
+          holders: 1,
+        }),
+      ]}
+    />,
+  );
+  expect(html).toContain("3 roles");
+  expect(html).toContain("Every permission");
+  expect(html).toContain("No permissions");
+  expect(html).toContain("Your team joins with this role.");
+  expect(html).toContain("See team totals");
+  // M-e: never shown.
+  expect(html).not.toContain("See who is in the workspace");
+});
+
+test("Roles never shows another workspace's roles, and stops reading after a switch (R-g)", () => {
+  liveTabs = ["roles"];
+  switched = true;
+  const html = renderToStaticMarkup(
+    <RolesTab initial={[role({ orgId: "org2", name: "Elsewhere" })]} />,
+  );
+  expect(html).not.toContain("Elsewhere");
+  expect(useQuery).toHaveBeenCalled();
+  expect(useQuery.mock.calls.every((c) => c[1] === "skip")).toBe(true);
 });

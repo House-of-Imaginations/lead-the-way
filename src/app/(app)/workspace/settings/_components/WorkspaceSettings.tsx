@@ -10,8 +10,9 @@ import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import { Tag, type TabItem } from "@/components/ui";
 import { SettingsFrame } from "@/components/settings/SettingsFrame";
 import { GeneralTab } from "./GeneralTab";
-import { MembersTab, type MembersData } from "./MembersTab";
+import { MembersTab, type MembersData, type Role } from "./MembersTab";
 import { PrivacyTab } from "./PrivacyTab";
+import { RolesTab } from "./RolesTab";
 import { SprintDefaultsTab } from "./SprintDefaultsTab";
 
 export type WorkspaceData = FunctionReturnType<typeof api.workspace.settings>;
@@ -49,10 +50,12 @@ export function WorkspaceSettings({
   tabs,
   settings,
   members,
+  roles,
 }: {
   tabs: WorkspaceTab[];
   settings: WorkspaceData | null;
   members: MembersData | null;
+  roles: Role[] | null;
 }) {
   const { org, workspaceSettings } = useShell();
   // Both the page's tabs and the live shell's: a seat that loses a permission
@@ -90,6 +93,15 @@ export function WorkspaceSettings({
             value: "privacy",
             label: "Data and privacy",
             content: <SettingsTab initial={general} Tab={PrivacyTab} />,
+          },
+        ]
+      : []),
+    ...(open("roles") && roles
+      ? [
+          {
+            value: "roles",
+            label: "Roles",
+            content: <RolesTab initial={roles} />,
           },
         ]
       : []),

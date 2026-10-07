@@ -25,15 +25,21 @@ export default async function WorkspaceSettingsPage() {
   const tabs = shell?.workspaceSettings.tabs ?? [];
   if (tabs.length === 0) return null;
   // Each tab's reads only for a seat that may open it (W-g).
-  const [settings, members] = await openOrHome(() =>
+  const [settings, members, roles] = await openOrHome(() =>
     Promise.all([
       tabs.includes("general")
         ? fetchAuthQuery(api.workspace.settings, {})
         : null,
       tabs.includes("members") ? membersData() : null,
+      tabs.includes("roles") ? fetchAuthQuery(api.orgRoles.list, {}) : null,
     ]),
   );
   return (
-    <WorkspaceSettings tabs={tabs} settings={settings} members={members} />
+    <WorkspaceSettings
+      tabs={tabs}
+      settings={settings}
+      members={members}
+      roles={roles}
+    />
   );
 }

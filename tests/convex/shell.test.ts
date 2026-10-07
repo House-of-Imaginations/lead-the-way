@@ -460,11 +460,10 @@ test("the shell opens 18 for its tabs' permissions and names the owner to everyo
   const wsOf = async (who: ReturnType<typeof as>) =>
     (await who.query(api.viewer.shell, {}))?.workspaceSettings;
   const cases: [ReturnType<typeof as>, string[]][] = [
-    [as("priya"), ["general", "members"]],
+    [as("priya"), ["general", "members", "roles"]],
     [await seated("user_admin", ["org:manage"]), ["general"]],
     [await seated("user_people", ["members:manage"]), ["members"]],
-    // Roles is P7b-3b's tab: roles:manage alone opens nothing yet (Ruling 11).
-    [await seated("user_roles", ["roles:manage"]), []],
+    [await seated("user_roles", ["roles:manage"]), ["roles"]],
     [await seated("user_reader", ["members:read"]), []],
     [await seated("user_lead", ["sprint:manage", "team:insights"]), []],
     [as("dan"), []],

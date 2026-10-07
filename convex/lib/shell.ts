@@ -40,12 +40,14 @@ const linkValidator = v.object({
 });
 
 /**
- * W-g: each 18 tab and the one permission that opens it. Roles joins in
- * P7b-3b as `roles: "roles:manage"`. Order is the tab order.
+ * W-g: each 18 tab and the one permission that opens it. Keys, not tab
+ * order: `general` opens General, Sprint defaults and Data and privacy, and
+ * `WorkspaceSettings` sets the order (spec: Roles last).
  */
 export const WORKSPACE_TABS = {
   general: "org:manage",
   members: "members:manage",
+  roles: "roles:manage",
 } as const satisfies Record<string, Permission>;
 export type WorkspaceTab = keyof typeof WORKSPACE_TABS;
 
