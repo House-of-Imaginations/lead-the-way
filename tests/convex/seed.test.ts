@@ -555,3 +555,167 @@ test("seed.invite can invite into a members:manage role, made once", async () =>
   expect(sprintOf("people-one@example.com")).toBeUndefined();
   expect(sprintOf("plain@example.com")).toBeDefined();
 });
+
+test("invite grants a Workspace admin or a Role admin, and nothing more (FLAG 32)", async () => {
+  const t = harness();
+  const accounts = await seedDemoAccounts(t);
+  const orgId = await t.mutation(internal.seed.writeCalderLane, { accounts });
+  await t.mutation(internal.seed.invite, {
+    email: "ws@example.com",
+    org: true,
+  });
+  await t.mutation(internal.seed.invite, {
+    email: "ro@example.com",
+    roles: true,
+  });
+  const roles = await t.run((ctx) =>
+    ctx.db
+      .query("orgRoles")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect(),
+  );
+  const named = (name: string) => roles.find((r) => r.name === name);
+  expect(named("Workspace admin")).toMatchObject({
+    permissions: ["org:manage"],
+  });
+  expect(named("Role admin")).toMatchObject({ permissions: ["roles:manage"] });
+});
+
+type AuthModel = "user" | "session" | "account";
+/** The auth component's rows of `model` where `field` is `value`. */
+async function authRows(t: T, model: AuthModel, field: string, value: string) {
+  const { page } = await t.run((ctx) =>
+    ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model,
+      where: [{ field, value }],
+      paginationOpts: { numItems: 100, cursor: null },
+    }),
+  );
+  return page;
+}
+
+/** Sign up through Better Auth (a user, an account and a session), then join Calder Lane. */
+async function signUpAndJoin(t: T, name: string, email: string) {
+  const res = await post(t, "/sign-up/email", {
+    name,
+    email,
+    password: PASSWORD,
+  });
+  expect(res.status).toBe(200);
+  const { user } = (await res.json()) as { user: { id: string } };
+  const token = await t.mutation(internal.seed.invite, { email });
+  await t
+    .withIdentity({ subject: user.id })
+    .mutation(api.invites.accept, { token });
+  return user.id;
+}
+
+test("clearE2e removes e2e.test accounts and the workspaces they own, and nothing else (Ruling 34)", async () => {
+  const t = harness();
+  const accounts = await seedDemoAccounts(t);
+  await t.mutation(internal.seed.writeCalderLane, { accounts });
+  const kai = await signUpAndJoin(t, "Kai Moreno", "kai@e2e.test");
+  const bec = await signUpAndJoin(t, "Bec", "bec@example.com");
+  // Look-alikes that aren't on the domain.
+  for (const email of ["e2e.test@example.com", "x@note2e.test"]) {
+    await seedAuthUser(t, { name: "Look-alike", email, emailVerified: false });
+  }
+  const { orgId } = await t
+    .withIdentity({ subject: kai })
+    .mutation(api.orgs.create, { name: "Kai's studio", teamName: "Studio" });
+  for (const id of [kai, bec]) {
+    expect(await authRows(t, "session", "userId", id)).toHaveLength(1);
+    expect(await authRows(t, "account", "userId", id)).toHaveLength(1);
+  }
+
+  expect(await t.mutation(internal.seed.clearE2e, {})).toBe(1);
+
+  // Kai, his sign-in rows, his profile and his workspace are gone.
+  expect(await authRows(t, "user", "_id", kai)).toHaveLength(0);
+  expect(await authRows(t, "session", "userId", kai)).toHaveLength(0);
+  expect(await authRows(t, "account", "userId", kai)).toHaveLength(0);
+  const left = await t.run(async (ctx) => ({
+    org: await ctx.db.get(orgId),
+    team: await ctx.db
+      .query("teams")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first(),
+    role: await ctx.db
+      .query("orgRoles")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first(),
+    seat: await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first(),
+    kaiProfile: await ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", kai))
+      .unique(),
+    becProfile: await ctx.db
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", bec))
+      .unique(),
+  }));
+  expect(left).toMatchObject({
+    org: null,
+    team: null,
+    role: null,
+    seat: null,
+    kaiProfile: null,
+  });
+  expect(left.becProfile).not.toBeNull();
+
+  // Everyone else keeps their account: Bec, the look-alikes and the cast.
+  expect(await authRows(t, "user", "_id", bec)).toHaveLength(1);
+  expect(await authRows(t, "session", "userId", bec)).toHaveLength(1);
+  expect(await authRows(t, "account", "userId", bec)).toHaveLength(1);
+  for (const email of ["e2e.test@example.com", "x@note2e.test"]) {
+    expect(await authRows(t, "user", "email", email), email).toHaveLength(1);
+  }
+  const cast = await t.run(async (ctx) => {
+    const ids = [];
+    for (const p of ACCOUNT_HOLDERS) ids.push(await demoUserId(ctx, p.email));
+    return ids;
+  });
+  expect(cast).toEqual(ACCOUNT_HOLDERS.map((p) => accounts[p.key]));
+
+  // Nothing left to clear, and the reset still rebuilds Calder Lane.
+  expect(await t.mutation(internal.seed.clearE2e, {})).toBe(0);
+  const demoId = await t.action(internal.seed.reset, {});
+  const demo = await t.run(async (ctx) => ({
+    people: await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", demoId))
+      .collect(),
+    roles: await ctx.db
+      .query("orgRoles")
+      .withIndex("by_org", (q) => q.eq("orgId", demoId))
+      .collect(),
+  }));
+  expect(demo.people.map((p) => p.name)).toEqual(["Priya Raman"]);
+  expect(demo.roles.map((r) => r.name)).toEqual(["Manager", "Employee"]);
+});
+
+test("reset clears e2e.test accounts first, and never without demo mode (Ruling 34)", async () => {
+  const t = harness();
+  await seedDemoAccounts(t);
+  const kai = await seedAuthUser(t, {
+    name: "Kai Moreno",
+    email: "kai@e2e.test",
+    emailVerified: false,
+  });
+
+  vi.stubEnv("DEMO_MODE", "");
+  await expect(t.mutation(internal.seed.clearE2e, {})).rejects.toMatchObject({
+    data: { code: "FEATURE_UNAVAILABLE" },
+  });
+  await expect(t.action(internal.seed.reset, {})).rejects.toMatchObject({
+    data: { code: "FEATURE_UNAVAILABLE" },
+  });
+  expect(await authRows(t, "user", "_id", kai.subject)).toHaveLength(1);
+
+  vi.stubEnv("DEMO_MODE", "on");
+  await t.action(internal.seed.reset, {});
+  expect(await authRows(t, "user", "_id", kai.subject)).toHaveLength(0);
+});
