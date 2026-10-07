@@ -26,7 +26,9 @@ export function SetupHeader({ home }: { home: string }) {
         Lead the Way
       </Link>
       <span className="text-body-02 text-text-secondary">
-        Set up your team sprint
+        {pathname === "/workspace/new"
+          ? "Create a workspace"
+          : "Set up your team sprint"}
       </span>
       <p className="ml-auto text-label-01 text-text-helper">
         Concept prototype. Not an official IBM product.
