@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { api } from "@convex/_generated/api";
-import { fetchAuthQuery, preloadAuthQuery } from "@/lib/account/auth-server";
+import { fetchAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, getShell, openOrHome } from "@/lib/account/queries";
 import type { MembersData } from "./_components/MembersTab";
 import { WorkspaceSettings } from "./_components/WorkspaceSettings";
@@ -28,7 +28,7 @@ export default async function WorkspaceSettingsPage() {
   const [settings, members] = await openOrHome(() =>
     Promise.all([
       tabs.includes("general")
-        ? preloadAuthQuery(api.workspace.settings, {})
+        ? fetchAuthQuery(api.workspace.settings, {})
         : null,
       tabs.includes("members") ? membersData() : null,
     ]),

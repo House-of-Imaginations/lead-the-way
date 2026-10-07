@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { getFunctionName } from "convex/server";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 import { MembersTab } from "../../../src/app/(app)/workspace/settings/_components/MembersTab";
@@ -30,7 +31,11 @@ vi.mock("@/components/app/ExpectOrgId", () => ({
 }));
 vi.mock(
   "../../../src/app/(app)/workspace/settings/_components/GeneralTab",
-  () => ({ GeneralTab: () => <i>general-body</i> }),
+  () => ({
+    GeneralTab: ({ data }: { data: { orgId: string } }) => (
+      <i>{`general-body ${data.orgId}`}</i>
+    ),
+  }),
 );
 vi.mock(
   "../../../src/app/(app)/workspace/settings/_components/SprintDefaultsTab",
@@ -42,15 +47,17 @@ vi.mock(
 );
 
 const members = { people: [], invites: [], roles: [] };
-const preloaded = {} as never;
-const render = (tabs: ("general" | "members")[]) =>
+const settings = (orgId: string) => ({ orgId }) as never;
+const render = (tabs: ("general" | "members")[], from = "org1") =>
   renderToStaticMarkup(
     <WorkspaceSettings
       tabs={tabs}
-      settings={tabs.includes("general") ? preloaded : null}
+      settings={tabs.includes("general") ? settings(from) : null}
       members={tabs.includes("members") ? members : null}
     />,
   );
+const calls = (name: string) =>
+  useQuery.mock.calls.filter((c) => getFunctionName(c[0] as never) === name);
 
 beforeEach(() => {
   useQuery.mockClear();
@@ -71,7 +78,8 @@ test("a live shell without members hides the tab and runs no member query", () =
   const html = render(["general", "members"]);
   expect(html).toContain(">General<");
   expect(html).not.toContain(">Members<");
-  expect(useQuery).not.toHaveBeenCalled();
+  // General's own read runs; nothing reads members.
+  expect(calls("members:list")).toEqual([]);
 });
 
 test("Members skips its queries once the live shell drops the permission", () => {
@@ -134,6 +142,26 @@ test("Members never renders another workspace's rows read during a switch (C2)",
   useQuery.mockReset();
   expect(live).not.toContain("Other Live");
   expect(live).toContain("Own");
+});
+
+test("General keeps its own workspace's settings after a switch (R-g)", () => {
+  liveTabs = ["general"];
+  switched = true;
+  const html = render(["general"]);
+  // The live read would answer for the other workspace: it doesn't run.
+  expect(calls("workspace:settings").map((c) => c[1])).toEqual(["skip"]);
+  expect(html).toContain("general-body org1");
+});
+
+test("General never shows another workspace's settings (R-g)", () => {
+  liveTabs = ["general"];
+  // The server read them after a switch in another tab.
+  expect(render(["general"], "org2")).not.toContain("general-body");
+  // A live answer from org2 keeps the page's own.
+  useQuery.mockReturnValue(settings("org2"));
+  const live = render(["general"]);
+  useQuery.mockReset();
+  expect(live).toContain("general-body org1");
 });
 
 test("Members subscribes while the live shell lists members", () => {

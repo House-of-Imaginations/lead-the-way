@@ -1,11 +1,12 @@
 "use client";
 
-import { usePreloadedQuery, type Preloaded } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache";
 import type { FunctionReturnType } from "convex/server";
 import type { ComponentType } from "react";
 import { api } from "@convex/_generated/api";
 import type { WorkspaceTab } from "@convex/lib/shell";
-import { useShell } from "@/components/app/AppShell";
+import { useShell, useWorkspaceSwitched } from "@/components/app/AppShell";
+import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import { Tag, type TabItem } from "@/components/ui";
 import { SettingsFrame } from "@/components/settings/SettingsFrame";
 import { GeneralTab } from "./GeneralTab";
@@ -15,15 +16,29 @@ import { SprintDefaultsTab } from "./SprintDefaultsTab";
 
 export type WorkspaceData = FunctionReturnType<typeof api.workspace.settings>;
 
-/** One `org:manage` tab, on the preloaded settings. */
+/**
+ * One `org:manage` tab, guarded as Members is (R-g, C2). No live read once the
+ * shell drops the tab or another browser tab switched workspace, and never
+ * another workspace's settings, read by the server render or live. Then the
+ * tab is empty under AppShell's reload notice.
+ */
 function SettingsTab({
-  preloaded,
+  initial,
   Tab,
 }: {
-  preloaded: Preloaded<typeof api.workspace.settings>;
+  initial: WorkspaceData;
   Tab: ComponentType<{ data: WorkspaceData }>;
 }) {
-  return <Tab data={usePreloadedQuery(preloaded)} />;
+  const switched = useWorkspaceSwitched();
+  const expectOrgId = useExpectOrgId();
+  const allowed =
+    useShell().workspaceSettings.tabs.includes("general") && !switched;
+  const own = (data: WorkspaceData | undefined) =>
+    data?.orgId === expectOrgId ? data : undefined;
+  const data =
+    own(useQuery(api.workspace.settings, allowed ? {} : "skip")) ??
+    own(initial);
+  return data ? <Tab data={data} /> : null;
 }
 
 /**
@@ -36,7 +51,7 @@ export function WorkspaceSettings({
   members,
 }: {
   tabs: WorkspaceTab[];
-  settings: Preloaded<typeof api.workspace.settings> | null;
+  settings: WorkspaceData | null;
   members: MembersData | null;
 }) {
   const { org, workspaceSettings } = useShell();
@@ -51,7 +66,7 @@ export function WorkspaceSettings({
           {
             value: "general",
             label: "General",
-            content: <SettingsTab preloaded={general} Tab={GeneralTab} />,
+            content: <SettingsTab initial={general} Tab={GeneralTab} />,
           },
         ]
       : []),
@@ -69,14 +84,12 @@ export function WorkspaceSettings({
           {
             value: "sprint",
             label: "Sprint defaults",
-            content: (
-              <SettingsTab preloaded={general} Tab={SprintDefaultsTab} />
-            ),
+            content: <SettingsTab initial={general} Tab={SprintDefaultsTab} />,
           },
           {
             value: "privacy",
             label: "Data and privacy",
-            content: <SettingsTab preloaded={general} Tab={PrivacyTab} />,
+            content: <SettingsTab initial={general} Tab={PrivacyTab} />,
           },
         ]
       : []),

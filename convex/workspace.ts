@@ -29,6 +29,7 @@ import {
 export const settings = viewerQuery("org:manage")({
   args: {},
   returns: v.object({
+    orgId: v.id("orgs"),
     name: v.string(),
     /** The Workspace ID. Links use it, so it never changes. */
     slug: v.string(),
@@ -50,6 +51,8 @@ export const settings = viewerQuery("org:manage")({
     const { org, permissions } = ctx.viewer;
     const team = await currentTeam(ctx, org._id);
     return {
+      // R-g: the tabs show only their own workspace's settings.
+      orgId: org._id,
       name: org.name,
       slug: org.slug,
       partner: org.partnerName
