@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Doc } from "./_generated/dataModel";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { pickInviteRole } from "./lib/orgs/invites";
@@ -51,7 +51,10 @@ const roleValidator = v.object({
   makesManager: v.boolean(),
   /** This seat may move somebody into it (Change role, Invite member). */
   assignable: v.boolean(),
-  /** This seat may rename it and change its permissions (R-a). */
+  /**
+   * This seat may rename it, and change its permissions unless it is the
+   * launch role (R-a).
+   */
   editable: v.boolean(),
   /** ...and delete it: nobody holds it and the team isn't invited into it. */
   deletable: v.boolean(),
@@ -111,15 +114,21 @@ function checkName(name: string): string {
   return trimmed;
 }
 
-/** R-a: one role per name in a workspace, whatever the case. */
+/**
+ * R-a: one role per name in a workspace, whatever the case. Keeping a role's
+ * own name is never a clash, even beside a duplicate written before this rule.
+ */
 function requireUniqueName(
   roles: Doc<"orgRoles">[],
   name: string,
-  except?: Id<"orgRoles">,
+  self?: Doc<"orgRoles">,
 ): void {
   const key = name.toLowerCase();
+  if (self?.name.trim().toLowerCase() === key) return;
   if (
-    roles.some((r) => r._id !== except && r.name.trim().toLowerCase() === key)
+    roles.some(
+      (r) => r._id !== self?._id && r.name.trim().toLowerCase() === key,
+    )
   ) {
     throwUserError("FIELD_REQUIRED", "Another role already has that name.");
   }
@@ -192,7 +201,8 @@ export const update = viewerMutation("roles:manage")({
 
     const trimmed = checkName(name);
     // M-e: the editor never shows a hidden permission, so it keeps what the
-    // role held. Kept, never added, so it can't widen anything.
+    // role held. Kept on save; a holder may also send it (Ruling 19), and
+    // then `requireWithin` below checks it like any other addition.
     const kept = role.permissions.filter((p) => HIDDEN_PERMISSIONS.includes(p));
     const next = [...new Set([...permissions, ...kept])];
 
@@ -224,7 +234,7 @@ export const update = viewerMutation("roles:manage")({
         "Your team is invited into this role, so it can't have permissions.",
       );
     }
-    requireUniqueName(roles, trimmed, roleId);
+    requireUniqueName(roles, trimmed, role);
 
     await ctx.db.patch(roleId, { name: trimmed, permissions: next });
 

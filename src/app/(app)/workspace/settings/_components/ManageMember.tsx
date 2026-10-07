@@ -52,9 +52,12 @@ export function ManageMember({
   const toDialog = useRef(false);
   // Cancel or Escape on a dialog goes back to this row's Manage button.
   const manageRef = useRef<HTMLButtonElement>(null);
+  // The live list can take the row's Manage button away while a dialog is
+  // open, so focus falls back to the header the remove path uses.
   const backToRow = (e: Event) => {
     e.preventDefault();
-    manageRef.current?.focus();
+    if (manageRef.current?.isConnected) manageRef.current.focus();
+    else document.getElementById("members-heading")?.focus();
   };
 
   const actions = actionsFor(row);
@@ -139,7 +142,7 @@ export function ManageMember({
       {row.kind === "person" && (
         <>
           <ChangeRole
-            key={row.member.roleId}
+            key={row.member.personId}
             member={row.member}
             roles={roles}
             open={dialog === "role"}
@@ -187,6 +190,16 @@ function ChangeRole({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const formId = `change-role-${member.personId}`;
+  // The parent opens it, so the Modal never reports the open: each opening
+  // starts from the member's role as it is now, read during render.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setRoleId(member.roleId);
+      setError(null);
+    }
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -200,6 +213,8 @@ function ChangeRole({
         expectOrgId,
       });
       toast({ title: "Role changed." });
+      // The next opening resets the pick from the new role.
+      setError(null);
       onOpenChange(false);
     } catch (e) {
       setError(userMessage(e, "The role wasn't changed. Try again."));

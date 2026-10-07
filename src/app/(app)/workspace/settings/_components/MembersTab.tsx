@@ -198,11 +198,13 @@ function InviteMember({ roles }: { roles: Role[] }) {
   const toast = useToast();
   // What this seat may give, never the owner role: an invitation can't hand over ownership.
   const choices = roles.filter((r) => r.assignable && !r.isOwner);
+  // The role launch invites the team into, by the server's flag, not its name.
+  const fallback = (choices.find((r) => r.launch) ?? choices[0])?._id ?? "";
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
-  const [roleId, setRoleId] = useState<string>(
-    () => (choices.find((r) => r.name === "Employee") ?? choices[0])?._id ?? "",
-  );
+  const [picked, setPicked] = useState<string>(fallback);
+  // A pick this seat may no longer give falls back, so a submit is never refused for it.
+  const roleId = choices.some((r) => r._id === picked) ? picked : fallback;
   const [emailError, setEmailError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -249,7 +251,8 @@ function InviteMember({ roles }: { roles: Role[] }) {
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) {
+        if (next) setPicked(fallback);
+        else {
           setError(null);
           setEmailError(null);
         }
@@ -292,7 +295,7 @@ function InviteMember({ roles }: { roles: Role[] }) {
           label="Role"
           options={choices.map((r) => ({ value: r._id, label: r.name }))}
           value={roleId}
-          onChange={(e) => setRoleId(e.currentTarget.value)}
+          onChange={(e) => setPicked(e.currentTarget.value)}
           className="bg-background"
         />
         {error && (

@@ -342,6 +342,38 @@ test("sprint 1 counts the seated team, however they came to be on it (R-c)", asy
   });
 });
 
+test("an open invitation to somebody already seated isn't counted twice (R-c, R-i)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  const priya = as("priya");
+  const before = (await priya.query(api.manager.overview, {}))!.sprint;
+  expect(before).toMatchObject({ invited: 8, joined: 7 });
+  // Dan accepted an older invitation; a newer one to his address stays pending.
+  await t.run(async (ctx) => {
+    const omar = (
+      await ctx.db
+        .query("orgInvites")
+        .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
+        .collect()
+    ).find((i) => i.status === "pending")!;
+    await ctx.db.insert("orgInvites", {
+      orgId,
+      roleId: omar.roleId,
+      sprintId: omar.sprintId,
+      token: "dan-again",
+      email: castOf("dan").email,
+      status: "pending",
+      invitedBy: omar.invitedBy,
+      expiresAt: omar.expiresAt,
+      createdAt: omar.createdAt,
+    });
+  });
+  expect((await priya.query(api.manager.overview, {}))!.sprint).toMatchObject({
+    invited: 8,
+    joined: 7,
+  });
+});
+
 test("the week we're in stays current after its hour, until Monday", async () => {
   vi.setSystemTime(mel("2026-09-09T16:00"));
   const t = harness();

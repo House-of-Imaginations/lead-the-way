@@ -1,11 +1,36 @@
 import { expect, test } from "vitest";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import type { Permission } from "../../../convex/lib/orgs/permissions";
 import { harness, seat, workspace, type T } from "./helpers";
 
 /** The Roles editor's server rules (R-a). The escalation set is in orgs.test.ts. */
-const FORBIDDEN = { data: { code: "FORBIDDEN" } };
-const NAME = { data: { code: "FIELD_REQUIRED" } };
+// Task 7's modal shows these as they are, so the words are pinned too.
+const NAME = {
+  data: {
+    code: "FIELD_REQUIRED",
+    message: "Another role already has that name.",
+  },
+};
+const OWN_ROLE = {
+  data: {
+    code: "FORBIDDEN",
+    message: "You can't edit your own role. Ask someone else to change it.",
+  },
+};
+const NO_PERMISSIONS = {
+  data: {
+    code: "FORBIDDEN",
+    message:
+      "Your team is invited into this role, so it can't have permissions.",
+  },
+};
+const STAYS = {
+  data: {
+    code: "FORBIDDEN",
+    message: "Your team is invited into this role, so it can't be deleted.",
+  },
+};
 
 const roleId = async (as: ReturnType<T["withIdentity"]>, name: string) =>
   (await as.query(api.orgRoles.list, {})).find((r) => r.name === name)!._id;
@@ -77,7 +102,7 @@ test("nobody edits the role they hold (R-a)", async () => {
       permissions: ["roles:manage"],
       expectOrgId: orgId,
     }),
-  ).rejects.toMatchObject(FORBIDDEN);
+  ).rejects.toMatchObject(OWN_ROLE);
   // Widening it still reads as escalation (orgs.test.ts pins those).
   await expect(
     admin.mutation(api.orgRoles.update, {
@@ -115,14 +140,14 @@ test("the role your team is invited into keeps no permissions and stays (R-a)", 
       permissions: ["team:insights"],
       expectOrgId: orgId,
     }),
-  ).rejects.toMatchObject(FORBIDDEN);
+  ).rejects.toMatchObject(NO_PERMISSIONS);
   // It is the last role with no permissions, and it stays.
   await expect(
     owner.mutation(api.orgRoles.remove, {
       roleId: employee,
       expectOrgId: orgId,
     }),
-  ).rejects.toMatchObject(FORBIDDEN);
+  ).rejects.toMatchObject(STAYS);
 
   // Another role with no permissions is an ordinary role.
   const contractor = await owner.mutation(api.orgRoles.create, {
@@ -144,4 +169,59 @@ test("the role your team is invited into keeps no permissions and stays (R-a)", 
   expect(
     (await owner.query(api.orgRoles.list, {})).find((r) => r.launch)?._id,
   ).toBe(employee);
+});
+
+test("a bare role renamed Employee takes the protection over (R-a)", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const update = (
+    id: Id<"orgRoles">,
+    name: string,
+    permissions: Permission[],
+  ) =>
+    owner.mutation(api.orgRoles.update, {
+      roleId: id,
+      name,
+      permissions,
+      expectOrgId: orgId,
+    });
+  const teammate = await roleId(owner, "Employee");
+  await update(teammate, "Teammate", []);
+  const contractor = await owner.mutation(api.orgRoles.create, {
+    name: "Contractor",
+    permissions: [],
+    expectOrgId: orgId,
+  });
+  await update(contractor, "Employee", []);
+
+  // pickInviteRole now picks the new "Employee", so it is the protected one.
+  await expect(
+    update(contractor, "Employee", ["team:insights"]),
+  ).rejects.toMatchObject(NO_PERMISSIONS);
+  await update(teammate, "Teammate", ["team:insights"]);
+});
+
+test("keeping a role's own name is never a clash, even beside an old duplicate (M-10)", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  // Two rows with one name, as written before names were unique.
+  const [first] = await t.run(async (ctx) =>
+    Promise.all(
+      ["Coordinator", "coordinator"].map((name) =>
+        ctx.db.insert("orgRoles", {
+          orgId,
+          kind: "custom",
+          name,
+          permissions: ["team:insights"],
+          createdAt: Date.now(),
+        }),
+      ),
+    ),
+  );
+  await owner.mutation(api.orgRoles.update, {
+    roleId: first,
+    name: "COORDINATOR",
+    permissions: ["team:insights"],
+    expectOrgId: orgId,
+  });
 });

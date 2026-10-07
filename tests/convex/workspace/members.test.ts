@@ -3,7 +3,10 @@ import { api, internal } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { castOf } from "../../../convex/lib/demo/cast";
 import { ON_REMOVE } from "../../../convex/lib/orgs/cascade";
-import { ALL_PERMISSIONS } from "../../../convex/lib/orgs/permissions";
+import {
+  ALL_PERMISSIONS,
+  HIDDEN_PERMISSIONS,
+} from "../../../convex/lib/orgs/permissions";
 import { writeSettings } from "../../../convex/lib/settings";
 import { calderLane, harness, seat, workspace } from "./helpers";
 
@@ -19,6 +22,10 @@ afterEach(() => {
 });
 
 const FORBIDDEN = { data: { code: "FORBIDDEN" } };
+// A refusal, not a validator error or a missing row.
+const refused = (codes: RegExp) => ({
+  data: { code: expect.stringMatching(codes) },
+});
 
 test("only an owner moves anybody into or out of the owner role (M-b)", async () => {
   const t = harness();
@@ -429,15 +436,46 @@ test("each row says whether this seat may change it, as the server decides", asy
   expect(Object.values(await manageable(reader.as))).not.toContain(true);
 
   // The flag is the server's own answer: every row it marks false is refused.
-  for (const row of await admin.as.query(api.members.list, {})) {
+  const rows = await admin.as.query(api.members.list, {});
+  for (const row of rows) {
     if (row.canManage || row.you) continue;
     await expect(
       admin.as.mutation(api.members.remove, {
         personId: row.personId,
         expectOrgId: orgId,
       }),
-    ).rejects.toBeDefined();
+    ).rejects.toMatchObject(refused(/FORBIDDEN|PERMISSION_ESCALATION/));
   }
+  // ...and a row it marks true is accepted.
+  const dee = rows.find((r) => r.userId === "user_dee")!;
+  expect(dee.canManage).toBe(true);
+  await admin.as.mutation(api.members.remove, {
+    personId: dee.personId,
+    expectOrgId: orgId,
+  });
+});
+
+test("a role holding every permission is offered nothing of the owner role (M-b)", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const all = await seat(t, orgId, "user_all", [...ALL_PERMISSIONS]);
+  const dee = await seat(t, orgId, "user_dee", []);
+  const ownerRow = (await all.as.query(api.members.list, {})).find(
+    (r) => r.userId === "user_owner",
+  )!;
+  expect(ownerRow.canManage).toBe(false);
+  const manager = (await all.as.query(api.orgRoles.list, {})).find(
+    (r) => r.name === "Manager",
+  )!;
+  expect(manager.assignable).toBe(false);
+  // The server agrees: a seat it outranks still can't be given the owner role.
+  await expect(
+    all.as.mutation(api.members.changeRole, {
+      personId: dee.personId,
+      roleId: manager._id,
+      expectOrgId: orgId,
+    }),
+  ).rejects.toMatchObject(FORBIDDEN);
 });
 
 test("each role says what this seat may do with it", async () => {
@@ -493,5 +531,36 @@ test("each role says what this seat may do with it", async () => {
   // members:read reads the roles and may do nothing with them.
   for (const row of Object.values(await flags(reader.as))) {
     expect(row.slice(3)).toEqual([false, false, false]);
+  }
+
+  // The flags are the server's own answer. A refusal rolls back, so each
+  // row is tried as it stands.
+  const REFUSED = refused(/FORBIDDEN|PERMISSION_ESCALATION|ROLE_IN_USE/);
+  for (const as of [owner, admin.as]) {
+    for (const role of await as.query(api.orgRoles.list, {})) {
+      if (!role.deletable) {
+        await expect(
+          as.mutation(api.orgRoles.remove, {
+            roleId: role._id,
+            expectOrgId: orgId,
+          }),
+          role.name,
+        ).rejects.toMatchObject(REFUSED);
+      }
+      if (!role.editable) {
+        // Its own name and what the editor shows: a save that changes nothing.
+        await expect(
+          as.mutation(api.orgRoles.update, {
+            roleId: role._id,
+            name: role.name,
+            permissions: role.permissions.filter(
+              (p) => !HIDDEN_PERMISSIONS.includes(p),
+            ),
+            expectOrgId: orgId,
+          }),
+          role.name,
+        ).rejects.toMatchObject(REFUSED);
+      }
+    }
   }
 });

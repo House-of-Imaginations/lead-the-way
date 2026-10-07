@@ -92,7 +92,15 @@ test("every permission is a manager's or a teammate's, and isManager agrees", ()
   for (const p of WORKSPACE_PERMISSIONS) {
     expect(PERMISSION_CLASS[p], p).toBe("manager");
   }
-  expect(PERMISSION_CLASS["members:read"]).toBe("teammate");
+  // The whole manager line, so moving any permission across it fails here.
+  expect(PERMISSION_CLASS).toEqual({
+    "org:manage": "manager",
+    "members:read": "teammate",
+    "members:manage": "manager",
+    "roles:manage": "manager",
+    "sprint:manage": "manager",
+    "team:insights": "manager",
+  });
 });
 
 test("the role editor offers M-i's labels and hides members:read (M-e)", () => {

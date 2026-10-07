@@ -5,6 +5,7 @@ import type { QueryCtx } from "./_generated/server";
 import { dayMonth, latestSaved } from "./lib/agreement";
 import { timedViewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
+import { normalEmail } from "./lib/inviteRules";
 import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
 import { PATHWAY_MODULES, coachingPercent } from "./lib/pathway";
 import {
@@ -346,7 +347,8 @@ export const overview = timedViewerQuery()({
  * 08's and 16's invited and joined, the same for every sprint (R-c). Joined
  * is the seated team: managers left out (W-f), a removed member gone (M-c),
  * whoever a role change put on it in. Invited adds the sprint's open,
- * unexpired invitations. Membership facts, not activity: no threshold.
+ * unexpired invitations to anybody not seated. Membership facts, not
+ * activity: no threshold.
  */
 async function sprintHeadcount(
   ctx: QueryCtx,
@@ -355,8 +357,14 @@ async function sprintHeadcount(
   now: number,
 ): Promise<{ invited: number; joined: number }> {
   const seated = await loadSeated(ctx, org);
+  // R-i: an older duplicate invitation can be the one accepted, leaving a
+  // newer one pending. Its person is already seated, so it isn't counted.
+  const seatedEmails = new Set(seated.map((p) => normalEmail(p.email)));
   const open = (await sprintInvites(ctx, org._id, sprint._id)).filter(
-    (i) => i.status === "pending" && i.expiresAt > now,
+    (i) =>
+      i.status === "pending" &&
+      i.expiresAt > now &&
+      !seatedEmails.has(normalEmail(i.email)),
   );
   return { invited: seated.length + open.length, joined: seated.length };
 }
@@ -423,7 +431,7 @@ const QUESTIONS: Record<
  * through `snapshotSeries`, never a live count (R-a; the static test in
  * tests/convex/outcomes.test.ts keeps `count` and `aggregate` out of this
  * file). Pending until the sprint closes (Ruling 12), null before launch.
- * Invited is the live, non-revoked invitation count, as on 08 (Ruling 11).
+ * Invited is the seated team plus open invitations, as on 08 (R-c).
  * Dates come from the sprint, never from a response's time.
  */
 export const outcomes = timedViewerQuery("team:insights")({
