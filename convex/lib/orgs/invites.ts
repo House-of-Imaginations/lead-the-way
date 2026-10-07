@@ -104,17 +104,24 @@ export async function insertInvite(
  * The role a team is invited into, chosen for them: a custom role that grants
  * nothing, "Employee" first. A role that grants anything is never picked, even
  * one called "Employee" or the only one left, since nobody chose it for these
- * people. The owner role is never a candidate.
+ * people. The owner role is never a candidate. Null when there is none, for a
+ * reader that must not throw (`orgRoles`' R-a rules and flags).
  */
+export function pickInviteRole(
+  roles: Doc<"orgRoles">[],
+): Doc<"orgRoles"> | null {
+  const bare = roles.flatMap((r) =>
+    r.kind === "custom" && r.permissions.length === 0 ? [r] : [],
+  );
+  return bare.find((r) => r.name === "Employee") ?? bare[0] ?? null;
+}
+
+/** `pickInviteRole` for a writer, which must have one. */
 export async function inviteRoleOf(
   ctx: QueryCtx,
   orgId: Id<"orgs">,
 ): Promise<Doc<"orgRoles">> {
-  const roles = await rolesOf(ctx, orgId);
-  const bare = roles.flatMap((r) =>
-    r.kind === "custom" && r.permissions.length === 0 ? [r] : [],
-  );
-  const role = bare.find((r) => r.name === "Employee") ?? bare[0];
+  const role = pickInviteRole(await rolesOf(ctx, orgId));
   if (!role) {
     throwUserError(
       "NOT_FOUND",

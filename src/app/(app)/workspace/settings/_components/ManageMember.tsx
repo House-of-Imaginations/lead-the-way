@@ -22,7 +22,7 @@ type Action =
 /** What the Manage menu offers on a row (Ruling 16). */
 export function actionsFor(row: MemberRow): Action[] {
   if (row.kind === "person")
-    return row.member.you ? [] : ["Change role", "Remove member"];
+    return row.member.canManage ? ["Change role", "Remove member"] : [];
   if (row.state === "Declined") return [];
   return row.invite.email
     ? ["Copy link", "Resend", "Revoke"]
@@ -50,6 +50,12 @@ export function ManageMember({
   // The menu closes after a dialog is chosen and would pull focus back to its
   // trigger, past the dialog's own return to the header.
   const toDialog = useRef(false);
+  // Cancel or Escape on a dialog goes back to this row's Manage button.
+  const manageRef = useRef<HTMLButtonElement>(null);
+  const backToRow = (e: Event) => {
+    e.preventDefault();
+    manageRef.current?.focus();
+  };
 
   const actions = actionsFor(row);
   if (actions.length === 0) return null;
@@ -120,6 +126,7 @@ export function ManageMember({
         }}
         trigger={
           <Button
+            ref={manageRef}
             kind="ghost"
             size="sm"
             className="max-md:h-size-control-lg"
@@ -137,11 +144,13 @@ export function ManageMember({
             roles={roles}
             open={dialog === "role"}
             onOpenChange={(open) => setDialog(open ? "role" : null)}
+            onCloseAutoFocus={backToRow}
           />
           <RemoveMember
             member={row.member}
             open={dialog === "remove"}
             onOpenChange={(open) => setDialog(open ? "remove" : null)}
+            onCloseAutoFocus={backToRow}
           />
         </>
       )}
@@ -149,7 +158,7 @@ export function ManageMember({
   );
 }
 
-/** The dialogs open from a menu item, so focus has no trigger to return to. */
+/** A removed row has no Manage button left to return focus to. */
 const focusHeader = (e: Event) => {
   e.preventDefault();
   document.getElementById("members-heading")?.focus();
@@ -163,11 +172,13 @@ function ChangeRole({
   roles,
   open,
   onOpenChange,
+  onCloseAutoFocus,
 }: {
   member: Member;
   roles: Role[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCloseAutoFocus: (e: Event) => void;
 }) {
   const expectOrgId = useExpectOrgId();
   const changeRole = useMutation(api.members.changeRole);
@@ -213,18 +224,20 @@ function ChangeRole({
       primaryText="Change role"
       primaryDisabled={pending}
       secondaryText="Cancel"
-      onCloseAutoFocus={focusHeader}
+      onCloseAutoFocus={onCloseAutoFocus}
     >
       <form
         id={formId}
         className="flex flex-col gap-06 pt-06"
         onSubmit={(e) => void onSubmit(e)}
       >
-        {/* Every role: the server refuses what this seat may not give (M-b). */}
+        {/* What this seat may give (the server's `assignable`), and the current role. */}
         <Select
           id={`${formId}-role`}
           label="Role"
-          options={roles.map((r) => ({ value: r._id, label: r.name }))}
+          options={roles
+            .filter((r) => r.assignable || r._id === member.roleId)
+            .map((r) => ({ value: r._id, label: r.name }))}
           value={roleId}
           onChange={(e) => setRoleId(e.currentTarget.value)}
           className="bg-background"
@@ -246,16 +259,19 @@ function RemoveMember({
   member,
   open,
   onOpenChange,
+  onCloseAutoFocus,
 }: {
   member: Member;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCloseAutoFocus: (e: Event) => void;
 }) {
   const expectOrgId = useExpectOrgId();
   const remove = useMutation(api.members.remove);
   const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const removed = useRef(false);
 
   async function onRemove() {
     if (pending) return;
@@ -263,6 +279,7 @@ function RemoveMember({
     setPending(true);
     try {
       await remove({ personId: member.personId, expectOrgId });
+      removed.current = true;
       toast({ title: "Member removed." });
       onOpenChange(false);
     } catch (e) {
@@ -289,7 +306,10 @@ function RemoveMember({
       onPrimary={() => void onRemove()}
       primaryDisabled={pending}
       secondaryText="Cancel"
-      onCloseAutoFocus={focusHeader}
+      // Removed: the row and its Manage button are gone, so the header.
+      onCloseAutoFocus={(e) =>
+        removed.current ? focusHeader(e) : onCloseAutoFocus(e)
+      }
     >
       {error && (
         <p role="alert" className="text-label-01 text-support-error">

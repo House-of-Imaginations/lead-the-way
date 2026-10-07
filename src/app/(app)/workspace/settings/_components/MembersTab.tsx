@@ -196,7 +196,8 @@ function InviteMember({ roles }: { roles: Role[] }) {
   const expectOrgId = useExpectOrgId();
   const create = useMutation(api.invites.create);
   const toast = useToast();
-  const choices = roles.filter((r) => !r.isOwner);
+  // What this seat may give, never the owner role: an invitation can't hand over ownership.
+  const choices = roles.filter((r) => r.assignable && !r.isOwner);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [roleId, setRoleId] = useState<string>(

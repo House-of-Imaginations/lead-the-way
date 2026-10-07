@@ -13,6 +13,7 @@ import {
   seatOf,
   setRole,
 } from "./lib/orgs/membership";
+import { grants, within } from "./lib/orgs/permissions";
 
 /**
  * Who is in a workspace, and the writes that change that.
@@ -42,6 +43,8 @@ const memberValidator = v.object({
   isOwner: v.boolean(),
   joinedAt: v.number(),
   you: v.boolean(),
+  /** This seat may change or remove them (requireOutranks, M-b). */
+  canManage: v.boolean(),
 });
 
 /**
@@ -60,10 +63,15 @@ export const list = viewerQuery()({
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .take(MAX_MEMBERS_PER_ORG);
 
+    // The same checks changeRole and remove run, so the menu never offers
+    // what the server refuses.
+    const manages = grants(ctx.viewer.permissions, ["members:manage"]);
+    const owner = isOwnerRole(ctx.viewer.role);
     const members = [];
     for (const person of people) {
       const role = await ctx.db.get(person.roleId);
       if (!role) continue;
+      const you = person._id === ctx.viewer.person._id;
       members.push({
         orgId,
         personId: person._id,
@@ -74,7 +82,12 @@ export const list = viewerQuery()({
         roleName: role.name,
         isOwner: isOwnerRole(role),
         joinedAt: person.createdAt,
-        you: person._id === ctx.viewer.person._id,
+        you,
+        canManage:
+          manages &&
+          !you &&
+          within(permissionsOf(role), ctx.viewer.permissions) &&
+          (!isOwnerRole(role) || owner),
       });
     }
     return members;

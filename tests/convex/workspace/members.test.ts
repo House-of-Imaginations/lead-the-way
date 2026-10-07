@@ -114,6 +114,7 @@ test("the member list is name, email and role, and marks your own row", async ()
   expect(rows.map((r) => r.you)).toEqual([true, false]);
   // Privacy rule 7: nothing about anyone's participation, ever.
   expect(Object.keys(rows[0]).sort()).toEqual([
+    "canManage",
     "email",
     "isOwner",
     "joinedAt",
@@ -393,4 +394,104 @@ test("the holder backfill stamps older badges once", async () => {
     holderName: person.name,
     holderTimeZone: person.timeZone,
   });
+});
+
+test("each row says whether this seat may change it, as the server decides", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const admin = await seat(t, orgId, "user_admin", ["members:manage"]);
+  await seat(t, orgId, "user_dee", []);
+  await seat(t, orgId, "user_big", ["members:manage", "org:manage"]);
+  const reader = await seat(t, orgId, "user_reader", ["members:read"]);
+  const manageable = async (as: typeof owner) =>
+    Object.fromEntries(
+      (await as.query(api.members.list, {})).map((r) => [
+        r.userId,
+        r.canManage,
+      ]),
+    );
+
+  expect(await manageable(owner)).toEqual({
+    user_owner: false, // you
+    user_admin: true,
+    user_dee: true,
+    user_big: true,
+    user_reader: true,
+  });
+  expect(await manageable(admin.as)).toEqual({
+    user_owner: false, // the owner role (M-b)
+    user_admin: false, // you
+    user_dee: true,
+    user_big: false, // reaches further
+    user_reader: false, // members:read is not within members:manage
+  });
+  // members:read reads the list (M-e) and may change nobody.
+  expect(Object.values(await manageable(reader.as))).not.toContain(true);
+
+  // The flag is the server's own answer: every row it marks false is refused.
+  for (const row of await admin.as.query(api.members.list, {})) {
+    if (row.canManage || row.you) continue;
+    await expect(
+      admin.as.mutation(api.members.remove, {
+        personId: row.personId,
+        expectOrgId: orgId,
+      }),
+    ).rejects.toBeDefined();
+  }
+});
+
+test("each role says what this seat may do with it", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const admin = await seat(t, orgId, "user_admin", [
+    "members:manage",
+    "roles:manage",
+  ]);
+  await seat(t, orgId, "user_dee", []);
+  const reader = await seat(t, orgId, "user_reader", ["members:read"]);
+  await owner.mutation(api.orgRoles.create, {
+    name: "Spare",
+    permissions: [],
+    expectOrgId: orgId,
+  });
+  // [holders, launch, makesManager, assignable, editable, deletable]
+  const flags = async (as: typeof owner) =>
+    Object.fromEntries(
+      (await as.query(api.orgRoles.list, {})).map((r) => [
+        r.name,
+        [
+          r.holders,
+          r.launch,
+          r.makesManager,
+          r.assignable,
+          r.editable,
+          r.deletable,
+        ],
+      ]),
+    );
+
+  expect(await flags(owner)).toEqual({
+    Manager: [1, false, true, true, false, false],
+    // Launch invites into it: never deletable (R-a).
+    Employee: [0, true, false, true, true, false],
+    "role-user_admin": [1, false, true, true, true, false],
+    "role-user_dee": [1, false, false, true, true, false],
+    "role-user_reader": [1, false, false, true, true, false],
+    Spare: [0, false, false, true, true, true],
+  });
+  expect(await flags(admin.as)).toEqual({
+    // Only an owner hands out the owner role (M-b); nobody edits it.
+    Manager: [1, false, true, false, false, false],
+    Employee: [0, true, false, true, true, false],
+    // Your own role: you may give it, never edit it (R-a).
+    "role-user_admin": [1, false, true, true, false, false],
+    "role-user_dee": [1, false, false, true, true, false],
+    // members:read is outside this seat's reach.
+    "role-user_reader": [1, false, false, false, false, false],
+    Spare: [0, false, false, true, true, true],
+  });
+  // members:read reads the roles and may do nothing with them.
+  for (const row of Object.values(await flags(reader.as))) {
+    expect(row.slice(3)).toEqual([false, false, false]);
+  }
 });
