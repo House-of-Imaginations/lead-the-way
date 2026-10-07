@@ -51,6 +51,12 @@ export const overviewValidator = v.object({
   phase: literals("draft", "scheduled", "active", "complete"),
   /** Holds `sprint:manage`: the header buttons and card links lead to its pages. */
   canManage: v.boolean(),
+  /**
+   * R-d: Run another sprint replaces Invite member once the sprint has
+   * closed, by its close time, not phase "complete" (sprints.runAnother's
+   * own rule). Off while a draft copy is the newest sprint.
+   */
+  canRunAnother: v.boolean(),
   /** "Your team is in week 2. The next protected hour is Wednesday 16 September at 2:00 PM." */
   intro: v.string(),
   /** Setup, then one column per week. */
@@ -307,6 +313,10 @@ export const overview = timedViewerQuery()({
       canManage: viewer.permissions.includes(
         ROUTE_PERMISSION["/manager/sprint/launch"],
       ),
+      canRunAnother:
+        viewer.permissions.includes("sprint:manage") &&
+        launched &&
+        closesAt(sprint) <= now,
       intro,
       timeline,
       learning: {

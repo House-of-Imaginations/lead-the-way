@@ -479,6 +479,7 @@ test("the overview's words at each demo target", async () => {
   expect(await priya.query(api.manager.overview, {})).toEqual({
     phase: "draft",
     canManage: true,
+    canRunAnother: false,
     intro: "Your sprint starts Wednesday 9 September at 2:00 PM.",
     timeline: [
       {
@@ -943,4 +944,25 @@ test("week 4's row has no next week, so a lowered threshold names the one it was
   expect(JSON.stringify(overview)).not.toContain(
     "Shown from next week's totals",
   );
+});
+
+test("08 offers Run another sprint once the sprint has closed, to sprint:manage (R-d, M-d)", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  const can = async (who: typeof priya) =>
+    (await who.query(api.manager.overview, {}))!.canRunAnother;
+  await move(t, "week2");
+  expect(await can(priya)).toBe(false);
+
+  await move(t, "complete");
+  const planner = (await seat(t, orgId, "user_planner", ["sprint:manage"])).as;
+  const lead = (await seat(t, orgId, "user_lead", ["team:insights"])).as;
+  expect(await can(priya)).toBe(true);
+  // CX-P2: sprint:manage without team:insights has 08, not 16.
+  expect(await can(planner)).toBe(true);
+  expect(await can(lead)).toBe(false);
+
+  // The draft copy is the newest sprint now, so not a second one.
+  await priya.mutation(api.sprints.runAnother, { expectOrgId: orgId });
+  expect(await can(priya)).toBe(false);
 });

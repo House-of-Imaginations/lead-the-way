@@ -24,6 +24,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { RESOURCES } from "@/content/resources";
+import { RunAnother } from "../outcomes/_components/RunAnother";
 
 type Data = NonNullable<FunctionReturnType<typeof api.manager.overview>>;
 type Column = Data["timeline"][number];
@@ -270,7 +271,7 @@ export function Overview({
           <p className="text-body-01 text-text-secondary">{data.intro}</p>
         </div>
         {data.canManage ? (
-          <div className="flex shrink-0 max-[672px]:w-full max-[672px]:flex-col">
+          <div className="flex shrink-0 flex-wrap max-[672px]:w-full max-[672px]:flex-col">
             <ButtonLink
               href="/join/preview"
               kind="tertiary"
@@ -278,13 +279,18 @@ export function Overview({
             >
               Preview team view
             </ButtonLink>
-            <ButtonLink
-              href="/manager/sprint/launch"
-              icon={Add}
-              className="max-[672px]:w-full"
-            >
-              Invite member
-            </ButtonLink>
+            {/* R-d: once the sprint has closed, the next one is the next step. */}
+            {data.canRunAnother ? (
+              <RunAnother size="lg" />
+            ) : (
+              <ButtonLink
+                href="/manager/sprint/launch"
+                icon={Add}
+                className="max-[672px]:w-full"
+              >
+                Invite member
+              </ButtonLink>
+            )}
           </div>
         ) : null}
       </header>
