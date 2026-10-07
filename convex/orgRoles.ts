@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { pickInviteRole } from "./lib/orgs/invites";
@@ -13,6 +14,7 @@ import {
   rolesOf,
 } from "./lib/orgs/membership";
 import {
+  HIDDEN_PERMISSIONS,
   grants,
   isManager,
   permissionValidator,
@@ -109,6 +111,20 @@ function checkName(name: string): string {
   return trimmed;
 }
 
+/** R-a: one role per name in a workspace, whatever the case. */
+function requireUniqueName(
+  roles: Doc<"orgRoles">[],
+  name: string,
+  except?: Id<"orgRoles">,
+): void {
+  const key = name.toLowerCase();
+  if (
+    roles.some((r) => r._id !== except && r.name.trim().toLowerCase() === key)
+  ) {
+    throwUserError("FIELD_REQUIRED", "Another role already has that name.");
+  }
+}
+
 export const create = viewerMutation("roles:manage")({
   args: { name: v.string(), permissions: v.array(permissionValidator) },
   returns: v.id("orgRoles"),
@@ -125,6 +141,7 @@ export const create = viewerMutation("roles:manage")({
         `A workspace can have at most ${MAX_ROLES_PER_ORG} roles.`,
       );
     }
+    requireUniqueName(existing, trimmed);
 
     return await ctx.db.insert("orgRoles", {
       orgId,
@@ -174,7 +191,10 @@ export const update = viewerMutation("roles:manage")({
     requireReach(ctx.viewer, permissionsOf(role));
 
     const trimmed = checkName(name);
-    const next = [...new Set(permissions)];
+    // M-e: the editor never shows a hidden permission, so it keeps what the
+    // role held. Kept, never added, so it can't widen anything.
+    const kept = role.permissions.filter((p) => HIDDEN_PERMISSIONS.includes(p));
+    const next = [...new Set([...permissions, ...kept])];
 
     // Only what is BEING ADDED has to be within the caller's reach. Narrowing
     // a role you can already edit is not an escalation, so requiring the whole
@@ -183,6 +203,28 @@ export const update = viewerMutation("roles:manage")({
       (permission) => !role.permissions.includes(permission),
     );
     requireWithin(added, ctx.viewer);
+
+    // R-a. After the escalation checks, so reaching past your own role still
+    // reads as escalation.
+    if (role._id === ctx.viewer.role._id) {
+      throwUserError(
+        "FORBIDDEN",
+        "You can't edit your own role. Ask someone else to change it.",
+      );
+    }
+    const roles = await rolesOf(ctx, orgId);
+    // R-a: launch and Invite member put the team into this role, so it grants
+    // nothing. Protection follows `pickInviteRole`'s pick, not the role's id:
+    // after Employee is renamed, a new no-permission role named "Employee"
+    // becomes the pick and the protected role. Launch still works either way,
+    // because the pick never has a permission.
+    if (next.length > 0 && pickInviteRole(roles)?._id === roleId) {
+      throwUserError(
+        "FORBIDDEN",
+        "Your team is invited into this role, so it can't have permissions.",
+      );
+    }
+    requireUniqueName(roles, trimmed, roleId);
 
     await ctx.db.patch(roleId, { name: trimmed, permissions: next });
 
@@ -220,6 +262,13 @@ export const remove = viewerMutation("roles:manage")({
     // below refuses while anybody holds it -- but deleting a role somebody is
     // about to be given is still reaching past yourself.
     requireReach(ctx.viewer, permissionsOf(role));
+    // R-a: the last role with no permissions is always this one, so it stays.
+    if (pickInviteRole(await rolesOf(ctx, orgId))?._id === roleId) {
+      throwUserError(
+        "FORBIDDEN",
+        "Your team is invited into this role, so it can't be deleted.",
+      );
+    }
 
     // Refused while somebody holds it, rather than cascading or reassigning.
     // A cascade evicts people from the workspace as a side effect of tidying
