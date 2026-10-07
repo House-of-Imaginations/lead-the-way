@@ -2,15 +2,23 @@
 
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache";
-import { useRef, useState, type FormEvent, type ReactElement } from "react";
+import {
+  useReducer,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactElement,
+} from "react";
 import { api } from "@convex/_generated/api";
 import {
   HIDDEN_PERMISSIONS,
+  MAX_ROLE_NAME,
   PERMISSION_LABELS,
   ROLE_EDITOR_PERMISSIONS,
   isManager,
   type Permission,
 } from "@convex/lib/orgs/permissions";
+import { useWorkspaceSwitched } from "@/components/app/AppShell";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import {
   Button,
@@ -60,49 +68,123 @@ export function crossingCopy({
   return `${who} ${move} Changing roles during a sprint can hide the rest of that sprint's team totals.`;
 }
 
-/** The dialogs return focus to the header: a row may be gone. */
-const focusHeader = (e: Event) => {
-  e.preventDefault();
-  document.getElementById("roles-heading")?.focus();
+/** What the role dialog holds between presses. */
+export type RoleForm = {
+  name: string;
+  ticked: Permission[];
+  confirming: boolean;
 };
 
+export type RoleFormAction =
+  | { type: "name"; name: string }
+  | { type: "tick"; permission: Permission; on: boolean }
+  | { type: "confirm" }
+  | { type: "reset"; form: RoleForm };
+
+export const startForm = (role?: Pick<Role, "name" | "permissions">) => ({
+  name: role?.name ?? "",
+  ticked: ROLE_EDITOR_PERMISSIONS.filter((p) => role?.permissions.includes(p)),
+  confirming: false,
+});
+
 /**
- * Create role, or Edit role for `role`. A name and M-i's checkboxes; a box
- * this seat doesn't hold is disabled (the server would refuse it), and the
- * launch role's are all disabled (R-a). A save that moves people across the
- * manager line stops once and says so (R-b).
+ * Every change to the dialog. A change to the name or the ticks drops a
+ * shown confirm: it counted the old set, and "Save anyway" would send another.
+ */
+export function roleForm(form: RoleForm, action: RoleFormAction): RoleForm {
+  switch (action.type) {
+    case "name":
+      return { ...form, name: action.name, confirming: false };
+    case "tick":
+      return {
+        ...form,
+        confirming: false,
+        ticked: ROLE_EDITOR_PERMISSIONS.filter((p) =>
+          p === action.permission ? action.on : form.ticked.includes(p),
+        ),
+      };
+    case "confirm":
+      return { ...form, confirming: true };
+    case "reset":
+      return action.form;
+  }
+}
+
+/**
+ * What a press of the primary does (R-b). The server has no confirm flag, so
+ * this is the only stop before a save moves people across the manager line.
+ */
+export function submitStep(
+  role: Pick<Role, "holders" | "permissions"> | undefined,
+  form: RoleForm,
+):
+  | { kind: "blank" }
+  | { kind: "confirm"; moves: NonNullable<ReturnType<typeof crossing>> }
+  | { kind: "save" } {
+  if (!form.name.trim()) return { kind: "blank" };
+  const moves = crossing(role, form.ticked);
+  if (moves && !form.confirming) return { kind: "confirm", moves };
+  return { kind: "save" };
+}
+
+/**
+ * One checkbox. Never past this seat's own reach (requireWithin); a role
+ * holding one this seat lacks isn't editable (requireReach), so on edit a
+ * disabled box is never a ticked one. The launch role's are all disabled
+ * (R-a), with its own reason above them. No reason while `held` loads.
+ */
+export function boxState(
+  p: Permission,
+  held: readonly Permission[] | undefined,
+  launch: boolean,
+): { disabled: boolean; helper?: string } {
+  const mine = held?.includes(p) ?? false;
+  return {
+    disabled: launch || !mine,
+    helper:
+      held && !mine && !launch ? "Your role doesn't include this." : undefined,
+  };
+}
+
+/**
+ * Create role, or Edit role for `role`. A name and M-i's checkboxes
+ * (`boxState`). A save that moves people across the manager line stops once
+ * and says so (R-b, `submitStep`).
  */
 export function RoleModal({
   role,
   open,
   onOpenChange,
   trigger,
+  onCloseAutoFocus,
 }: {
   role?: Role;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   trigger?: ReactElement;
+  onCloseAutoFocus?: (e: Event) => void;
 }) {
   const expectOrgId = useExpectOrgId();
   const create = useMutation(api.orgRoles.create);
   const update = useMutation(api.orgRoles.update);
   const toast = useToast();
-  const held = useQuery(api.orgs.myPermissions, open ? {} : "skip");
-  const start = () =>
-    ROLE_EDITOR_PERMISSIONS.filter((p) => role?.permissions.includes(p));
-  const [name, setName] = useState(role?.name ?? "");
-  const [ticked, setTicked] = useState<Permission[]>(start);
-  const [confirming, setConfirming] = useState(false);
+  // After a switch this would read the other workspace's permissions.
+  const switched = useWorkspaceSwitched();
+  const held = useQuery(
+    api.orgs.myPermissions,
+    open && !switched ? {} : "skip",
+  );
+  const [form, dispatch] = useReducer(roleForm, role, startForm);
   const [nameError, setNameError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const formId = role ? `edit-role-${role._id}` : "create-role-form";
-  const moves = crossing(role, ticked);
+  const moves = crossing(role, form.ticked);
+  // Holders can drop to none while the confirm is up: then it has nothing to say.
+  const confirmingNow = form.confirming && moves !== null;
 
   function reset() {
-    setName(role?.name ?? "");
-    setTicked(start());
-    setConfirming(false);
+    dispatch({ type: "reset", form: startForm(role) });
     setNameError(null);
     setError(null);
   }
@@ -110,12 +192,13 @@ export function RoleModal({
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (pending) return;
-    if (!name.trim()) {
+    const step = submitStep(role, form);
+    if (step.kind === "blank") {
       setNameError("Enter a name for the role.");
       return;
     }
-    if (moves && !confirming) {
-      setConfirming(true);
+    if (step.kind === "confirm") {
+      dispatch({ type: "confirm" });
       return;
     }
     setNameError(null);
@@ -125,34 +208,32 @@ export function RoleModal({
       if (role) {
         await update({
           roleId: role._id,
-          name,
-          permissions: ticked,
+          name: form.name,
+          permissions: form.ticked,
           expectOrgId,
         });
         toast({ title: "Role saved." });
       } else {
-        await create({ name, permissions: ticked, expectOrgId });
+        // A box can lose its permission while ticked; the server would refuse it.
+        await create({
+          name: form.name,
+          permissions: form.ticked.filter((p) => held?.includes(p)),
+          expectOrgId,
+        });
         toast({ title: "Role created." });
-        setName("");
-        setTicked([]);
       }
-      setConfirming(false);
+      reset();
       onOpenChange(false);
     } catch (e) {
       const message = userMessage(e, "The role wasn't saved. Try again.");
-      if (errorCode(e) === "FIELD_REQUIRED") setNameError(message);
+      // Only the name's own refusals go under it; the role limit doesn't.
+      if (errorCode(e) === "FIELD_REQUIRED" && /name/i.test(message))
+        setNameError(message);
       else setError(message);
     } finally {
       setPending(false);
     }
   }
-
-  const toggle = (p: Permission, on: boolean) => {
-    setConfirming(false);
-    setTicked((now) =>
-      ROLE_EDITOR_PERMISSIONS.filter((q) => (q === p ? on : now.includes(q))),
-    );
-  };
 
   return (
     <Modal
@@ -167,11 +248,11 @@ export function RoleModal({
       title={role ? "Edit role" : "Create role"}
       formId={formId}
       primaryText={
-        confirming ? "Save anyway" : role ? "Save role" : "Create role"
+        confirmingNow ? "Save anyway" : role ? "Save role" : "Create role"
       }
       primaryDisabled={pending}
       secondaryText="Cancel"
-      onCloseAutoFocus={trigger ? undefined : focusHeader}
+      onCloseAutoFocus={onCloseAutoFocus}
     >
       <form
         id={formId}
@@ -183,45 +264,44 @@ export function RoleModal({
           id={`${formId}-name`}
           label="Role name"
           placeholder="For example, Coordinator"
-          // ponytail: the server's MAX_ROLE_NAME (convex/orgRoles.ts).
-          maxLength={40}
-          value={name}
+          maxLength={MAX_ROLE_NAME}
+          value={form.name}
           error={nameError ?? undefined}
           onChange={(e) => {
-            setName(e.currentTarget.value);
+            dispatch({ type: "name", name: e.currentTarget.value });
             setNameError(null);
-            setConfirming(false);
           }}
           className="bg-background"
         />
-        <fieldset disabled={role?.launch} className="flex flex-col gap-05">
+        <fieldset className="flex flex-col gap-05">
           <legend className="pb-03 text-heading-04">Permissions</legend>
           {role?.launch && (
             <p className="text-label-01 text-text-secondary">
               Your team joins with this role, so it has no permissions.
             </p>
           )}
-          {ROLE_EDITOR_PERMISSIONS.map((p) => {
-            const mine = held?.includes(p) ?? false;
-            return (
-              <Checkbox
-                key={p}
-                label={PERMISSION_LABELS[p]}
-                checked={ticked.includes(p)}
-                // Never past this seat's own reach (requireWithin). A role
-                // holding one this seat lacks isn't editable (requireReach),
-                // so a disabled box is never a ticked one. Disabled, without
-                // the reason, while the seat's permissions load.
-                disabled={!mine}
-                helper={
-                  held && !mine ? "Your role doesn't include this." : undefined
-                }
-                onChange={(e) => toggle(p, e.currentTarget.checked)}
-              />
-            );
-          })}
+          {ROLE_EDITOR_PERMISSIONS.map((p) => (
+            <Checkbox
+              key={p}
+              label={PERMISSION_LABELS[p]}
+              checked={form.ticked.includes(p)}
+              {...boxState(p, held, role?.launch ?? false)}
+              onChange={(e) =>
+                dispatch({
+                  type: "tick",
+                  permission: p,
+                  on: e.currentTarget.checked,
+                })
+              }
+            />
+          ))}
+          {role && !role.launch && (
+            <p className="text-label-01 text-text-secondary">
+              Adding a permission withdraws pending invitations into this role.
+            </p>
+          )}
         </fieldset>
-        {confirming && moves && (
+        {confirmingNow && moves && (
           <div role="alert">
             <InlineNotification title="Check before you save.">
               {crossingCopy(moves)}
@@ -242,10 +322,12 @@ function DeleteRole({
   role,
   open,
   onOpenChange,
+  onCloseAutoFocus,
 }: {
   role: Role;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCloseAutoFocus: (e: Event) => void;
 }) {
   const expectOrgId = useExpectOrgId();
   const remove = useMutation(api.orgRoles.remove);
@@ -284,7 +366,7 @@ function DeleteRole({
       onPrimary={() => void onDelete()}
       primaryDisabled={pending}
       secondaryText="Cancel"
-      onCloseAutoFocus={focusHeader}
+      onCloseAutoFocus={onCloseAutoFocus}
     >
       {error && (
         <p role="alert" className="text-label-01 text-support-error">
@@ -298,8 +380,19 @@ function DeleteRole({
 /** One role's Manage menu: what the server's flags allow (R-a), else nothing. */
 export function ManageRole({ role }: { role: Role }) {
   const [dialog, setDialog] = useState<"edit" | "delete" | null>(null);
+  // Each opening starts the edit dialog afresh from the role as it is now; a
+  // save doesn't remount it while open.
+  const [opened, setOpened] = useState(0);
   // The menu would pull focus back to its trigger, past the dialog's own.
   const toDialog = useRef(false);
+  // Cancel or Escape goes back to this row's Manage button; a deleted row
+  // has none, so focus falls back to the heading.
+  const manageRef = useRef<HTMLButtonElement>(null);
+  const backToRow = (e: Event) => {
+    e.preventDefault();
+    if (manageRef.current?.isConnected) manageRef.current.focus();
+    else document.getElementById("roles-heading")?.focus();
+  };
   const items: MenuItem[] = [
     ...(role.editable ? [{ label: "Edit role", value: "edit" as const }] : []),
     ...(role.deletable
@@ -309,6 +402,7 @@ export function ManageRole({ role }: { role: Role }) {
     label,
     onSelect: () => {
       toDialog.current = true;
+      if (value === "edit") setOpened((n) => n + 1);
       setDialog(value);
     },
   }));
@@ -324,6 +418,7 @@ export function ManageRole({ role }: { role: Role }) {
         }}
         trigger={
           <Button
+            ref={manageRef}
             kind="ghost"
             size="sm"
             className="max-md:h-size-control-lg"
@@ -334,16 +429,18 @@ export function ManageRole({ role }: { role: Role }) {
         }
       />
       <RoleModal
-        key={`${role.name} ${role.permissions.join()}`}
+        key={opened}
         role={role}
         open={dialog === "edit"}
         onOpenChange={(open) => setDialog(open ? "edit" : null)}
+        onCloseAutoFocus={backToRow}
       />
       {role.deletable && (
         <DeleteRole
           role={role}
           open={dialog === "delete"}
           onOpenChange={(open) => setDialog(open ? "delete" : null)}
+          onCloseAutoFocus={backToRow}
         />
       )}
     </>

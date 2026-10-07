@@ -24,7 +24,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { RESOURCES } from "@/content/resources";
-import { RunAnother } from "../outcomes/_components/RunAnother";
+import { RunAnother } from "./RunAnother";
 
 type Data = NonNullable<FunctionReturnType<typeof api.manager.overview>>;
 type Column = Data["timeline"][number];

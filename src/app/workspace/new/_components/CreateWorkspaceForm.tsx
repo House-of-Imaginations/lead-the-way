@@ -58,6 +58,7 @@ export function CreateWorkspaceForm({ cancelHref }: { cancelHref: string }) {
             id="new-workspace-name"
             label="Workspace name"
             placeholder="For example, Calder Lane"
+            // The server's MAX_ORG_NAME (convex/lib/orgs/create.ts, not importable from src).
             maxLength={60}
             value={name}
             error={nameError ?? undefined}
@@ -70,6 +71,7 @@ export function CreateWorkspaceForm({ cancelHref }: { cancelHref: string }) {
             id="new-workspace-team"
             label="Team name"
             placeholder="For example, Client Services team"
+            // The server's MAX_TEAM_NAME (convex/lib/orgs/create.ts, not importable from src).
             maxLength={60}
             value={teamName}
             error={teamError ?? undefined}

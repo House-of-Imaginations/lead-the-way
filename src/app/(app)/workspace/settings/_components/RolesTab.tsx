@@ -4,8 +4,8 @@ import { useQuery } from "convex-helpers/react/cache";
 import { useState } from "react";
 import { api } from "@convex/_generated/api";
 import {
-  HIDDEN_PERMISSIONS,
   PERMISSION_LABELS,
+  ROLE_EDITOR_PERMISSIONS,
 } from "@convex/lib/orgs/permissions";
 import { useShell, useWorkspaceSwitched } from "@/components/app/AppShell";
 import { useExpectOrgId } from "@/components/app/ExpectOrgId";
@@ -13,11 +13,11 @@ import { Button, Tag } from "@/components/ui";
 import type { Role } from "./MembersTab";
 import { ManageRole, RoleModal } from "./RoleModal";
 
-/** A role's permissions as M-i's words, the hidden ones left out (M-e). */
+/** A role's permissions as M-i's words, in the editor's order, the hidden ones left out (M-e). */
 function labelsOf(role: Role): string[] {
-  return role.permissions
-    .filter((p) => !HIDDEN_PERMISSIONS.includes(p))
-    .map((p) => PERMISSION_LABELS[p]);
+  return ROLE_EDITOR_PERMISSIONS.filter((p) =>
+    role.permissions.includes(p),
+  ).map((p) => PERMISSION_LABELS[p]);
 }
 
 /**
@@ -88,11 +88,11 @@ export function RolesTab({ initial }: { initial: Role[] }) {
                       )}
                     </div>
                   </td>
-                  <td>
+                  <td className="py-03">
                     {role.isOwner ? (
                       <Tag>Every permission</Tag>
                     ) : labels.length > 0 ? (
-                      <div className="flex flex-wrap gap-03">
+                      <div className="flex flex-wrap gap-x-03 gap-y-01">
                         {labels.map((label) => (
                           <Tag key={label}>{label}</Tag>
                         ))}
@@ -103,7 +103,7 @@ export function RolesTab({ initial }: { initial: Role[] }) {
                       </span>
                     )}
                   </td>
-                  <td className="tabular-nums">{role.holders}</td>
+                  <td>{role.holders}</td>
                   <td className="text-right">
                     <ManageRole role={role} />
                   </td>

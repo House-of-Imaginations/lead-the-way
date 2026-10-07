@@ -95,6 +95,9 @@ test("a new seat starts from your open seat's time zone and display settings", a
       captionsByDefault: false,
       includeInTeamTotals: false,
       weeklyReminder: false,
+      askBeforeSharing: false,
+      reflectionsOnCredential: false,
+      showAndTellReminder: false,
     });
   });
   const { orgId: birch } = await owner.mutation(api.orgs.create, {
@@ -111,6 +114,59 @@ test("a new seat starts from your open seat's time zone and display settings", a
     };
   });
   // Display settings follow; privacy and reminders start fresh.
+  expect(next).toEqual({
+    timeZone: "Europe/London",
+    settings: {
+      ...DEFAULT_SETTINGS,
+      reduceMotion: true,
+      captionsByDefault: false,
+    },
+  });
+});
+
+test("accepting an invitation copies the open seat's time zone and display settings too", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const bob = await seedAuthUser(t, {
+    name: "Bob Stone",
+    email: "bob@example.com",
+    emailVerified: true,
+  });
+  // Bob's own workspace is the one he has open.
+  const { orgId: birch } = await t
+    .withIdentity(bob)
+    .mutation(api.orgs.create, { name: "Birch" });
+  await t.run(async (ctx) => {
+    const seat = (await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", birch))
+      .first())!;
+    await ctx.db.patch(seat._id, { timeZone: "Europe/London" });
+    await writeSettings(ctx, seat, {
+      reduceMotion: true,
+      captionsByDefault: false,
+      includeInTeamTotals: false,
+    });
+  });
+  const roles = await owner.query(api.orgRoles.list, {});
+  const { token } = await owner.mutation(api.invites.create, {
+    roleId: roles.find((role) => !role.isOwner)!._id,
+    expectOrgId: orgId,
+  });
+  await t.withIdentity(bob).mutation(api.invites.accept, { token });
+
+  const next = await t.run(async (ctx) => {
+    const seat = (await ctx.db
+      .query("people")
+      .withIndex("by_user_and_org", (q) =>
+        q.eq("userId", bob.subject).eq("orgId", orgId),
+      )
+      .unique())!;
+    return {
+      timeZone: seat.timeZone,
+      settings: await settingsOf(ctx, seat._id),
+    };
+  });
   expect(next).toEqual({
     timeZone: "Europe/London",
     settings: {

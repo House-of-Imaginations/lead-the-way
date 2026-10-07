@@ -308,15 +308,13 @@ export const overview = timedViewerQuery()({
       };
     }
 
+    const canManage = viewer.permissions.includes(
+      ROUTE_PERMISSION["/manager/sprint/launch"],
+    );
     return {
       phase,
-      canManage: viewer.permissions.includes(
-        ROUTE_PERMISSION["/manager/sprint/launch"],
-      ),
-      canRunAnother:
-        viewer.permissions.includes("sprint:manage") &&
-        launched &&
-        closesAt(sprint) <= now,
+      canManage,
+      canRunAnother: canManage && launched && closesAt(sprint) <= now,
       intro,
       timeline,
       learning: {

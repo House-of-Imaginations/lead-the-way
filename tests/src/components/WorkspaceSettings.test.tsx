@@ -3,6 +3,7 @@ import { getFunctionName } from "convex/server";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 import { MembersTab } from "../../../src/app/(app)/workspace/settings/_components/MembersTab";
+import { RoleModal } from "../../../src/app/(app)/workspace/settings/_components/RoleModal";
 import { RolesTab } from "../../../src/app/(app)/workspace/settings/_components/RolesTab";
 import { WorkspaceSettings } from "../../../src/app/(app)/workspace/settings/_components/WorkspaceSettings";
 
@@ -231,4 +232,32 @@ test("Roles never shows another workspace's roles, and stops reading after a swi
   expect(html).not.toContain("Elsewhere");
   expect(useQuery).toHaveBeenCalled();
   expect(useQuery.mock.calls.every((c) => c[1] === "skip")).toBe(true);
+});
+
+test("an open role dialog stops reading permissions after a switch (B-M-11)", () => {
+  switched = true;
+  renderToStaticMarkup(
+    <RoleModal role={role({})} open onOpenChange={() => {}} />,
+  );
+  expect(calls("orgs:myPermissions")).toHaveLength(1);
+  expect(calls("orgs:myPermissions")[0]![1]).toBe("skip");
+  useQuery.mockClear();
+  switched = false;
+  renderToStaticMarkup(
+    <RoleModal role={role({})} open onOpenChange={() => {}} />,
+  );
+  expect(calls("orgs:myPermissions")[0]![1]).toEqual({});
+});
+
+test("a role's tags follow the editor's order, not storage order (B-M-7)", () => {
+  liveTabs = ["roles"];
+  const html = renderToStaticMarkup(
+    <RolesTab
+      initial={[role({ permissions: ["team:insights", "org:manage"] })]}
+    />,
+  );
+  expect(html.indexOf("Change workspace settings")).toBeGreaterThan(-1);
+  expect(html.indexOf("Change workspace settings")).toBeLessThan(
+    html.indexOf("See team totals"),
+  );
 });

@@ -42,6 +42,9 @@ export type Permission = Infer<typeof permissionValidator>;
  */
 export const ALL_PERMISSIONS: readonly Permission[] = PERMISSIONS;
 
+/** The longest role name `orgRoles` accepts; the role editor's field stops there too. */
+export const MAX_ROLE_NAME = 40;
+
 /** Does this permission set contain every one of `need`? */
 export function grants(
   held: readonly Permission[],

@@ -5,6 +5,8 @@ import { DEMO_CAST, castOf, type CastKey } from "../../convex/lib/demo/cast";
 import { mel, type DemoTarget } from "../../convex/lib/demo/schedule";
 import { snapshotSeries } from "../../convex/lib/snapshots";
 import { setupSprint } from "../../convex/lib/sprint";
+import { closesAt } from "../../convex/lib/sprintTime";
+import { clockAt, sprintsOf } from "./sprintHelpers";
 import {
   calderLane,
   harness,
@@ -962,7 +964,20 @@ test("08 offers Run another sprint once the sprint has closed, to sprint:manage 
   expect(await can(planner)).toBe(true);
   expect(await can(lead)).toBe(false);
 
+  // R-d gates on close, a day after the last hour, not on phase "complete".
+  await clockAt(t, orgId, mel("2026-10-01T14:59"));
+  expect(await priya.query(api.manager.overview, {})).toMatchObject({
+    phase: "complete",
+    canRunAnother: false,
+  });
+  await clockAt(t, orgId, mel("2026-10-01T15:00"));
+  expect(await can(priya)).toBe(true);
+
   // The draft copy is the newest sprint now, so not a second one.
   await priya.mutation(api.sprints.runAnother, { expectOrgId: orgId });
+  expect(await can(priya)).toBe(false);
+  // Not even once the draft's own dates are behind the clock: it never launched.
+  const draft = (await sprintsOf(t, orgId)).at(-1)!;
+  await clockAt(t, orgId, closesAt(draft) + 1);
   expect(await can(priya)).toBe(false);
 });

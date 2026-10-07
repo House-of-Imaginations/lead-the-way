@@ -15,6 +15,7 @@ import {
 } from "./lib/orgs/membership";
 import {
   HIDDEN_PERMISSIONS,
+  MAX_ROLE_NAME,
   grants,
   isManager,
   permissionValidator,
@@ -32,8 +33,6 @@ import {
  * The owner role is not editable and not deletable from here at all. It has no
  * stored permission array to edit -- see `convex/tables/orgs.ts`.
  */
-
-const MAX_ROLE_NAME = 40;
 
 // `orgId` on every row: 18 shows only its own workspace's (C2). The flags are
 // the mutations' own checks, so Members and Roles never offer a refusal.
