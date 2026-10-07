@@ -20,7 +20,6 @@ import {
   currentTeam,
   launchedSprint,
   setupGate,
-  isLaterSprint,
   sprintInvites,
 } from "./lib/sprint";
 import {
@@ -344,12 +343,10 @@ export const overview = timedViewerQuery()({
 });
 
 /**
- * 08's and 16's invited and joined. Sprint 1 counts its own invitations, and
- * joined only those whose person is still seated on the team (M-c, F3). A
- * row without `personId` names no seat, so it isn't joined. A later sprint
- * carries the seated team over (managers left out), so joined is that team
- * and invited adds its open, unexpired invitations. Membership facts, not
- * activity: no threshold.
+ * 08's and 16's invited and joined, the same for every sprint (R-c). Joined
+ * is the seated team: managers left out (W-f), a removed member gone (M-c),
+ * whoever a role change put on it in. Invited adds the sprint's open,
+ * unexpired invitations. Membership facts, not activity: no threshold.
  */
 async function sprintHeadcount(
   ctx: QueryCtx,
@@ -357,29 +354,11 @@ async function sprintHeadcount(
   sprint: Doc<"sprints">,
   now: number,
 ): Promise<{ invited: number; joined: number }> {
-  const invites = (await sprintInvites(ctx, org._id, sprint._id)).filter(
-    (i) => i.status !== "revoked",
-  );
   const seated = await loadSeated(ctx, org);
-  if (!(await isLaterSprint(ctx, org._id, sprint))) {
-    // M-c: a removed member's accepted invitation stays as history and as
-    // one of the invited, but they are no longer one of the joined, nor is
-    // anyone since moved to a manager's role (F3): joined is the seated
-    // team, as in a later sprint.
-    const ids = new Set(seated.map((p) => p._id));
-    const joined = invites.filter(
-      (i) =>
-        i.status === "accepted" &&
-        i.personId !== undefined &&
-        ids.has(i.personId),
-    ).length;
-    return { invited: invites.length, joined };
-  }
-  const joined = seated.length;
-  const open = invites.filter(
+  const open = (await sprintInvites(ctx, org._id, sprint._id)).filter(
     (i) => i.status === "pending" && i.expiresAt > now,
   );
-  return { invited: joined + open.length, joined };
+  return { invited: seated.length + open.length, joined: seated.length };
 }
 
 /** 16's answer (Rulings 11 and 12). Every label is made here. */

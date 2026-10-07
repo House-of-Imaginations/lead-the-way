@@ -289,7 +289,7 @@ test("a real sprint launched before week one's Monday reads as scheduled", async
   ]);
 });
 
-test("a declined invitation still counts as invited", async () => {
+test("a declined invitation leaves invited (R-c)", async () => {
   const { t, orgId, as } = await calderLane();
   await move(t, "week2");
   await t.run(async (ctx) => {
@@ -300,22 +300,46 @@ test("a declined invitation still counts as invited", async () => {
     const open = invites.find((i) => i.status !== "accepted")!;
     await ctx.db.patch(open._id, { status: "declined" });
   });
-  // Ruling 3: invited means asked; only a revoked row drops.
+  // Invited is the seated team and the open invitations, as in every sprint.
   expect(
     (await as("priya").query(api.manager.overview, {}))!.sprint,
-  ).toMatchObject({ invited: 8, joined: 7 });
+  ).toMatchObject({ invited: 7, joined: 7 });
 });
 
-test("an employee moved to a members:manage role drops out of sprint 1's joined (F3)", async () => {
+test("an employee moved to a members:manage role leaves sprint 1's counts (F3, R-c)", async () => {
   const { t, orgId, as } = await calderLane();
   await move(t, "week2");
   const dan = await personOf(t, orgId, "dan");
   const { roleId } = await seat(t, orgId, "user_people", ["members:manage"]);
   await t.run((ctx) => ctx.db.patch(dan, { roleId }));
-  // Still asked, so still invited; a manager now, so not one of the team.
+  // A manager now (W-f): not one of the team, so neither joined nor invited.
   expect(
     (await as("priya").query(api.manager.overview, {}))!.sprint,
-  ).toMatchObject({ invited: 8, joined: 6 });
+  ).toMatchObject({ invited: 7, joined: 6 });
+});
+
+test("sprint 1 counts the seated team, however they came to be on it (R-c)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  const priya = as("priya");
+  const lead = await seat(t, orgId, "user_lead", ["team:insights"]);
+  expect((await priya.query(api.manager.overview, {}))!.sprint).toMatchObject({
+    invited: 8,
+    joined: 7,
+  });
+  const employee = (await priya.query(api.orgRoles.list, {})).find(
+    (r) => r.name === "Employee",
+  )!._id;
+  // A role change, not a launch invitation, puts them on the team.
+  await priya.mutation(api.members.changeRole, {
+    personId: lead.personId,
+    roleId: employee,
+    expectOrgId: orgId,
+  });
+  expect((await priya.query(api.manager.overview, {}))!.sprint).toMatchObject({
+    invited: 9,
+    joined: 8,
+  });
 });
 
 test("the week we're in stays current after its hour, until Monday", async () => {
@@ -822,7 +846,18 @@ test("the final row's helper never depends on how many answered (threshold probe
   for (const now of [5, 6]) {
     const fewer = await finalAt(4, now);
     expect(fewer, `at ${now}`).toMatchObject({ state: "closed" });
-    expect(fewer, `at ${now}`).toEqual(await finalAt(6, now));
+    // Invited now counts the seated team (R-c), so it follows n; the rest
+    // of the row must not.
+    const more = await finalAt(6, now);
+    const split = (r: typeof fewer) => {
+      if (r?.state !== "closed") throw new Error("expected a closed row");
+      const { participation, ...rest } = r;
+      const { invited, ...others } = participation;
+      return { invited, rest: { ...rest, participation: others } };
+    };
+    expect(split(fewer).invited, `at ${now}`).toBe(4);
+    expect(split(more).invited, `at ${now}`).toBe(6);
+    expect(split(fewer).rest, `at ${now}`).toEqual(split(more).rest);
     expect(JSON.stringify(fewer)).toContain("Hidden until 7 responses");
   }
 });

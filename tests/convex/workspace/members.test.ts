@@ -352,9 +352,9 @@ test("a removed member leaves sprint 1's joined count and Members (M-c)", async 
     personId: await personOf(t, orgId, "sarah"),
     expectOrgId: orgId,
   });
-  // Still one of the eight invited (she was), no longer one of the joined.
+  // Off the seated team, so out of joined and invited alike (R-c).
   expect((await priya.query(api.manager.overview, {}))!.sprint).toMatchObject({
-    invited: 8,
+    invited: 7,
     joined: 6,
   });
   expect(
