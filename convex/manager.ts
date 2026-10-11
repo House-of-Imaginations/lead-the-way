@@ -20,6 +20,7 @@ import {
   setupSprint,
   currentTeam,
   launchedSprint,
+  runAnotherBlock,
   setupGate,
   sprintInvites,
 } from "./lib/sprint";
@@ -54,7 +55,7 @@ export const overviewValidator = v.object({
   /**
    * R-d: Run another sprint replaces Invite member once the sprint has
    * closed, by its close time, not phase "complete" (sprints.runAnother's
-   * own rule). Off while a draft copy is the newest sprint.
+   * own rule, `runAnotherBlock`). Off while a draft copy is the newest sprint.
    */
   canRunAnother: v.boolean(),
   /** "Your team is in week 2. The next protected hour is Wednesday 16 September at 2:00 PM." */
@@ -314,7 +315,7 @@ export const overview = timedViewerQuery()({
     return {
       phase,
       canManage,
-      canRunAnother: canManage && launched && closesAt(sprint) <= now,
+      canRunAnother: canManage && runAnotherBlock(sprint, now) === null,
       intro,
       timeline,
       learning: {
@@ -391,7 +392,7 @@ export const outcomesValidator = v.union(
     title: v.literal("Sprint complete"),
     tag: v.string(), // "Finished 30 Sep"
     intro: v.string(),
-    canRunAnother: v.boolean(), // sprint:manage, and the newest sprint is this one
+    canRunAnother: v.boolean(), // sprint:manage and `runAnotherBlock` is null
     inviteLink: v.string(),
     participation: v.object({
       invited: v.number(),
@@ -459,7 +460,7 @@ export const outcomes = timedViewerQuery("team:insights")({
     // Off once a clone exists: the newest sprint is then the draft (Ruling 14).
     const canRunAnother =
       viewer.permissions.includes("sprint:manage") &&
-      (await setupSprint(ctx, org._id))?._id === sprint._id;
+      runAnotherBlock(await setupSprint(ctx, org._id), now) === null;
 
     const { outcomes: final } = await snapshotSeries(
       ctx,
@@ -483,7 +484,7 @@ export const outcomes = timedViewerQuery("team:insights")({
         helper: `Outcomes appear on ${day.weekday} ${day.day} ${day.month}, the day after the last protected hour.`,
         // Closed with no row: the scheduled write was missed, and the button
         // is the way back, since runAnother writes the row first (FR-M4).
-        canRunAnother: canRunAnother && closesAt(sprint) <= now,
+        canRunAnother,
         inviteLink,
       };
     }
