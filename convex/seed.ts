@@ -1,5 +1,9 @@
 import { literals } from "convex-helpers/validators";
-import type { GenericDocument, PaginationResult } from "convex/server";
+import type {
+  FunctionArgs,
+  GenericDocument,
+  PaginationResult,
+} from "convex/server";
 import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -21,7 +25,13 @@ import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
 import { deleteOrg } from "./lib/orgs/cascade";
 import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
-import { isOwnerRole, permissionsOf, rolesOf } from "./lib/orgs/membership";
+import {
+  dropSeat,
+  isOwnerRole,
+  permissionsOf,
+  rolesOf,
+  seatsOfUser,
+} from "./lib/orgs/membership";
 import { isManager, type Permission } from "./lib/orgs/permissions";
 import { setupSprint } from "./lib/sprint";
 
@@ -85,21 +95,17 @@ export const writeCalderLane = internalMutation({
 /** e2e signs its accounts up on this domain, so a reset can find them (Ruling 34). */
 export const E2E_DOMAIN = "e2e.test";
 
-/** Delete every `model` row the auth component holds for `userId`. */
+/** Delete every auth component row `input` matches, a page at a time. */
 async function deleteAuthRows(
   ctx: MutationCtx,
-  model: "session" | "account",
-  userId: string,
+  input: FunctionArgs<typeof components.betterAuth.adapter.deleteMany>["input"],
 ) {
   let cursor: string | null = null;
   let isDone = false;
   while (!isDone) {
     ({ isDone, continueCursor: cursor } = await ctx.runMutation(
       components.betterAuth.adapter.deleteMany,
-      {
-        input: { model, where: [{ field: "userId", value: userId }] },
-        paginationOpts: { numItems: 100, cursor },
-      },
+      { input, paginationOpts: { numItems: 100, cursor } },
     ));
   }
 }
@@ -107,7 +113,8 @@ async function deleteAuthRows(
 /**
  * Ruling 34: the accounts e2e signed up on `E2E_DOMAIN`, the workspaces they
  * own, their profiles and their sign-in rows. Returns how many accounts went.
- * `reset` runs it first. Demo only, like `invite`.
+ * `reset` runs it after the reseed. Demo only, like `invite`.
+ * An e2e workspace it alone owns goes; anywhere else only its seat goes.
  * ponytail: one transaction, fine for the few dozen accounts a run makes;
  * schedule batches if it ever hits the transaction limits.
  */
@@ -137,24 +144,39 @@ export const clearE2e = internalMutation({
     }
 
     for (const userId of userIds) {
-      // At most MAX_ORGS_PER_USER seats. Calder Lane is never theirs to own,
-      // and the reset rebuilds it after this.
-      const seats = await ctx.db
-        .query("people")
-        .withIndex("by_user_and_org", (q) => q.eq("userId", userId))
-        .collect();
-      for (const seat of seats) {
-        const role = await ctx.db.get(seat.roleId);
+      // Calder Lane is never theirs to own, and the reset rebuilds it.
+      for (const seat of await seatsOfUser(ctx, userId)) {
         const org = await ctx.db.get(seat.orgId);
-        if (role && isOwnerRole(role) && org && !org.isDemo) {
-          await deleteOrg(ctx, org._id);
-        }
+        if (!org || org.isDemo) continue;
+        const role = await ctx.db.get(seat.roleId);
+        // Read now, so of two e2e co-owners the second finds itself alone.
+        const owners =
+          role && isOwnerRole(role)
+            ? await ctx.db
+                .query("people")
+                .withIndex("by_role", (q) => q.eq("roleId", role._id))
+                .take(2)
+            : [];
+        if (owners.length === 1) await deleteOrg(ctx, org._id);
+        else await dropSeat(ctx, seat);
       }
       const profile = await profileOf(ctx, userId);
       if (profile) await ctx.db.delete(profile._id);
       // The user last: its session and account rows would outlive it.
-      await deleteAuthRows(ctx, "session", userId);
-      await deleteAuthRows(ctx, "account", userId);
+      await deleteAuthRows(ctx, {
+        model: "session",
+        where: [{ field: "userId", value: userId }],
+      });
+      await deleteAuthRows(ctx, {
+        model: "account",
+        where: [{ field: "userId", value: userId }],
+      });
+      // Password reset tokens keep the user id in `value`. No index on it, so
+      // the adapter scans the (short-lived) table and warns.
+      await deleteAuthRows(ctx, {
+        model: "verification",
+        where: [{ field: "value", value: userId }],
+      });
       await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
         input: { model: "user", where: [{ field: "_id", value: userId }] },
       });
@@ -164,19 +186,19 @@ export const clearE2e = internalMutation({
 });
 
 /**
- * `npx convex run seed:reset`: the e2e accounts cleared (Ruling 34), the
- * accounts, then a fresh Calder Lane.
+ * `npx convex run seed:reset`: the accounts, a fresh Calder Lane, then the e2e
+ * accounts cleared (Ruling 34). Last, so a reseed that can't run clears nothing.
  */
 export const reset = internalAction({
   args: {},
   returns: v.id("orgs"),
   handler: async (ctx): Promise<Id<"orgs">> => {
-    const cleared = await ctx.runMutation(internal.seed.clearE2e, {});
-    console.log(`Cleared ${cleared} e2e accounts.`);
     const accounts = await ensureDemoAccounts(ctx);
     const orgId = await ctx.runMutation(internal.seed.writeCalderLane, {
       accounts,
     });
+    const cleared = await ctx.runMutation(internal.seed.clearE2e, {});
+    console.log(`Cleared ${cleared} e2e accounts.`);
     // Calder Lane's badges come from issueBadge; other workspaces' may be older.
     await ctx.runMutation(internal.badges.backfillHolders, {});
     return orgId;
