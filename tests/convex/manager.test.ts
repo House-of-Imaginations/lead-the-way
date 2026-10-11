@@ -376,6 +376,48 @@ test("an open invitation to somebody already seated isn't counted twice (R-c, R-
   });
 });
 
+test("an open invitation to somebody promoted to a manager isn't counted either (M-4)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  const priya = as("priya");
+  // Dan is seated, then moved onto the owner role: no longer on the team.
+  const omar = await t.run(async (ctx) => {
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    const dan = people.find((p) => p.email === castOf("dan").email)!;
+    const owner = people.find((p) => p.email === castOf("priya").email)!;
+    await ctx.db.patch(dan._id, { roleId: owner.roleId });
+    return (
+      await ctx.db
+        .query("orgInvites")
+        .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
+        .collect()
+    ).find((i) => i.status === "pending")!;
+  });
+  const before = (await priya.query(api.manager.overview, {}))!.sprint;
+  expect(before).toMatchObject({ invited: 7, joined: 6 });
+  // A newer duplicate invitation to his address stays pending.
+  await t.run((ctx) =>
+    ctx.db.insert("orgInvites", {
+      orgId,
+      roleId: omar.roleId,
+      sprintId: omar.sprintId,
+      token: "dan-again",
+      email: castOf("dan").email,
+      status: "pending",
+      invitedBy: omar.invitedBy,
+      expiresAt: omar.expiresAt,
+      createdAt: omar.createdAt,
+    }),
+  );
+  expect((await priya.query(api.manager.overview, {}))!.sprint).toMatchObject({
+    invited: 7,
+    joined: 6,
+  });
+});
+
 test("the week we're in stays current after its hour, until Monday", async () => {
   vi.setSystemTime(mel("2026-09-09T16:00"));
   const t = harness();

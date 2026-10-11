@@ -168,7 +168,7 @@ export const create = authenticatedMutation({
   args: { name: v.string(), teamName: v.optional(v.string()) },
   returns: v.object({ orgId: v.id("orgs"), slug: v.string() }),
   handler: async (ctx, { name, teamName }) =>
-    await createWorkspace(ctx, ctx.userId, name, { suffix: true, teamName }),
+    await createWorkspace(ctx, ctx.userId, name, { teamName }),
 });
 
 /**

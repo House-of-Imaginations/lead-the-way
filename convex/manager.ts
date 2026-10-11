@@ -367,8 +367,13 @@ async function sprintHeadcount(
 ): Promise<{ invited: number; joined: number }> {
   const seated = await loadSeated(ctx, org);
   // R-i: an older duplicate invitation can be the one accepted, leaving a
-  // newer one pending. Its person is already seated, so it isn't counted.
-  const seatedEmails = new Set(seated.map((p) => normalEmail(p.email)));
+  // newer one pending. Its person already has a seat, a manager's too
+  // (M-4), so it isn't counted.
+  const everyone = await ctx.db
+    .query("people")
+    .withIndex("by_org", (q) => q.eq("orgId", org._id))
+    .take(MAX_MEMBERS_PER_ORG);
+  const seatedEmails = new Set(everyone.map((p) => normalEmail(p.email)));
   const open = (await sprintInvites(ctx, org._id, sprint._id)).filter(
     (i) =>
       i.status === "pending" &&

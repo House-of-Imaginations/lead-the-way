@@ -71,7 +71,6 @@ export const start = authenticatedMutation({
       ctx,
       ctx.userId,
       name && name.length <= MAX_ORG_NAME ? name : "My workspace",
-      { suffix: true },
     );
     return "/setup/team";
   },

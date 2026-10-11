@@ -214,10 +214,10 @@ export function RoleModal({
         });
         toast({ title: "Role saved." });
       } else {
-        // A box can lose its permission while ticked; the server would refuse it.
+        // Sent as ticked: the server refuses anything this seat doesn't hold.
         await create({
           name: form.name,
-          permissions: form.ticked.filter((p) => held?.includes(p)),
+          permissions: form.ticked,
           expectOrgId,
         });
         toast({ title: "Role created." });
@@ -406,28 +406,32 @@ export function ManageRole({ role }: { role: Role }) {
       setDialog(value);
     },
   }));
-  if (items.length === 0) return null;
+  // An open dialog stays up when the row's flags change under it; the
+  // server's refusal shows in its error line (M-7).
+  if (items.length === 0 && dialog === null) return null;
   return (
     <>
-      <Menu
-        align="end"
-        items={items}
-        onCloseAutoFocus={(e) => {
-          if (toDialog.current) e.preventDefault();
-          toDialog.current = false;
-        }}
-        trigger={
-          <Button
-            ref={manageRef}
-            kind="ghost"
-            size="sm"
-            className="max-md:h-size-control-lg"
-            aria-label={`Manage ${role.name}`}
-          >
-            Manage
-          </Button>
-        }
-      />
+      {items.length > 0 && (
+        <Menu
+          align="end"
+          items={items}
+          onCloseAutoFocus={(e) => {
+            if (toDialog.current) e.preventDefault();
+            toDialog.current = false;
+          }}
+          trigger={
+            <Button
+              ref={manageRef}
+              kind="ghost"
+              size="sm"
+              className="max-md:h-size-control-lg"
+              aria-label={`Manage ${role.name}`}
+            >
+              Manage
+            </Button>
+          }
+        />
+      )}
       <RoleModal
         key={opened}
         role={role}
@@ -435,7 +439,7 @@ export function ManageRole({ role }: { role: Role }) {
         onOpenChange={(open) => setDialog(open ? "edit" : null)}
         onCloseAutoFocus={backToRow}
       />
-      {role.deletable && (
+      {(role.deletable || dialog === "delete") && (
         <DeleteRole
           role={role}
           open={dialog === "delete"}

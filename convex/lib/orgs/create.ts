@@ -48,8 +48,9 @@ async function slugTaken(ctx: MutationCtx, slug: string) {
 }
 
 /**
- * `base`, else `base-2` to `base-50`, else `base-` and 6 random characters. For names the person didn't choose
- * ("Bec's workspace"), where a clash shouldn't stop sign-up.
+ * `base`, else `base-2` to `base-50`, else `base-` and 6 random characters.
+ * Every new workspace takes one, so a taken name never stops sign-up or
+ * Create workspace (M-h).
  * ponytail: 50 probes then 3 random tries (36^6 slugs each); a real counter if one name ever crowds that.
  */
 async function freeSlug(ctx: MutationCtx, base: string): Promise<string> {
@@ -80,7 +81,7 @@ export async function createWorkspace(
   ctx: MutationCtx,
   userId: string,
   name: string,
-  { suffix = false, teamName }: { suffix?: boolean; teamName?: string } = {},
+  { teamName }: { teamName?: string } = {},
 ): Promise<{ orgId: Id<"orgs">; slug: string }> {
   // Every tester shares the demo accounts, and a reset clears only the demo
   // workspace, so a demo persona's workspace would be anybody's and forever.
@@ -106,11 +107,7 @@ export async function createWorkspace(
       "That name cannot be used as a web address. Try another.",
     );
   }
-  let slug = base;
-  if (suffix) slug = await freeSlug(ctx, base);
-  else if (await slugTaken(ctx, base)) {
-    throwUserError("SLUG_TAKEN", "A workspace with that name already exists.");
-  }
+  const slug = await freeSlug(ctx, base);
   // Creating is the other door into a workspace, and holds the same ceiling
   // accepting an invitation does.
   await assertCanCreate(ctx, userId);

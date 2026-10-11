@@ -1,3 +1,5 @@
+// `src` imports this file (the one allowlisted in eslint.config.mjs), so it
+// stays pure: it imports only `convex/values` and `convex-helpers`.
 import { literals } from "convex-helpers/validators";
 import type { Infer } from "convex/values";
 

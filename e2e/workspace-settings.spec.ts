@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { convex, resetDemo, signInAs } from "./demo";
+import { E2E_DOMAIN, convex, resetDemo, signInAs } from "./demo";
 
 const main = (page: Page) => page.getByRole("main");
 const nav = (page: Page) => page.getByRole("navigation", { name: "Main" });
@@ -394,7 +394,7 @@ async function seated(
   flag: "members" | "roles" | "org",
   name: string,
 ) {
-  const email = `e2e-${flag}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@e2e.test`;
+  const email = `e2e-${flag}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@${E2E_DOMAIN}`;
   const token = JSON.parse(
     convex(["run", "seed:invite", JSON.stringify({ email, [flag]: true })]),
   ) as string;

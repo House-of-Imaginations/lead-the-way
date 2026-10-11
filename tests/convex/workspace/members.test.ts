@@ -563,4 +563,18 @@ test("each role says what this seat may do with it", async () => {
       }
     }
   }
+  // ...and a true flag is accepted (M-5): Spare is editable and deletable.
+  const spare = (await admin.as.query(api.orgRoles.list, {})).find(
+    (r) => r.name === "Spare",
+  )!;
+  await admin.as.mutation(api.orgRoles.update, {
+    roleId: spare._id,
+    name: spare.name,
+    permissions: spare.permissions,
+    expectOrgId: orgId,
+  });
+  await admin.as.mutation(api.orgRoles.remove, {
+    roleId: spare._id,
+    expectOrgId: orgId,
+  });
 });

@@ -1,13 +1,13 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { convex, resetDemo, signInAs } from "./demo";
+import { E2E_DOMAIN, convex, resetDemo, signInAs } from "./demo";
 
 const nav = (page: Page) => page.getByRole("navigation", { name: "Main" });
 const header = (page: Page) => page.getByRole("banner");
 
 /** A real account on e2e.test, so `seed:reset` clears it (Ruling 34). */
 async function signUp(page: Page) {
-  const email = `e2e-new-${Date.now()}-${Math.floor(Math.random() * 1e6)}@e2e.test`;
+  const email = `e2e-new-${Date.now()}-${Math.floor(Math.random() * 1e6)}@${E2E_DOMAIN}`;
   const res = await page.request.post("/api/auth/sign-up/email", {
     data: { name: "Kai Moreno", email, password: "a long enough password" },
     headers: { origin: "http://localhost:3000" },
@@ -38,6 +38,10 @@ test.describe("Create workspace", () => {
     page,
   }) => {
     await realAccount(page);
+    // Cancel goes back to the shell's home: /me for an employee (Ruling 29).
+    await page.goto("/workspace/new");
+    await page.getByRole("link", { name: "Cancel" }).click();
+    await expect(page).toHaveURL("/me");
     await page.goto("/home");
     await nav(page).getByRole("button", { name: "Calder Lane" }).click();
     await page.getByRole("menuitem", { name: "Create workspace" }).click();
@@ -82,6 +86,14 @@ test.describe("Create workspace", () => {
     await page.goto("/workspace/settings");
     await expect(page.getByLabel("Workspace ID")).toHaveValue("kai-studio");
     await expect(page.getByLabel("Team name")).toHaveValue("Studio team");
+    // The switch items, then Create workspace, then Workspace settings (Ruling 28).
+    await nav(page).getByRole("button", { name: "Kai Studio" }).click();
+    await expect(page.getByRole("menuitem")).toHaveText([
+      "Switch to Calder Lane",
+      "Create workspace",
+      "Workspace settings",
+    ]);
+    await page.keyboard.press("Escape");
 
     // A taken name gets a suffix, never a refusal (M-h).
     await page.goto("/workspace/new");
