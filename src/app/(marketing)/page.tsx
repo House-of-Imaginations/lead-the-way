@@ -389,7 +389,7 @@ export default function LandingPage() {
             </p>
           </div>
           <div>
-            <h4>Program</h4>
+            <h2>Program</h2>
             <ul>
               <li>
                 <a href="#how">How it works</a>
@@ -403,7 +403,7 @@ export default function LandingPage() {
             </ul>
           </div>
           <div>
-            <h4>Trust</h4>
+            <h2>Trust</h2>
             <ul>
               <li>
                 <a href="#privacy">Privacy</a>
@@ -411,7 +411,7 @@ export default function LandingPage() {
             </ul>
           </div>
           <div>
-            <h4>Prototype</h4>
+            <h2>Prototype</h2>
             <ul>
               <li>
                 <Link href={PROTOTYPE_HREF} prefetch={false}>

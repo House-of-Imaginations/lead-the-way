@@ -76,7 +76,11 @@ export function LandingHeader() {
         ...sheet.current.querySelectorAll<HTMLElement>("a"),
       ];
       const at = ring.indexOf(document.activeElement as HTMLElement);
-      if (e.shiftKey && at <= 0) {
+      if (at === -1) {
+        // Focus is outside the ring: pull it back in.
+        e.preventDefault();
+        (e.shiftKey ? ring.at(-1) : ring[0])?.focus();
+      } else if (e.shiftKey && at === 0) {
         e.preventDefault();
         ring.at(-1)?.focus();
       } else if (!e.shiftKey && at === ring.length - 1) {
@@ -178,6 +182,7 @@ export function LandingHeader() {
                 className="mnav-item"
                 href={s.href}
                 onClick={choose}
+                aria-describedby={`mnav-note-${i}`}
                 style={{ "--i": i } as CSSProperties}
               >
                 <span
@@ -191,7 +196,9 @@ export function LandingHeader() {
                   <span className="mnav-mask">
                     <span className="mnav-t">{s.title}</span>
                   </span>
-                  <span className="mnav-s">{s.note}</span>
+                  <span className="mnav-s" id={`mnav-note-${i}`}>
+                    {s.note}
+                  </span>
                 </span>
               </a>
             </li>

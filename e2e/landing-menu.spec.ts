@@ -36,6 +36,7 @@ test("the menu opens, traps focus, closes on Escape and gives focus back", async
   await expect(menu).toBeHidden();
   await expect(page.getByRole("button", { name: "Open menu" })).toBeFocused();
   await expect(page.locator(".lp > main")).not.toHaveAttribute("inert");
+  await expect(page.locator(".lp > footer")).not.toHaveAttribute("inert");
   expect(await htmlOverflow(page)).toBe("");
 });
 
@@ -95,4 +96,5 @@ test("widening the window closes the menu", async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 844 });
   await expect(page.getByRole("dialog", { name: "Menu" })).toBeHidden();
   await expect(page.locator(".lp > main")).not.toHaveAttribute("inert");
+  expect(await htmlOverflow(page)).toBe("");
 });

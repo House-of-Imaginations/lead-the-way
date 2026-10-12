@@ -15,7 +15,11 @@ test.describe("with motion reduced by the OS", () => {
 
   test("the page is finished from the start", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator(".lp")).not.toHaveAttribute("data-motion", "on");
+    await expect(page.locator(".lp")).toHaveAttribute("data-motion", "off");
+    await expect(page.locator(".hero-copy > [data-intro]").first()).toHaveCSS(
+      "animation-name",
+      "none",
+    );
     await expectFinished(page);
   });
 });
@@ -37,7 +41,7 @@ test("with motion reduced by Settings' Reduce motion, the page is finished from 
   });
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-reduce-motion", "");
-  await expect(page.locator(".lp")).not.toHaveAttribute("data-motion", "on");
+  await expect(page.locator(".lp")).toHaveAttribute("data-motion", "off");
   await expect(page.locator(".hero-copy > [data-intro]").first()).toHaveCSS(
     "animation-name",
     "none",
@@ -64,5 +68,7 @@ test("leaving and coming back leaves no motion behind", async ({ page }) => {
   await expect(page.locator(".lp")).toHaveAttribute("data-motion", "on");
   await scrollThrough(page);
   await expectFinished(page);
+  // No section pins, so a spacer means ScrollTrigger left its DOM edits behind.
+  await expect(page.locator(".pin-spacer")).toHaveCount(0);
   expect(problems).toEqual([]);
 });
