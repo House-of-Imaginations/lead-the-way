@@ -175,6 +175,21 @@ test("the menu offers the calls to action, Log in and the disclaimer", async ({
   ).toBeVisible();
 });
 
+test("the menu sheet and the glass bar blur what is behind them", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  const blur = (selector: string) =>
+    page.evaluate(
+      (s) =>
+        getComputedStyle(document.querySelector(s)!, "::before").backdropFilter,
+      selector,
+    );
+  expect(await blur(".mnav")).toContain("blur(28px)");
+  expect(await blur(".nav-bar")).toContain("blur(20px)");
+});
+
 test("widening the window closes the menu", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Open menu" }).click();
