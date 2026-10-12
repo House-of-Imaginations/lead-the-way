@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { Logo } from "@/components/ui/Logo";
 import { HowItWorks } from "./_components/HowItWorks";
 import { LandingHeader } from "./_components/LandingHeader";
+import { LandingMotion } from "./_components/LandingMotion";
 import { PROTOTYPE_HREF } from "./links";
 import "./landing.css";
 
@@ -115,7 +116,7 @@ function Bar({ label, value }: { label: "Before" | "After"; value: number }) {
 
 export default function LandingPage() {
   return (
-    <div className="lp">
+    <LandingMotion>
       <LandingHeader />
       <main id="top">
         <section className="hero" aria-labelledby="hero-t">
@@ -421,6 +422,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </div>
+    </LandingMotion>
   );
 }
