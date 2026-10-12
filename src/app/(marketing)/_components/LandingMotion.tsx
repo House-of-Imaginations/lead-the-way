@@ -21,9 +21,7 @@ export function LandingMotion({ children }: { children: ReactNode }) {
   useGSAP(
     () => {
       const el = root.current;
-      // Off until registered, so the e2e can tell "off" from "not hydrated yet".
-      if (el) el.dataset.motion = "off";
-      const mm = gsap.matchMedia();
+      const mm = gsap.matchMedia(root);
       mm.add("(prefers-reduced-motion: no-preference)", () => {
         if (reduceMotion()) return;
         // Read once: crossing 901px must not replay the animations.
@@ -201,6 +199,11 @@ export function LandingMotion({ children }: { children: ReactNode }) {
           for (const [counter, count] of counters) counter.textContent = count;
         };
       });
+      // "off" unless motion registered: the e2e tells it from "not hydrated
+      // yet", and landing.css keeps the CSS entrance off under it (R4). Written
+      // once, after the check, so a motion-on visitor's entrance never sees
+      // "off" and restarts.
+      if (el && el.dataset.motion !== "on") el.dataset.motion = "off";
       return () => mm.revert();
     },
     { scope: root },

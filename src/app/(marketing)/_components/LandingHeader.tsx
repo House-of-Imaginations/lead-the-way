@@ -39,8 +39,12 @@ const subscribeToNothing = () => () => {};
  * L-a: who is signed in, asked of Better Auth in the browser only, so "/"
  * stays static and never touches Convex. Null while the check runs, when it
  * fails (a closed app refuses it) and during hydration: the server rendered
- * the signed-out header, and hydration must see the same. A held session
- * shows until its recheck answers (one request).
+ * the signed-out header, and hydration must see the same.
+ *
+ * ponytail: a held session shows its avatar until the recheck answers, so a
+ * session the server has dropped stays on screen for one request. Hiding it
+ * until the recheck would flash Log in on every valid return; if the stale
+ * avatar ever matters, show nothing in that slot while the recheck runs.
  */
 function useSignedInUser(): { name: string } | null {
   const hydrated = useSyncExternalStore(
@@ -228,83 +232,87 @@ export function LandingHeader() {
         id="mnav"
         className={clsx("mnav", open && "open")}
         role="dialog"
-        aria-modal="true"
         aria-label="Menu"
+        // Closed, nothing in it takes focus, even while the circle closes.
+        inert={!open}
       >
-        <ul className="mnav-list">
-          {SECTIONS.map((s, i) => (
-            <li key={s.href}>
-              <a
-                className="mnav-item"
-                href={s.href}
-                onClick={choose}
-                aria-describedby={`mnav-note-${i}`}
-                style={{ "--i": i } as CSSProperties}
-              >
-                <span
-                  className="lvl"
-                  aria-hidden="true"
-                  style={{ "--f": `${(i + 1) * 20}%` } as CSSProperties}
+        {/* Scrolls on short screens; the sheet and its stairs stay put. */}
+        <div className="mnav-scroll">
+          <ul className="mnav-list">
+            {SECTIONS.map((s, i) => (
+              <li key={s.href}>
+                <a
+                  className="mnav-item"
+                  href={s.href}
+                  onClick={choose}
+                  aria-describedby={`mnav-note-${i}`}
+                  style={{ "--i": i } as CSSProperties}
                 >
-                  <i />
-                </span>
-                <span className="mnav-txt">
-                  <span className="mnav-mask">
-                    <span className="mnav-t">{s.title}</span>
+                  <span
+                    className="lvl"
+                    aria-hidden="true"
+                    style={{ "--f": `${(i + 1) * 20}%` } as CSSProperties}
+                  >
+                    <i />
                   </span>
-                  <span className="mnav-s" id={`mnav-note-${i}`}>
-                    {s.note}
+                  <span className="mnav-txt">
+                    <span className="mnav-mask">
+                      <span className="mnav-t">{s.title}</span>
+                    </span>
+                    <span className="mnav-s" id={`mnav-note-${i}`}>
+                      {s.note}
+                    </span>
                   </span>
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
-        <div className="mnav-foot">
-          <div className="mnav-ctas">
-            <Link
-              className="btn btn-w"
-              href={PROTOTYPE_HREF}
-              prefetch={false}
-              onClick={choose}
-            >
-              See the prototype
-            </Link>
-            {user ? null : (
+                </a>
+              </li>
+            ))}
+          </ul>
+          <div className="mnav-foot">
+            <div className="mnav-ctas">
               <Link
-                className="btn btn-p"
-                href="/signup"
+                className="btn btn-w"
+                href={PROTOTYPE_HREF}
                 prefetch={false}
                 onClick={choose}
               >
-                Start your sprint
-                <ArrowRight className="i" aria-hidden="true" />
+                See the prototype
+              </Link>
+              {user ? null : (
+                <Link
+                  className="btn btn-p"
+                  href="/signup"
+                  prefetch={false}
+                  onClick={choose}
+                >
+                  Start your sprint
+                  <ArrowRight className="i" aria-hidden="true" />
+                </Link>
+              )}
+            </div>
+            {user ? (
+              <Link
+                className="mnav-row"
+                href="/home"
+                prefetch={false}
+                onClick={choose}
+              >
+                <Avatar initials={initialsOf(user.name)} manager={false} />
+                Go to your home
+              </Link>
+            ) : (
+              <Link
+                className="mnav-row"
+                href="/login"
+                prefetch={false}
+                onClick={choose}
+              >
+                Log in
               </Link>
             )}
+            <p className="mnav-fine">
+              Concept prototype. Not an official IBM product.
+            </p>
           </div>
-          {user ? (
-            <Link
-              className="mnav-row"
-              href="/home"
-              prefetch={false}
-              onClick={choose}
-            >
-              <Avatar initials={initialsOf(user.name)} manager={false} />
-              Go to your home
-            </Link>
-          ) : (
-            <Link
-              className="mnav-row"
-              href="/login"
-              prefetch={false}
-              onClick={choose}
-            >
-              Log in
-            </Link>
-          )}
-          <p className="mnav-fine">
-            Concept prototype. Not an official IBM product.
-          </p>
         </div>
         {[1, 2, 3].map((n, i) => (
           <span

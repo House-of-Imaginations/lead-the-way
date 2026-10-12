@@ -1,7 +1,10 @@
 /* The landing (docs/design/landing/landing.md), ported from index.html.
    Every rule sits under .lp: a route's CSS stays loaded after a client
    navigation, so nothing here may reach the app (R6). Colours are tokens,
-   except the --lp-* values the approved page uses that have no token (R13). */
+   except the --lp-* values the approved page uses that have no token (R13).
+   ponytail: the --lp-* values are raw colours outside the token system, so a
+   token or theme change does not reach them; move one into tokens.json once
+   a second surface needs it. */
 
 html:has(.lp) {
   scroll-behavior: smooth;
@@ -178,7 +181,11 @@ html:has(.lp) {
     padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 0;
     pointer-events: none;
   }
-  /* R5: the one layout transition kept as approved, the bar settling once. */
+  /* R5: the one layout transition kept as approved, the bar settling on each
+     crossing of the top (the sentinel toggles .nav-glass every time).
+     ponytail: max-width, height and padding animate layout, fine for one bar
+     on a rare crossing; if it ever janks, draw the glass on a pseudo element
+     and reveal it with clip-path, leaving the bar's own box still. */
   .nav-bar {
     position: relative;
     pointer-events: auto;
@@ -393,9 +400,15 @@ html:has(.lp) {
   .nav-open .brand {
     color: var(--text-on-color);
   }
+  /* Hidden once faded, so they leave the tab order and the accessibility
+     tree while the menu is open; they come back at once on close. */
   .nav-open .nav-end :is(.btn, .nav-login, .nav-me) {
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
+    transition:
+      opacity 200ms,
+      visibility 0s 200ms;
   }
 
   /* mobile menu: a frosted sheet that opens as a circle from the toggle */
@@ -439,6 +452,19 @@ html:has(.lp) {
     transition:
       clip-path 720ms var(--lp-ease-inout),
       visibility 0s;
+  }
+  /* On short screens (a phone on its side) the menu scrolls here, not the page. */
+  .mnav-scroll {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* The light theme's blue ring is too faint on the dark sheet; white reads. */
+  .mnav :focus-visible {
+    outline-color: var(--text-on-color);
   }
   .mnav-list {
     position: relative;
@@ -1438,6 +1464,18 @@ html:has(.lp) {
     .mnav.open {
       opacity: 1;
     }
+  }
+}
+
+/* Motion reduced at hydration (R4): LandingMotion leaves data-motion="off".
+   The app's closed redirect lands on "/" with data-reduce-motion set, and
+   AppShell drops it after paint; this keeps the entrance from starting then.
+   Motion-on visitors only ever get "on", and the server HTML has neither, so
+   the entrance still plays for them and without JavaScript. */
+.lp[data-motion="off"] {
+  .hero-copy > [data-intro],
+  .shot-wrap {
+    animation: none;
   }
 }
 

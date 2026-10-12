@@ -40,6 +40,84 @@ test("the menu opens, traps focus, closes on Escape and gives focus back", async
   expect(await htmlOverflow(page)).toBe("");
 });
 
+test("Tab right after Escape stays out of the closing menu", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  const menu = page.getByRole("dialog", { name: "Menu" });
+  await expect(menu.getByRole("link", { name: /^Overview/ })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Tab");
+  expect(
+    await page.evaluate(() =>
+      document.getElementById("mnav")?.contains(document.activeElement),
+    ),
+  ).toBe(false);
+});
+
+test.describe("on a short screen", () => {
+  test.use({ viewport: { width: 844, height: 390 } });
+
+  test("the menu scrolls inside itself to its last link and the disclaimer", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Open menu" }).click();
+    const menu = page.getByRole("dialog", { name: "Menu" });
+    await expect(menu).toBeVisible();
+
+    // A person scrolls with the wheel or a finger, never by script.
+    await page.mouse.move(422, 300);
+    await page.mouse.wheel(0, 2000);
+    const last = menu.getByRole("link", { name: "Log in", exact: true });
+    const fine = menu.getByText(
+      "Concept prototype. Not an official IBM product.",
+    );
+    await expect(last).toBeInViewport({ ratio: 1 });
+    await expect(fine).toBeInViewport({ ratio: 1 });
+    await last.focus();
+    await expect(last).toBeFocused();
+  });
+
+  test("the header's own links leave while the menu is open, the toggle stays", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const header = page.getByRole("banner");
+    await page.getByRole("button", { name: "Open menu" }).click();
+    for (const name of ["Log in", "See the prototype", "Start your sprint"])
+      await expect(
+        header.getByRole("link", { name, exact: true }),
+      ).toBeHidden();
+    await expect(
+      header.getByRole("button", { name: "Close menu" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(
+      header.getByRole("link", { name: "See the prototype" }),
+    ).toBeVisible();
+  });
+});
+
+test("the open menu fits a tall phone without scrolling", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await expect(page.locator(".mnav.open .mnav-foot")).toHaveCSS("opacity", "1");
+  expect(
+    await page.locator("#mnav").evaluate((sheet) =>
+      [sheet, ...sheet.querySelectorAll("*")]
+        .filter((e) => /auto|scroll/.test(getComputedStyle(e).overflowY))
+        .filter(
+          (e) =>
+            e.scrollHeight > e.clientHeight + 1 ||
+            e.scrollWidth > e.clientWidth + 1,
+        )
+        .map((e) => e.className),
+    ),
+  ).toEqual([]);
+});
+
 test("choosing a section closes the menu and goes there", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Open menu" }).click();

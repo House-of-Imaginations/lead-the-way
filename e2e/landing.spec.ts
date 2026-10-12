@@ -190,6 +190,11 @@ for (const theme of ["light", "dark"] as const)
     // it and take the lightest pixel as the worst case.
     const fine = page.locator(".mnav-fine");
     await expect(fine).toHaveCSS("color", "rgb(255, 255, 255)");
+    // The disclaimer fades in with the menu's foot: photograph it settled.
+    await expect(page.locator(".mnav.open .mnav-foot")).toHaveCSS(
+      "opacity",
+      "1",
+    );
     await fine.evaluate((e) => {
       e.style.color = "transparent";
     });
