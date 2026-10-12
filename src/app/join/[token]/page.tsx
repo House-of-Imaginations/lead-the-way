@@ -4,17 +4,10 @@ import { ConvexClientProvider } from "@/app/_components/ConvexClientProvider";
 import { fetchAuthQuery, getToken } from "@/lib/account/auth-server";
 import { currentHour, getProfile, openOrHome } from "@/lib/account/queries";
 import { errorCode } from "@/lib/errors";
+import { initialsOf } from "@/lib/initials";
 import { JoinInvalid, JoinView } from "../_components/JoinView";
 
 export const metadata: Metadata = { title: "Invitation · Lead the Way" };
-
-// ponytail: the rule of `initialsOf` in convex/lib/orgs/people.ts, which src
-// can't import (it reaches the auth component).
-function initialsOf(name: string) {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const last = words.length > 1 ? (words.at(-1)?.[0] ?? "") : "";
-  return ((words[0]?.[0] ?? "") + last).toUpperCase();
-}
 
 /**
  * 09 (Ruling 18), public: the proxy lets /join through. Signed in, it reads

@@ -3,8 +3,17 @@
 import { ArrowRight } from "@carbon/icons-react";
 import clsx from "clsx";
 import Link from "next/link";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+} from "react";
+import { Avatar } from "@/components/ui/Avatar";
 import { Logo } from "@/components/ui/Logo";
+import { authClient } from "@/lib/account/auth-client";
+import { initialsOf } from "@/lib/initials";
 import { PROTOTYPE_HREF } from "../links";
 
 const SECTIONS = [
@@ -23,12 +32,31 @@ const SECTIONS = [
   { href: "#kit", title: "Starter kit", note: "nothing to design or buy" },
 ];
 
+const subscribeToNothing = () => () => {};
+
+/**
+ * L-a: who is signed in, asked of Better Auth in the browser only, so "/"
+ * stays static and never touches Convex. Null while the check runs, when it
+ * fails (a closed app refuses it) and during hydration: the server rendered
+ * the signed-out header, and hydration must see the same.
+ */
+function useSignedInUser(): { name: string } | null {
+  const hydrated = useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  );
+  const { data } = authClient.useSession();
+  return hydrated ? (data?.user ?? null) : null;
+}
+
 /**
  * The landing's header and, below 1057px, its full-screen menu (R3).
  * The header settles into a glass bar once the page moves; an observer on a
  * sentinel decides that, never a scroll listener (landing.md).
  */
 export function LandingHeader() {
+  const user = useSignedInUser();
   const [glass, setGlass] = useState(false);
   const [open, setOpen] = useState(false);
   const sentinel = useRef<HTMLSpanElement>(null);
@@ -139,16 +167,33 @@ export function LandingHeader() {
           </nav>
           {/* R9: no prefetch, so "/" never makes the server read Convex. */}
           <div className="nav-end">
-            <Link className="nav-login" href="/login" prefetch={false}>
-              Log in
-            </Link>
+            {user ? null : (
+              <Link className="nav-login" href="/login" prefetch={false}>
+                Log in
+              </Link>
+            )}
             <Link className="btn btn-g" href={PROTOTYPE_HREF} prefetch={false}>
               See the prototype
             </Link>
-            <Link className="btn btn-p btn-sm" href="/signup" prefetch={false}>
-              Start your sprint
-              <ArrowRight className="i" aria-hidden="true" />
-            </Link>
+            {user ? (
+              <Link
+                className="nav-me"
+                href="/home"
+                prefetch={false}
+                aria-label="Go to your home"
+              >
+                <Avatar initials={initialsOf(user.name)} manager={false} />
+              </Link>
+            ) : (
+              <Link
+                className="btn btn-p btn-sm"
+                href="/signup"
+                prefetch={false}
+              >
+                Start your sprint
+                <ArrowRight className="i" aria-hidden="true" />
+              </Link>
+            )}
             {/* Last in the bar, so Tab from it lands in the sheet. */}
             <button
               ref={toggleButton}
@@ -214,24 +259,38 @@ export function LandingHeader() {
             >
               See the prototype
             </Link>
+            {user ? null : (
+              <Link
+                className="btn btn-p"
+                href="/signup"
+                prefetch={false}
+                onClick={choose}
+              >
+                Start your sprint
+                <ArrowRight className="i" aria-hidden="true" />
+              </Link>
+            )}
+          </div>
+          {user ? (
             <Link
-              className="btn btn-p"
-              href="/signup"
+              className="mnav-row"
+              href="/home"
               prefetch={false}
               onClick={choose}
             >
-              Start your sprint
-              <ArrowRight className="i" aria-hidden="true" />
+              <Avatar initials={initialsOf(user.name)} manager={false} />
+              Go to your home
             </Link>
-          </div>
-          <Link
-            className="mnav-row"
-            href="/login"
-            prefetch={false}
-            onClick={choose}
-          >
-            Log in
-          </Link>
+          ) : (
+            <Link
+              className="mnav-row"
+              href="/login"
+              prefetch={false}
+              onClick={choose}
+            >
+              Log in
+            </Link>
+          )}
           <p className="mnav-fine">
             Concept prototype. Not an official IBM product.
           </p>
