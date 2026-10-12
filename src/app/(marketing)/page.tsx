@@ -317,21 +317,21 @@ export default function LandingPage() {
                   ) : null}
                 </div>
               ))}
-              <figure className="quote">
+              <div className="quote">
                 <span className="av" aria-hidden="true">
                   DO
                 </span>
-                <div>
+                <figure>
                   <blockquote>
                     “My weekly client report used to take two hours. With a
                     reusable prompt and our team checks, it now takes about
                     eighty minutes.”
                   </blockquote>
                   <figcaption>
-                    Dan Okafor, Senior Account Executive, Calder Lane
+                    Dan Okafor, senior account executive, Calder Lane
                   </figcaption>
-                </div>
-              </figure>
+                </figure>
+              </div>
             </div>
           </div>
         </section>

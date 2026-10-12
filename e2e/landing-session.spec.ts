@@ -1,17 +1,22 @@
 import type { Page } from "@playwright/test";
 import { convex, convexUrl, resetDemo, signInAs } from "./demo";
 import { expect, test } from "./fixtures";
+import { spilledElements } from "./landing";
 
 const SESSION = "/api/auth/get-session";
 
-// Convex traffic is any request to the deployment's host or its `.site` twin.
-const CONVEX_HOSTS = (() => {
-  const host = new URL(convexUrl()).host;
-  return host.endsWith(".convex.cloud")
-    ? [host, host.replace(/\.convex\.cloud$/, ".convex.site")]
-    : [host];
-})();
-const isConvex = (url: string) => CONVEX_HOSTS.includes(new URL(url).host);
+/**
+ * The deployment's host and its `.site` twin: the next domain in the cloud,
+ * the next port on a local backend. Read when a test asks, not at collection.
+ */
+function convexHosts(): string[] {
+  const { host, hostname, port } = new URL(convexUrl());
+  if (host.endsWith(".convex.cloud"))
+    return [host, host.replace(/\.convex\.cloud$/, ".convex.site")];
+  if (port && (hostname === "127.0.0.1" || hostname === "localhost"))
+    return [host, `${hostname}:${Number(port) + 1}`];
+  return [host];
+}
 
 /** Reopen the app and wait until it answers again, so the next sign-in works. */
 async function reopen(page: Page) {
@@ -77,6 +82,7 @@ test("signed in at 390, the avatar sits by the menu and the menu offers home", a
   await expect(
     page.getByRole("banner").getByRole("link", { name: "Go to your home" }),
   ).toBeVisible();
+  expect(await spilledElements(page)).toEqual([]);
   await page.getByRole("button", { name: "Open menu" }).click();
   const menu = page.getByRole("dialog", { name: "Menu" });
   await expect(
@@ -136,6 +142,8 @@ test("the avatar arrives without a console error", async ({ page }) => {
 test("the browser talks to no Convex deployment, signed in or not", async ({
   page,
 }) => {
+  const hosts = convexHosts();
+  const isConvex = (url: string) => hosts.includes(new URL(url).host);
   const convexTraffic: string[] = [];
   page.on("request", (r) => {
     if (isConvex(r.url())) convexTraffic.push(r.url());
