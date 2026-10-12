@@ -14,21 +14,30 @@ export async function scrollThrough(page: Page) {
   });
 }
 
-/** Text of the read-or-pressed elements that poke past the viewport. Elements, not scrollWidth: .lp clips sideways overflow. */
+/**
+ * Text of the read-or-pressed elements that poke past the viewport or overflow
+ * their own box. Elements, not the page's scrollWidth: .lp clips sideways
+ * overflow. clientWidth, not innerWidth, so a scrollbar counts as outside.
+ */
 export const spilledElements = (page: Page) =>
   page
     .locator(
       ".lp :is(h1, h2, h3, h4, p, dt, dd, li, blockquote, figcaption, a, button)",
     )
-    .evaluateAll((els) =>
-      els
+    .evaluateAll((els) => {
+      const width = document.documentElement.clientWidth;
+      return els
         .filter((e) => e.checkVisibility())
         .filter((e) => {
           const r = e.getBoundingClientRect();
-          return r.right > window.innerWidth + 1 || r.left < -1;
+          return (
+            r.right > width + 1 ||
+            r.left < -1 ||
+            e.scrollWidth > e.clientWidth + 1
+          );
         })
-        .map((e) => (e.textContent ?? e.tagName).trim().slice(0, 40)),
-    );
+        .map((e) => (e.textContent ?? e.tagName).trim().slice(0, 40));
+    });
 
 /** The finished page: where motion ends, and what reduced motion shows from the start. */
 export async function expectFinished(page: Page) {

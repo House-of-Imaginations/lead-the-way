@@ -68,8 +68,8 @@ test("leaving and coming back leaves no motion behind", async ({ page }) => {
   await expect(page.locator(".lp")).toHaveAttribute("data-motion", "on");
   await scrollThrough(page);
   await expectFinished(page);
-  // Guards against a pin added later that leaks its spacer. Nothing pins today,
-  // so this is not a general leak detector.
+  // Nothing pins today. When a pin is added, expect one spacer per pin here,
+  // so a leaked spacer shows as an extra.
   await expect(page.locator(".pin-spacer")).toHaveCount(0);
   expect(problems).toEqual([]);
 });
@@ -80,6 +80,19 @@ test("at 390 with motion on, nothing spills sideways mid-motion", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await expect(page.locator(".lp")).toHaveAttribute("data-motion", "on");
-  await scrollThrough(page);
-  expect(await spilledElements(page)).toEqual([]);
+  // Measured at every step, while the tweens are still running.
+  const spilled = new Set<string>();
+  const height = await page.evaluate(
+    () => document.documentElement.scrollHeight,
+  );
+  for (let y = 0; y <= height; y += 300) {
+    await page.evaluate((top) => {
+      window.scrollTo({ top, behavior: "instant" });
+      return new Promise((done) =>
+        requestAnimationFrame(() => requestAnimationFrame(done)),
+      );
+    }, y);
+    for (const text of await spilledElements(page)) spilled.add(text);
+  }
+  expect([...spilled]).toEqual([]);
 });

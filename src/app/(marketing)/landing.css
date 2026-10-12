@@ -577,7 +577,7 @@ html:has(.lp) {
     font-size: 12px;
     line-height: 16px;
     letter-spacing: 0.32px;
-    color: rgb(255 255 255 / 0.62);
+    color: var(--text-on-color);
   }
   .mnav-st {
     position: absolute;
@@ -1287,6 +1287,9 @@ html:has(.lp) {
     }
     .menu-btn {
       display: inline-flex;
+    }
+    .menu-btn,
+    .nav-me {
       width: 48px;
       height: 48px;
     }
@@ -1366,11 +1369,6 @@ html:has(.lp) {
     }
     .nav-end :is(.btn, .nav-login) {
       display: none;
-    }
-    .menu-btn,
-    .nav-me {
-      width: 48px;
-      height: 48px;
     }
     .facts {
       grid-template-columns: 1fr 1fr;

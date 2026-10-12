@@ -172,13 +172,53 @@ for (const theme of ["light", "dark"] as const)
       await expectAxeClean(page);
     });
 
-test("axe is clean with the menu open", async ({ page, expectAxeClean }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/?theme=light");
-  await page.getByRole("button", { name: "Open menu" }).click();
-  await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
-  await expectAxeClean(page);
-});
+for (const theme of ["light", "dark"] as const)
+  test(`axe is clean with the menu open, ${theme}`, async ({
+    page,
+    expectAxeClean,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/?theme=${theme}`);
+    await page.getByRole("button", { name: "Open menu" }).click();
+    await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
+    await expectAxeClean(page);
+
+    // axe can't judge the menu's text: its ground is the sheet's ::before
+    // (translucent and blurred), so color-contrast comes back "incomplete"
+    // (pseudoContent) for every line, whatever the colours. So measure the
+    // disclaimer: it is white, then hide it, photograph the ground behind
+    // it and take the lightest pixel as the worst case.
+    const fine = page.locator(".mnav-fine");
+    await expect(fine).toHaveCSS("color", "rgb(255, 255, 255)");
+    await fine.evaluate((e) => {
+      e.style.color = "transparent";
+    });
+    // The dev server's indicator badge sits over this corner; it is not the page.
+    const ground = (
+      await fine.screenshot({ style: "nextjs-portal { display: none; }" })
+    ).toString("base64");
+    const ratio = await page.evaluate(async (png) => {
+      const img = new Image();
+      img.src = `data:image/png;base64,${png}`;
+      await img.decode();
+      const canvas = new OffscreenCanvas(img.width, img.height);
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      const px = ctx.getImageData(0, 0, img.width, img.height).data;
+      const lin = (v: number) =>
+        (v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+      let lightest = 0;
+      for (let i = 0; i < px.length; i += 4)
+        lightest = Math.max(
+          lightest,
+          0.2126 * lin(px[i]!) +
+            0.7152 * lin(px[i + 1]!) +
+            0.0722 * lin(px[i + 2]!),
+        );
+      return 1.05 / (lightest + 0.05);
+    }, ground);
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
 
 test("at 390 nothing spills sideways and nothing shifts", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
