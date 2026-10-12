@@ -14,6 +14,22 @@ export async function scrollThrough(page: Page) {
   });
 }
 
+/** Text of the read-or-pressed elements that poke past the viewport. Elements, not scrollWidth: .lp clips sideways overflow. */
+export const spilledElements = (page: Page) =>
+  page
+    .locator(
+      ".lp :is(h1, h2, h3, h4, p, dt, dd, li, blockquote, figcaption, a, button)",
+    )
+    .evaluateAll((els) =>
+      els
+        .filter((e) => e.checkVisibility())
+        .filter((e) => {
+          const r = e.getBoundingClientRect();
+          return r.right > window.innerWidth + 1 || r.left < -1;
+        })
+        .map((e) => (e.textContent ?? e.tagName).trim().slice(0, 40)),
+    );
+
 /** The finished page: where motion ends, and what reduced motion shows from the start. */
 export async function expectFinished(page: Page) {
   await expect(page.locator("#results .num b")).toHaveText(["8", "7", "6"]);

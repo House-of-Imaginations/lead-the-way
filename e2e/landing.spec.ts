@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures";
+import { scrollThrough, spilledElements } from "./landing";
 
 // Content checks read the finished page. From Task 2 on, motion starts the
 // counters at 0 until they are scrolled to; landing-motion.spec.ts owns motion.
@@ -155,4 +156,52 @@ test.describe("without JavaScript", () => {
       page.getByRole("img", { name: /Manager dashboard for Priya Raman/ }),
     ).toBeVisible();
   });
+});
+
+// R14: this file's reduced motion matters here. GSAP tweens are not Web
+// Animations, so the fixture can't wait for them, and the manifesto sits at
+// 16% until read.
+for (const theme of ["light", "dark"] as const)
+  for (const width of [1440, 390])
+    test(`axe is clean, ${theme} at ${width}`, async ({
+      page,
+      expectAxeClean,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`/?theme=${theme}`);
+      await expectAxeClean(page);
+    });
+
+test("axe is clean with the menu open", async ({ page, expectAxeClean }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/?theme=light");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
+  await expectAxeClean(page);
+});
+
+test("at 390 nothing spills sideways and nothing shifts", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+
+  // CLS on load, from the browser's own layout-shift entries.
+  const shift = await page.evaluate(
+    () =>
+      new Promise<number>((done) => {
+        let sum = 0;
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries() as (PerformanceEntry & {
+            value: number;
+            hadRecentInput: boolean;
+          })[])
+            if (!entry.hadRecentInput) sum += entry.value;
+        }).observe({ type: "layout-shift", buffered: true });
+        setTimeout(() => done(sum), 500);
+      }),
+  );
+  expect(shift).toBeLessThan(0.1);
+
+  await scrollThrough(page);
+  expect(await spilledElements(page)).toEqual([]);
 });

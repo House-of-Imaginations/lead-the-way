@@ -1,4 +1,4 @@
-import { expectFinished, scrollThrough } from "./landing";
+import { expectFinished, scrollThrough, spilledElements } from "./landing";
 import { expect, test } from "./fixtures";
 
 test("with motion, everything arrives once it is scrolled to", async ({
@@ -68,7 +68,18 @@ test("leaving and coming back leaves no motion behind", async ({ page }) => {
   await expect(page.locator(".lp")).toHaveAttribute("data-motion", "on");
   await scrollThrough(page);
   await expectFinished(page);
-  // No section pins, so a spacer means ScrollTrigger left its DOM edits behind.
+  // Guards against a pin added later that leaks its spacer. Nothing pins today,
+  // so this is not a general leak detector.
   await expect(page.locator(".pin-spacer")).toHaveCount(0);
   expect(problems).toEqual([]);
+});
+
+test("at 390 with motion on, nothing spills sideways mid-motion", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await expect(page.locator(".lp")).toHaveAttribute("data-motion", "on");
+  await scrollThrough(page);
+  expect(await spilledElements(page)).toEqual([]);
 });
