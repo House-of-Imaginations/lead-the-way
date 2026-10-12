@@ -1,0 +1,228 @@
+import type { Page } from "@playwright/test";
+import { convex, convexUrl, resetDemo, signInAs } from "./demo";
+import { expect, test } from "./fixtures";
+import { spilledElements } from "./landing";
+
+const SESSION = "/api/auth/get-session";
+
+/**
+ * The deployment's host and its `.site` twin: the next domain in the cloud,
+ * the next port on a local backend. Read when a test asks, not at collection.
+ */
+function convexHosts(): string[] {
+  const { host, hostname, port } = new URL(convexUrl());
+  if (host.endsWith(".convex.cloud"))
+    return [host, host.replace(/\.convex\.cloud$/, ".convex.site")];
+  if (port && (hostname === "127.0.0.1" || hostname === "localhost"))
+    return [host, `${hostname}:${Number(port) + 1}`];
+  return [host];
+}
+
+/** Reopen the app and wait until it answers again, so the next sign-in works. */
+async function reopen(page: Page) {
+  convex(["env", "remove", "APP_CLOSED"]);
+  await expect(async () => {
+    expect((await page.request.get(SESSION)).status()).not.toBe(503);
+  }).toPass({ timeout: 20_000 });
+}
+
+test.beforeAll(() => resetDemo());
+
+test("signed out, the header offers Log in and Start your sprint", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+  const header = page.getByRole("banner");
+  await expect(
+    header.getByRole("link", { name: "Log in", exact: true }),
+  ).toBeVisible();
+  await expect(
+    header.getByRole("link", { name: "Start your sprint" }),
+  ).toBeVisible();
+  await expect(
+    header.getByRole("link", { name: "Go to your home" }),
+  ).toHaveCount(0);
+});
+
+test("signed in, the avatar takes their place and / stays /", async ({
+  page,
+}) => {
+  await signInAs(page, "priya");
+  const res = await page.goto("/");
+  expect(res?.status()).toBe(200);
+  expect(res?.request().redirectedFrom()).toBeNull();
+  await expect(page).toHaveURL("/");
+
+  const header = page.getByRole("banner");
+  const home = header.getByRole("link", { name: "Go to your home" });
+  await expect(home).toBeVisible();
+  await expect(home).toHaveAttribute("href", "/home");
+  await expect(home).toHaveText("PR");
+  await expect(
+    header.getByRole("link", { name: "Log in", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    header.getByRole("link", { name: "Start your sprint" }),
+  ).toHaveCount(0);
+  await expect(
+    header.getByRole("link", { name: "See the prototype" }),
+  ).toBeVisible();
+
+  await home.click();
+  await page.waitForURL((url) => url.pathname !== "/");
+});
+
+test("signed in at 390, the avatar sits by the menu and the menu offers home", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signInAs(page, "priya");
+  await page.goto("/");
+  await expect(
+    page.getByRole("banner").getByRole("link", { name: "Go to your home" }),
+  ).toBeVisible();
+  expect(await spilledElements(page)).toEqual([]);
+  await page.getByRole("button", { name: "Open menu" }).click();
+  const menu = page.getByRole("dialog", { name: "Menu" });
+  await expect(
+    menu.getByRole("link", { name: "Go to your home" }),
+  ).toHaveAttribute("href", "/home");
+  await expect(
+    menu.getByRole("link", { name: "Log in", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    menu.getByRole("link", { name: "Start your sprint" }),
+  ).toHaveCount(0);
+});
+
+test("while the session check runs, the header offers Log in", async ({
+  page,
+}) => {
+  await signInAs(page, "priya");
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(`**${SESSION}`, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/");
+  const header = page.getByRole("banner");
+  await expect(
+    header.getByRole("link", { name: "Log in", exact: true }),
+  ).toBeVisible();
+  await expect(
+    header.getByRole("link", { name: "Start your sprint" }),
+  ).toBeVisible();
+  release();
+  await expect(
+    header.getByRole("link", { name: "Go to your home" }),
+  ).toBeVisible();
+});
+
+// A smoke check only: a fresh load starts with an empty store, so this
+// cannot fail if the hydration guard goes. The unit test in
+// tests/src/components/LandingHeader.test.tsx is the real guard.
+test("the avatar arrives without a console error", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error") errors.push(m.text());
+  });
+  page.on("pageerror", (e) => errors.push(e.message));
+  await signInAs(page, "priya");
+  await page.goto("/");
+  await expect(
+    page.getByRole("banner").getByRole("link", { name: "Go to your home" }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("the browser talks to no Convex deployment, signed in or not", async ({
+  page,
+}) => {
+  const hosts = convexHosts();
+  const isConvex = (url: string) => hosts.includes(new URL(url).host);
+  const convexTraffic: string[] = [];
+  page.on("request", (r) => {
+    if (isConvex(r.url())) convexTraffic.push(r.url());
+  });
+  page.on("websocket", (ws) => {
+    if (isConvex(ws.url())) convexTraffic.push(ws.url());
+  });
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+  await signInAs(page, "priya");
+  await page.goto("/");
+  await expect(
+    page.getByRole("banner").getByRole("link", { name: "Go to your home" }),
+  ).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  expect(convexTraffic).toEqual([]);
+});
+
+test("a closed app shows Log in, never the avatar, and / stays /", async ({
+  page,
+}) => {
+  // Sign in first: a closed app refuses sign-in too.
+  await signInAs(page, "priya");
+  convex(["env", "set", "APP_CLOSED", "on"]);
+  try {
+    // An env change reaches running functions within a few seconds.
+    await expect(async () => {
+      const session = page.waitForResponse((r) => r.url().includes(SESSION));
+      await page.goto("/");
+      expect((await session).status()).toBe(503);
+      await expect(page).toHaveURL("/");
+      const header = page.getByRole("banner");
+      await expect(
+        header.getByRole("link", { name: "Log in", exact: true }),
+      ).toBeVisible();
+      await expect(
+        header.getByRole("link", { name: "Start your sprint" }),
+      ).toBeVisible();
+      await expect(
+        header.getByRole("link", { name: "Go to your home" }),
+      ).toHaveCount(0);
+    }).toPass({ timeout: 20_000 });
+  } finally {
+    await reopen(page);
+  }
+});
+
+test("a session the closed app no longer confirms drops the avatar", async ({
+  page,
+}) => {
+  await signInAs(page, "priya");
+  await page.goto("/");
+  const header = page.getByRole("banner");
+  const home = header.getByRole("link", { name: "Go to your home" });
+  await expect(home).toBeVisible();
+  convex(["env", "set", "APP_CLOSED", "on"]);
+  try {
+    // An env change reaches running functions within a few seconds. Ask
+    // outside the page, so the landing's session store is left as it was.
+    await expect(async () => {
+      expect((await page.request.get(SESSION)).status()).toBe(503);
+    }).toPass({ timeout: 20_000 });
+
+    // /home finds the app closed and sends the client back to "/", where the
+    // store still holds the session from before.
+    const visit = page.waitForResponse(
+      (r) => new URL(r.url()).pathname === "/home",
+    );
+    await home.click();
+    await visit;
+    await expect(page).toHaveURL("/");
+    await expect(
+      header.getByRole("link", { name: "Log in", exact: true }),
+    ).toBeVisible();
+    await expect(
+      header.getByRole("link", { name: "Start your sprint" }),
+    ).toBeVisible();
+    await expect(home).toHaveCount(0);
+  } finally {
+    await reopen(page);
+  }
+});

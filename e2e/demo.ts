@@ -27,15 +27,25 @@ export function convex(args: string[]): string {
   });
 }
 
-function fromEnvLocal(): string | undefined {
+function fromEnvLocal(key = "DEMO_PASSWORD"): string | undefined {
   try {
     const line = readFileSync(join(process.cwd(), ".env.local"), "utf8").match(
-      /^DEMO_PASSWORD=(.*)$/m,
+      new RegExp(`^${key}=(.*)$`, "m"),
     )?.[1];
     return line?.trim().replace(/^(["'])(.*)\1$/, "$2") || undefined;
   } catch {
     return undefined;
   }
+}
+
+/** The dev deployment's URL, from the shell or `.env.local`. */
+export function convexUrl(): string {
+  const url =
+    process.env.NEXT_PUBLIC_CONVEX_URL ||
+    fromEnvLocal("NEXT_PUBLIC_CONVEX_URL");
+  if (!url)
+    throw new Error("No NEXT_PUBLIC_CONVEX_URL in the shell or .env.local.");
+  return url;
 }
 
 let password: string | undefined;

@@ -5,9 +5,15 @@ for (const theme of ["light", "dark"] as const) {
     page,
     expectAxeClean,
   }) => {
+    // R14: GSAP tweens are not Web Animations, so the axe fixture cannot wait
+    // for them; with motion reduced none run.
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto(`/?theme=${theme}`);
+    // The menu repeats the disclaimer; the footer's is the one always shown.
     await expect(
-      page.getByText("Concept prototype. Not an official IBM product."),
+      page
+        .getByRole("contentinfo")
+        .getByText("Concept prototype. Not an official IBM product."),
     ).toBeVisible();
 
     const html = page.locator("html");
