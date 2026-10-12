@@ -13,6 +13,9 @@ export const PERSONA = {
   dan: "dan.okafor@calderlane.com.au",
 } as const;
 export type Persona = keyof typeof PERSONA;
+
+/** `convex/seed.ts`'s `E2E_DOMAIN`: accounts on it go at `seed:reset` (Ruling 34). */
+export const E2E_DOMAIN = "e2e.test";
 export type DemoTarget =
   "setup" | "week1" | "week2" | "week3" | "week4" | "complete";
 

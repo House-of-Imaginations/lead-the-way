@@ -308,3 +308,34 @@ test("a finished sprint shows the week 4 totals", async ({ page }) => {
   await expectShown(page, "Week 4 session done", "7 of 7");
   await expectShown(page, "Real tasks underway", "6 of 7");
 });
+
+test("a closed sprint offers Run another sprint in Invite member's place (R-d)", async ({
+  page,
+}) => {
+  resetDemo("complete");
+  await open(page);
+  await expect(page.getByRole("link", { name: "Invite member" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("link", { name: "Preview team view" }),
+  ).toBeVisible();
+  const run = page.getByRole("button", { name: "Run another sprint" });
+  expect((await run.boundingBox())!.height).toBe(48);
+  await page.screenshot({ path: "output/screens/08-run-another.png" });
+  await run.click();
+  await expect(page).toHaveURL("/setup/protected-hour");
+  resetDemo();
+});
+
+test("Run another sprint fits a phone on 08 @mobile", async ({ page }) => {
+  resetDemo("complete");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  const run = await page
+    .getByRole("button", { name: "Run another sprint" })
+    .boundingBox();
+  expect(run!.height).toBeGreaterThanOrEqual(48);
+  expect(run!.width).toBeGreaterThan(300);
+  resetDemo();
+});

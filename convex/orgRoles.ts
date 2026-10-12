@@ -1,7 +1,10 @@
 import { v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
+import { pickInviteRole } from "./lib/orgs/invites";
 import {
+  MAX_MEMBERS_PER_ORG,
   MAX_ROLES_PER_ORG,
   isOwnerRole,
   permissionsOf,
@@ -10,7 +13,14 @@ import {
   requireWithin,
   rolesOf,
 } from "./lib/orgs/membership";
-import { permissionValidator } from "./lib/orgs/permissions";
+import {
+  HIDDEN_PERMISSIONS,
+  MAX_ROLE_NAME,
+  grants,
+  isManager,
+  permissionValidator,
+  within,
+} from "./lib/orgs/permissions";
 
 /**
  * The roles an organization invented for itself.
@@ -24,35 +34,70 @@ import { permissionValidator } from "./lib/orgs/permissions";
  * stored permission array to edit -- see `convex/tables/orgs.ts`.
  */
 
-const MAX_ROLE_NAME = 40;
-
-// `orgId` on every Members row: 18 shows only its own workspace's (C2).
+// `orgId` on every row: 18 shows only its own workspace's (C2). The flags are
+// the mutations' own checks, so Members and Roles never offer a refusal.
 const roleValidator = v.object({
   orgId: v.id("orgs"),
   _id: v.id("orgRoles"),
   name: v.string(),
   isOwner: v.boolean(),
   permissions: v.array(permissionValidator),
+  /** How many people hold it. A count, never who. */
+  holders: v.number(),
+  /** Launch and Invite member put the team into it (`pickInviteRole`). */
+  launch: v.boolean(),
+  /** Holding it makes a manager (W-f), for R-b's confirm. */
+  makesManager: v.boolean(),
+  /** This seat may move somebody into it (Change role, Invite member). */
+  assignable: v.boolean(),
+  /**
+   * This seat may rename it, and change its permissions unless it is the
+   * launch role (R-a).
+   */
+  editable: v.boolean(),
+  /** ...and delete it: nobody holds it and the team isn't invited into it. */
+  deletable: v.boolean(),
 });
 
-/** The roles, for Members' role choices (W-g) and P7b-3b's Roles tab. */
+/** The roles, for Members' role choices (W-g) and the Roles tab. */
 export const list = viewerQuery()({
   args: {},
   returns: v.array(roleValidator),
   handler: async (ctx) => {
-    requireAnyOf(ctx.viewer, [
-      "members:read",
-      "members:manage",
-      "roles:manage",
-    ]);
-    const roles = await rolesOf(ctx, ctx.viewer.org._id);
-    return roles.map((role) => ({
-      orgId: role.orgId,
-      _id: role._id,
-      name: role.name,
-      isOwner: isOwnerRole(role),
-      permissions: [...permissionsOf(role)],
-    }));
+    const { viewer } = ctx;
+    requireAnyOf(viewer, ["members:read", "members:manage", "roles:manage"]);
+    const roles = await rolesOf(ctx, viewer.org._id);
+    const launchId = pickInviteRole(roles)?._id;
+    const assigns = grants(viewer.permissions, ["members:manage"]);
+    const edits = grants(viewer.permissions, ["roles:manage"]);
+    const owner = isOwnerRole(viewer.role);
+    const rows = [];
+    for (const role of roles) {
+      const permissions = permissionsOf(role);
+      const reach = within(permissions, viewer.permissions);
+      const holders = (
+        await ctx.db
+          .query("people")
+          .withIndex("by_role", (q) => q.eq("roleId", role._id))
+          .take(MAX_MEMBERS_PER_ORG)
+      ).length;
+      const editable =
+        edits && reach && !isOwnerRole(role) && role._id !== viewer.role._id;
+      rows.push({
+        orgId: role.orgId,
+        _id: role._id,
+        name: role.name,
+        isOwner: isOwnerRole(role),
+        permissions: [...permissions],
+        holders,
+        launch: role._id === launchId,
+        makesManager: isManager({ permissions }),
+        assignable: assigns && reach && (!isOwnerRole(role) || owner),
+        editable,
+        deletable: editable && holders === 0 && role._id !== launchId,
+      });
+    }
+    return rows;
   },
 });
 
@@ -66,6 +111,26 @@ function checkName(name: string): string {
     );
   }
   return trimmed;
+}
+
+/**
+ * R-a: one role per name in a workspace, whatever the case. Keeping a role's
+ * own name is never a clash, even beside a duplicate written before this rule.
+ */
+function requireUniqueName(
+  roles: Doc<"orgRoles">[],
+  name: string,
+  self?: Doc<"orgRoles">,
+): void {
+  const key = name.toLowerCase();
+  if (self?.name.trim().toLowerCase() === key) return;
+  if (
+    roles.some(
+      (r) => r._id !== self?._id && r.name.trim().toLowerCase() === key,
+    )
+  ) {
+    throwUserError("FIELD_REQUIRED", "Another role already has that name.");
+  }
 }
 
 export const create = viewerMutation("roles:manage")({
@@ -84,6 +149,7 @@ export const create = viewerMutation("roles:manage")({
         `A workspace can have at most ${MAX_ROLES_PER_ORG} roles.`,
       );
     }
+    requireUniqueName(existing, trimmed);
 
     return await ctx.db.insert("orgRoles", {
       orgId,
@@ -133,7 +199,11 @@ export const update = viewerMutation("roles:manage")({
     requireReach(ctx.viewer, permissionsOf(role));
 
     const trimmed = checkName(name);
-    const next = [...new Set(permissions)];
+    // M-e: the editor never shows a hidden permission, so it keeps what the
+    // role held. Kept on save; a holder may also send it (Ruling 19), and
+    // then `requireWithin` below checks it like any other addition.
+    const kept = role.permissions.filter((p) => HIDDEN_PERMISSIONS.includes(p));
+    const next = [...new Set([...permissions, ...kept])];
 
     // Only what is BEING ADDED has to be within the caller's reach. Narrowing
     // a role you can already edit is not an escalation, so requiring the whole
@@ -142,6 +212,28 @@ export const update = viewerMutation("roles:manage")({
       (permission) => !role.permissions.includes(permission),
     );
     requireWithin(added, ctx.viewer);
+
+    // R-a. After the escalation checks, so reaching past your own role still
+    // reads as escalation.
+    if (role._id === ctx.viewer.role._id) {
+      throwUserError(
+        "FORBIDDEN",
+        "You can't edit your own role. Ask someone else to change it.",
+      );
+    }
+    const roles = await rolesOf(ctx, orgId);
+    // R-a: launch and Invite member put the team into this role, so it grants
+    // nothing. Protection follows `pickInviteRole`'s pick, not the role's id:
+    // after Employee is renamed, a new no-permission role named "Employee"
+    // becomes the pick and the protected role. Launch still works either way,
+    // because the pick never has a permission.
+    if (next.length > 0 && pickInviteRole(roles)?._id === roleId) {
+      throwUserError(
+        "FORBIDDEN",
+        "Your team is invited into this role, so it can't have permissions.",
+      );
+    }
+    requireUniqueName(roles, trimmed, role);
 
     await ctx.db.patch(roleId, { name: trimmed, permissions: next });
 
@@ -179,6 +271,13 @@ export const remove = viewerMutation("roles:manage")({
     // below refuses while anybody holds it -- but deleting a role somebody is
     // about to be given is still reaching past yourself.
     requireReach(ctx.viewer, permissionsOf(role));
+    // R-a: the last role with no permissions is always this one, so it stays.
+    if (pickInviteRole(await rolesOf(ctx, orgId))?._id === roleId) {
+      throwUserError(
+        "FORBIDDEN",
+        "Your team is invited into this role, so it can't be deleted.",
+      );
+    }
 
     // Refused while somebody holds it, rather than cascading or reassigning.
     // A cascade evicts people from the workspace as a side effect of tidying

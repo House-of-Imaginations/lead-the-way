@@ -188,6 +188,18 @@ export function requireOutranks(caller: Seat, target: Seat): void {
   }
 }
 
+/**
+ * Owner-kind callers only: moving anyone into or out of the owner role (M-b)
+ * and deleting the workspace (M-j). A custom role holding every permission
+ * passes every other check, so this is the one that stops it.
+ */
+export function requireOwner(
+  seat: { role: Doc<"orgRoles"> },
+  message: string,
+): void {
+  if (!isOwnerRole(seat.role)) throwUserError("FORBIDDEN", message);
+}
+
 /** Every role in the org: a workspace holds at most `MAX_ROLES_PER_ORG`. */
 export async function rolesOf(
   ctx: QueryCtx | MutationCtx,

@@ -135,13 +135,48 @@ test("a slug that would shadow a route is refused", async () => {
   ).rejects.toMatchObject({ data: { code: "SLUG_TAKEN" } });
 });
 
-test("two spellings of one name cannot become two workspaces", async () => {
+test("a second workspace with a taken name gets a suffix (M-h)", async () => {
   const t = harness();
-  await t.withIdentity(ALICE).mutation(api.orgs.create, { name: "Acme" });
+  const a = await t.withIdentity(ALICE).mutation(api.orgs.create, {
+    name: "Acme",
+  });
+  const b = await t.withIdentity(BOB).mutation(api.orgs.create, {
+    name: "  ACME  ",
+  });
+  expect([a.slug, b.slug]).toEqual(["acme", "acme-2"]);
+});
 
+test("a new workspace takes the team name it is given (R-e)", async () => {
+  const t = harness();
+  const alice = t.withIdentity(ALICE);
+  const named = await alice.mutation(api.orgs.create, {
+    name: "Acme",
+    teamName: " Platform team ",
+  });
+  const blank = await alice.mutation(api.orgs.create, {
+    name: "Birch",
+    teamName: "  ",
+  });
+  const teams = await t.run((ctx) =>
+    Promise.all(
+      [named.orgId, blank.orgId].map(
+        async (orgId) =>
+          (
+            await ctx.db
+              .query("teams")
+              .withIndex("by_org", (q) => q.eq("orgId", orgId))
+              .first()
+          )?.name,
+      ),
+    ),
+  );
+  expect(teams).toEqual(["Platform team", "Your team"]);
   await expect(
-    t.withIdentity(BOB).mutation(api.orgs.create, { name: "  ACME  " }),
-  ).rejects.toMatchObject({ data: { code: "SLUG_TAKEN" } });
+    alice.mutation(api.orgs.create, {
+      name: "Cedar",
+      teamName: "x".repeat(61),
+    }),
+  ).rejects.toMatchObject({ data: { code: "NAME_REQUIRED" } });
 });
 
 /**

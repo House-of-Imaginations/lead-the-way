@@ -11,8 +11,8 @@ import { userMessage } from "@/lib/errors";
 
 const FAILED = "We couldn't start another sprint. Try again.";
 
-/** 16's primary action (P7a Ruling 14): a draft copy of this sprint, then setup at 04. */
-export function RunAnother() {
+/** 16's and 08's primary action (P7a Ruling 14, R-d): a draft copy of this sprint, then setup at 04. */
+export function RunAnother({ size = "md" }: { size?: "md" | "lg" }) {
   const router = useRouter();
   const expectOrgId = useExpectOrgId();
   const runAnother = useMutation(api.sprints.runAnother);
@@ -36,7 +36,7 @@ export function RunAnother() {
   return (
     <>
       <Button
-        size="md"
+        size={size}
         className="max-[672px]:w-full"
         icon={ArrowRight}
         onClick={run}

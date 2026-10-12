@@ -1,6 +1,14 @@
 import { expect, test } from "vitest";
 import { api } from "../../../convex/_generated/api";
-import { PERMISSIONS } from "../../../convex/lib/orgs/permissions";
+import {
+  HIDDEN_PERMISSIONS,
+  PERMISSIONS,
+  PERMISSION_CLASS,
+  PERMISSION_LABELS,
+  ROLE_EDITOR_PERMISSIONS,
+  WORKSPACE_PERMISSIONS,
+  isManager,
+} from "../../../convex/lib/orgs/permissions";
 import { harness, seat, workspace } from "./helpers";
 
 test("owners hold every permission without a migration", async () => {
@@ -71,4 +79,51 @@ test("a custom role with team:insights has it and cannot escalate", async () => 
       expectOrgId: orgId,
     }),
   ).resolves.toBeDefined();
+});
+
+test("every permission is a manager's or a teammate's, and isManager agrees", () => {
+  for (const p of PERMISSIONS) {
+    expect(["manager", "teammate"], p).toContain(PERMISSION_CLASS[p]);
+    expect(isManager({ permissions: [p] }), p).toBe(
+      PERMISSION_CLASS[p] === "manager",
+    );
+  }
+  // W-f: workspace control is a manager's. M-e: members:read alone is not.
+  for (const p of WORKSPACE_PERMISSIONS) {
+    expect(PERMISSION_CLASS[p], p).toBe("manager");
+  }
+  // The whole manager line, so moving any permission across it fails here.
+  expect(PERMISSION_CLASS).toEqual({
+    "org:manage": "manager",
+    "members:read": "teammate",
+    "members:manage": "manager",
+    "roles:manage": "manager",
+    "sprint:manage": "manager",
+    "team:insights": "manager",
+  });
+});
+
+test("the role editor offers M-i's labels and hides members:read (M-e)", () => {
+  expect(ROLE_EDITOR_PERMISSIONS.map((p) => PERMISSION_LABELS[p])).toEqual([
+    "Change workspace settings",
+    "Invite and remove people",
+    "Create and edit roles",
+    "Set up and run the sprint",
+    "See team totals",
+  ]);
+  expect(HIDDEN_PERMISSIONS).toEqual(["members:read"]);
+});
+
+test("only an owner deletes a workspace, whatever a custom role holds (M-j)", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const { as: all } = await seat(t, orgId, "user_all", [...PERMISSIONS]);
+  await expect(
+    all.mutation(api.orgs.remove, { expectOrgId: orgId }),
+  ).rejects.toMatchObject({
+    data: {
+      code: "FORBIDDEN",
+      message: "Only an owner can delete a workspace.",
+    },
+  });
 });

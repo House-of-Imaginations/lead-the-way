@@ -1,3 +1,5 @@
+// `src` imports this file (the one allowlisted in eslint.config.mjs), so it
+// stays pure: it imports only `convex/values` and `convex-helpers`.
 import { literals } from "convex-helpers/validators";
 import type { Infer } from "convex/values";
 
@@ -42,6 +44,9 @@ export type Permission = Infer<typeof permissionValidator>;
  */
 export const ALL_PERMISSIONS: readonly Permission[] = PERMISSIONS;
 
+/** The longest role name `orgRoles` accepts; the role editor's field stops there too. */
+export const MAX_ROLE_NAME = 40;
+
 /** Does this permission set contain every one of `need`? */
 export function grants(
   held: readonly Permission[],
@@ -79,11 +84,45 @@ export const WORKSPACE_PERMISSIONS = [
   "roles:manage",
 ] as const satisfies readonly Permission[];
 
-const MANAGER_PERMISSIONS: readonly Permission[] = [
-  "team:insights",
-  "sprint:manage",
-  ...WORKSPACE_PERMISSIONS,
-];
+/**
+ * Which side of the manager line each permission puts its holder (W-f).
+ * Every permission is classed, so a new one can't join the list unclassed
+ * (tests/convex/workspace/permissions.test.ts). `members:read` alone unlocks
+ * nothing (M-e), so it is a teammate's.
+ */
+export const PERMISSION_CLASS = {
+  "org:manage": "manager",
+  "members:read": "teammate",
+  "members:manage": "manager",
+  "roles:manage": "manager",
+  "sprint:manage": "manager",
+  "team:insights": "manager",
+} as const satisfies Record<Permission, "manager" | "teammate">;
+
+const MANAGER_PERMISSIONS: readonly Permission[] = PERMISSIONS.filter(
+  (p) => PERMISSION_CLASS[p] === "manager",
+);
+
+/**
+ * M-i: what the role editor calls each permission. `members:read` has a
+ * label so the record is complete, but the editor never shows it
+ * (`HIDDEN_PERMISSIONS`).
+ */
+export const PERMISSION_LABELS = {
+  "org:manage": "Change workspace settings",
+  "members:read": "See who is in the workspace",
+  "members:manage": "Invite and remove people",
+  "roles:manage": "Create and edit roles",
+  "sprint:manage": "Set up and run the sprint",
+  "team:insights": "See team totals",
+} as const satisfies Record<Permission, string>;
+
+/** M-e: kept in code, never offered in the role editor, kept on save. */
+export const HIDDEN_PERMISSIONS: readonly Permission[] = ["members:read"];
+
+/** The role editor's checkboxes, in this order. */
+export const ROLE_EDITOR_PERMISSIONS: readonly Permission[] =
+  PERMISSIONS.filter((p) => !HIDDEN_PERMISSIONS.includes(p));
 
 /**
  * The manager area is a matter of permissions, never of a role's name (rule 6).

@@ -2,7 +2,7 @@ import { literals } from "convex-helpers/validators";
 import { v } from "convex/values";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
-import { orgNameOf } from "./lib/orgs/create";
+import { MAX_TEAM_NAME, orgNameOf } from "./lib/orgs/create";
 import { grants } from "./lib/orgs/permissions";
 import { thresholdOf } from "./lib/privacy";
 import { TIME_ZONES } from "./lib/profileFields";
@@ -29,6 +29,7 @@ import {
 export const settings = viewerQuery("org:manage")({
   args: {},
   returns: v.object({
+    orgId: v.id("orgs"),
     name: v.string(),
     /** The Workspace ID. Links use it, so it never changes. */
     slug: v.string(),
@@ -50,6 +51,8 @@ export const settings = viewerQuery("org:manage")({
     const { org, permissions } = ctx.viewer;
     const team = await currentTeam(ctx, org._id);
     return {
+      // R-g: the tabs show only their own workspace's settings.
+      orgId: org._id,
       name: org.name,
       slug: org.slug,
       partner: org.partnerName
@@ -90,8 +93,6 @@ export const setThreshold = viewerMutation("org:manage")({
     return null;
   },
 });
-
-const MAX_TEAM_NAME = 60;
 
 /**
  * General's Save changes. The workspace name is on `orgs` (the slug never

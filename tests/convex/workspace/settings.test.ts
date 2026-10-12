@@ -351,3 +351,9 @@ test("defaults are checked, and need sprint:manage as well as org:manage", async
     }),
   ).resolves.toBeNull();
 });
+
+test("the settings name the workspace they were read from (R-g)", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  expect((await owner.query(api.workspace.settings, {})).orgId).toBe(orgId);
+});

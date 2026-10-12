@@ -14,6 +14,7 @@ import {
 } from "./slug";
 
 export const MAX_ORG_NAME = 60;
+export const MAX_TEAM_NAME = 60;
 
 /** A workspace name, cleaned, or a refusal that says how to fix it. */
 export function orgNameOf(name: string): string {
@@ -47,8 +48,9 @@ async function slugTaken(ctx: MutationCtx, slug: string) {
 }
 
 /**
- * `base`, else `base-2` to `base-50`, else `base-` and 6 random characters. For names the person didn't choose
- * ("Bec's workspace"), where a clash shouldn't stop sign-up.
+ * `base`, else `base-2` to `base-50`, else `base-` and 6 random characters.
+ * Every new workspace takes one, so a taken name never stops sign-up or
+ * Create workspace (M-h).
  * ponytail: 50 probes then 3 random tries (36^6 slugs each); a real counter if one name ever crowds that.
  */
 async function freeSlug(ctx: MutationCtx, base: string): Promise<string> {
@@ -79,7 +81,7 @@ export async function createWorkspace(
   ctx: MutationCtx,
   userId: string,
   name: string,
-  { suffix = false }: { suffix?: boolean } = {},
+  { teamName }: { teamName?: string } = {},
 ): Promise<{ orgId: Id<"orgs">; slug: string }> {
   // Every tester shares the demo accounts, and a reset clears only the demo
   // workspace, so a demo persona's workspace would be anybody's and forever.
@@ -90,6 +92,14 @@ export async function createWorkspace(
     );
   }
   const trimmed = orgNameOf(name);
+  // R-e: /workspace/new names the team; sign-up leaves it for 03.
+  const team = teamName?.trim() || "Your team";
+  if (team.length > MAX_TEAM_NAME) {
+    throwUserError(
+      "NAME_REQUIRED",
+      `A team name can be at most ${MAX_TEAM_NAME} characters.`,
+    );
+  }
   const base = slugify(trimmed);
   if (!slugIsAvailableShape(base)) {
     throwUserError(
@@ -97,11 +107,7 @@ export async function createWorkspace(
       "That name cannot be used as a web address. Try another.",
     );
   }
-  let slug = base;
-  if (suffix) slug = await freeSlug(ctx, base);
-  else if (await slugTaken(ctx, base)) {
-    throwUserError("SLUG_TAKEN", "A workspace with that name already exists.");
-  }
+  const slug = await freeSlug(ctx, base);
   // Creating is the other door into a workspace, and holds the same ceiling
   // accepting an invitation does.
   await assertCanCreate(ctx, userId);
@@ -136,7 +142,7 @@ export async function createWorkspace(
   // One team per workspace (spec 4.2). 03 fills it in and sets `savedAt`.
   await ctx.db.insert("teams", {
     orgId,
-    name: "Your team",
+    name: team,
     challenges: [],
     createdAt: now,
   });

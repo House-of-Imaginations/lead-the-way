@@ -169,6 +169,10 @@ export function AppShell({
             );
         },
       })),
+    // Spec line 101; never a shared demo persona (M-h).
+    ...(shell.canCreateWorkspace
+      ? [{ label: "Create workspace", href: "/workspace/new" }]
+      : []),
     ...(ws.open ? [workspaceItem] : []),
   ];
   const switchTo = shell.switchTo;

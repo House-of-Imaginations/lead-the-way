@@ -3,16 +3,17 @@ import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import {
   MAX_MEMBERS_PER_ORG,
-  type Seat,
   dropSeat,
   isOwnerRole,
   permissionsOf,
   requireAnyOf,
   requireOutranks,
+  requireOwner,
   requireWithin,
   seatOf,
   setRole,
 } from "./lib/orgs/membership";
+import { grants, within } from "./lib/orgs/permissions";
 
 /**
  * Who is in a workspace, and the writes that change that.
@@ -26,20 +27,9 @@ import {
  *  - `requireOutranks`: you may not act on somebody stronger than you.
  */
 
-/**
- * M-b: only an owner moves anybody into or out of the owner role. A custom
- * role holding all six permissions passes `requireWithin` and
- * `requireOutranks`, so without this it could promote itself and then demote
- * or remove the real owner.
- */
-function requireOwnerFor(caller: Seat, touchesOwner: boolean): void {
-  if (touchesOwner && !isOwnerRole(caller.role)) {
-    throwUserError(
-      "FORBIDDEN",
-      "Only an owner can give or take away the owner role.",
-    );
-  }
-}
+// M-b: a custom role holding every permission passes requireWithin and
+// requireOutranks, so without this it could take the owner role.
+const OWNER_ROLE = "Only an owner can give or take away the owner role.";
 
 // `orgId` on every Members row: 18 shows only its own workspace's (C2).
 const memberValidator = v.object({
@@ -53,6 +43,8 @@ const memberValidator = v.object({
   isOwner: v.boolean(),
   joinedAt: v.number(),
   you: v.boolean(),
+  /** This seat may change or remove them (requireOutranks, M-b). */
+  canManage: v.boolean(),
 });
 
 /**
@@ -71,10 +63,15 @@ export const list = viewerQuery()({
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .take(MAX_MEMBERS_PER_ORG);
 
+    // The same checks changeRole and remove run, so the menu never offers
+    // what the server refuses.
+    const manages = grants(ctx.viewer.permissions, ["members:manage"]);
+    const owner = isOwnerRole(ctx.viewer.role);
     const members = [];
     for (const person of people) {
       const role = await ctx.db.get(person.roleId);
       if (!role) continue;
+      const you = person._id === ctx.viewer.person._id;
       members.push({
         orgId,
         personId: person._id,
@@ -85,7 +82,12 @@ export const list = viewerQuery()({
         roleName: role.name,
         isOwner: isOwnerRole(role),
         joinedAt: person.createdAt,
-        you: person._id === ctx.viewer.person._id,
+        you,
+        canManage:
+          manages &&
+          !you &&
+          within(permissionsOf(role), ctx.viewer.permissions) &&
+          (!isOwnerRole(role) || owner),
       });
     }
     return members;
@@ -115,7 +117,9 @@ export const changeRole = viewerMutation("members:manage")({
     const target = await seatOf(ctx, person.userId, orgId);
     requireWithin(permissionsOf(role), ctx.viewer);
     requireOutranks(ctx.viewer, target);
-    requireOwnerFor(ctx.viewer, isOwnerRole(role) || isOwnerRole(target.role));
+    if (isOwnerRole(role) || isOwnerRole(target.role)) {
+      requireOwner(ctx.viewer, OWNER_ROLE);
+    }
 
     await setRole(ctx, person, roleId);
     return null;
@@ -137,14 +141,20 @@ export const remove = viewerMutation("members:manage")({
     }
     const target = await seatOf(ctx, person.userId, orgId);
     requireOutranks(ctx.viewer, target);
-    requireOwnerFor(ctx.viewer, isOwnerRole(target.role));
+    if (isOwnerRole(target.role)) requireOwner(ctx.viewer, OWNER_ROLE);
 
     await dropSeat(ctx, person);
     return null;
   },
 });
 
-/** Show yourself out. The last owner is refused and has to hand over first. */
+/**
+ * Show yourself out. The last owner is refused and has to hand over first.
+ *
+ * P7b R-h, accepted: a credential you shared stays public after you leave, under
+ * the name stored on it at issue (M-c), and nothing in the product takes it
+ * down. Spec 5.1 says so.
+ */
 export const leave = viewerMutation()({
   args: {},
   returns: v.null(),

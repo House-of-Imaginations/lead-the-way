@@ -3,7 +3,13 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { throwUserError } from "./errors";
 import { requiredDone } from "./pathway";
 import { HOUR_STARTS, isOneOf } from "./setupOptions";
-import { addDays, mondayOf, startDateOf, weekOneDate } from "./sprintTime";
+import {
+  addDays,
+  closesAt,
+  mondayOf,
+  startDateOf,
+  weekOneDate,
+} from "./sprintTime";
 import type { Viewer } from "./viewer";
 
 export const DEFAULT_COURSE = "AI Productivity Fundamentals";
@@ -245,4 +251,19 @@ export async function isLaterSprint(
     oldest._id !== sprint._id &&
     oldest.launchedAt !== undefined
   );
+}
+
+/**
+ * Why "Run another sprint" can't run on `newest` (`setupSprint`) yet, or null
+ * when it can (P7a Ruling 14). `sprints.runAnother` throws the code; 08 and 16
+ * offer the button on null to a `sprint:manage` seat.
+ */
+export function runAnotherBlock(
+  newest: Doc<"sprints"> | null,
+  now: number,
+): null | "SPRINT_DRAFT_EXISTS" | "SPRINT_NOT_CLOSED" {
+  if (!newest) return "SPRINT_NOT_CLOSED";
+  if (newest.launchedAt === undefined) return "SPRINT_DRAFT_EXISTS";
+  if (closesAt(newest) > now) return "SPRINT_NOT_CLOSED";
+  return null;
 }

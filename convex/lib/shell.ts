@@ -4,14 +4,18 @@ import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { flagOn } from "../app";
 import { castOf } from "./demo/cast";
-import { MAX_MEMBERS_PER_ORG, seatsOfUser } from "./orgs/membership";
+import {
+  MAX_MEMBERS_PER_ORG,
+  MAX_ORGS_PER_USER,
+  seatsOfUser,
+} from "./orgs/membership";
 import {
   ROUTE_PERMISSION,
   isManager,
   type ManagerRoute,
   type Permission,
 } from "./orgs/permissions";
-import { firstNameOf, initialsOf, ownerOf } from "./orgs/people";
+import { firstNameOf, initialsOf, isDemoAccount, ownerOf } from "./orgs/people";
 import { settingsOf } from "./settings";
 import { SETUP_STEPS } from "./setupSteps";
 import { setupSprint, currentTeam, launchedSprint, setupGate } from "./sprint";
@@ -40,12 +44,14 @@ const linkValidator = v.object({
 });
 
 /**
- * W-g: each 18 tab and the one permission that opens it. Roles joins in
- * P7b-3b as `roles: "roles:manage"`. Order is the tab order.
+ * W-g: each 18 tab and the one permission that opens it. Keys, not tab
+ * order: `general` opens General, Sprint defaults and Data and privacy, and
+ * `WorkspaceSettings` sets the order (spec: Roles last).
  */
 export const WORKSPACE_TABS = {
   general: "org:manage",
   members: "members:manage",
+  roles: "roles:manage",
 } as const satisfies Record<string, Permission>;
 export type WorkspaceTab = keyof typeof WORKSPACE_TABS;
 
@@ -54,6 +60,8 @@ export const shellValidator = v.object({
   expectOrgId: v.id("orgs"),
   /** The demo banner and the persona switch: the demo workspace with DEMO_MODE on. */
   isDemo: v.boolean(),
+  /** M-h: the org menu's Create workspace. Never a shared demo persona, nor an account at `MAX_ORGS_PER_USER`. */
+  canCreateWorkspace: v.boolean(),
   /** The person's Reduce motion setting (P7b-1); AppShell sets `data-reduce-motion`. */
   reduceMotion: v.boolean(),
   /**
@@ -302,7 +310,8 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
     setupSprint(ctx, viewer.org._id),
   ]);
   const workspaces: Shell["workspaces"] = [];
-  for (const seat of await seatsOfUser(ctx, viewer.userId)) {
+  const seats = await seatsOfUser(ctx, viewer.userId);
+  for (const seat of seats) {
     const org = await ctx.db.get(seat.orgId);
     if (org)
       workspaces.push({
@@ -320,6 +329,10 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
   return {
     expectOrgId: viewer.org._id,
     isDemo,
+    // `assertCanCreate`'s ceiling too, so the offer is never refused (M-6).
+    canCreateWorkspace:
+      seats.length < MAX_ORGS_PER_USER &&
+      !(await isDemoAccount(ctx, viewer.userId)),
     reduceMotion: (await settingsOf(ctx, viewer.person._id)).reduceMotion,
     workspaceSettings: {
       open: tabs.length > 0,

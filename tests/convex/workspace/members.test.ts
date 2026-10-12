@@ -3,7 +3,10 @@ import { api, internal } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { castOf } from "../../../convex/lib/demo/cast";
 import { ON_REMOVE } from "../../../convex/lib/orgs/cascade";
-import { ALL_PERMISSIONS } from "../../../convex/lib/orgs/permissions";
+import {
+  ALL_PERMISSIONS,
+  HIDDEN_PERMISSIONS,
+} from "../../../convex/lib/orgs/permissions";
 import { writeSettings } from "../../../convex/lib/settings";
 import { calderLane, harness, seat, workspace } from "./helpers";
 
@@ -19,6 +22,10 @@ afterEach(() => {
 });
 
 const FORBIDDEN = { data: { code: "FORBIDDEN" } };
+// A refusal, not a validator error or a missing row.
+const refused = (codes: RegExp) => ({
+  data: { code: expect.stringMatching(codes) },
+});
 
 test("only an owner moves anybody into or out of the owner role (M-b)", async () => {
   const t = harness();
@@ -114,6 +121,7 @@ test("the member list is name, email and role, and marks your own row", async ()
   expect(rows.map((r) => r.you)).toEqual([true, false]);
   // Privacy rule 7: nothing about anyone's participation, ever.
   expect(Object.keys(rows[0]).sort()).toEqual([
+    "canManage",
     "email",
     "isOwner",
     "joinedAt",
@@ -351,9 +359,9 @@ test("a removed member leaves sprint 1's joined count and Members (M-c)", async 
     personId: await personOf(t, orgId, "sarah"),
     expectOrgId: orgId,
   });
-  // Still one of the eight invited (she was), no longer one of the joined.
+  // Off the seated team, so out of joined and invited alike (R-c).
   expect((await priya.query(api.manager.overview, {}))!.sprint).toMatchObject({
-    invited: 8,
+    invited: 7,
     joined: 6,
   });
   expect(
@@ -392,5 +400,181 @@ test("the holder backfill stamps older badges once", async () => {
   expect(badge).toMatchObject({
     holderName: person.name,
     holderTimeZone: person.timeZone,
+  });
+});
+
+test("each row says whether this seat may change it, as the server decides", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const admin = await seat(t, orgId, "user_admin", ["members:manage"]);
+  await seat(t, orgId, "user_dee", []);
+  await seat(t, orgId, "user_big", ["members:manage", "org:manage"]);
+  const reader = await seat(t, orgId, "user_reader", ["members:read"]);
+  const manageable = async (as: typeof owner) =>
+    Object.fromEntries(
+      (await as.query(api.members.list, {})).map((r) => [
+        r.userId,
+        r.canManage,
+      ]),
+    );
+
+  expect(await manageable(owner)).toEqual({
+    user_owner: false, // you
+    user_admin: true,
+    user_dee: true,
+    user_big: true,
+    user_reader: true,
+  });
+  expect(await manageable(admin.as)).toEqual({
+    user_owner: false, // the owner role (M-b)
+    user_admin: false, // you
+    user_dee: true,
+    user_big: false, // reaches further
+    user_reader: false, // members:read is not within members:manage
+  });
+  // members:read reads the list (M-e) and may change nobody.
+  expect(Object.values(await manageable(reader.as))).not.toContain(true);
+
+  // The flag is the server's own answer: every row it marks false is refused.
+  const rows = await admin.as.query(api.members.list, {});
+  for (const row of rows) {
+    if (row.canManage || row.you) continue;
+    await expect(
+      admin.as.mutation(api.members.remove, {
+        personId: row.personId,
+        expectOrgId: orgId,
+      }),
+    ).rejects.toMatchObject(refused(/FORBIDDEN|PERMISSION_ESCALATION/));
+  }
+  // ...and a row it marks true is accepted.
+  const dee = rows.find((r) => r.userId === "user_dee")!;
+  expect(dee.canManage).toBe(true);
+  await admin.as.mutation(api.members.remove, {
+    personId: dee.personId,
+    expectOrgId: orgId,
+  });
+});
+
+test("a role holding every permission is offered nothing of the owner role (M-b)", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const all = await seat(t, orgId, "user_all", [...ALL_PERMISSIONS]);
+  const dee = await seat(t, orgId, "user_dee", []);
+  const ownerRow = (await all.as.query(api.members.list, {})).find(
+    (r) => r.userId === "user_owner",
+  )!;
+  expect(ownerRow.canManage).toBe(false);
+  const manager = (await all.as.query(api.orgRoles.list, {})).find(
+    (r) => r.name === "Manager",
+  )!;
+  expect(manager.assignable).toBe(false);
+  // The server agrees: a seat it outranks still can't be given the owner role.
+  await expect(
+    all.as.mutation(api.members.changeRole, {
+      personId: dee.personId,
+      roleId: manager._id,
+      expectOrgId: orgId,
+    }),
+  ).rejects.toMatchObject(FORBIDDEN);
+});
+
+test("each role says what this seat may do with it", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const admin = await seat(t, orgId, "user_admin", [
+    "members:manage",
+    "roles:manage",
+  ]);
+  await seat(t, orgId, "user_dee", []);
+  const reader = await seat(t, orgId, "user_reader", ["members:read"]);
+  await owner.mutation(api.orgRoles.create, {
+    name: "Spare",
+    permissions: [],
+    expectOrgId: orgId,
+  });
+  // [holders, launch, makesManager, assignable, editable, deletable]
+  const flags = async (as: typeof owner) =>
+    Object.fromEntries(
+      (await as.query(api.orgRoles.list, {})).map((r) => [
+        r.name,
+        [
+          r.holders,
+          r.launch,
+          r.makesManager,
+          r.assignable,
+          r.editable,
+          r.deletable,
+        ],
+      ]),
+    );
+
+  expect(await flags(owner)).toEqual({
+    Manager: [1, false, true, true, false, false],
+    // Launch invites into it: never deletable (R-a).
+    Employee: [0, true, false, true, true, false],
+    "role-user_admin": [1, false, true, true, true, false],
+    "role-user_dee": [1, false, false, true, true, false],
+    "role-user_reader": [1, false, false, true, true, false],
+    Spare: [0, false, false, true, true, true],
+  });
+  expect(await flags(admin.as)).toEqual({
+    // Only an owner hands out the owner role (M-b); nobody edits it.
+    Manager: [1, false, true, false, false, false],
+    Employee: [0, true, false, true, true, false],
+    // Your own role: you may give it, never edit it (R-a).
+    "role-user_admin": [1, false, true, true, false, false],
+    "role-user_dee": [1, false, false, true, true, false],
+    // members:read is outside this seat's reach.
+    "role-user_reader": [1, false, false, false, false, false],
+    Spare: [0, false, false, true, true, true],
+  });
+  // members:read reads the roles and may do nothing with them.
+  for (const row of Object.values(await flags(reader.as))) {
+    expect(row.slice(3)).toEqual([false, false, false]);
+  }
+
+  // The flags are the server's own answer. A refusal rolls back, so each
+  // row is tried as it stands.
+  const REFUSED = refused(/FORBIDDEN|PERMISSION_ESCALATION|ROLE_IN_USE/);
+  for (const as of [owner, admin.as]) {
+    for (const role of await as.query(api.orgRoles.list, {})) {
+      if (!role.deletable) {
+        await expect(
+          as.mutation(api.orgRoles.remove, {
+            roleId: role._id,
+            expectOrgId: orgId,
+          }),
+          role.name,
+        ).rejects.toMatchObject(REFUSED);
+      }
+      if (!role.editable) {
+        // Its own name and what the editor shows: a save that changes nothing.
+        await expect(
+          as.mutation(api.orgRoles.update, {
+            roleId: role._id,
+            name: role.name,
+            permissions: role.permissions.filter(
+              (p) => !HIDDEN_PERMISSIONS.includes(p),
+            ),
+            expectOrgId: orgId,
+          }),
+          role.name,
+        ).rejects.toMatchObject(REFUSED);
+      }
+    }
+  }
+  // ...and a true flag is accepted (M-5): Spare is editable and deletable.
+  const spare = (await admin.as.query(api.orgRoles.list, {})).find(
+    (r) => r.name === "Spare",
+  )!;
+  await admin.as.mutation(api.orgRoles.update, {
+    roleId: spare._id,
+    name: spare.name,
+    permissions: spare.permissions,
+    expectOrgId: orgId,
+  });
+  await admin.as.mutation(api.orgRoles.remove, {
+    roleId: spare._id,
+    expectOrgId: orgId,
   });
 });

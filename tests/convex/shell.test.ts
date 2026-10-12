@@ -8,10 +8,13 @@ import {
 import { DEFAULT_SETTINGS } from "../../convex/lib/settings";
 import type { Permission } from "../../convex/lib/orgs/permissions";
 import type { Shell } from "../../convex/lib/shell";
+import { MAX_ORGS_PER_USER } from "../../convex/lib/orgs/membership";
 import { personOf } from "./sprintHelpers";
+import { personFields } from "./testHelpers";
 import {
   calderLane,
   harness,
+  OWNER,
   seat,
   workspace,
   type T,
@@ -460,11 +463,10 @@ test("the shell opens 18 for its tabs' permissions and names the owner to everyo
   const wsOf = async (who: ReturnType<typeof as>) =>
     (await who.query(api.viewer.shell, {}))?.workspaceSettings;
   const cases: [ReturnType<typeof as>, string[]][] = [
-    [as("priya"), ["general", "members"]],
+    [as("priya"), ["general", "members", "roles"]],
     [await seated("user_admin", ["org:manage"]), ["general"]],
     [await seated("user_people", ["members:manage"]), ["members"]],
-    // Roles is P7b-3b's tab: roles:manage alone opens nothing yet (Ruling 11).
-    [await seated("user_roles", ["roles:manage"]), []],
+    [await seated("user_roles", ["roles:manage"]), ["roles"]],
     [await seated("user_reader", ["members:read"]), []],
     [await seated("user_lead", ["sprint:manage", "team:insights"]), []],
     [as("dan"), []],
@@ -476,4 +478,40 @@ test("the shell opens 18 for its tabs' permissions and names the owner to everyo
       tabs,
     });
   }
+});
+
+test("Create workspace is offered to everyone but a demo account (M-h)", async () => {
+  const { as } = await calderLane();
+  expect(
+    (await as("priya").query(api.viewer.shell, {}))?.canCreateWorkspace,
+  ).toBe(false);
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  expect((await owner.query(api.viewer.shell, {}))?.canCreateWorkspace).toBe(
+    true,
+  );
+  // At the ceiling, creating would be refused, so it isn't offered (M-6).
+  await t.run(async (ctx) => {
+    const { roleId } = (await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first())!;
+    for (let i = 1; i < MAX_ORGS_PER_USER; i++) {
+      const other = await ctx.db.insert("orgs", {
+        name: `Other ${i}`,
+        slug: `other-${i}`,
+        privacyThreshold: 5,
+        isDemo: false,
+        createdAt: Date.now(),
+      });
+      await ctx.db.insert("people", {
+        orgId: other,
+        roleId,
+        ...personFields(OWNER.subject),
+      });
+    }
+  });
+  expect((await owner.query(api.viewer.shell, {}))?.canCreateWorkspace).toBe(
+    false,
+  );
 });

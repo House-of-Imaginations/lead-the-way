@@ -41,6 +41,7 @@ import {
   gateOpen,
   isLaterSprint,
   requireDraft,
+  runAnotherBlock,
   setupGate,
   sprintDefaultsOf,
   sprintInvites,
@@ -527,16 +528,13 @@ export const runAnother = viewerMutation("sprint:manage")({
     // `now` is a getter that reads the clock; read it once.
     const now = viewer.now;
     const sprint = await setupSprint(ctx, orgId);
-    if (sprint && sprint.launchedAt === undefined) {
+    const block = runAnotherBlock(sprint, now);
+    if (block !== null || !sprint) {
       throwUserError(
-        "SPRINT_DRAFT_EXISTS",
-        "Your next sprint is already in setup.",
-      );
-    }
-    if (!sprint || closesAt(sprint) > now) {
-      throwUserError(
-        "SPRINT_NOT_CLOSED",
-        "You can run another sprint once this one has closed.",
+        block ?? "SPRINT_NOT_CLOSED",
+        block === "SPRINT_DRAFT_EXISTS"
+          ? "Your next sprint is already in setup."
+          : "You can run another sprint once this one has closed.",
       );
     }
     // A missed scheduled run is recovered here.

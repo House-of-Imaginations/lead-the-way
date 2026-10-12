@@ -18,6 +18,7 @@ const member = (name: string, email: string): Member =>
     roleName: "Employee",
     isOwner: false,
     you: false,
+    canManage: true,
   }) as Member;
 const invite = (
   id: string,
@@ -71,7 +72,11 @@ test("the header counts people and open invitations, never declined ones", () =>
 test("each row offers only what can be done to it", () => {
   const [you, other, open, link, declined] = memberRows(
     [
-      { ...member("Priya Raman", "priya@example.com"), you: true },
+      {
+        ...member("Priya Raman", "priya@example.com"),
+        you: true,
+        canManage: false,
+      },
       member("Dan Okafor", "dan@example.com"),
     ],
     [
@@ -87,6 +92,14 @@ test("each row offers only what can be done to it", () => {
   // A link has no address to send to again.
   expect(actionsFor(link)).toEqual(["Copy link", "Revoke"]);
   expect(actionsFor(declined)).toEqual([]);
+});
+
+test("a row the server marks out of reach has no menu", () => {
+  const [owner] = memberRows(
+    [{ ...member("Priya Raman", "priya@example.com"), canManage: false }],
+    [],
+  );
+  expect(actionsFor(owner)).toEqual([]);
 });
 
 test("only the server's email refusal belongs to the email field", () => {

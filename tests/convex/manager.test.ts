@@ -5,6 +5,8 @@ import { DEMO_CAST, castOf, type CastKey } from "../../convex/lib/demo/cast";
 import { mel, type DemoTarget } from "../../convex/lib/demo/schedule";
 import { snapshotSeries } from "../../convex/lib/snapshots";
 import { setupSprint } from "../../convex/lib/sprint";
+import { closesAt } from "../../convex/lib/sprintTime";
+import { clockAt, sprintsOf } from "./sprintHelpers";
 import {
   calderLane,
   harness,
@@ -289,7 +291,7 @@ test("a real sprint launched before week one's Monday reads as scheduled", async
   ]);
 });
 
-test("a declined invitation still counts as invited", async () => {
+test("a declined invitation leaves invited (R-c)", async () => {
   const { t, orgId, as } = await calderLane();
   await move(t, "week2");
   await t.run(async (ctx) => {
@@ -300,22 +302,120 @@ test("a declined invitation still counts as invited", async () => {
     const open = invites.find((i) => i.status !== "accepted")!;
     await ctx.db.patch(open._id, { status: "declined" });
   });
-  // Ruling 3: invited means asked; only a revoked row drops.
+  // Invited is the seated team and the open invitations, as in every sprint.
   expect(
     (await as("priya").query(api.manager.overview, {}))!.sprint,
-  ).toMatchObject({ invited: 8, joined: 7 });
+  ).toMatchObject({ invited: 7, joined: 7 });
 });
 
-test("an employee moved to a members:manage role drops out of sprint 1's joined (F3)", async () => {
+test("an employee moved to a members:manage role leaves sprint 1's counts (F3, R-c)", async () => {
   const { t, orgId, as } = await calderLane();
   await move(t, "week2");
   const dan = await personOf(t, orgId, "dan");
   const { roleId } = await seat(t, orgId, "user_people", ["members:manage"]);
   await t.run((ctx) => ctx.db.patch(dan, { roleId }));
-  // Still asked, so still invited; a manager now, so not one of the team.
+  // A manager now (W-f): not one of the team, so neither joined nor invited.
   expect(
     (await as("priya").query(api.manager.overview, {}))!.sprint,
-  ).toMatchObject({ invited: 8, joined: 6 });
+  ).toMatchObject({ invited: 7, joined: 6 });
+});
+
+test("sprint 1 counts the seated team, however they came to be on it (R-c)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  const priya = as("priya");
+  const lead = await seat(t, orgId, "user_lead", ["team:insights"]);
+  expect((await priya.query(api.manager.overview, {}))!.sprint).toMatchObject({
+    invited: 8,
+    joined: 7,
+  });
+  const employee = (await priya.query(api.orgRoles.list, {})).find(
+    (r) => r.name === "Employee",
+  )!._id;
+  // A role change, not a launch invitation, puts them on the team.
+  await priya.mutation(api.members.changeRole, {
+    personId: lead.personId,
+    roleId: employee,
+    expectOrgId: orgId,
+  });
+  expect((await priya.query(api.manager.overview, {}))!.sprint).toMatchObject({
+    invited: 9,
+    joined: 8,
+  });
+});
+
+test("an open invitation to somebody already seated isn't counted twice (R-c, R-i)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  const priya = as("priya");
+  const before = (await priya.query(api.manager.overview, {}))!.sprint;
+  expect(before).toMatchObject({ invited: 8, joined: 7 });
+  // Dan accepted an older invitation; a newer one to his address stays pending.
+  await t.run(async (ctx) => {
+    const omar = (
+      await ctx.db
+        .query("orgInvites")
+        .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
+        .collect()
+    ).find((i) => i.status === "pending")!;
+    await ctx.db.insert("orgInvites", {
+      orgId,
+      roleId: omar.roleId,
+      sprintId: omar.sprintId,
+      token: "dan-again",
+      email: castOf("dan").email,
+      status: "pending",
+      invitedBy: omar.invitedBy,
+      expiresAt: omar.expiresAt,
+      createdAt: omar.createdAt,
+    });
+  });
+  expect((await priya.query(api.manager.overview, {}))!.sprint).toMatchObject({
+    invited: 8,
+    joined: 7,
+  });
+});
+
+test("an open invitation to somebody promoted to a manager isn't counted either (M-4)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await move(t, "week2");
+  const priya = as("priya");
+  // Dan is seated, then moved onto the owner role: no longer on the team.
+  const omar = await t.run(async (ctx) => {
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    const dan = people.find((p) => p.email === castOf("dan").email)!;
+    const owner = people.find((p) => p.email === castOf("priya").email)!;
+    await ctx.db.patch(dan._id, { roleId: owner.roleId });
+    return (
+      await ctx.db
+        .query("orgInvites")
+        .withIndex("by_org_status_and_expiresAt", (q) => q.eq("orgId", orgId))
+        .collect()
+    ).find((i) => i.status === "pending")!;
+  });
+  const before = (await priya.query(api.manager.overview, {}))!.sprint;
+  expect(before).toMatchObject({ invited: 7, joined: 6 });
+  // A newer duplicate invitation to his address stays pending.
+  await t.run((ctx) =>
+    ctx.db.insert("orgInvites", {
+      orgId,
+      roleId: omar.roleId,
+      sprintId: omar.sprintId,
+      token: "dan-again",
+      email: castOf("dan").email,
+      status: "pending",
+      invitedBy: omar.invitedBy,
+      expiresAt: omar.expiresAt,
+      createdAt: omar.createdAt,
+    }),
+  );
+  expect((await priya.query(api.manager.overview, {}))!.sprint).toMatchObject({
+    invited: 7,
+    joined: 6,
+  });
 });
 
 test("the week we're in stays current after its hour, until Monday", async () => {
@@ -423,6 +523,7 @@ test("the overview's words at each demo target", async () => {
   expect(await priya.query(api.manager.overview, {})).toEqual({
     phase: "draft",
     canManage: true,
+    canRunAnother: false,
     intro: "Your sprint starts Wednesday 9 September at 2:00 PM.",
     timeline: [
       {
@@ -822,7 +923,18 @@ test("the final row's helper never depends on how many answered (threshold probe
   for (const now of [5, 6]) {
     const fewer = await finalAt(4, now);
     expect(fewer, `at ${now}`).toMatchObject({ state: "closed" });
-    expect(fewer, `at ${now}`).toEqual(await finalAt(6, now));
+    // Invited now counts the seated team (R-c), so it follows n; the rest
+    // of the row must not.
+    const more = await finalAt(6, now);
+    const split = (r: typeof fewer) => {
+      if (r?.state !== "closed") throw new Error("expected a closed row");
+      const { participation, ...rest } = r;
+      const { invited, ...others } = participation;
+      return { invited, rest: { ...rest, participation: others } };
+    };
+    expect(split(fewer).invited, `at ${now}`).toBe(4);
+    expect(split(more).invited, `at ${now}`).toBe(6);
+    expect(split(fewer).rest, `at ${now}`).toEqual(split(more).rest);
     expect(JSON.stringify(fewer)).toContain("Hidden until 7 responses");
   }
 });
@@ -876,4 +988,38 @@ test("week 4's row has no next week, so a lowered threshold names the one it was
   expect(JSON.stringify(overview)).not.toContain(
     "Shown from next week's totals",
   );
+});
+
+test("08 offers Run another sprint once the sprint has closed, to sprint:manage (R-d, M-d)", async () => {
+  const { t, orgId, as } = await calderLane();
+  const priya = as("priya");
+  const can = async (who: typeof priya) =>
+    (await who.query(api.manager.overview, {}))!.canRunAnother;
+  await move(t, "week2");
+  expect(await can(priya)).toBe(false);
+
+  await move(t, "complete");
+  const planner = (await seat(t, orgId, "user_planner", ["sprint:manage"])).as;
+  const lead = (await seat(t, orgId, "user_lead", ["team:insights"])).as;
+  expect(await can(priya)).toBe(true);
+  // CX-P2: sprint:manage without team:insights has 08, not 16.
+  expect(await can(planner)).toBe(true);
+  expect(await can(lead)).toBe(false);
+
+  // R-d gates on close, a day after the last hour, not on phase "complete".
+  await clockAt(t, orgId, mel("2026-10-01T14:59"));
+  expect(await priya.query(api.manager.overview, {})).toMatchObject({
+    phase: "complete",
+    canRunAnother: false,
+  });
+  await clockAt(t, orgId, mel("2026-10-01T15:00"));
+  expect(await can(priya)).toBe(true);
+
+  // The draft copy is the newest sprint now, so not a second one.
+  await priya.mutation(api.sprints.runAnother, { expectOrgId: orgId });
+  expect(await can(priya)).toBe(false);
+  // Not even once the draft's own dates are behind the clock: it never launched.
+  const draft = (await sprintsOf(t, orgId)).at(-1)!;
+  await clockAt(t, orgId, closesAt(draft) + 1);
+  expect(await can(priya)).toBe(false);
 });

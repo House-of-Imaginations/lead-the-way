@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import { InviteTeamModal } from "@/components/app/InviteTeamModal";
 import { InlineNotification, StatTile, Tag } from "@/components/ui";
-import { RunAnother } from "./RunAnother";
+import { RunAnother } from "../../_components/RunAnother";
 
 type Data = NonNullable<FunctionReturnType<typeof api.manager.outcomes>>;
 type Closed = Extract<Data, { state: "closed" }>;

@@ -5,6 +5,7 @@ import type { QueryCtx } from "./_generated/server";
 import { dayMonth, latestSaved } from "./lib/agreement";
 import { timedViewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
+import { normalEmail } from "./lib/inviteRules";
 import { MAX_MEMBERS_PER_ORG } from "./lib/orgs/membership";
 import { PATHWAY_MODULES, coachingPercent } from "./lib/pathway";
 import {
@@ -19,8 +20,8 @@ import {
   setupSprint,
   currentTeam,
   launchedSprint,
+  runAnotherBlock,
   setupGate,
-  isLaterSprint,
   sprintInvites,
 } from "./lib/sprint";
 import {
@@ -51,6 +52,12 @@ export const overviewValidator = v.object({
   phase: literals("draft", "scheduled", "active", "complete"),
   /** Holds `sprint:manage`: the header buttons and card links lead to its pages. */
   canManage: v.boolean(),
+  /**
+   * R-d: Run another sprint replaces Invite member once the sprint has
+   * closed, by its close time, not phase "complete" (sprints.runAnother's
+   * own rule, `runAnotherBlock`). Off while a draft copy is the newest sprint.
+   */
+  canRunAnother: v.boolean(),
   /** "Your team is in week 2. The next protected hour is Wednesday 16 September at 2:00 PM." */
   intro: v.string(),
   /** Setup, then one column per week. */
@@ -302,11 +309,13 @@ export const overview = timedViewerQuery()({
       };
     }
 
+    const canManage = viewer.permissions.includes(
+      ROUTE_PERMISSION["/manager/sprint/launch"],
+    );
     return {
       phase,
-      canManage: viewer.permissions.includes(
-        ROUTE_PERMISSION["/manager/sprint/launch"],
-      ),
+      canManage,
+      canRunAnother: canManage && runAnotherBlock(sprint, now) === null,
       intro,
       timeline,
       learning: {
@@ -344,11 +353,10 @@ export const overview = timedViewerQuery()({
 });
 
 /**
- * 08's and 16's invited and joined. Sprint 1 counts its own invitations, and
- * joined only those whose person is still seated on the team (M-c, F3). A
- * row without `personId` names no seat, so it isn't joined. A later sprint
- * carries the seated team over (managers left out), so joined is that team
- * and invited adds its open, unexpired invitations. Membership facts, not
+ * 08's and 16's invited and joined, the same for every sprint (R-c). Joined
+ * is the seated team: managers left out (W-f), a removed member gone (M-c),
+ * whoever a role change put on it in. Invited adds the sprint's open,
+ * unexpired invitations to anybody not seated. Membership facts, not
  * activity: no threshold.
  */
 async function sprintHeadcount(
@@ -357,29 +365,22 @@ async function sprintHeadcount(
   sprint: Doc<"sprints">,
   now: number,
 ): Promise<{ invited: number; joined: number }> {
-  const invites = (await sprintInvites(ctx, org._id, sprint._id)).filter(
-    (i) => i.status !== "revoked",
-  );
   const seated = await loadSeated(ctx, org);
-  if (!(await isLaterSprint(ctx, org._id, sprint))) {
-    // M-c: a removed member's accepted invitation stays as history and as
-    // one of the invited, but they are no longer one of the joined, nor is
-    // anyone since moved to a manager's role (F3): joined is the seated
-    // team, as in a later sprint.
-    const ids = new Set(seated.map((p) => p._id));
-    const joined = invites.filter(
-      (i) =>
-        i.status === "accepted" &&
-        i.personId !== undefined &&
-        ids.has(i.personId),
-    ).length;
-    return { invited: invites.length, joined };
-  }
-  const joined = seated.length;
-  const open = invites.filter(
-    (i) => i.status === "pending" && i.expiresAt > now,
+  // R-i: an older duplicate invitation can be the one accepted, leaving a
+  // newer one pending. Its person already has a seat, a manager's too
+  // (M-4), so it isn't counted.
+  const everyone = await ctx.db
+    .query("people")
+    .withIndex("by_org", (q) => q.eq("orgId", org._id))
+    .take(MAX_MEMBERS_PER_ORG);
+  const seatedEmails = new Set(everyone.map((p) => normalEmail(p.email)));
+  const open = (await sprintInvites(ctx, org._id, sprint._id)).filter(
+    (i) =>
+      i.status === "pending" &&
+      i.expiresAt > now &&
+      !seatedEmails.has(normalEmail(i.email)),
   );
-  return { invited: joined + open.length, joined };
+  return { invited: seated.length + open.length, joined: seated.length };
 }
 
 /** 16's answer (Rulings 11 and 12). Every label is made here. */
@@ -396,7 +397,7 @@ export const outcomesValidator = v.union(
     title: v.literal("Sprint complete"),
     tag: v.string(), // "Finished 30 Sep"
     intro: v.string(),
-    canRunAnother: v.boolean(), // sprint:manage, and the newest sprint is this one
+    canRunAnother: v.boolean(), // sprint:manage and `runAnotherBlock` is null
     inviteLink: v.string(),
     participation: v.object({
       invited: v.number(),
@@ -444,7 +445,7 @@ const QUESTIONS: Record<
  * through `snapshotSeries`, never a live count (R-a; the static test in
  * tests/convex/outcomes.test.ts keeps `count` and `aggregate` out of this
  * file). Pending until the sprint closes (Ruling 12), null before launch.
- * Invited is the live, non-revoked invitation count, as on 08 (Ruling 11).
+ * Invited is the seated team plus open invitations, as on 08 (R-c).
  * Dates come from the sprint, never from a response's time.
  */
 export const outcomes = timedViewerQuery("team:insights")({
@@ -464,7 +465,7 @@ export const outcomes = timedViewerQuery("team:insights")({
     // Off once a clone exists: the newest sprint is then the draft (Ruling 14).
     const canRunAnother =
       viewer.permissions.includes("sprint:manage") &&
-      (await setupSprint(ctx, org._id))?._id === sprint._id;
+      runAnotherBlock(await setupSprint(ctx, org._id), now) === null;
 
     const { outcomes: final } = await snapshotSeries(
       ctx,
@@ -488,7 +489,7 @@ export const outcomes = timedViewerQuery("team:insights")({
         helper: `Outcomes appear on ${day.weekday} ${day.day} ${day.month}, the day after the last protected hour.`,
         // Closed with no row: the scheduled write was missed, and the button
         // is the way back, since runAnother writes the row first (FR-M4).
-        canRunAnother: canRunAnother && closesAt(sprint) <= now,
+        canRunAnother,
         inviteLink,
       };
     }

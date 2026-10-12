@@ -4,7 +4,8 @@ import { flagOn } from "../../app";
 import { authComponent } from "../../auth";
 import { ensureProfile } from "../account/ensureProfile";
 import { isDemoAddress } from "../demo/cast";
-import { findOwnerRole } from "./membership";
+import { DEFAULT_SETTINGS, settingsOf, writeSettings } from "../settings";
+import { findOwnerRole, findSeat } from "./membership";
 
 export const DEFAULT_TIME_ZONE = "Australia/Melbourne";
 
@@ -58,6 +59,12 @@ export async function insertPerson(
 ): Promise<Doc<"people">> {
   const profile = await ensureProfile(ctx, userId);
   const user = await authComponent.getAnyUserById(ctx, userId);
+  // The seat this account has open: a new seat starts from its time zone and
+  // display settings. Privacy opt-outs and reminders start fresh in every
+  // workspace. Read before the caller opens the new one.
+  const from = profile.activeOrgId
+    ? await findSeat(ctx, userId, profile.activeOrgId)
+    : null;
   const id = await ctx.db.insert("people", {
     userId,
     orgId,
@@ -66,11 +73,24 @@ export async function insertPerson(
     initials: initialsOf(profile.displayName),
     email: user?.email?.trim().toLowerCase() ?? "",
     jobTitle,
-    timeZone: DEFAULT_TIME_ZONE,
+    timeZone: from?.person.timeZone ?? DEFAULT_TIME_ZONE,
     createdAt: at,
   });
   const person = await ctx.db.get(id);
   if (!person) throw new Error("just-inserted person is missing");
+  if (from) {
+    const { reduceMotion, captionsByDefault } = await settingsOf(
+      ctx,
+      from.person._id,
+    );
+    // No row while both are the defaults: one row at most, and only for a choice.
+    if (
+      reduceMotion !== DEFAULT_SETTINGS.reduceMotion ||
+      captionsByDefault !== DEFAULT_SETTINGS.captionsByDefault
+    ) {
+      await writeSettings(ctx, person, { reduceMotion, captionsByDefault });
+    }
+  }
   return person;
 }
 

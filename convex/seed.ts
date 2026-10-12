@@ -1,6 +1,11 @@
 import { literals } from "convex-helpers/validators";
+import type {
+  FunctionArgs,
+  GenericDocument,
+  PaginationResult,
+} from "convex/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
   internalAction,
@@ -10,6 +15,7 @@ import {
 } from "./_generated/server";
 import { assertFlag } from "./app";
 import { createAuth } from "./auth";
+import { profileOf } from "./lib/account/profile";
 import { DEMO_SLUG, writeCalderLane as write } from "./lib/demo/calderLane";
 import { nowFor } from "./lib/clock";
 import { ACCOUNT_HOLDERS, castOf, demoUserId } from "./lib/demo/cast";
@@ -17,8 +23,15 @@ import { moveClock } from "./lib/demo/moveClock";
 import { demoTargetValidator } from "./lib/demo/schedule";
 import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
+import { deleteOrg } from "./lib/orgs/cascade";
 import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
-import { permissionsOf, rolesOf } from "./lib/orgs/membership";
+import {
+  dropSeat,
+  isOwnerRole,
+  permissionsOf,
+  rolesOf,
+  seatsOfUser,
+} from "./lib/orgs/membership";
 import { isManager, type Permission } from "./lib/orgs/permissions";
 import { setupSprint } from "./lib/sprint";
 
@@ -79,7 +92,103 @@ export const writeCalderLane = internalMutation({
   handler: (ctx, { accounts }) => write(ctx, accounts),
 });
 
-/** `npx convex run seed:reset`: the accounts, then a fresh Calder Lane. */
+/** e2e signs its accounts up on this domain, so a reset can find them (Ruling 34). */
+export const E2E_DOMAIN = "e2e.test";
+
+/** Delete every auth component row `input` matches, a page at a time. */
+async function deleteAuthRows(
+  ctx: MutationCtx,
+  input: FunctionArgs<typeof components.betterAuth.adapter.deleteMany>["input"],
+) {
+  let cursor: string | null = null;
+  let isDone = false;
+  while (!isDone) {
+    ({ isDone, continueCursor: cursor } = await ctx.runMutation(
+      components.betterAuth.adapter.deleteMany,
+      { input, paginationOpts: { numItems: 100, cursor } },
+    ));
+  }
+}
+
+/**
+ * Ruling 34: the accounts e2e signed up on `E2E_DOMAIN`, the workspaces they
+ * own, their profiles and their sign-in rows. Returns how many accounts went.
+ * `reset` runs it after the reseed. Demo only, like `invite`.
+ * An e2e workspace it alone owns goes; anywhere else only its seat goes.
+ * ponytail: one transaction, fine for the few dozen accounts a run makes;
+ * schedule batches if it ever hits the transaction limits.
+ */
+export const clearE2e = internalMutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    assertFlag("demo", true);
+    // `ends_with` has no index, so the adapter filters as it scans and a page
+    // can come back short. Only `isDone` says the scan is over.
+    const userIds: string[] = [];
+    let cursor: string | null = null;
+    let isDone = false;
+    while (!isDone) {
+      const result: PaginationResult<GenericDocument> = await ctx.runQuery(
+        components.betterAuth.adapter.findMany,
+        {
+          model: "user",
+          where: [
+            { field: "email", operator: "ends_with", value: `@${E2E_DOMAIN}` },
+          ],
+          paginationOpts: { numItems: 100, cursor },
+        },
+      );
+      userIds.push(...result.page.map((user) => String(user._id)));
+      ({ isDone, continueCursor: cursor } = result);
+    }
+
+    for (const userId of userIds) {
+      // Calder Lane is never theirs to own, and the reset rebuilds it.
+      for (const seat of await seatsOfUser(ctx, userId)) {
+        const org = await ctx.db.get(seat.orgId);
+        if (!org || org.isDemo) continue;
+        const role = await ctx.db.get(seat.roleId);
+        // Read now, so of two e2e co-owners the second finds itself alone.
+        const owners =
+          role && isOwnerRole(role)
+            ? await ctx.db
+                .query("people")
+                .withIndex("by_role", (q) => q.eq("roleId", role._id))
+                .take(2)
+            : [];
+        if (owners.length === 1) await deleteOrg(ctx, org._id);
+        else await dropSeat(ctx, seat);
+      }
+      const profile = await profileOf(ctx, userId);
+      if (profile) await ctx.db.delete(profile._id);
+      // The user last: its session and account rows would outlive it.
+      await deleteAuthRows(ctx, {
+        model: "session",
+        where: [{ field: "userId", value: userId }],
+      });
+      await deleteAuthRows(ctx, {
+        model: "account",
+        where: [{ field: "userId", value: userId }],
+      });
+      // Password reset tokens keep the user id in `value`. No index on it, so
+      // the adapter scans the (short-lived) table and warns.
+      await deleteAuthRows(ctx, {
+        model: "verification",
+        where: [{ field: "value", value: userId }],
+      });
+      await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
+        input: { model: "user", where: [{ field: "_id", value: userId }] },
+      });
+    }
+    return userIds.length;
+  },
+});
+
+/**
+ * `npx convex run seed:reset`: the accounts, a fresh Calder Lane, then the e2e
+ * accounts cleared (Ruling 34). Last, so a reseed that can't run clears nothing.
+ */
 export const reset = internalAction({
   args: {},
   returns: v.id("orgs"),
@@ -88,6 +197,8 @@ export const reset = internalAction({
     const orgId = await ctx.runMutation(internal.seed.writeCalderLane, {
       accounts,
     });
+    const cleared = await ctx.runMutation(internal.seed.clearE2e, {});
+    console.log(`Cleared ${cleared} e2e accounts.`);
     // Calder Lane's badges come from issueBadge; other workspaces' may be older.
     await ctx.runMutation(internal.badges.backfillHolders, {});
     return orgId;
@@ -145,6 +256,8 @@ async function customRole(
  * up, and the demo holds no open links. Demo only, like `clock`.
  * `insights` grants the Team lead role (`team:insights` only) instead of Employee.
  * `members` grants the People admin role (`members:manage` only) instead.
+ * `org` grants the Workspace admin role (`org:manage` only) instead.
+ * `roles` grants the Role admin role (`roles:manage` only) instead.
  */
 export const invite = internalMutation({
   args: {
@@ -152,9 +265,14 @@ export const invite = internalMutation({
     status: v.optional(literals("revoked", "declined", "accepted")),
     insights: v.optional(v.boolean()),
     members: v.optional(v.boolean()),
+    org: v.optional(v.boolean()),
+    roles: v.optional(v.boolean()),
   },
   returns: v.string(),
-  handler: async (ctx, { email, status, insights, members }) => {
+  handler: async (
+    ctx,
+    { email, status, insights, members, org: orgAdmin, roles: roleAdmin },
+  ) => {
     assertFlag("demo", true);
     const org = await ctx.db
       .query("orgs")
@@ -184,7 +302,17 @@ export const invite = internalMutation({
       ? await customRole(ctx, org._id, "Team lead", ["team:insights"], at)
       : members
         ? await customRole(ctx, org._id, "People admin", ["members:manage"], at)
-        : (await inviteRoleOf(ctx, org._id))._id;
+        : orgAdmin
+          ? await customRole(
+              ctx,
+              org._id,
+              "Workspace admin",
+              ["org:manage"],
+              at,
+            )
+          : roleAdmin
+            ? await customRole(ctx, org._id, "Role admin", ["roles:manage"], at)
+            : (await inviteRoleOf(ctx, org._id))._id;
     // As Invite member (M-g): only a team member's invitation pins the sprint.
     const role = (await ctx.db.get(roleId))!;
     const manager = isManager({ permissions: permissionsOf(role) });
