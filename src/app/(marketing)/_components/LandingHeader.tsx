@@ -155,6 +155,8 @@ export function LandingHeader() {
     if (r && sheet.current) {
       sheet.current.style.setProperty("--mx", `${r.left + r.width / 2}px`);
       sheet.current.style.setProperty("--my", `${r.top + r.height / 2}px`);
+      // Each opening starts at the top, where focus lands.
+      sheet.current.firstElementChild?.scrollTo(0, 0);
     }
     setOpen((was) => !was);
   };

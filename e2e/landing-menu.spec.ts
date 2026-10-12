@@ -78,6 +78,14 @@ test.describe("on a short screen", () => {
     await expect(fine).toBeInViewport({ ratio: 1 });
     await last.focus();
     await expect(last).toBeFocused();
+
+    // Opened again, it starts at the top, where focus lands.
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    await page.getByRole("button", { name: "Open menu" }).click();
+    const overview = menu.getByRole("link", { name: /^Overview/ });
+    await expect(overview).toBeFocused();
+    await expect(overview).toBeInViewport({ ratio: 1 });
   });
 
   test("the header's own links leave while the menu is open, the toggle stays", async ({
