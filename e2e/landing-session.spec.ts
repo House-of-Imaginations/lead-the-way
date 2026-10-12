@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { convex, convexUrl, resetDemo, signInAs } from "./demo";
 import { expect, test } from "./fixtures";
 
@@ -11,6 +12,14 @@ const CONVEX_HOSTS = (() => {
     : [host];
 })();
 const isConvex = (url: string) => CONVEX_HOSTS.includes(new URL(url).host);
+
+/** Reopen the app and wait until it answers again, so the next sign-in works. */
+async function reopen(page: Page) {
+  convex(["env", "remove", "APP_CLOSED"]);
+  await expect(async () => {
+    expect((await page.request.get(SESSION)).status()).not.toBe(503);
+  }).toPass({ timeout: 20_000 });
+}
 
 test.beforeAll(() => resetDemo());
 
@@ -81,6 +90,35 @@ test("signed in at 390, the avatar sits by the menu and the menu offers home", a
   ).toHaveCount(0);
 });
 
+test("while the session check runs, the header offers Log in", async ({
+  page,
+}) => {
+  await signInAs(page, "priya");
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(`**${SESSION}`, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/");
+  const header = page.getByRole("banner");
+  await expect(
+    header.getByRole("link", { name: "Log in", exact: true }),
+  ).toBeVisible();
+  await expect(
+    header.getByRole("link", { name: "Start your sprint" }),
+  ).toBeVisible();
+  release();
+  await expect(
+    header.getByRole("link", { name: "Go to your home" }),
+  ).toBeVisible();
+});
+
+// A smoke check only: a fresh load starts with an empty store, so this
+// cannot fail if the hydration guard goes. The unit test in
+// tests/src/components/LandingHeader.test.tsx is the real guard.
 test("the avatar arrives without a console error", async ({ page }) => {
   const errors: string[] = [];
   page.on("console", (m) => {
@@ -95,7 +133,9 @@ test("the avatar arrives without a console error", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("/ talks to no Convex deployment, signed in or not", async ({ page }) => {
+test("the browser talks to no Convex deployment, signed in or not", async ({
+  page,
+}) => {
   const convexTraffic: string[] = [];
   page.on("request", (r) => {
     if (isConvex(r.url())) convexTraffic.push(r.url());
@@ -132,10 +172,49 @@ test("a closed app shows Log in, never the avatar, and / stays /", async ({
         header.getByRole("link", { name: "Log in", exact: true }),
       ).toBeVisible();
       await expect(
+        header.getByRole("link", { name: "Start your sprint" }),
+      ).toBeVisible();
+      await expect(
         header.getByRole("link", { name: "Go to your home" }),
       ).toHaveCount(0);
     }).toPass({ timeout: 20_000 });
   } finally {
-    convex(["env", "remove", "APP_CLOSED"]);
+    await reopen(page);
+  }
+});
+
+test("a session the closed app no longer confirms drops the avatar", async ({
+  page,
+}) => {
+  await signInAs(page, "priya");
+  await page.goto("/");
+  const header = page.getByRole("banner");
+  const home = header.getByRole("link", { name: "Go to your home" });
+  await expect(home).toBeVisible();
+  convex(["env", "set", "APP_CLOSED", "on"]);
+  try {
+    // An env change reaches running functions within a few seconds. Ask
+    // outside the page, so the landing's session store is left as it was.
+    await expect(async () => {
+      expect((await page.request.get(SESSION)).status()).toBe(503);
+    }).toPass({ timeout: 20_000 });
+
+    // /home finds the app closed and sends the client back to "/", where the
+    // store still holds the session from before.
+    const visit = page.waitForResponse(
+      (r) => new URL(r.url()).pathname === "/home",
+    );
+    await home.click();
+    await visit;
+    await expect(page).toHaveURL("/");
+    await expect(
+      header.getByRole("link", { name: "Log in", exact: true }),
+    ).toBeVisible();
+    await expect(
+      header.getByRole("link", { name: "Start your sprint" }),
+    ).toBeVisible();
+    await expect(home).toHaveCount(0);
+  } finally {
+    await reopen(page);
   }
 });

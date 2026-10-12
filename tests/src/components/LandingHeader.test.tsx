@@ -11,6 +11,7 @@ vi.mock("@/lib/account/auth-client", () => ({
       data: { user: { name: "Priya Raman" } },
       isPending: false,
       error: null,
+      refetch: vi.fn(),
     }),
   },
 }));

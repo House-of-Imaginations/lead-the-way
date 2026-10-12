@@ -5,6 +5,7 @@ import clsx from "clsx";
 import Link from "next/link";
 import {
   useEffect,
+  useEffectEvent,
   useRef,
   useState,
   useSyncExternalStore,
@@ -38,7 +39,8 @@ const subscribeToNothing = () => () => {};
  * L-a: who is signed in, asked of Better Auth in the browser only, so "/"
  * stays static and never touches Convex. Null while the check runs, when it
  * fails (a closed app refuses it) and during hydration: the server rendered
- * the signed-out header, and hydration must see the same.
+ * the signed-out header, and hydration must see the same. A held session
+ * shows until its recheck answers (one request).
  */
 function useSignedInUser(): { name: string } | null {
   const hydrated = useSyncExternalStore(
@@ -46,8 +48,17 @@ function useSignedInUser(): { name: string } | null {
     () => true,
     () => false,
   );
-  const { data } = authClient.useSession();
-  return hydrated ? (data?.user ?? null) : null;
+  const { data, error, refetch } = authClient.useSession();
+  // A session already held when "/" mounts came from an earlier page, and the
+  // store fetches only when it first mounts. A closed app sends the client
+  // here from /home with that session still held, so ask the server again.
+  const recheckHeld = useEffectEvent(() => {
+    if (data) void refetch();
+  });
+  useEffect(() => recheckHeld(), []);
+  // Better Auth keeps the old data on any error but a 401 (a closed app
+  // answers 503), so an error means signed out here.
+  return hydrated && !error ? (data?.user ?? null) : null;
 }
 
 /**
