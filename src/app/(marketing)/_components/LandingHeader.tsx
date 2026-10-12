@@ -171,7 +171,8 @@ export function LandingHeader() {
           <span className="nav-sheen" aria-hidden="true">
             <i />
           </span>
-          <a className="brand" href="#top">
+          {/* The sheet isn't aria-modal (that hid its toggle), so keep the brand out of reach while open. */}
+          <a className="brand" href="#top" inert={open}>
             <Logo />
             Lead the Way
           </a>

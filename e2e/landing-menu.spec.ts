@@ -199,3 +199,17 @@ test("widening the window closes the menu", async ({ page }) => {
   await expect(page.locator(".lp > main")).not.toHaveAttribute("inert");
   expect(await htmlOverflow(page)).toBe("");
 });
+
+test("while the menu is open, only the toggle and the sheet are reachable", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
+  const brand = page.locator(".lp header .brand");
+  expect(await brand.evaluate((el) => (el as HTMLElement).inert)).toBe(true);
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Menu" })).toBeHidden();
+  expect(await brand.evaluate((el) => (el as HTMLElement).inert)).toBe(false);
+});
