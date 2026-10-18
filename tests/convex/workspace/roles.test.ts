@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { Permission } from "../../../convex/lib/orgs/permissions";
+import { pickInviteRole } from "../../../convex/lib/orgs/invites";
 import { harness, seat, workspace, type T } from "./helpers";
 
 /** The Roles editor's server rules (R-a). The escalation set is in orgs.test.ts. */
@@ -125,8 +126,7 @@ test("the role your team is invited into keeps no permissions and stays (R-a)", 
   const t = harness();
   const { owner, orgId } = await workspace(t);
   const employee: Id<"orgRoles"> = await roleId(owner, "Employee");
-  // Renaming is fine. Protection follows pickInviteRole's pick, and with no
-  // other role named "Employee" the renamed role is still the pick.
+  // Renaming is fine: protection follows the stored launch role (G-g).
   await owner.mutation(api.orgRoles.update, {
     roleId: employee,
     name: "Teammate",
@@ -171,9 +171,49 @@ test("the role your team is invited into keeps no permissions and stays (R-a)", 
   ).toBe(employee);
 });
 
-test("a bare role renamed Employee takes the protection over (R-a)", async () => {
+// G-g: a new bare "Employee" never takes the launch role over.
+test("the stored launch role keeps its protection after a rename (G-g)", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);
+  const update = (
+    id: Id<"orgRoles">,
+    name: string,
+    permissions: Permission[],
+  ) =>
+    owner.mutation(api.orgRoles.update, {
+      roleId: id,
+      name,
+      permissions,
+      expectOrgId: orgId,
+    });
+  const team = await roleId(owner, "Employee");
+  await update(team, "Team", []);
+  const newcomer = await owner.mutation(api.orgRoles.create, {
+    name: "Employee",
+    permissions: [],
+    expectOrgId: orgId,
+  });
+
+  await expect(update(team, "Team", ["team:insights"])).rejects.toMatchObject(
+    NO_PERMISSIONS,
+  );
+  await expect(
+    owner.mutation(api.orgRoles.remove, { roleId: team, expectOrgId: orgId }),
+  ).rejects.toMatchObject(STAYS);
+  await update(newcomer, "Employee", ["team:insights"]);
+  await owner.mutation(api.orgRoles.remove, {
+    roleId: newcomer,
+    expectOrgId: orgId,
+  });
+  expect(
+    (await owner.query(api.orgRoles.list, {})).find((r) => r.launch)?._id,
+  ).toBe(team);
+});
+
+test("a workspace from before P9 still follows the name guess", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  await t.run((ctx) => ctx.db.patch(orgId, { inviteRoleId: undefined }));
   const update = (
     id: Id<"orgRoles">,
     name: string,
@@ -193,12 +233,27 @@ test("a bare role renamed Employee takes the protection over (R-a)", async () =>
     expectOrgId: orgId,
   });
   await update(contractor, "Employee", []);
-
-  // pickInviteRole now picks the new "Employee", so it is the protected one.
+  // The guess picks the new "Employee", so it is the protected one.
   await expect(
     update(contractor, "Employee", ["team:insights"]),
   ).rejects.toMatchObject(NO_PERMISSIONS);
   await update(teammate, "Teammate", ["team:insights"]);
+});
+
+test("a stored launch role that grants anything is never picked", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const picked = await t.run(async (ctx) => {
+    const org = (await ctx.db.get(orgId))!;
+    // R-a refuses this through the app; write it directly to prove the read fails closed.
+    await ctx.db.patch(org.inviteRoleId!, { permissions: ["team:insights"] });
+    const roles = await ctx.db
+      .query("orgRoles")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    return pickInviteRole(org, roles);
+  });
+  expect(picked).toBeNull();
 });
 
 test("keeping a role's own name is never a clash, even beside an old duplicate (M-10)", async () => {

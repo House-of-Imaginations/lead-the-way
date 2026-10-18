@@ -172,6 +172,17 @@ async function read(t: T, orgId: Id<"orgs">) {
   });
 }
 
+test("the demo stores Employee as its launch role (G-g)", async () => {
+  const { t, orgId } = await calderLane();
+  const stored = await t.run(async (ctx) => {
+    const org = (await ctx.db.get(orgId))!;
+    return org.inviteRoleId
+      ? ((await ctx.db.get(org.inviteRoleId))?.name ?? null)
+      : null;
+  });
+  expect(stored).toBe("Employee");
+});
+
 test("each step runs once, in order, when the clock passes it", async () => {
   const { t, orgId, as } = await calderLane();
   const priya = as("priya");
@@ -729,6 +740,8 @@ test("without Employee, the script invites into the custom role with the fewest 
       .query("orgRoles")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .collect();
+    // A workspace from before P9 has no stored launch role (G-g).
+    await ctx.db.patch(orgId, { inviteRoleId: undefined });
     await ctx.db.delete(roles.find((r) => r.name === "Employee")!._id);
     await ctx.db.insert("orgRoles", {
       orgId,

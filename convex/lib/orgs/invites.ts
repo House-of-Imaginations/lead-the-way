@@ -101,18 +101,23 @@ export async function insertInvite(
 }
 
 /**
- * The role a team is invited into, chosen for them: a custom role that grants
- * nothing, "Employee" first. A role that grants anything is never picked, even
- * one called "Employee" or the only one left, since nobody chose it for these
- * people. The owner role is never a candidate. Null when there is none, for a
+ * The role a team is invited into: the workspace's stored launch role (G-g),
+ * or, for a workspace made before P9, a custom role that grants nothing,
+ * "Employee" first. A role that grants anything is never picked, even the
+ * stored one: it fails closed (R-a keeps that from happening through the
+ * app). The owner role is never a candidate. Null when there is none, for a
  * reader that must not throw (`orgRoles`' R-a rules and flags).
  */
 export function pickInviteRole(
+  org: Pick<Doc<"orgs">, "inviteRoleId">,
   roles: Doc<"orgRoles">[],
 ): Doc<"orgRoles"> | null {
   const bare = roles.flatMap((r) =>
     r.kind === "custom" && r.permissions.length === 0 ? [r] : [],
   );
+  if (org.inviteRoleId) {
+    return bare.find((r) => r._id === org.inviteRoleId) ?? null;
+  }
   return bare.find((r) => r.name === "Employee") ?? bare[0] ?? null;
 }
 
@@ -121,7 +126,8 @@ export async function inviteRoleOf(
   ctx: QueryCtx,
   orgId: Id<"orgs">,
 ): Promise<Doc<"orgRoles">> {
-  const role = pickInviteRole(await rolesOf(ctx, orgId));
+  const org = await ctx.db.get(orgId);
+  const role = org && pickInviteRole(org, await rolesOf(ctx, orgId));
   if (!role) {
     throwUserError(
       "NOT_FOUND",

@@ -64,13 +64,14 @@ export async function writeCalderLane(
     name: "Manager",
     createdAt: now,
   });
-  await ctx.db.insert("orgRoles", {
+  const employeeRoleId = await ctx.db.insert("orgRoles", {
     orgId,
     kind: "custom",
     name: "Employee",
     permissions: [],
     createdAt: now,
   });
+  await ctx.db.patch(orgId, { inviteRoleId: employeeRoleId });
 
   // Every persona opens the demo, under the cast name. Those without a seat
   // yet fall back to "no workspace" (`getViewer`) until they join.

@@ -691,10 +691,12 @@ test("launch never invites into a role that grants anything", async () => {
   const { t, orgId, launch } = await manager();
   await ready(t, orgId);
   const employee = await employeeRoleId(t, orgId);
-  // "Employee" widened to manage members is no longer a safe default.
-  await t.run((ctx) =>
-    ctx.db.patch(employee, { permissions: ["members:manage"] }),
-  );
+  // "Employee" widened to manage members is no longer a safe default. The
+  // workspace is from before P9 (no stored launch role, G-g), so the guess runs.
+  await t.run(async (ctx) => {
+    await ctx.db.patch(orgId, { inviteRoleId: undefined });
+    await ctx.db.patch(employee, { permissions: ["members:manage"] });
+  });
   const noRole = {
     data: {
       code: "NOT_FOUND",

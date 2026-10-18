@@ -67,7 +67,7 @@ export const list = viewerQuery()({
     const { viewer } = ctx;
     requireAnyOf(viewer, ["members:read", "members:manage", "roles:manage"]);
     const roles = await rolesOf(ctx, viewer.org._id);
-    const launchId = pickInviteRole(roles)?._id;
+    const launchId = pickInviteRole(viewer.org, roles)?._id;
     const assigns = grants(viewer.permissions, ["members:manage"]);
     const edits = grants(viewer.permissions, ["roles:manage"]);
     const owner = isOwnerRole(viewer.role);
@@ -223,11 +223,12 @@ export const update = viewerMutation("roles:manage")({
     }
     const roles = await rolesOf(ctx, orgId);
     // R-a: launch and Invite member put the team into this role, so it grants
-    // nothing. Protection follows `pickInviteRole`'s pick, not the role's id:
-    // after Employee is renamed, a new no-permission role named "Employee"
-    // becomes the pick and the protected role. Launch still works either way,
-    // because the pick never has a permission.
-    if (next.length > 0 && pickInviteRole(roles)?._id === roleId) {
+    // nothing. Protection follows the stored launch role (G-g), so a rename
+    // keeps it; a workspace from before P9 still follows the name guess.
+    if (
+      next.length > 0 &&
+      pickInviteRole(ctx.viewer.org, roles)?._id === roleId
+    ) {
       throwUserError(
         "FORBIDDEN",
         "Your team is invited into this role, so it can't have permissions.",
@@ -272,7 +273,9 @@ export const remove = viewerMutation("roles:manage")({
     // about to be given is still reaching past yourself.
     requireReach(ctx.viewer, permissionsOf(role));
     // R-a: the last role with no permissions is always this one, so it stays.
-    if (pickInviteRole(await rolesOf(ctx, orgId))?._id === roleId) {
+    if (
+      pickInviteRole(ctx.viewer.org, await rolesOf(ctx, orgId))?._id === roleId
+    ) {
       throwUserError(
         "FORBIDDEN",
         "Your team is invited into this role, so it can't be deleted.",
