@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { ConvexClientProvider } from "@/app/_components/ConvexClientProvider";
+import { DemoClock } from "@/components/app/DemoClock";
 import { HourlyRefresh } from "@/components/app/HourlyRefresh";
 import { MovedToast } from "@/components/app/MovedToast";
 import { SetupHeader } from "@/components/app/SetupHeader";
@@ -30,6 +31,7 @@ export default async function SetupLayout({
       <ConvexClientProvider initialToken={token}>
         <main className="flex w-full flex-1 flex-col gap-07 px-10 pt-07 max-md:px-05">
           {children}
+          {shell?.isDemo && <DemoClock expectOrgId={shell.expectOrgId} lift />}
         </main>
       </ConvexClientProvider>
       {/* Ruling 9: a role redirect can land here (a manager's home is /setup/team until the team is saved). */}

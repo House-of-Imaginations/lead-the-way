@@ -37,6 +37,7 @@ import { useHour } from "@/lib/useHour";
 import { authClient } from "@/lib/account/auth-client";
 import { switchPersona } from "@/lib/demo/switchPersona";
 import type { NavState } from "@/lib/navState";
+import { DemoClock } from "./DemoClock";
 import { MovedToast } from "./MovedToast";
 import { ExpectOrgIdProvider } from "./ExpectOrgId";
 
@@ -245,6 +246,7 @@ export function AppShell({
           <p className="mt-auto text-label-01 text-text-helper md:hidden md:group-has-[.ltw-sn-col]/shell:block">
             Concept prototype. Not an official IBM product.
           </p>
+          {shell.isDemo && <DemoClock expectOrgId={initial.expectOrgId} />}
         </main>
       </div>
       <Suspense>
