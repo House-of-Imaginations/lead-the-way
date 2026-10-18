@@ -24,6 +24,5 @@ export async function switchPersona(
   } catch {
     // A rejection ends at log in too.
   }
-  // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
   window.location.assign(next);
 }
