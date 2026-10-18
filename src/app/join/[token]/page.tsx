@@ -4,7 +4,7 @@ import { ConvexClientProvider } from "@/app/_components/ConvexClientProvider";
 import { fetchAuthQuery, getToken } from "@/lib/account/auth-server";
 import { currentHour, getProfile, openOrHome } from "@/lib/account/queries";
 import { errorCode } from "@/lib/errors";
-import { initialsOf } from "@/lib/initials";
+import { initialsOf } from "@convex/lib/initials";
 import { JoinInvalid, JoinView } from "../_components/JoinView";
 
 export const metadata: Metadata = { title: "Invitation · Lead the Way" };

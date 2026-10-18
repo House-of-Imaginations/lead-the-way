@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
-import { firstNameOf, initialsOf } from "../../convex/lib/orgs/people";
+import { initialsOf } from "../../convex/lib/initials";
+import { firstNameOf } from "../../convex/lib/orgs/people";
 import {
   DEFAULT_SETTINGS,
   settingsOf,
@@ -14,6 +15,9 @@ test("initials come from the first and last word", () => {
   expect(initialsOf("  tomás  de la reyes ")).toBe("TR");
   expect(initialsOf("Dan")).toBe("D");
   expect(initialsOf("   ")).toBe("?");
+  expect(initialsOf("")).toBe("?");
+  expect(initialsOf("  dan   okafor ")).toBe("DO");
+  expect(initialsOf("Mary Jane Watson")).toBe("MW");
 });
 
 test("a first name survives stray whitespace", () => {

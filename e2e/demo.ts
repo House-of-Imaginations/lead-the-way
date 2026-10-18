@@ -14,6 +14,16 @@ export const PERSONA = {
 } as const;
 export type Persona = keyof typeof PERSONA;
 
+/** Dan's public credential slug, read from the demo (it can gain a "-2" after seed:reset). */
+export function demoBadgeSlug(): string {
+  const slug = JSON.parse(
+    convex(["run", "seed:badgeSlug", JSON.stringify({ email: PERSONA.dan })]),
+  ) as string | null;
+  if (!slug)
+    throw new Error("Dan has no badge yet. Move the demo clock past week 1.");
+  return slug;
+}
+
 /** `convex/seed.ts`'s `E2E_DOMAIN`: accounts on it go at `seed:reset` (Ruling 34). */
 export const E2E_DOMAIN = "e2e.test";
 export type DemoTarget =

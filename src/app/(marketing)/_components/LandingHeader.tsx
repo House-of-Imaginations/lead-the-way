@@ -14,7 +14,7 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import { Logo } from "@/components/ui/Logo";
 import { authClient } from "@/lib/account/auth-client";
-import { initialsOf } from "@/lib/initials";
+import { initialsOf } from "@convex/lib/initials";
 import { PROTOTYPE_HREF } from "../links";
 
 const SECTIONS = [
