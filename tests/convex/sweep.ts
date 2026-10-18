@@ -120,6 +120,7 @@ export const callsFor = ({
   storageId,
 }: Ids): Record<string, Record<string, unknown>> => ({
   "demo:personaPassword": {},
+  "demo:status": {},
   "demo:reset": { expectOrgId: orgId },
   "demo:setClock": { target: "week1", expectOrgId: orgId },
   "onboarding:start": { acceptTerms: true },
