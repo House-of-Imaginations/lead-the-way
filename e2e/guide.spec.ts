@@ -1,10 +1,11 @@
-import { resetDemo, signInAs } from "./demo";
+import { demoPassword, resetDemo, signInAs } from "./demo";
 import { expect, test } from "./fixtures";
 
 const DISCLAIMER = "Concept prototype. Not an official IBM product.";
 
 test.describe.configure({ mode: "serial" });
 test.beforeAll(() => resetDemo());
+test.afterAll(() => resetDemo());
 
 test("signed out, the guide asks you to log in first", async ({ page }) => {
   await page.goto("/guide");
@@ -70,6 +71,7 @@ for (const theme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: theme });
       await signInAs(page, "priya");
       await page.goto("/guide");
+      await expect(page.getByLabel("Shared password")).toBeVisible();
       await expectAxeClean(page);
       const spill = await page.evaluate(
         () => document.documentElement.scrollWidth > window.innerWidth,
@@ -77,4 +79,117 @@ for (const theme of ["light", "dark"] as const) {
       expect(spill).toBe(false);
     });
   }
+}
+
+test("the demo section shows the time, the accounts and the counts", async ({
+  page,
+}) => {
+  resetDemo();
+  await signInAs(page, "priya");
+  await page.goto("/guide");
+  const demo = page.getByRole("region", { name: "Demo controls" });
+  await expect(demo.getByText("Tuesday 1 September at 9:30 AM")).toBeVisible();
+  await expect(demo.getByText("priya.raman@calderlane.com.au")).toBeVisible();
+  await expect(demo.getByText("dan.okafor@calderlane.com.au")).toBeVisible();
+  await expect(demo.getByText("Sprints launched")).toBeVisible();
+});
+
+test("the shared password shows only to a demo seat, masked", async ({
+  page,
+}) => {
+  resetDemo();
+  await signInAs(page, "priya");
+  await page.goto("/guide");
+  const field = page.getByLabel("Shared password");
+  await expect(field).toHaveAttribute("type", "password");
+  // Compare in the page so a failure never prints the password.
+  const matches = await field.evaluate(
+    (el, pw) => (el as HTMLInputElement).value === pw,
+    demoPassword(),
+  );
+  expect(matches).toBe(true);
+});
+
+test("Move clock jumps to the chosen week", async ({ page }) => {
+  resetDemo();
+  await signInAs(page, "priya");
+  await page.goto("/guide");
+  await page.getByLabel("Move the demo to").selectOption("week2");
+  await page.getByRole("button", { name: "Move clock" }).click();
+  await expect(
+    page.getByText("Wednesday 16 September at 1:00 PM"),
+  ).toBeVisible();
+});
+
+test("Start as Dan at setup jumps to week 1 and lands on Dan's home", async ({
+  page,
+}) => {
+  resetDemo();
+  await signInAs(page, "priya");
+  await page.goto("/guide");
+  await page.getByRole("button", { name: "Start as Dan" }).first().click();
+  await expect(page).toHaveURL(/\/me$/);
+  await page.goto("/guide");
+  await expect(
+    page.getByText("Wednesday 9 September at 1:00 PM"),
+  ).toBeVisible();
+});
+
+test("a Dan step switches from Priya to Dan", async ({ page }) => {
+  resetDemo("week2");
+  await signInAs(page, "priya");
+  await page.goto("/guide");
+  // The tiles switch only once demo.status has loaded.
+  await expect(page.getByRole("button", { name: "Move clock" })).toBeVisible();
+  await page.getByRole("link", { name: /Applies it to real work/ }).click();
+  await expect(page).toHaveURL(/\/me\/project$/);
+});
+
+test("reset as Dan ends as Priya at setup", async ({ page }) => {
+  resetDemo("week1");
+  await signInAs(page, "dan");
+  await page.goto("/guide");
+  await page.getByRole("button", { name: "Reset demo" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Reset demo" })
+    .click();
+  await expect(page).toHaveURL(/\/guide$/);
+  await expect(page.getByText("Tuesday 1 September at 9:30 AM")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Start as Dan" }).first(),
+  ).toBeVisible();
+});
+
+test("an account without a demo seat sees only Start as Priya", async ({
+  page,
+}) => {
+  resetDemo();
+  await signInAs(page, "dan"); // no seat until 8 September
+  await page.goto("/guide");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Lead the Way" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Start as Priya" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Move clock" })).toHaveCount(0);
+  await expect(page.getByLabel("Shared password")).toHaveCount(0);
+  await page.getByRole("button", { name: "Start as Priya" }).click();
+  await expect(page).toHaveURL(/\/guide$/);
+  await expect(page.getByRole("button", { name: "Move clock" })).toBeVisible();
+});
+
+for (const theme of ["light", "dark"] as const) {
+  test(`the reset modal passes axe, ${theme}`, async ({
+    page,
+    expectAxeClean,
+  }) => {
+    await page.emulateMedia({ colorScheme: theme });
+    await signInAs(page, "priya");
+    await page.goto("/guide");
+    await page.getByRole("button", { name: "Reset demo" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expectAxeClean(page);
+  });
 }
