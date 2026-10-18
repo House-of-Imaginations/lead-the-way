@@ -103,7 +103,7 @@ export default async function GuidePage() {
             {/* Only a table scrolls sideways, inside its own container. */}
             <div
               role="region"
-              aria-labelledby="assumptions"
+              aria-label="Assumptions table"
               tabIndex={0}
               className="overflow-x-auto"
             >

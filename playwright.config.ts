@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// The failure snapshot copies input values, the shared demo password included (P9 review B).
+process.env.PLAYWRIGHT_NO_COPY_PROMPT = "1";
+
 // e2e runs against `pnpm dev` and the Convex dev deployment in .env.local.
 // Start `npx convex dev` yourself first; it is not a web server Playwright can own.
 export default defineConfig({

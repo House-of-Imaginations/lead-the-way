@@ -154,7 +154,7 @@ test("reset as Dan ends as Priya at setup", async ({ page }) => {
     .getByRole("dialog")
     .getByRole("button", { name: "Reset demo" })
     .click();
-  await expect(page).toHaveURL(/\/guide$/);
+  await expect(page.getByText("You're signed in as Priya")).toBeVisible();
   await expect(page.getByText("Tuesday 1 September at 9:30 AM")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Start as Dan" }).first(),
@@ -175,8 +175,11 @@ test("an account without a demo seat sees only Start as Priya", async ({
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Move clock" })).toHaveCount(0);
   await expect(page.getByLabel("Shared password")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Start as Dan" })).toHaveCount(
+    0,
+  );
   await page.getByRole("button", { name: "Start as Priya" }).click();
-  await expect(page).toHaveURL(/\/guide$/);
+  await expect(page.getByText("You're signed in as Priya")).toBeVisible();
   await expect(page.getByRole("button", { name: "Move clock" })).toBeVisible();
 });
 

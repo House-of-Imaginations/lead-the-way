@@ -85,12 +85,8 @@ export function GuideDemoProvider({
       return;
     }
     // G-e and R4: Dan has a seat from 8 September, so jump to week 1 first.
-    if (
-      who === "dan" &&
-      demo &&
-      expectOrgId &&
-      demo.demoNow < DEMO_TARGETS.week1
-    ) {
+    if (who === "dan" && demo && demo.demoNow < DEMO_TARGETS.week1) {
+      if (!expectOrgId) throw new Error("Rendered without a seat.");
       try {
         await setClock({ target: "week1", expectOrgId });
       } catch (e) {
@@ -111,42 +107,61 @@ function ErrorLine({ children }: { children: string }) {
   );
 }
 
-/** The hero's second button: only for a demo seat. */
-export function StartAsDan() {
-  const { status, startAs } = useGuideDemo();
+/** A persona switch button: disabled while it runs, with its own error line. */
+function StartAs({
+  who,
+  to,
+  kind,
+  children,
+}: {
+  who: Persona;
+  to: string;
+  kind: "tertiary" | "secondary";
+  children?: string;
+}) {
+  const { startAs } = useGuideDemo();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
-  if (!status?.demo) return null;
+  const name = who === "dan" ? "Dan" : "Priya";
   return (
-    <div className="flex flex-col gap-02">
+    <div className="flex flex-col items-start gap-02">
       <Button
-        kind="tertiary"
+        kind={kind}
         disabled={pending}
         onClick={async () => {
           setPending(true);
           setFailed(false);
           try {
-            await startAs("dan", "/home");
+            await startAs(who, to);
           } catch {
             setFailed(true);
             setPending(false);
           }
         }}
       >
-        Start as Dan
+        {children ?? `Start as ${name}`}
       </Button>
       {failed && (
         <ErrorLine>
-          Couldn&apos;t switch to Dan. Reset the demo and try again.
+          {who === "dan"
+            ? "Couldn't switch to Dan. Reset the demo and try again."
+            : "Couldn't switch to Priya. Reload the page and try again."}
         </ErrorLine>
       )}
     </div>
   );
 }
 
+/** The hero's second button: only for a demo seat. */
+export function StartAsDan() {
+  const { status } = useGuideDemo();
+  if (!status?.demo) return null;
+  return <StartAs who="dan" to="/home" kind="tertiary" />;
+}
+
 /** R9: the demo's clock, reset, personas, accounts and raw event counts. */
 export function DemoSection() {
-  const { status, expectOrgId, startAs } = useGuideDemo();
+  const { status, expectOrgId } = useGuideDemo();
   if (!status) return null;
   return (
     <section aria-labelledby="demo-controls" className="flex flex-col gap-07">
@@ -154,23 +169,14 @@ export function DemoSection() {
         Demo controls
       </h2>
       {status.demo ? (
-        <DemoControls
-          demo={status.demo}
-          expectOrgId={expectOrgId}
-          startAs={startAs}
-        />
+        <DemoControls demo={status.demo} expectOrgId={expectOrgId} />
       ) : (
         <div className="flex flex-col items-start gap-05">
           <InlineNotification title="Start as Priya first.">
             The demo controls work from a seat in Calder Lane. Priya has one
             from the start.
           </InlineNotification>
-          <Button
-            kind="secondary"
-            onClick={() => void startAs("priya", "/guide")}
-          >
-            Start as Priya
-          </Button>
+          <StartAs who="priya" to="/guide" kind="secondary" />
         </div>
       )}
     </section>
@@ -180,12 +186,11 @@ export function DemoSection() {
 function DemoControls({
   demo,
   expectOrgId,
-  startAs,
 }: {
   demo: Demo;
   expectOrgId: Id<"orgs"> | null;
-  startAs: (who: Persona, to: string) => Promise<void>;
 }) {
+  const { startAs } = useGuideDemo();
   const setClock = useMutation(api.demo.setClock);
   const reset = useMutation(api.demo.reset);
   const password = useQuery(api.demo.personaPassword, {});
@@ -253,6 +258,7 @@ function DemoControls({
         <div>
           <Modal
             trigger={<Button kind="danger">Reset demo</Button>}
+            onOpenChange={() => setResetFailed(false)}
             title="Reset the demo?"
             description="Calder Lane goes back to Tuesday 1 September at 9:30 AM. Everything added since is removed, including your changes."
             primaryText="Reset demo"
@@ -288,12 +294,7 @@ function DemoControls({
       <div className="flex flex-wrap gap-07">
         {demo.accounts.map((a) => (
           <div key={a.key} className="flex flex-col items-start gap-02">
-            <Button
-              kind="secondary"
-              onClick={() => void startAs(a.key, "/home")}
-            >
-              {`Start as ${a.name.split(" ")[0]}`}
-            </Button>
+            <StartAs who={a.key} to="/home" kind="secondary" />
             <span className="text-label-01 text-text-secondary">
               {demo.persona === a.key
                 ? `You're signed in as ${a.name.split(" ")[0]}`
