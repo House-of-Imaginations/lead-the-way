@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { Permission } from "../../../convex/lib/orgs/permissions";
-import { pickInviteRole } from "../../../convex/lib/orgs/invites";
+import { inviteRoleOf, pickInviteRole } from "../../../convex/lib/orgs/invites";
 import { harness, seat, workspace, type T } from "./helpers";
 
 /** The Roles editor's server rules (R-a). The escalation set is in orgs.test.ts. */
@@ -193,6 +193,7 @@ test("the stored launch role keeps its protection after a rename (G-g)", async (
     permissions: [],
     expectOrgId: orgId,
   });
+  expect((await t.run((ctx) => inviteRoleOf(ctx, orgId)))._id).toBe(team);
 
   await expect(update(team, "Team", ["team:insights"])).rejects.toMatchObject(
     NO_PERMISSIONS,

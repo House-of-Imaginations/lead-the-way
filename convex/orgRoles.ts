@@ -272,7 +272,7 @@ export const remove = viewerMutation("roles:manage")({
     // below refuses while anybody holds it -- but deleting a role somebody is
     // about to be given is still reaching past yourself.
     requireReach(ctx.viewer, permissionsOf(role));
-    // R-a: the last role with no permissions is always this one, so it stays.
+    // R-a: the stored launch role (G-g), or the guessed one before P9, stays.
     if (
       pickInviteRole(ctx.viewer.org, await rolesOf(ctx, orgId))?._id === roleId
     ) {

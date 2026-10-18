@@ -36,6 +36,7 @@ test("Priya at setup sees the time, the two accounts and every count", async () 
   expect(demo.persona).toBe("priya");
   expect(demo.accounts.map((a) => a.key)).toEqual(["priya", "dan"]);
   expect(demo.counts.map((c) => c.type)).toEqual([...EVENT_TYPES]);
+  expect(demo.counts.find((c) => c.type === "sprint.launched")!.count).toBe(0);
   // G-f: types and numbers only, no names and no ids.
   for (const row of demo.counts)
     expect(Object.keys(row).sort()).toEqual(["count", "type"]);

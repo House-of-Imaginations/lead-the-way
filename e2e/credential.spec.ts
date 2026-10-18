@@ -206,7 +206,7 @@ test("without a badge, 15 says when it appears", async ({ page }) => {
   await expect(page.getByText(NO_BADGE, { exact: true })).toBeVisible();
   await expect(copyButton(page)).toHaveCount(0);
   await expect(badge(page)).toHaveCount(0);
-  // No badge yet, so its public link is a 404 too.
+  // No badge yet, so no credential link resolves.
   expect(
     (await page.request.get("/credential/dan-okafor-ai-fundamentals")).status(),
   ).toBe(404);
