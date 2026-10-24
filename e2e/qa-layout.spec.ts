@@ -80,6 +80,11 @@ test("forced colours keep the chosen tile dot, toggle, checkbox and progress vis
   const toggle = page.getByRole("switch").first();
   await expect(toggle).toBeVisible();
   await expectForcedMark(toggle, "toggle");
+  // 19's NeverSees bullets are 6px fills, which forced colours would drop (M5).
+  await expectForcedMark(
+    page.getByRole("complementary").locator("li > span").first(),
+    "never sees bullet",
+  );
   await shoot(page.getByRole("main"), "forced-toggle");
 
   await page.goto("/me/sprint");
