@@ -24,13 +24,13 @@ The privacy rules are enforced in the backend, not the UI, and tested.
 
 ## Tech stack
 
-| Layer | What |
-|---|---|
-| App | [Next.js](https://nextjs.org) 16 (App Router), React 19, Tailwind CSS v4, Radix primitives, Carbon icons |
-| Backend | [Convex](https://convex.dev) (database, functions, scheduling) with `convex-helpers` |
-| Auth | [Better Auth](https://better-auth.com) through `@convex-dev/better-auth`: email and password, optional Google, GitHub and Discord |
-| Email | Resend through `@convex-dev/resend` (optional; without it invitations show copyable links) |
-| Tests | Vitest with `convex-test`, Playwright with axe |
+| Layer   | What                                                                                                                              |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| App     | [Next.js](https://nextjs.org) 16 (App Router), React 19, Tailwind CSS v4, Radix primitives, Carbon icons                          |
+| Backend | [Convex](https://convex.dev) (database, functions, scheduling) with `convex-helpers`                                              |
+| Auth    | [Better Auth](https://better-auth.com) through `@convex-dev/better-auth`: email and password, optional Google, GitHub and Discord |
+| Email   | Resend through `@convex-dev/resend` (optional; without it invitations show copyable links)                                        |
+| Tests   | Vitest with `convex-test`, Playwright with axe                                                                                    |
 
 ## Getting started
 
@@ -85,10 +85,10 @@ Open <http://localhost:3000>.
 
 With `DEMO_MODE` on, the app is seeded with **Calder Lane**, a client services team of nine. The ones you will use most:
 
-| Person | Role | Sees |
-|---|---|---|
-| Priya Raman | Team manager | Setup, the team dashboard, sprint, learning and outcomes (team totals only) |
-| Dan Okafor | Senior Account Executive | This week's hour, courses, his work project, the agreement and his credential |
+| Person      | Role                     | Sees                                                                          |
+| ----------- | ------------------------ | ----------------------------------------------------------------------------- |
+| Priya Raman | Team manager             | Setup, the team dashboard, sprint, learning and outcomes (team totals only)   |
+| Dan Okafor  | Senior Account Executive | This week's hour, courses, his work project, the agreement and his credential |
 
 Choose either from the dropdown on `/login`. The demo clock moves the sprint through its four weeks, and `/guide` walks through the whole journey. `npx convex run seed:reset` puts everything back.
 
@@ -97,13 +97,13 @@ Choose either from the dropdown on `/login`. The demo clock moves the sprint thr
 
 ## Development
 
-| Command | What it does |
-|---|---|
-| `pnpm dev` | Next.js on port 3000 (run `npx convex dev` beside it) |
-| `pnpm test` | Unit and Convex tests (Vitest, no network) |
-| `pnpm e2e` | Playwright end to end with axe, desktop and mobile; needs both dev servers |
-| `pnpm typecheck` / `pnpm lint` / `pnpm format:check` | TypeScript, ESLint, Prettier |
-| `pnpm copy-lint` | Checks product copy against the voice rules (sentence case, no em dashes) |
+| Command                                              | What it does                                                               |
+| ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| `pnpm dev`                                           | Next.js on port 3000 (run `npx convex dev` beside it)                      |
+| `pnpm test`                                          | Unit and Convex tests (Vitest, no network)                                 |
+| `pnpm e2e`                                           | Playwright end to end with axe, desktop and mobile; needs both dev servers |
+| `pnpm typecheck` / `pnpm lint` / `pnpm format:check` | TypeScript, ESLint, Prettier                                               |
+| `pnpm copy-lint`                                     | Checks product copy against the voice rules (sentence case, no em dashes)  |
 
 CI runs typecheck, lint, format and both test suites on pull requests to `main`. End to end tests run locally.
 
