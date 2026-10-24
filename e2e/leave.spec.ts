@@ -89,6 +89,9 @@ test.describe("Leave workspace", () => {
     await expect(
       dialog.getByRole("heading", { name: "Leave Calder Lane?" }),
     ).toBeVisible();
+    await expect(dialog).toHaveAccessibleDescription(
+      "You lose your seat and settings here. A credential link you shared keeps working.",
+    );
     await expectAxeClean(page, '[role="dialog"]');
     await dialog.getByRole("button", { name: "Leave workspace" }).click();
     // No seat left: /home sends them to choose a track.

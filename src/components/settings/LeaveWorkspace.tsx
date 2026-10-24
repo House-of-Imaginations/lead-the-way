@@ -75,7 +75,10 @@ export function LeaveWorkspace({
             Leave workspace
           </Button>
         }
+        // As ManageMember's Remove: a screen reader hears the consequence (L1).
+        label="Settings"
         title={`Leave ${orgName}?`}
+        description="You lose your seat and settings here. A credential link you shared keeps working."
         primaryText="Leave workspace"
         primaryKind="danger"
         onPrimary={() => void onLeave()}
