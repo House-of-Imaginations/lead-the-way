@@ -253,8 +253,13 @@ export function AppShell({
           <SideNav {...nav} initialState={navState} />
         </div>
         {/* relative: absolutely placed children (sr-only text) are clipped by main's scroll,
-            not left hanging below the window where they made the whole page scroll. */}
-        <main className="relative flex min-w-0 flex-1 flex-col gap-07 overflow-y-auto p-05 md:p-07">
+            not left hanging below the window where they made the whole page scroll.
+            tabIndex: main is the scroller, so a keyboard can reach and scroll it on a page with
+            nothing focusable inside (10, the agreement once signed, at 390). */}
+        <main
+          tabIndex={0}
+          className="relative flex min-w-0 flex-1 flex-col gap-07 overflow-y-auto p-05 md:p-07"
+        >
           {switched && !leaving && (
             <div role="status">
               <InlineNotification>
