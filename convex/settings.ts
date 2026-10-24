@@ -4,7 +4,11 @@ import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { saveDisplayName } from "./lib/account/profile";
 import { throwUserError } from "./lib/errors";
 import { isDemoAddress } from "./lib/demo/cast";
-import { isOwnerRole, updateSeatProfile } from "./lib/orgs/membership";
+import {
+  isLastOwner,
+  isOwnerRole,
+  updateSeatProfile,
+} from "./lib/orgs/membership";
 import { initialsOf } from "./lib/initials";
 import { ownerOf } from "./lib/orgs/people";
 import { MAX_JOB_TITLE, TIME_ZONES } from "./lib/profileFields";
@@ -58,17 +62,14 @@ export const mine = viewerQuery()({
   handler: async (ctx) => {
     const { viewer } = ctx;
     const { person } = viewer;
-    // `assertOwnerSurvives`'s read: is anybody else on the owner role?
-    const owners = isOwnerRole(viewer.role)
-      ? await ctx.db
-          .query("people")
-          .withIndex("by_role", (q) => q.eq("roleId", viewer.role._id))
-          .take(2)
-      : [];
+    // The check `assertOwnerSurvives` refuses on, asked ahead of time.
+    const lastOwner =
+      isOwnerRole(viewer.role) &&
+      (await isLastOwner(ctx, viewer.role._id, person._id));
     return {
       leave: isDemoAddress(person.email)
         ? ("demo" as const)
-        : owners.length === 1
+        : lastOwner
           ? ("lastOwner" as const)
           : ("allowed" as const),
       orgName: viewer.org.name,
