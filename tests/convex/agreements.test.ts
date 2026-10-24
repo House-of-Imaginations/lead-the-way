@@ -370,7 +370,7 @@ test("current returns the defaults before any save", async () => {
 test("the checklist marks the agreement done", async () => {
   const { owner, save } = await manager();
   const state = async () =>
-    (await owner.query(api.viewer.shell, {}))?.checklist?.items[3];
+    (await owner.query(api.viewer.shell, {}))?.team?.checklist?.items[3];
   expect(await state()).toMatchObject({
     label: "Team agreement",
     state: "todo",

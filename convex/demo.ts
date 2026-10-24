@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { assertFlag, flagOn } from "./app";
 import { publicQuery, viewerMutation } from "./lib/customFunctions";
 import { demoAccounts, writeCalderLane } from "./lib/demo/calderLane";
-import { castOf } from "./lib/demo/cast";
+import { ACCOUNT_HOLDERS, castOf } from "./lib/demo/cast";
 import { moveClock } from "./lib/demo/moveClock";
 import { demoTargetValidator } from "./lib/demo/schedule";
 import { throwUserError } from "./lib/errors";
@@ -76,6 +76,32 @@ export const personaPassword = publicQuery({
   handler: async (ctx) =>
     (ctx.userId !== null && flagOn("demo") && process.env.DEMO_PASSWORD) ||
     null,
+});
+
+/**
+ * Who /login offers as a demo account (Task 9). Empty unless DEMO_MODE is on.
+ * Signed out on purpose: it lists the seeded cast only, by name, email and
+ * role, with no ids and no participation data. Priya is the cast's only
+ * Manager (`writeCalderLane`). The sign-in itself happens on the server
+ * (`src/app/api/demo/login/route.ts`), which accepts only these emails.
+ */
+export const loginCast = publicQuery({
+  args: {},
+  returns: v.array(
+    v.object({
+      name: v.string(),
+      email: v.string(),
+      role: v.union(v.literal("Manager"), v.literal("Employee")),
+    }),
+  ),
+  handler: async () =>
+    flagOn("demo")
+      ? ACCOUNT_HOLDERS.map(({ key, name, email }) => ({
+          name,
+          email,
+          role: key === "priya" ? ("Manager" as const) : ("Employee" as const),
+        }))
+      : [],
 });
 
 // ponytail: a demo workspace sees hundreds of events, not thousands. Past

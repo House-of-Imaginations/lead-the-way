@@ -7,11 +7,11 @@ import { harness, workspace } from "./workspace/helpers";
  * Ruling 16: a query that reads the clock goes stale when the hour turns,
  * unless the client sends a new `hour`. So every exported query whose handler
  * reads `.now` (`viewer.now`, or `Date.now()`, which is stale in the same way)
- * is built with `timedViewerQuery`, which declares it.
+ * is built with `timedViewerQuery` (or `careerQuery`), which declares it.
  */
 const dir = new URL("../../convex/", import.meta.url);
 const QUERY =
-  /^(?:publicQuery|authenticatedQuery|viewerQuery|timedViewerQuery|query)$/;
+  /^(?:publicQuery|authenticatedQuery|viewerQuery|timedViewerQuery|careerQuery|query)$/;
 
 /**
  * Helpers that read the clock for their caller. Add a new one here when you
@@ -24,17 +24,21 @@ const CLOCK_HELPERS = [
   "launchedFor",
   "joinFacts",
   "weekNow",
+  "tracksOf",
 ];
 
 const READS_CLOCK = new RegExp(
   `\\.now\\b|nowIn\\(|nowFor\\(|\\b(?:${CLOCK_HELPERS.join("|")})\\(`,
 );
 
-/** Every `export const x = builder(...)({ ... });` in a top-level module. */
+/**
+ * Every `export const x = builder(...)({ ... });` under convex/, at any depth
+ * (`convex/careers/*.ts` too), skipping `_generated`.
+ */
 function exportedQueries() {
   const out: { name: string; builder: string; body: string }[] = [];
-  for (const file of readdirSync(dir)) {
-    if (!file.endsWith(".ts")) continue;
+  for (const file of readdirSync(dir, { recursive: true }) as string[]) {
+    if (!file.endsWith(".ts") || file.startsWith("_generated")) continue;
     const source = readFileSync(new URL(file, dir), "utf8");
     for (const m of source.matchAll(
       /^export const (\w+) = (\w+)\b[\s\S]*?^\}\);$/gm,
@@ -72,6 +76,7 @@ test("every query that reads the clock takes hour (Ruling 16)", () => {
       .filter(
         (q) =>
           q.builder !== "timedViewerQuery" &&
+          q.builder !== "careerQuery" &&
           !/hour: v\.optional\(v\.number\(\)\)/.test(q.body),
       )
       .map((q) => q.name),

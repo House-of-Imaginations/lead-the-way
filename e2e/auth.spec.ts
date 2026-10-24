@@ -180,8 +180,25 @@ test("sign-up from a join link goes back to the link and makes no workspace (Rev
     .check();
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL("/join/e2e-no-such-token");
-  // No workspace was made: home is still the start page.
+  // No workspace was made: home is the track choice.
   await page.goto("/home");
+  await expect(page).toHaveURL("/start");
+});
+
+test("sign-up with track=career makes no workspace", async ({ page }) => {
+  await page.goto("/signup?track=career");
+  await page.getByLabel("Full name").fill("Cam Career");
+  await page.getByLabel("Work email").fill(`e2e-career-${Date.now()}@e2e.test`);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("a long enough password");
+  await page
+    .getByLabel("I agree to the terms of use and privacy notice.")
+    .check();
+  await page.getByRole("button", { name: "Create account" }).click();
+  // R7: no track yet, so home is the track choice.
+  await expect(page).toHaveURL("/start");
+  await page.goto("/setup/team");
   await expect(page).toHaveURL("/setup/start");
 });
 

@@ -83,6 +83,7 @@ import type * as showAndTell from "../showAndTell.js";
 import type * as snapshots from "../snapshots.js";
 import type * as sprints from "../sprints.js";
 import type * as surveys from "../surveys.js";
+import type * as tables_careers from "../tables/careers.js";
 import type * as tables_demo from "../tables/demo.js";
 import type * as tables_orgs from "../tables/orgs.js";
 import type * as tables_profiles from "../tables/profiles.js";
@@ -173,6 +174,7 @@ declare const fullApi: ApiFromModules<{
   snapshots: typeof snapshots;
   sprints: typeof sprints;
   surveys: typeof surveys;
+  "tables/careers": typeof tables_careers;
   "tables/demo": typeof tables_demo;
   "tables/orgs": typeof tables_orgs;
   "tables/profiles": typeof tables_profiles;

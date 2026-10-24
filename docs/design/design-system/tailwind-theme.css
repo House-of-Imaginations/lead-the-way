@@ -43,6 +43,8 @@
   --color-tag-blue-text: var(--tag-blue-text);
   --color-tag-green-bg: var(--tag-green-bg);
   --color-tag-green-text: var(--tag-green-text);
+  --color-tag-purple-bg: var(--tag-purple-bg);
+  --color-tag-purple-text: var(--tag-purple-text);
   --color-avatar-manager: var(--avatar-manager);
   --color-avatar-ink: var(--avatar-ink);
   --color-chart-before: var(--chart-before);

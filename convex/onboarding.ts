@@ -15,6 +15,9 @@ import { getViewer } from "./lib/viewer";
  *    makes nothing, whatever the token names. The join page says what's wrong
  *    with a link that won't seat this account (wrong address, used, demo,
  *    unknown), so a join link never ends in a fresh workspace;
+ *  - "/home" for a career sign-up (`track: "career"`), with no workspace. It
+ *    skips the invitation lookup below on purpose: a private career sign-up
+ *    is never pulled into an employer's team by its address;
  *  - "/home" when the account already has a workspace;
  *  - "/join/<token>" when a live invitation names its address and the account
  *    has VERIFIED that address. Without the link in hand, an unverified
@@ -30,9 +33,13 @@ import { getViewer } from "./lib/viewer";
  * skips mailing one.
  */
 export const start = authenticatedMutation({
-  args: { acceptTerms: v.boolean(), token: v.optional(v.string()) },
+  args: {
+    acceptTerms: v.boolean(),
+    token: v.optional(v.string()),
+    track: v.optional(v.union(v.literal("team"), v.literal("career"))),
+  },
   returns: v.string(),
-  handler: async (ctx, { acceptTerms, token }) => {
+  handler: async (ctx, { acceptTerms, token, track }) => {
     const profile = await ensureProfile(ctx, ctx.userId);
     if (profile.termsAcceptedAt === undefined) {
       if (!acceptTerms) {
@@ -45,6 +52,9 @@ export const start = authenticatedMutation({
     }
     // Holding the link is the proof (spec 5); the join page checks the rest.
     if (token) return `/join/${encodeURIComponent(token)}`;
+    // Spec 5.3: a career sign-up never makes a workspace. P12a's claimDraft makes
+    // the career profile; until then /home resolves to /start.
+    if (track === "career") return "/home";
     if (await getViewer(ctx)) return "/home";
 
     const user = await authComponent.getAnyUserById(ctx, ctx.userId);

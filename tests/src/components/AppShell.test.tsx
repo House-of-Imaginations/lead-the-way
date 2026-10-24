@@ -1,12 +1,16 @@
 // @vitest-environment node
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
-import type { Shell } from "../../../convex/lib/shell";
+import type { AccountShell, Shell, TrackRow } from "../../../convex/lib/shell";
 import { AppShell, useShell } from "../../../src/components/app/AppShell";
 import { useExpectOrgId } from "../../../src/components/app/ExpectOrgId";
 
 let live: Shell | undefined;
-vi.mock("convex-helpers/react/cache", () => ({ useQuery: () => live }));
+/** The whole live `viewer.shell` (null once signed out), when a test needs more than its `team`. */
+let account: AccountShell | null | undefined;
+vi.mock("convex-helpers/react/cache", () => ({
+  useQuery: () => (account !== undefined ? account : live && { team: live }),
+}));
 vi.mock("convex/react", () => ({
   useConvex: () => ({}),
   useMutation: () => vi.fn(),
@@ -42,6 +46,7 @@ const render = () =>
 
 beforeEach(() => {
   live = undefined;
+  account = undefined;
 });
 
 test("a switch in another tab keeps the page's workspace and says so", () => {
@@ -113,4 +118,83 @@ test("useShell needs AppShell above it", () => {
   expect(() => renderToStaticMarkup(<Name />)).toThrow(
     "useShell needs AppShell above it.",
   );
+});
+
+test("a live shell with no team keeps the server's shell", () => {
+  account = { account: { name: "Dan", initials: "D" } };
+  const html = render();
+  expect(html).toContain("id:org1");
+  expect(html).toContain("Calder Lane");
+  expect(html).not.toContain("another tab");
+});
+
+const rows: TrackRow[] = [
+  {
+    kind: "team",
+    name: "Team sprint",
+    caption: "Calder Lane, week 2 of 4",
+    initials: "CL",
+    private: false,
+    href: "/me",
+  },
+  {
+    kind: "career",
+    name: "Change careers",
+    caption: "Private",
+    private: true,
+    href: "/careers/journey",
+  },
+];
+
+test("two tracks: the switcher replaces the org block", () => {
+  const html = renderToStaticMarkup(
+    <AppShell initial={shell} hour={0} navState={null} switcher={rows}>
+      <Probe />
+    </AppShell>,
+  );
+  for (const text of [
+    "Your tracks",
+    "Team sprint",
+    "Change careers",
+    "Two tracks",
+  ]) {
+    expect(html).toContain(text);
+  }
+  expect(html).not.toContain("ltw-sn-org");
+});
+
+test("one track: the org block stays", () => {
+  const html = render();
+  expect(html).toContain("ltw-sn-org");
+  expect(html).not.toContain("Your tracks");
+});
+
+const renderRows = (switcher?: TrackRow[]) =>
+  renderToStaticMarkup(
+    <AppShell initial={shell} hour={0} navState={null} switcher={switcher}>
+      <Probe />
+    </AppShell>,
+  );
+const me = { name: "Dan", initials: "D" };
+
+test("the live rows win over the server's copy", () => {
+  account = { account: me, team: shell, switcher: rows };
+  expect(renderRows()).toContain("Your tracks");
+  account = { account: me, team: shell };
+  expect(renderRows(rows)).not.toContain("Your tracks");
+});
+
+test("signed out, the server's rows stay", () => {
+  account = null;
+  expect(renderRows(rows)).toContain("Your tracks");
+});
+
+test("after a switch in another tab, the server's rows stay", () => {
+  account = {
+    account: me,
+    team: { ...shell, expectOrgId: "other" } as Shell,
+  };
+  const html = renderRows(rows);
+  expect(html).toContain("Your tracks");
+  expect(html).toContain("You switched workspace in another tab");
 });

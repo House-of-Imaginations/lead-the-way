@@ -37,8 +37,7 @@ test("a real workspace has no clock", async ({ page }) => {
     headers: { origin: "http://localhost:3000" },
   });
   expect(res.ok()).toBe(true);
-  await page.goto("/home");
-  await expect(page).toHaveURL("/setup/start");
+  await page.goto("/setup/start");
   await page
     .getByLabel("I agree to the terms of use and privacy notice.")
     .check();

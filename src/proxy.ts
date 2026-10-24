@@ -2,8 +2,9 @@ import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
 import { safeNext } from "@/lib/url";
 
-const PRIVATE =
-  /^\/(manager|me|settings|workspace|setup|guide|home|join\/preview)(\/|$)/;
+// /careers/map and /careers/map/new are public: the map works from a draft before sign-up (spec 5.3).
+export const PRIVATE =
+  /^\/(manager|me|settings|workspace|setup|guide|home|join\/preview|tracks|careers(?!\/map(?:\/new)?\/?$))(\/|$)/;
 const AUTH_PAGES = /^\/(login|signup)\/?$/;
 
 /**

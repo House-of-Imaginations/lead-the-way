@@ -26,6 +26,8 @@ export type ErrorCode =
   | "NOT_A_MEMBER"
   // Signed in, but no workspace resolves: the client sends them to set one up.
   | "NO_WORKSPACE"
+  // Signed in, but no career profile: the client sends them to start a track.
+  | "NO_CAREER_TRACK"
   | "FORBIDDEN"
   | "PERMISSION_ESCALATION"
   | "ORG_NAME_REQUIRED"

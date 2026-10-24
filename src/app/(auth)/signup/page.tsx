@@ -15,7 +15,7 @@ export default async function SignUpPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const [providers, { invite }] = await Promise.all([
+  const [providers, { invite, track }] = await Promise.all([
     getAuthMethods(),
     searchParams,
   ]);
@@ -43,6 +43,7 @@ export default async function SignUpPage({
         providers={providers}
         invite={token}
         email={preview?.email ?? undefined}
+        track={track === "career" ? "career" : undefined}
       />
     </AuthSplit>
   );

@@ -34,7 +34,14 @@ const RANGE =
 const EMOJI = /\p{Extended_Pictographic}/u;
 const CSS_FN = /\b(?:calc|var|min|max|clamp)\(/g;
 // Proper names that keep their capitals inside a sentence-case label.
-const PRODUCT_TERMS = ["Team AI Agreement", "From Zero to Hero"];
+const PRODUCT_TERMS = [
+  "Team AI Agreement",
+  "From Zero to Hero",
+  "Pivot Map",
+  "Crew Agreement",
+  "Pathway Guide",
+  "Pivot Crews",
+];
 
 /** Blank out `name(...)` CSS function spans (balanced parens), so a "-" used
  * as a CSS subtraction, e.g. `calc(100% - 48px)`, isn't mistaken for a

@@ -53,12 +53,15 @@ export function SignUpForm({
   providers,
   invite,
   email,
+  track,
 }: {
   providers: Provider[];
   /** The join link's token (`/signup?invite=`): sign-up goes back to it (Ruling 19). */
   invite?: string;
   /** The invitation's pinned address, shown locked (Ruling 2). */
   email?: string;
+  /** `/signup?track=career`: no workspace is made. */
+  track?: "career";
 }) {
   const next = invite ? `/join/${encodeURIComponent(invite)}` : null;
   const [agreed, setAgreed] = useState(false);
@@ -94,7 +97,7 @@ export function SignUpForm({
         }
         signedUpAs.current = email;
       }
-      const started = await startAccount(true, invite);
+      const started = await startAccount(true, invite, track);
       if ("error" in started) {
         setErrors({ form: started.error });
         return;

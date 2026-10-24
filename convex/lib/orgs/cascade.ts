@@ -25,6 +25,12 @@ export const ORG_TABLES = [
 ] as const;
 
 /**
+ * Every career table (D12): keyed by `userId`, never `orgId`, so a workspace
+ * deletion never touches them. P12a lists each new career table here.
+ */
+export const CAREER_TABLES = ["careerProfiles"] as const;
+
+/**
  * What removing a member (`dropSeat`) does to each table holding a person id
  * (M-c). Dropped rows go with the seat. Kept rows stay, orphaned, and their
  * readers must survive a missing person, as each note says.

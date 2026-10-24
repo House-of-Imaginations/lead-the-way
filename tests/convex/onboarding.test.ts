@@ -307,3 +307,65 @@ test("start with a token still asks for the terms", async () => {
     sam.mutation(api.onboarding.start, { acceptTerms: false, token: "x" }),
   ).rejects.toMatchObject({ data: { code: "TERMS_REQUIRED" } });
 });
+
+test("a career sign-up accepts the terms and makes no workspace", async () => {
+  const t = harness();
+  const cam = await account(t, "Cam Career", "cam@example.com");
+  expect(
+    await cam.mutation(api.onboarding.start, {
+      acceptTerms: true,
+      track: "career",
+    }),
+  ).toBe("/home");
+  expect(await orgsOf(t)).toEqual([]);
+  const profile = await cam.query(api.profiles.me, {});
+  expect(profile?.termsAcceptedAt).toEqual(expect.any(Number));
+  expect(await cam.query(api.viewer.home, {})).toBe("/start");
+});
+
+test("a career sign-up from a join link still goes to the link", async () => {
+  const t = harness();
+  const cam = await account(t, "Cam Career", "cam@example.com");
+  expect(
+    await cam.mutation(api.onboarding.start, {
+      acceptTerms: true,
+      token: "abc",
+      track: "career",
+    }),
+  ).toBe("/join/abc");
+});
+
+test("a career sign-up still needs the terms", async () => {
+  const t = harness();
+  const cam = await account(t, "Cam Career", "cam@example.com");
+  await expect(
+    cam.mutation(api.onboarding.start, { acceptTerms: false, track: "career" }),
+  ).rejects.toMatchObject({ data: { code: "TERMS_REQUIRED" } });
+});
+
+// L4: a private career sign-up is never pulled into an employer's team by its
+// address, even a verified one with a live invitation.
+test("a career sign-up skips a verified address's invitation", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roles = await owner.query(api.orgRoles.list, {});
+  const roleId = roles.find((r) => r.name === "Employee")!._id;
+  const { token } = await owner.mutation(api.invites.create, {
+    roleId,
+    email: "sam@example.com",
+    expectOrgId: orgId,
+  });
+  const peopleBefore = await t.run((ctx) => ctx.db.query("people").collect());
+  const sam = await account(t, "Sam Ito", "sam@example.com", true);
+
+  const to = await sam.mutation(api.onboarding.start, {
+    acceptTerms: true,
+    track: "career",
+  });
+  expect(to).toBe("/home");
+  expect(to).not.toContain(token);
+  expect(await t.run((ctx) => ctx.db.query("people").collect())).toEqual(
+    peopleBefore,
+  );
+  expect(await orgsOf(t)).toHaveLength(1);
+});

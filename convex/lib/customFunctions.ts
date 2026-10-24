@@ -11,7 +11,7 @@ import { requireUserId, safeUserId } from "./auth/identity";
 import { throwUserError } from "./errors";
 import { requirePermissions } from "./orgs/membership";
 import type { Permission } from "./orgs/permissions";
-import { requireViewer } from "./viewer";
+import { requireCareer, requireViewer } from "./viewer";
 import { assertFlag } from "../app";
 
 // Every public function refuses while the app is closed. See `convex/app.ts`.
@@ -117,3 +117,27 @@ export const timedViewerQuery = (...need: Permission[]) =>
       return { ctx: { viewer: await requireViewer(ctx, need) }, args: {} };
     },
   });
+
+/**
+ * The Change careers builders: `ctx.career` is the caller's career profile,
+ * of any kind (R6: P12b decides per function whether a guide may call it).
+ * X2: they never touch the team builders above, and no team builder reads a
+ * career table. `careerQuery` consumes `hour` as `timedViewerQuery` does,
+ * since `career.now` reads the clock. Throws NOT_SIGNED_IN, then
+ * NO_CAREER_TRACK.
+ */
+export const careerQuery = customQuery(query, {
+  args: { hour: v.optional(v.number()) },
+  input: async (ctx: QueryCtx) => {
+    assertAppOpen();
+    return { ctx: { career: await requireCareer(ctx) }, args: {} };
+  },
+});
+
+export const careerMutation = customMutation(mutation, {
+  args: {},
+  input: async (ctx: MutationCtx) => {
+    assertAppOpen();
+    return { ctx: { career: await requireCareer(ctx) }, args: {} };
+  },
+});

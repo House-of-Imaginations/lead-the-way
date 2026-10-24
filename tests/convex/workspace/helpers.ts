@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { api, internal } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import type { DemoTarget } from "../../../convex/lib/demo/schedule";
 import type { Permission } from "../../../convex/lib/orgs/permissions";
 import schema from "../../../convex/schema";
 import {
@@ -53,6 +54,22 @@ export async function seat(
   return { as: t.withIdentity({ subject }), personId, roleId };
 }
 
+/** A career profile for whoever `x` signs in as: Dan, a private learner by default. */
+export async function addCareer(
+  x: ReturnType<T["withIdentity"]>,
+  kind: "learner" | "guide" = "learner",
+  isPrivate = true,
+): Promise<Id<"careerProfiles">> {
+  return await x.run(async (ctx) =>
+    ctx.db.insert("careerProfiles", {
+      userId: (await ctx.auth.getUserIdentity())!.subject,
+      kind,
+      firstName: "Dan",
+      private: isPrivate,
+    }),
+  );
+}
+
 /** Calder Lane, seeded from its demo accounts, and a way to sign in as each. */
 export async function calderLane() {
   const t = harness();
@@ -60,4 +77,9 @@ export async function calderLane() {
   const orgId = await t.mutation(internal.seed.writeCalderLane, { accounts });
   const as = (key: string) => t.withIdentity({ subject: accounts[key] });
   return { t, orgId, as };
+}
+
+/** Move the demo clock to `target`. The test must stub DEMO_MODE on. */
+export async function clock(t: T, target: DemoTarget) {
+  await t.mutation(internal.seed.clock, { target });
 }

@@ -117,8 +117,7 @@ test.describe("at week 1", () => {
 
 test("/setup/start keeps the narrow column", async ({ page }) => {
   await signUpWithoutWorkspace(page);
-  await page.goto("/home");
-  await expect(page).toHaveURL("/setup/start");
+  await page.goto("/setup/start");
   const column = page.getByRole("main").locator(":scope > div").first();
   const box = (await column.boundingBox())!;
   const viewport = page.viewportSize()!;

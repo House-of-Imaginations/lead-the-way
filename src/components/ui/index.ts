@@ -63,3 +63,10 @@ export {
 } from "./SideNav";
 export { DemoBanner } from "./DemoBanner";
 export { TopBar, type TopBarProps } from "./TopBar";
+export { TrackTile, type TrackTileProps } from "./TrackTile";
+export {
+  TrackSwitcher,
+  type TrackSwitcherProps,
+  type TrackSwitcherRow,
+} from "./TrackSwitcher";
+export { WhoSeesWhat, type WhoSeesWhatProps } from "./WhoSeesWhat";

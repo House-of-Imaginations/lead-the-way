@@ -20,6 +20,7 @@ export const TOKENS = {
     borderSubtle: "rgb(224, 224, 224)",
     borderStrong: "rgb(141, 141, 141)",
     tagGrayBg: "rgb(224, 224, 224)",
+    tagPurpleBg: "rgb(232, 218, 255)",
     avatarManager: "rgb(166, 200, 255)",
   },
   dark: {
@@ -37,6 +38,7 @@ export const TOKENS = {
     borderSubtle: "rgb(57, 57, 57)",
     borderStrong: "rgb(111, 111, 111)",
     tagGrayBg: "rgb(82, 82, 82)",
+    tagPurpleBg: "rgb(73, 29, 139)",
     avatarManager: "rgb(166, 200, 255)",
   },
 } as const;

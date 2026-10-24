@@ -371,10 +371,12 @@ test("a draft revisited six days on names one week one everywhere", async () => 
     runs: "16 September to 7 October 2026",
     showAndTell: "Show and tell, 7 October",
   });
-  expect((await priya.query(api.viewer.shell, {}))?.status).toMatchObject({
-    label: "Sprint starts",
-    value: "Wed 16 Sep, 2:00 PM",
-  });
+  expect((await priya.query(api.viewer.shell, {}))?.team?.status).toMatchObject(
+    {
+      label: "Sprint starts",
+      value: "Wed 16 Sep, 2:00 PM",
+    },
+  );
   await priya.mutation(api.sprints.launch, {
     emails: ["dan.okafor@calderlane.com.au"],
     message: "",
@@ -653,7 +655,7 @@ test("the Sprint nav points to /manager after launch", async () => {
   const { t, owner, orgId, launch } = await manager();
   await ready(t, orgId);
   const sprintLink = async () =>
-    (await owner.query(api.viewer.shell, {}))?.nav[0]?.links.find(
+    (await owner.query(api.viewer.shell, {}))?.team?.nav[0]?.links.find(
       (l) => l.label === "Sprint",
     )?.href;
   expect(await sprintLink()).toBe("/manager/sprint/launch");

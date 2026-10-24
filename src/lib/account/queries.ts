@@ -50,8 +50,12 @@ export const getHome = cache(() =>
 );
 /** Ruling 14: one `hour` per request, shared by the layout, the shell and the page. */
 export const currentHour = cache(() => hourOf(Date.now()));
-export const getShell = cache(() =>
+export const getAccountShell = cache(() =>
   openOrHome(() => fetchAuthQuery(api.viewer.shell, { hour: currentHour() })),
+);
+/** The team shell, null with no seat. Every team page reads this. */
+export const getShell = cache(
+  async () => (await getAccountShell())?.team ?? null,
 );
 export const getProfile = cache(() =>
   openOrHome(() => fetchAuthQuery(api.profiles.me, {})),

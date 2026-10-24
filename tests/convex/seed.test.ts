@@ -3,6 +3,7 @@ import { api, components, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
   ACCOUNT_HOLDERS,
+  castOf,
   demoUserId,
   isDemoAddress,
 } from "../../convex/lib/demo/cast";
@@ -828,4 +829,17 @@ test("reset clears e2e.test accounts after the reseed, and never without demo mo
   vi.stubEnv("DEMO_MODE", "on");
   await t.action(internal.seed.reset, {});
   expect(await authRows(t, "user", "_id", kai.subject)).toHaveLength(0);
+});
+
+test("seed.careerProfile sets private on a profile that exists", async () => {
+  const t = harness();
+  await seedDemoAccounts(t);
+  const email = castOf("dan").email;
+  const id = await t.mutation(internal.seed.careerProfile, { email });
+  expect(id).not.toBeNull();
+  expect(
+    await t.mutation(internal.seed.careerProfile, { email, private: false }),
+  ).toBe(id);
+  const row = await t.run((ctx) => ctx.db.get(id!));
+  expect(row?.private).toBe(false);
 });

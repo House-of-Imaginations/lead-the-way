@@ -204,7 +204,7 @@ test("the after rating needs the required path", async () => {
     ["after", "normsConfidence", 5],
   ]);
   // The side nav checklist reads the same rule.
-  const shell = await owner.query(api.viewer.shell, {});
+  const shell = (await owner.query(api.viewer.shell, {}))?.team;
   expect(shell?.checklist?.items[2]).toMatchObject({
     label: "Manager pathway",
     state: "done",

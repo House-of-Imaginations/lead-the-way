@@ -1,4 +1,5 @@
 import { defineSchema } from "convex/server";
+import { careerTables } from "./tables/careers";
 import { demoTables } from "./tables/demo";
 import { orgTables } from "./tables/orgs";
 import { profileTables } from "./tables/profiles";
@@ -9,4 +10,5 @@ export default defineSchema({
   ...profileTables,
   ...sprintTables,
   ...demoTables,
+  ...careerTables,
 });

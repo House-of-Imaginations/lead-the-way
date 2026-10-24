@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { api, internal } from "../../convex/_generated/api";
+import { api } from "../../convex/_generated/api";
 import {
   DEMO_TARGETS,
   mel,
@@ -7,17 +7,17 @@ import {
 } from "../../convex/lib/demo/schedule";
 import { DEFAULT_SETTINGS } from "../../convex/lib/settings";
 import type { Permission } from "../../convex/lib/orgs/permissions";
-import type { Shell } from "../../convex/lib/shell";
+import type { AccountShell } from "../../convex/lib/shell";
 import { MAX_ORGS_PER_USER } from "../../convex/lib/orgs/membership";
 import { personOf } from "./sprintHelpers";
 import { personFields } from "./testHelpers";
 import {
   calderLane,
+  clock,
   harness,
   OWNER,
   seat,
   workspace,
-  type T,
 } from "./workspace/helpers";
 
 beforeEach(() => {
@@ -26,10 +26,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
 });
-
-async function clock(t: T, target: DemoTarget) {
-  await t.mutation(internal.seed.clock, { target });
-}
 
 const next = (value: string) => ({
   label: "Next protected hour",
@@ -81,7 +77,7 @@ test("Priya's status reads right at every demo target", async () => {
   const { t, as } = await calderLane();
   for (const target of Object.keys(DEMO_TARGETS) as DemoTarget[]) {
     if (target !== "setup") await clock(t, target);
-    const shell = await as("priya").query(api.viewer.shell, {});
+    const shell = (await as("priya").query(api.viewer.shell, {}))?.team;
     expect(shell?.status, target).toEqual(PRIYA_STATUS[target]);
   }
 });
@@ -97,7 +93,7 @@ test("a launched sprint says when it starts until week one's Monday", async () =
   });
   const statusAt = async (local: string) => {
     await t.run((ctx) => ctx.db.patch(orgId, { demoNow: mel(local) }));
-    return (await as("priya").query(api.viewer.shell, {}))?.status;
+    return (await as("priya").query(api.viewer.shell, {}))?.team?.status;
   };
   // Sunday 6 September, evening: launched, but week one is tomorrow.
   expect(await statusAt("2026-09-06T20:00")).toEqual(PRIYA_STATUS.setup);
@@ -109,7 +105,7 @@ test("Priya at setup: her home, greeting, nav and first checklist step", async (
   const { orgId, as } = await calderLane();
   const priya = as("priya");
   expect(await priya.query(api.viewer.home, {})).toBe("/setup/team");
-  const shell = await priya.query(api.viewer.shell, {});
+  const shell = (await priya.query(api.viewer.shell, {}))?.team;
   expect(shell).toMatchObject({
     expectOrgId: orgId,
     isDemo: true,
@@ -167,7 +163,7 @@ test("Priya at setup: her home, greeting, nav and first checklist step", async (
 test("the checklist follows setup and goes once the sprint launches", async () => {
   const { t, orgId, as } = await calderLane();
   const states = async () =>
-    (await as("priya").query(api.viewer.shell, {}))?.checklist?.items.map(
+    (await as("priya").query(api.viewer.shell, {}))?.team?.checklist?.items.map(
       (i) => i.state,
     );
   await t.run(async (ctx) => {
@@ -186,16 +182,22 @@ test("the checklist follows setup and goes once the sprint launches", async () =
   expect(await as("priya").query(api.viewer.home, {})).toBe("/manager");
 
   await clock(t, "week1");
-  expect((await as("priya").query(api.viewer.shell, {}))?.checklist).toBeNull();
+  expect(
+    (await as("priya").query(api.viewer.shell, {}))?.team?.checklist,
+  ).toBeNull();
 });
 
 test("a manager without sprint:manage gets no setup checklist", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);
-  expect((await owner.query(api.viewer.shell, {}))?.checklist).not.toBeNull();
+  expect(
+    (await owner.query(api.viewer.shell, {}))?.team?.checklist,
+  ).not.toBeNull();
   // Its links would only bounce them back to /manager.
   const insights = await seat(t, orgId, "user_insights", ["team:insights"]);
-  expect((await insights.as.query(api.viewer.shell, {}))?.checklist).toBeNull();
+  expect(
+    (await insights.as.query(api.viewer.shell, {}))?.team?.checklist,
+  ).toBeNull();
 });
 
 test("home is /manager once the sprint launched, team profile or not", async () => {
@@ -222,23 +224,33 @@ test("home is /manager once the sprint launched, team profile or not", async () 
     });
   });
   expect(await owner.query(api.viewer.home, {})).toBe("/manager");
-  expect((await owner.query(api.viewer.shell, {}))?.home).toBe("/manager");
+  expect((await owner.query(api.viewer.shell, {}))?.team?.home).toBe(
+    "/manager",
+  );
 });
 
 test("switchTo waits for the other persona's seat", async () => {
   const { t, as } = await calderLane();
-  expect((await as("priya").query(api.viewer.shell, {}))?.switchTo).toBeNull();
+  expect(
+    (await as("priya").query(api.viewer.shell, {}))?.team?.switchTo,
+  ).toBeNull();
   await clock(t, "week2");
-  expect((await as("priya").query(api.viewer.shell, {}))?.switchTo).toEqual({
+  expect(
+    (await as("priya").query(api.viewer.shell, {}))?.team?.switchTo,
+  ).toEqual({
     label: "Switch to Dan's view",
     email: "dan.okafor@calderlane.com.au",
   });
-  expect((await as("dan").query(api.viewer.shell, {}))?.switchTo).toEqual({
-    label: "Switch to Priya's view",
-    email: "priya.raman@calderlane.com.au",
-  });
+  expect((await as("dan").query(api.viewer.shell, {}))?.team?.switchTo).toEqual(
+    {
+      label: "Switch to Priya's view",
+      email: "priya.raman@calderlane.com.au",
+    },
+  );
   // Sarah is seeded too, but the switch is between Priya and Dan only (spec 6).
-  expect((await as("sarah").query(api.viewer.shell, {}))?.switchTo).toBeNull();
+  expect(
+    (await as("sarah").query(api.viewer.shell, {}))?.team?.switchTo,
+  ).toBeNull();
 });
 
 test("Dan's shell in week 2 is the employee one", async () => {
@@ -246,7 +258,7 @@ test("Dan's shell in week 2 is the employee one", async () => {
   await clock(t, "week2");
   const dan = as("dan");
   expect(await dan.query(api.viewer.home, {})).toBe("/me");
-  const shell = await dan.query(api.viewer.shell, {});
+  const shell = (await dan.query(api.viewer.shell, {}))?.team;
   expect(shell).toMatchObject({
     area: "employee",
     home: "/me",
@@ -292,7 +304,7 @@ test("isDemo is false for a real workspace, and for the demo when DEMO_MODE is o
   const { as } = await calderLane();
   const t = harness();
   const { owner } = await workspace(t);
-  const real = await owner.query(api.viewer.shell, {});
+  const real = (await owner.query(api.viewer.shell, {}))?.team;
   expect(real).toMatchObject({
     isDemo: false,
     switchTo: null,
@@ -302,7 +314,7 @@ test("isDemo is false for a real workspace, and for the demo when DEMO_MODE is o
   });
 
   vi.stubEnv("DEMO_MODE", "");
-  const demo = await as("priya").query(api.viewer.shell, {});
+  const demo = (await as("priya").query(api.viewer.shell, {}))?.team;
   expect(demo).toMatchObject({ isDemo: false, switchTo: null });
 });
 
@@ -321,7 +333,9 @@ test("the area comes from permissions, not the role's name", async () => {
   ];
   for (const [subject, permissions, area] of cases) {
     const { as } = await seat(t, orgId, subject, permissions);
-    expect((await as.query(api.viewer.shell, {}))?.area, subject).toBe(area);
+    expect((await as.query(api.viewer.shell, {}))?.team?.area, subject).toBe(
+      area,
+    );
   }
 });
 
@@ -346,20 +360,17 @@ test("a manager who can't set up is home on the overview, team saved or not (W-f
   }
 });
 
-test("signed out or with no workspace, the shell is null", async () => {
+test("signed out, the shell is null", async () => {
   const t = harness();
   expect(await t.query(api.viewer.shell, {})).toBeNull();
   expect(await t.query(api.viewer.home, {})).toBeNull();
-  const loner = t.withIdentity({ subject: "user_loner" });
-  expect(await loner.query(api.viewer.shell, {})).toBeNull();
-  expect(await loner.query(api.viewer.home, {})).toBe("/setup/start");
 });
 
 test("the workspace list marks the open one", async () => {
   const t = harness();
   const a = await workspace(t, "Aster Network");
   const b = await workspace(t, "Birch Studio"); // the owner's newest is open
-  const shell = await a.owner.query(api.viewer.shell, {});
+  const shell = (await a.owner.query(api.viewer.shell, {}))?.team;
   expect(shell?.expectOrgId).toBe(b.orgId);
   expect(shell?.workspaces.map((w) => [w.name, w.current]).sort()).toEqual([
     ["Aster Network", false],
@@ -367,8 +378,11 @@ test("the workspace list marks the open one", async () => {
   ]);
 });
 
-const navOf = (shell: Shell | null) =>
-  shell?.nav.map((group) => [group.title, group.links.map((l) => l.label)]);
+const navOf = (shell: AccountShell | null) =>
+  shell?.team?.nav.map((group) => [
+    group.title,
+    group.links.map((l) => l.label),
+  ]);
 
 test("the nav shows a manager only what their permissions open (Ruling 13)", async () => {
   const t = harness();
@@ -402,7 +416,7 @@ test("the status follows the clock across the end of the hour, and accepts hour 
     const shell = await as("priya").query(api.viewer.shell, {
       hour: Math.floor(now / 3_600_000),
     });
-    return shell?.status;
+    return shell?.team?.status;
   };
   expect(await statusAt("2026-09-16T14:30")).toEqual({
     heading: "Week 2 of 4",
@@ -420,8 +434,10 @@ test("the status follows the clock across the end of the hour, and accepts hour 
 test("once launched, Sprint opens the overview and still needs sprint:manage (Ruling 5)", async () => {
   const { t, orgId, as } = await calderLane();
   await clock(t, "week1");
-  const links = (shell: Shell | null) =>
-    shell?.nav.flatMap((group) => group.links.map((l) => [l.label, l.href]));
+  const links = (shell: AccountShell | null) =>
+    shell?.team?.nav.flatMap((group) =>
+      group.links.map((l) => [l.label, l.href]),
+    );
   expect(links(await as("priya").query(api.viewer.shell, {}))).toEqual([
     ["Overview", "/manager"],
     ["Sprint", "/manager"],
@@ -441,7 +457,9 @@ test("once launched, Sprint opens the overview and still needs sprint:manage (Ru
 test("the shell carries the viewer's reduce motion setting (P7b-1)", async () => {
   const { t, orgId, as } = await calderLane();
   const priya = as("priya");
-  expect((await priya.query(api.viewer.shell, {}))?.reduceMotion).toBe(false);
+  expect((await priya.query(api.viewer.shell, {}))?.team?.reduceMotion).toBe(
+    false,
+  );
   const priyaId = await personOf(t, orgId, "priya");
   await t.run((ctx) =>
     ctx.db.insert("settings", {
@@ -451,7 +469,9 @@ test("the shell carries the viewer's reduce motion setting (P7b-1)", async () =>
       reduceMotion: true,
     }),
   );
-  expect((await priya.query(api.viewer.shell, {}))?.reduceMotion).toBe(true);
+  expect((await priya.query(api.viewer.shell, {}))?.team?.reduceMotion).toBe(
+    true,
+  );
 });
 
 test("the shell opens 18 for its tabs' permissions and names the owner to everyone (W-g)", async () => {
@@ -461,7 +481,7 @@ test("the shell opens 18 for its tabs' permissions and names the owner to everyo
   const seated = async (subject: string, permissions: Permission[]) =>
     (await seat(t, orgId, subject, permissions)).as;
   const wsOf = async (who: ReturnType<typeof as>) =>
-    (await who.query(api.viewer.shell, {}))?.workspaceSettings;
+    (await who.query(api.viewer.shell, {}))?.team?.workspaceSettings;
   const cases: [ReturnType<typeof as>, string[]][] = [
     [as("priya"), ["general", "members", "roles"]],
     [await seated("user_admin", ["org:manage"]), ["general"]],
@@ -483,13 +503,13 @@ test("the shell opens 18 for its tabs' permissions and names the owner to everyo
 test("Create workspace is offered to everyone but a demo account (M-h)", async () => {
   const { as } = await calderLane();
   expect(
-    (await as("priya").query(api.viewer.shell, {}))?.canCreateWorkspace,
+    (await as("priya").query(api.viewer.shell, {}))?.team?.canCreateWorkspace,
   ).toBe(false);
   const t = harness();
   const { owner, orgId } = await workspace(t);
-  expect((await owner.query(api.viewer.shell, {}))?.canCreateWorkspace).toBe(
-    true,
-  );
+  expect(
+    (await owner.query(api.viewer.shell, {}))?.team?.canCreateWorkspace,
+  ).toBe(true);
   // At the ceiling, creating would be refused, so it isn't offered (M-6).
   await t.run(async (ctx) => {
     const { roleId } = (await ctx.db
@@ -511,7 +531,7 @@ test("Create workspace is offered to everyone but a demo account (M-h)", async (
       });
     }
   });
-  expect((await owner.query(api.viewer.shell, {}))?.canCreateWorkspace).toBe(
-    false,
-  );
+  expect(
+    (await owner.query(api.viewer.shell, {}))?.team?.canCreateWorkspace,
+  ).toBe(false);
 });

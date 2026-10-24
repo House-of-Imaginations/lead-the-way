@@ -31,6 +31,7 @@ import { Avatar } from "./Avatar";
 import { Logo } from "./Logo";
 import { Menu, type MenuItem } from "./Menu";
 import { ProgressBar } from "./ProgressBar";
+import { TrackSwitcher, type TrackSwitcherProps } from "./TrackSwitcher";
 
 export type SideNavLink = {
   label: string;
@@ -65,6 +66,8 @@ export type SideNavProps = {
   initialState?: NavState | null;
   /** Called with a link's href on hover and focus, so the app can warm that page's data. */
   onWarm?: (href: string) => void;
+  /** Two learner tracks: the switcher replaces the org block. */
+  tracks?: TrackSwitcherProps;
 };
 
 const SNAP = 140;
@@ -125,6 +128,7 @@ export function SideNav({
   resizable = true,
   initialState = null,
   onWarm,
+  tracks,
 }: SideNavProps) {
   const serverRaw = initialState ? serializeNav(initialState) : "";
   const raw = useSyncExternalStore(subscribe, getSnapshot, () => serverRaw);
@@ -225,7 +229,9 @@ export function SideNav({
           <Logo />
           <span className="ltw-sn-t">From Zero to Hero</span>
         </Link>
-        {orgMenu ? (
+        {tracks ? (
+          <TrackSwitcher {...tracks} />
+        ) : orgMenu ? (
           <Menu
             items={orgMenu}
             trigger={
