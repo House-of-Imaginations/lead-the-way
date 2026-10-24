@@ -17,9 +17,12 @@ export const test = base.extend<{ expectAxeClean: AxeCheck }>({
       ]);
       if (include) axe = axe.include(include);
       // Mid-fade text reads at part opacity and fails contrast. Nothing in
-      // the app loops (DESIGN.md, Motion), so every animation finishes.
+      // the app loops (DESIGN.md, Motion), so every animation finishes. One
+      // cancelled on the way (a closed dialog's exit) is done too.
       await page.evaluate(() =>
-        Promise.all(document.getAnimations().map((a) => a.finished)),
+        Promise.all(
+          document.getAnimations().map((a) => a.finished.catch(() => null)),
+        ),
       );
       const { violations } = await axe.analyze();
       expect(

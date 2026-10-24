@@ -72,8 +72,20 @@ test.describe("Leave workspace", () => {
     await realAccount(page);
     await page.goto("/me/settings");
     await page.getByRole("tab", { name: "Profile" }).click();
-    await page.getByRole("button", { name: "Leave workspace" }).click();
+    const open = page.getByRole("button", { name: "Leave workspace" });
     const dialog = page.getByRole("dialog");
+    // Escape and Cancel give focus back to the button that opened it (M3).
+    await open.click();
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(open).toBeFocused();
+    await open.click();
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(open).toBeFocused();
+
+    await open.click();
     await expect(
       dialog.getByRole("heading", { name: "Leave Calder Lane?" }),
     ).toBeVisible();

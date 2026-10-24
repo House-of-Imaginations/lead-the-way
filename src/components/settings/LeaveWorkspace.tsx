@@ -55,24 +55,6 @@ export function LeaveWorkspace({
         You lose your seat and settings here. A credential link you shared keeps
         working. Leaving during a sprint hides the rest of its team totals.
       </p>
-      <Button
-        kind="danger"
-        size="md"
-        disabled={lastOwner}
-        aria-describedby={lastOwner ? "leave-workspace-reason" : undefined}
-        onClick={() => setOpen(true)}
-      >
-        Leave workspace
-      </Button>
-      {lastOwner ? (
-        <p
-          id="leave-workspace-reason"
-          className="max-w-[65ch] text-label-01 text-text-secondary"
-        >
-          You&apos;re the only owner. Make somebody else an owner in Workspace
-          settings, or delete the workspace.
-        </p>
-      ) : null}
       <Modal
         open={open}
         onOpenChange={(next) => {
@@ -81,6 +63,18 @@ export function LeaveWorkspace({
           setOpen(next);
           if (!next) setError(null);
         }}
+        // The trigger, so Cancel and Escape give it focus back (M3). Disabled,
+        // it never opens.
+        trigger={
+          <Button
+            kind="danger"
+            size="md"
+            disabled={lastOwner}
+            aria-describedby={lastOwner ? "leave-workspace-reason" : undefined}
+          >
+            Leave workspace
+          </Button>
+        }
         title={`Leave ${orgName}?`}
         primaryText="Leave workspace"
         primaryKind="danger"
@@ -94,6 +88,15 @@ export function LeaveWorkspace({
           </p>
         )}
       </Modal>
+      {lastOwner ? (
+        <p
+          id="leave-workspace-reason"
+          className="max-w-[65ch] text-label-01 text-text-secondary"
+        >
+          You&apos;re the only owner. Make somebody else an owner in Workspace
+          settings, or delete the workspace.
+        </p>
+      ) : null}
     </section>
   );
 }
