@@ -5,7 +5,7 @@ import { currentHour, openOrHome } from "@/lib/account/queries";
 import { ShowAndTell } from "./_components/ShowAndTell";
 
 export const metadata: Metadata = {
-  title: "Show and tell · From zero to hero",
+  title: "Show and tell · From Zero to Hero",
 };
 
 /**

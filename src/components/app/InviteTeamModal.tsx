@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button, Modal, TextInput, useToast } from "@/components/ui";
 
 /**
- * Ruling 13: share From zero to hero with another manager. `link` is the path
+ * Ruling 13: share From Zero to Hero with another manager. `link` is the path
  * Convex made ("/signup?ref=calder-lane"); the origin is the browser's.
  */
 export function InviteTeamModal({ link }: { link: string }) {
@@ -36,7 +36,7 @@ export function InviteTeamModal({ link }: { link: string }) {
       }
       label="Share"
       title="Invite another team"
-      description="Know another manager? Share From zero to hero."
+      description="Know another manager? Share From Zero to Hero."
       primaryText="Copy link"
       onPrimary={copy}
       secondaryText="Close"

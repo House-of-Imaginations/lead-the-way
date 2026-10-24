@@ -62,7 +62,7 @@ test("signed out, 09 shows the invitation and where to sign up", async ({
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Priya invited you to From zero to hero",
+      name: "Priya invited you to From Zero to Hero",
     }),
   ).toBeVisible();
   await expect(page.getByText("Priya Raman, Team manager")).toBeVisible();
@@ -233,7 +233,7 @@ test("/join/preview shows Priya the team's view, and only Priya", async ({
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Priya invited you to From zero to hero",
+      name: "Priya invited you to From Zero to Hero",
     }),
   ).toBeVisible();
   await expect(

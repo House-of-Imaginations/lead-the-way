@@ -121,7 +121,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     : "";
 
   // The name is always live type (DESIGN.md "Logo"); there is no wordmark file.
-  const logo = `<span style="font-size:18px;font-weight:600;color:${INK};">From zero to hero</span>`;
+  const logo = `<span style="font-size:18px;font-weight:600;color:${INK};">From Zero to Hero</span>`;
 
   const html = `<!doctype html>
 <html lang="en">

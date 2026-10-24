@@ -6,7 +6,7 @@ import { currentHour, getShell, managerRead } from "@/lib/account/queries";
 import { LaunchForm } from "./_components/LaunchForm";
 
 export const metadata: Metadata = {
-  title: "Launch sprint · From zero to hero",
+  title: "Launch sprint · From Zero to Hero",
 };
 
 export default async function SprintLaunchPage() {

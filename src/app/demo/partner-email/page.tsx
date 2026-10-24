@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ButtonLink } from "@/components/ui/Button";
 
 export const metadata: Metadata = {
-  title: "Partner email · From zero to hero",
+  title: "Partner email · From Zero to Hero",
   robots: { index: false },
 };
 
@@ -85,7 +85,7 @@ export default function PartnerEmailPage() {
             <h1 className="text-display-03">Lead your team into AI</h1>
             <p>Hi Priya,</p>
             <p>
-              As a member, your team can join From zero to hero: a free
+              As a member, your team can join From Zero to Hero: a free
               four-week AI sprint for managers and their teams, built on
               existing IBM SkillsBuild courses.
             </p>

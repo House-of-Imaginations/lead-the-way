@@ -31,9 +31,9 @@ export function inviteEmail(invite: Invite) {
   return {
     // Who, then where: a name the reader knows is what gets an unexpected
     // email opened rather than reported.
-    subject: `${invite.inviterName} invited you to ${invite.orgName} on From zero to hero`,
+    subject: `${invite.inviterName} invited you to ${invite.orgName} on From Zero to Hero`,
     content: {
-      heading: `Join ${invite.orgName} on From zero to hero`,
+      heading: `Join ${invite.orgName} on From Zero to Hero`,
       paragraphs: [
         `${invite.inviterName} invited you to join ${invite.orgName} as ${invite.roleName}.`,
         ...(invite.message
@@ -137,7 +137,7 @@ export function reminderEmail(r: Reminder) {
       paragraphs,
       ...(r.link ? { action: { label: "Open your week", url: r.link } } : {}),
       footer:
-        "You get this because reminders are on in From zero to hero. Turn them off in Settings, Notifications.",
+        "You get this because reminders are on in From Zero to Hero. Turn them off in Settings, Notifications.",
     },
   };
 }

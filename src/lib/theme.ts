@@ -76,7 +76,7 @@ export function themeColorFor(mode: ThemeMode, prefersLight: boolean): string {
  * bolted on: with no meta at all, iOS Safari tints its bars by SAMPLING the
  * page, and what it samples is the `<body>` background -- `--background`,
  * which is not the ground any screen in this app actually paints. That is the
- * two dark bands above and below a From zero to hero page on a phone.
+ * two dark bands above and below a From Zero to Hero page on a phone.
  *
  * `viewport.themeColor` in the layout would be the obvious way to emit this and
  * is the wrong one HERE: Next writes those as `prefers-color-scheme` media

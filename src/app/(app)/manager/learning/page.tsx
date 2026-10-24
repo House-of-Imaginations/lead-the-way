@@ -4,7 +4,7 @@ import { fetchAuthQuery } from "@/lib/account/auth-server";
 import { getShell, managerRead } from "@/lib/account/queries";
 import { PathwayView } from "./_components/PathwayView";
 
-export const metadata: Metadata = { title: "My learning · From zero to hero" };
+export const metadata: Metadata = { title: "My learning · From Zero to Hero" };
 
 export default async function ManagerLearningPage() {
   // The manager layout redirects everyone else; the page renders in parallel,

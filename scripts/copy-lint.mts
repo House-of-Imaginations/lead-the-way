@@ -33,7 +33,8 @@ const RANGE =
   /(?<![\w\-:.])\d{1,2}(?::\d{2})?\s?(?:AM|PM)?\s?-\s?\d{1,2}(?::\d{2})?(?![\w\-:])/;
 const EMOJI = /\p{Extended_Pictographic}/u;
 const CSS_FN = /\b(?:calc|var|min|max|clamp)\(/g;
-const PRODUCT_TERM = "Team AI Agreement";
+// Proper names that keep their capitals inside a sentence-case label.
+const PRODUCT_TERMS = ["Team AI Agreement", "From Zero to Hero"];
 
 /** Blank out `name(...)` CSS function spans (balanced parens), so a "-" used
  * as a CSS subtraction, e.g. `calc(100% - 48px)`, isn't mistaken for a
@@ -69,8 +70,7 @@ function textRules(text: string): Rule[] {
 
 /** Two or more ordinary words, every one capitalised. Acronyms don't count. */
 export function isTitleCase(label: string): boolean {
-  const words = label
-    .replace(PRODUCT_TERM, "")
+  const words = PRODUCT_TERMS.reduce((l, term) => l.replaceAll(term, ""), label)
     .trim()
     .split(/\s+/)
     .filter((w) => /^[A-Za-z]/.test(w) && w !== w.toUpperCase());

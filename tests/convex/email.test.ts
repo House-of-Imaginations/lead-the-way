@@ -112,7 +112,7 @@ test("the reminders say when, in plain words, and how to turn them off", () => {
     ],
     action: { label: "Open your week", url: "https://example.com/home" },
     footer:
-      "You get this because reminders are on in From zero to hero. Turn them off in Settings, Notifications.",
+      "You get this because reminders are on in From Zero to Hero. Turn them off in Settings, Notifications.",
   });
   const show = reminderEmail({
     kind: "showAndTell",

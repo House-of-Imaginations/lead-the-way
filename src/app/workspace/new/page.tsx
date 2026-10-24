@@ -4,7 +4,7 @@ import { getShell } from "@/lib/account/queries";
 import { CreateWorkspaceForm } from "./_components/CreateWorkspaceForm";
 
 export const metadata: Metadata = {
-  title: "Create a workspace · From zero to hero",
+  title: "Create a workspace · From Zero to Hero",
 };
 
 /** R-e: a workspace and team name, then 03 in the new workspace. */
