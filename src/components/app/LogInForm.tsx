@@ -13,6 +13,7 @@ import {
 import type { Provider } from "@convex/lib/auth/providers";
 import { authClient } from "@/lib/account/auth-client";
 import { AuthAlternatives } from "./AuthAlternatives";
+import { DemoAccountPicker, type DemoCast } from "./DemoAccountPicker";
 
 // R10: one message, under the password, whatever was wrong.
 const NEUTRAL = "Check your email and password and try again.";
@@ -21,12 +22,18 @@ export function LogInForm({
   providers,
   next,
   reset,
+  cast,
 }: {
   providers: Provider[];
   next: string | null;
   reset: boolean;
+  /** `demo.loginCast`: empty with DEMO_MODE off, and then no picker. */
+  cast: DemoCast;
 }) {
   const [error, setError] = useState<string | null>(null);
+  // Task 9: one Log in button. A chosen demo person wins; typing an email clears the choice.
+  const [demo, setDemo] = useState("");
+  const [demoError, setDemoError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const emailRef = useRef<HTMLInputElement>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -52,6 +59,23 @@ export function LogInForm({
 
   function submit(form: FormData) {
     setError(null);
+    setDemoError(null);
+    if (demo) {
+      startTransition(async () => {
+        // The server adds the password (`/api/demo/login`); it never comes here.
+        const res = await fetch("/api/demo/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: demo }),
+        }).catch(() => null);
+        if (!res?.ok) {
+          setDemoError("We couldn't log in as that person. Try again.");
+          return;
+        }
+        window.location.assign(next ?? "/home");
+      });
+      return;
+    }
     const email = String(form.get("email")).trim();
     const password = String(form.get("password"));
     startTransition(async () => {
@@ -86,6 +110,21 @@ export function LogInForm({
             Log in with your new password.
           </InlineNotification>
         )}
+        {cast.length > 0 && (
+          <>
+            <DemoAccountPicker
+              cast={cast}
+              value={demo}
+              onChange={setDemo}
+              error={demoError ?? undefined}
+            />
+            <div className="flex items-center gap-05 text-label-01 text-text-secondary">
+              <span className="h-px flex-1 bg-border-subtle" />
+              Or
+              <span className="h-px flex-1 bg-border-subtle" />
+            </div>
+          </>
+        )}
         <TextInput
           id="login-email"
           name="email"
@@ -94,6 +133,7 @@ export function LogInForm({
           autoComplete="email"
           ref={emailRef}
           error={emailError ?? undefined}
+          onChange={() => setDemo("")}
         />
         <PasswordInput
           id="login-password"

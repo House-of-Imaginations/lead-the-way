@@ -350,6 +350,36 @@ input.ltw-field:read-only:not(:disabled) {
     transform: rotate(180deg);
   }
 }
+/* local: the demo account picker on /login (Task 9), a Radix Select drawn as the field and the menu */
+.ltw-dap {
+  display: flex;
+  align-items: center;
+  text-align: left;
+}
+.ltw-dap[data-placeholder] {
+  color: var(--text-helper);
+}
+.ltw-dap[data-state="open"] .ltw-i {
+  transform: rotate(180deg);
+}
+.ltw-dap-m {
+  width: var(--radix-select-trigger-width);
+  max-height: var(--radix-select-content-available-height);
+}
+.ltw-dap-i {
+  position: relative;
+  padding-right: 40px;
+}
+.ltw-dap-i[data-state="checked"] {
+  background: var(--layer-selected);
+}
+.ltw-dap-c {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+}
 
 /* Checkbox */
 /* local: the bundle's .ltw-cb row is .ltw-cb-l, so .ltw-cb can wrap the row and its helper */

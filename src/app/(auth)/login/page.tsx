@@ -1,6 +1,8 @@
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@convex/_generated/api";
 import { AuthSplit } from "@/components/app/AuthSplit";
 import { LogInForm } from "@/components/app/LogInForm";
-import { getAuthMethods } from "@/lib/account/queries";
+import { getAuthMethods, openOrHome } from "@/lib/account/queries";
 import { safeNext } from "@/lib/url";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -10,8 +12,9 @@ export default async function LogInPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const [providers, { next, reset }] = await Promise.all([
+  const [providers, cast, { next, reset }] = await Promise.all([
     getAuthMethods(),
+    openOrHome(() => fetchQuery(api.demo.loginCast, {})),
     searchParams,
   ]);
   return (
@@ -25,6 +28,7 @@ export default async function LogInPage({
         providers={providers}
         next={safeNext(typeof next === "string" ? next : null)}
         reset={reset === "1"}
+        cast={cast}
       />
     </AuthSplit>
   );
