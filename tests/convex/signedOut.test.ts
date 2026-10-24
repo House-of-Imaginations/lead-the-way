@@ -47,6 +47,23 @@ const SIGNED_OUT: Record<
   "demo:careerStatus": { args: {}, answer: null },
   // The log-in page's demo picker (Task 9): empty with DEMO_MODE off.
   "demo:loginCast": { args: {}, answer: [] },
+  // The Pivot Map before an account (P9): the token is the key, and a token
+  // with no draft reads null and writes nothing. saveAnswers mints a token.
+  "careers/drafts:get": { args: { token: "tok" }, answer: null },
+  "careers/drafts:pivotMap": { args: { token: "tok" }, answer: null },
+  "careers/drafts:setHours": {
+    args: { token: "tok", hoursPerWeek: 2 },
+    answer: null,
+  },
+  "careers/drafts:saveAnswers": {
+    args: {
+      currentRole: "Primary Teacher",
+      targetRole: "data-analyst",
+      hoursPerWeek: 2,
+      consent: true,
+    },
+    answer: expect.any(String),
+  },
   // The public credential: a slug nobody holds answers null (the page's 404).
   "badges:publicBySlug": {
     args: { slug: "dan-okafor-ai-fundamentals" },

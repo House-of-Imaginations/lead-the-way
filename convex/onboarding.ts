@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { authComponent } from "./auth";
+import { takeDraft } from "./careers/drafts";
 import { ensureProfile } from "./lib/account/ensureProfile";
+import { insertCareerProfile, logCareerEvent } from "./lib/careers/writers";
 import { authenticatedMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { normalEmail } from "./lib/inviteRules";
@@ -37,9 +39,10 @@ export const start = authenticatedMutation({
     acceptTerms: v.boolean(),
     token: v.optional(v.string()),
     track: v.optional(v.union(v.literal("team"), v.literal("career"))),
+    draftToken: v.optional(v.string()),
   },
   returns: v.string(),
-  handler: async (ctx, { acceptTerms, token, track }) => {
+  handler: async (ctx, { acceptTerms, token, track, draftToken }) => {
     const profile = await ensureProfile(ctx, ctx.userId);
     if (profile.termsAcceptedAt === undefined) {
       if (!acceptTerms) {
@@ -52,9 +55,27 @@ export const start = authenticatedMutation({
     }
     // Holding the link is the proof (spec 5); the join page checks the rest.
     if (token) return `/join/${encodeURIComponent(token)}`;
-    // Spec 5.3: a career sign-up never makes a workspace. P12a's claimDraft makes
-    // the career profile; until then /home resolves to /start.
-    if (track === "career") return "/home";
+    // Spec 5.3: a career sign-up never makes a workspace. Claiming the Pivot
+    // Map draft makes the career profile and deletes the draft; with no draft
+    // (none, expired or claimed) /home resolves to /start.
+    if (track === "career") {
+      const map = await takeDraft(ctx, draftToken);
+      if (map) {
+        const user = await authComponent.getAnyUserById(ctx, ctx.userId);
+        await insertCareerProfile(ctx, {
+          userId: ctx.userId,
+          firstName: firstNameOf(user?.name ?? ""),
+          private: false,
+          ...map,
+        });
+        await logCareerEvent(ctx, {
+          name: "accountCreated",
+          at: Date.now(),
+          ...(map.partnerId && { partnerId: map.partnerId }),
+        });
+      }
+      return "/home";
+    }
     if (await getViewer(ctx)) return "/home";
 
     const user = await authComponent.getAnyUserById(ctx, ctx.userId);

@@ -32,6 +32,9 @@ function imported(source: string): Set<string> {
 }
 
 const CAREER_TABLE_FILES = [
+  "careers/drafts.ts",
+  "careers/tracks.ts",
+  "lib/careers/writers.ts",
   // The careers clock and counts (plan A3), and the careers seed.
   "demo.ts",
   "lib/demo/pivotCrews.ts",

@@ -127,6 +127,8 @@ export const callsFor = ({
   "demo:setClock": { target: "week1", expectOrgId: orgId },
   "demo:moveCareerClock": { target: "week2" },
   "onboarding:start": { acceptTerms: true },
+  "careers/tracks:startPrivate": { contactEmail: "pat@home.example" },
+  "careers/tracks:deleteCareer": {},
   "orgs:active": {},
   "orgs:bySlug": { slug: "aster-network" },
   "orgs:create": { name: "Aster Network" },

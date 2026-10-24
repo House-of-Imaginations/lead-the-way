@@ -73,6 +73,8 @@ test("sprints are inserted in three places only, so one draft at most (one-draft
 test("only onboarding.start reads the viewer outside the viewer builders", () => {
   // Every other mutation is a viewerMutation, which checks `expectOrgId`
   // (P7b-0). `onboarding.start` has no workspace to expect until it makes one.
+  // `tracks.startPrivate` acts on no workspace: it reads the open one's domain
+  // only to refuse a work address (X3).
   // ponytail: reads each `export const` block's own text, so a helper that
   // calls getViewer for a mutation isn't caught; check by hand if one appears.
   const found = convexSources().flatMap(({ file, source }) =>
@@ -90,7 +92,10 @@ test("only onboarding.start reads the viewer outside the viewer builders", () =>
       )
       .map(({ head }) => `${file} ${head![1]}`),
   );
-  expect(found).toEqual(["onboarding.ts start"]);
+  expect(found.sort()).toEqual([
+    "careers/tracks.ts startPrivate",
+    "onboarding.ts start",
+  ]);
 });
 
 test("the owner role is asked about in one place (isOwnerRole)", () => {
