@@ -62,7 +62,16 @@ export function AuthSplit({
             >
               {title}
             </h1>
-            {lead && <p className="text-body-02 text-text-secondary">{lead}</p>}
+            {lead && (
+              <p
+                className={clsx(
+                  "text-text-secondary",
+                  wide ? "text-body-01" : "text-body-02",
+                )}
+              >
+                {lead}
+              </p>
+            )}
           </div>
           {children}
         </main>
