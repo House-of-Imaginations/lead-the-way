@@ -1,13 +1,18 @@
+import clsx from "clsx";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/ui/Logo";
 
 type AuthSplitProps = {
   title: string;
-  lead?: string;
+  lead?: ReactNode;
   panelTitle: string;
   panelBody: string;
   children: ReactNode;
+  /** MS1D: a wider form column (7fr to 5fr), the heading left-aligned. */
+  wide?: boolean;
+  /** Inside the panel, after the body and above the stair blocks. */
+  aside?: ReactNode;
 };
 
 const WEEKS = [1, 2, 3, 4];
@@ -20,9 +25,16 @@ export function AuthSplit({
   panelTitle,
   panelBody,
   children,
+  wide,
+  aside,
 }: AuthSplitProps) {
   return (
-    <div className="grid min-h-dvh bg-background text-text-primary min-[1024px]:grid-cols-2">
+    <div
+      className={clsx(
+        "grid min-h-dvh bg-background text-text-primary",
+        wide ? "min-[1024px]:grid-cols-[7fr_5fr]" : "min-[1024px]:grid-cols-2",
+      )}
+    >
       <div className="flex flex-col gap-07 p-05 md:p-09">
         <Link
           href="/"
@@ -31,9 +43,25 @@ export function AuthSplit({
           <Logo />
           From Zero to Hero
         </Link>
-        <main className="mx-auto flex w-full max-w-auth-form flex-1 flex-col justify-center gap-07">
-          <div className="flex flex-col gap-03 text-center">
-            <h1 className="text-heading-02 text-balance">{title}</h1>
+        <main
+          className={clsx(
+            "mx-auto flex w-full flex-1 flex-col gap-07",
+            wide
+              ? "max-w-[744px] min-[1024px]:justify-center"
+              : "max-w-auth-form justify-center",
+          )}
+        >
+          <div className={clsx("flex flex-col gap-03", !wide && "text-center")}>
+            <h1
+              className={clsx(
+                "text-balance",
+                wide
+                  ? "text-heading-01 min-[1024px]:text-display-03"
+                  : "text-heading-02",
+              )}
+            >
+              {title}
+            </h1>
             {lead && <p className="text-body-02 text-text-secondary">{lead}</p>}
           </div>
           {children}
@@ -44,10 +72,18 @@ export function AuthSplit({
       </div>
       <aside className="relative hidden min-h-dvh flex-col gap-05 overflow-hidden bg-layer-01 p-09 min-[1024px]:flex">
         {/* Measured from 02a: the title on one line, the body breaking after "then". */}
-        <h2 className="max-w-[400px] text-heading-01">{panelTitle}</h2>
-        <p className="max-w-[40ch] text-body-01 text-text-secondary">
+        <h2 className={clsx("text-heading-01", !wide && "max-w-[400px]")}>
+          {panelTitle}
+        </h2>
+        <p
+          className={clsx(
+            "text-body-01 text-text-secondary",
+            !wide && "max-w-[40ch]",
+          )}
+        >
           {panelBody}
         </p>
+        {aside}
         {/* The stair blocks and the working week, Wednesday in blue. Heights
             measured from 02a at 1440 by 900; the widths keep 02a's ratio but
             span the whole panel. The week grid scales with its block (cqw) so

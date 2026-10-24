@@ -17,6 +17,8 @@ test("signed out, private pages go to log in and keep where you were going", asy
     "/setup/team",
     "/guide",
     "/home",
+    "/tracks/private/new",
+    "/careers/journey",
   ]) {
     await page.goto(path);
     await expect(page, path).toHaveURL(
@@ -28,6 +30,10 @@ test("signed out, private pages go to log in and keep where you were going", asy
     "/signup",
     "/login",
     "/reset-password",
+    "/start",
+    // The map works from a draft before sign-up (spec 5.3). 404 until P13a.
+    "/careers/map/new",
+    "/careers/map",
     // Public (spec 7.1). A 404 before the badge exists still stays at its URL.
     "/credential/dan-okafor-ai-fundamentals",
   ]) {
@@ -179,7 +185,8 @@ test.describe("setup", () => {
   });
 });
 
-test("an account with no workspace is sent to /start, then accepts the terms at /setup/start", async ({
+// Review Focus 1.
+test("an account with no track picks I lead a team and reaches /setup/team", async ({
   page,
 }) => {
   // Signed up through the API, so onboarding.start never ran: the OAuth first-sign-in state.
@@ -194,7 +201,10 @@ test("an account with no workspace is sent to /start, then accepts the terms at 
   expect(res.ok()).toBe(true);
   await page.goto("/home");
   await expect(page).toHaveURL("/start");
-  await page.goto("/setup/start");
+  await page.getByRole("button", { name: /Grow in my role/ }).click();
+  await page.getByLabel("I lead a team").check();
+  await page.getByRole("link", { name: "Set up team" }).click();
+  await expect(page).toHaveURL("/setup/start");
   const go = page.getByRole("button", { name: "Continue" });
   await expect(go).toBeDisabled();
   await page
