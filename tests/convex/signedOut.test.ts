@@ -43,6 +43,8 @@ const SIGNED_OUT: Record<
   "demo:status": { args: {}, answer: null },
   // The guide stays subscribed through a sign-out too; null signed out, and null with DEMO_MODE off.
   "demo:personaPassword": { args: {}, answer: null },
+  // The careers half of the guide, beside `status`: null signed out and with DEMO_MODE off.
+  "demo:careerStatus": { args: {}, answer: null },
   // The log-in page's demo picker (Task 9): empty with DEMO_MODE off.
   "demo:loginCast": { args: {}, answer: [] },
   // The public credential: a slug nobody holds answers null (the page's 404).

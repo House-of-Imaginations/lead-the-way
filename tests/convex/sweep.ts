@@ -125,6 +125,7 @@ export const callsFor = ({
   "demo:status": {},
   "demo:reset": { expectOrgId: orgId },
   "demo:setClock": { target: "week1", expectOrgId: orgId },
+  "demo:moveCareerClock": { target: "week2" },
   "onboarding:start": { acceptTerms: true },
   "orgs:active": {},
   "orgs:bySlug": { slug: "aster-network" },

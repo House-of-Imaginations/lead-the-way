@@ -7,7 +7,8 @@ import { normalEmail } from "../inviteRules";
  * account, so a tester can switch to them; Omar stays a pending invitation.
  * Job titles after Dan's are drafts for review.
  */
-export const DEMO_DOMAIN = "calderlane.com.au";
+/** Calder Lane's domain, and the careers cast's reserved one (spec 7). */
+export const DEMO_DOMAINS = ["calderlane.com.au", "pivotcrews.example"];
 
 export const DEMO_CAST = [
   {
@@ -85,9 +86,21 @@ export function castOf(key: CastKey) {
   return person;
 }
 
+/**
+ * The Change careers cast's login accounts (spec 7, plan A1). Amara learns;
+ * Lena and Kofi are Pathway Guides. Not in the /login picker (`loginCast`).
+ */
+export const CAREER_CAST = [
+  { key: "amara", name: "Amara Okoye", email: "amara@pivotcrews.example" },
+  { key: "lena", name: "Lena Fischer", email: "lena@pivotcrews.example" },
+  { key: "kofi", name: "Kofi Mensah", email: "kofi@pivotcrews.example" },
+] as const;
+
 /** Demo addresses can't receive mail, so nothing is ever sent to one. */
-export const isDemoAddress = (email: string) =>
-  normalEmail(email).endsWith(`@${DEMO_DOMAIN}`);
+export const isDemoAddress = (email: string) => {
+  const address = normalEmail(email);
+  return DEMO_DOMAINS.some((domain) => address.endsWith(`@${domain}`));
+};
 
 /** The auth user id for an address, or null. */
 export async function demoUserId(

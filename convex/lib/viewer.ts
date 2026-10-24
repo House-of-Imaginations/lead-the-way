@@ -2,6 +2,7 @@ import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { profileOf } from "./account/profile";
 import { requireUserId } from "./auth/identity";
+import { flagOn } from "../app";
 import { nowFor } from "./clock";
 import { throwUserError } from "./errors";
 import {
@@ -79,6 +80,8 @@ export async function requireViewer(
 export type Career = {
   userId: string;
   profile: Doc<"careerProfiles">;
+  /** The demo's simulated missed week (spec 7), for the re-entry banner. */
+  missedWeek: boolean;
   readonly now: number;
 };
 
@@ -92,12 +95,16 @@ export async function getCareer(
     .withIndex("by_user", (q) => q.eq("userId", userId))
     .unique();
   if (!profile) return null;
+  // Spec 7: the careers clock while DEMO_MODE is on, real time otherwise.
+  const clock = flagOn("demo")
+    ? await ctx.db.query("careerDemo").first()
+    : null;
   return {
     userId,
     profile,
-    // ponytail: wall clock until P12a swaps in the careerDemo clock (spec 7).
+    missedWeek: clock?.missedWeek ?? false,
     get now() {
-      return Date.now();
+      return clock?.now ?? Date.now();
     },
   };
 }

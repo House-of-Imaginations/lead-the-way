@@ -138,6 +138,8 @@ export const careerTables = {
   careerProjects: defineTable({
     careerProfileId: v.id("careerProfiles"),
     credentialId,
+    // The demo day name, "Sales dashboard, Western suburbs stores".
+    title: v.optional(v.string()),
     task: v.string(),
     whatIDid: v.string(),
     reflection: v.string(),

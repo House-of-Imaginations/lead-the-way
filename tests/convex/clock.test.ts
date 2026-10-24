@@ -70,9 +70,8 @@ const ALLOWED: {
   },
   {
     file: "lib/viewer.ts",
-    line: "return Date.now()",
-    reason:
-      "`Career.now`: careers have no clock until P12a's careerDemo (spec 7)",
+    line: "return clock?.now ?? Date.now()",
+    reason: "`Career.now`: real time outside the careers demo (spec 7)",
   },
   {
     file: "lib/storage.ts",

@@ -66,7 +66,7 @@ export function addDays(date: string, days: number): string {
 }
 
 /** A wall-clock date and time in `timeZone`, as epoch ms. */
-function zoned(date: string, time: string, timeZone: string): number {
+export function zoned(date: string, time: string, timeZone: string): number {
   const asUtc = Date.parse(`${date}T${time}:00Z`);
   const guess = asUtc - offsetAt(timeZone, asUtc);
   // Once more, in case the guess crossed a daylight saving change.

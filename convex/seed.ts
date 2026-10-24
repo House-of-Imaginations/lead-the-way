@@ -20,12 +20,18 @@ import { profileOf } from "./lib/account/profile";
 import { badgeOf } from "./lib/badges";
 import { DEMO_SLUG, writeCalderLane as write } from "./lib/demo/calderLane";
 import { nowFor } from "./lib/clock";
-import { ACCOUNT_HOLDERS, castOf, demoUserId } from "./lib/demo/cast";
+import {
+  ACCOUNT_HOLDERS,
+  CAREER_CAST,
+  castOf,
+  demoUserId,
+} from "./lib/demo/cast";
 import { moveClock } from "./lib/demo/moveClock";
+import { writePivotCrews } from "./lib/demo/pivotCrews";
 import { demoTargetValidator } from "./lib/demo/schedule";
 import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
-import { CAREER_TABLES, deleteOrg } from "./lib/orgs/cascade";
+import { deleteOrg } from "./lib/orgs/cascade";
 import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
 import {
   dropSeat,
@@ -46,7 +52,8 @@ import { setupSprint } from "./lib/sprint";
 const MIN_PASSWORD = 12;
 
 /**
- * Find or create the eight demo accounts, through Better Auth's own sign-up.
+ * Find or create the demo accounts (Calder Lane's eight and the careers
+ * cast's three), through Better Auth's own sign-up.
  *
  * ponytail: an existing account keeps the password it was made with. Changing
  * DEMO_PASSWORD later doesn't update it; delete the demo users in the
@@ -63,8 +70,8 @@ async function ensureDemoAccounts(
     );
   }
   const ids: Record<string, string> = {};
-  const missing: (typeof ACCOUNT_HOLDERS)[number][] = [];
-  for (const person of ACCOUNT_HOLDERS) {
+  const missing: { key: string; name: string; email: string }[] = [];
+  for (const person of [...ACCOUNT_HOLDERS, ...CAREER_CAST]) {
     const existing = await demoUserId(ctx, person.email);
     if (existing) ids[person.key] = existing;
     else missing.push(person);
@@ -214,27 +221,14 @@ export const unseat = internalMutation({
 });
 
 /**
- * R11: every row of every career table. `reset` runs it after `clearE2e`.
- * Demo only. Returns how many rows went.
+ * Spec 11.2: every career row wiped, then the careers demo written fresh
+ * (`writePivotCrews`). `reset` runs it after `clearE2e`. Demo only. Returns
+ * how many rows went.
  */
-export const clearCareers = internalMutation({
+export const writeCareers = internalMutation({
   args: {},
   returns: v.number(),
-  handler: async (ctx) => {
-    assertFlag("demo", true);
-    let count = 0;
-    for (const table of CAREER_TABLES) {
-      // ponytail: one transaction, fine for a demo's few hundred rows; page it if P12a's seed outgrows it.
-      const rows = await ctx.db.query(table).take(1000);
-      if (rows.length === 1000)
-        throw new Error(`${table} has 1000 or more rows; page clearCareers.`);
-      for (const row of rows) {
-        await ctx.db.delete(row._id);
-        count++;
-      }
-    }
-    return count;
-  },
+  handler: (ctx) => writePivotCrews(ctx),
 });
 
 /**
@@ -270,8 +264,8 @@ export const careerProfile = internalMutation({
 
 /**
  * `npx convex run seed:reset`: the accounts, a fresh Calder Lane, then the e2e
- * accounts and every career row cleared (Ruling 34, R11). Last, so a reseed
- * that can't run clears nothing.
+ * accounts cleared and the careers demo rewritten (Ruling 34, spec 11.2).
+ * Last, so a reseed that can't run clears nothing.
  */
 export const reset = internalAction({
   args: {},
@@ -283,9 +277,11 @@ export const reset = internalAction({
     });
     const cleared = await ctx.runMutation(internal.seed.clearE2e, {});
     console.log(`Cleared ${cleared} e2e accounts.`);
-    // R11: every career row goes, until P12a reseeds the careers demo.
-    const careers = await ctx.runMutation(internal.seed.clearCareers, {});
-    console.log(`Cleared ${careers} career rows.`);
+    // Spec 11.2: every career row goes, then the careers demo is reseeded.
+    const careers = await ctx.runMutation(internal.seed.writeCareers, {});
+    console.log(
+      `Cleared ${careers} career rows and reseeded the careers demo.`,
+    );
     // Calder Lane's badges come from issueBadge; other workspaces' may be older.
     await ctx.runMutation(internal.badges.backfillHolders, {});
     return orgId;

@@ -1,9 +1,19 @@
 import { v } from "convex/values";
 import { assertFlag, flagOn } from "./app";
-import { publicQuery, viewerMutation } from "./lib/customFunctions";
+import {
+  authenticatedMutation,
+  publicQuery,
+  viewerMutation,
+} from "./lib/customFunctions";
 import { demoAccounts, writeCalderLane } from "./lib/demo/calderLane";
 import { ACCOUNT_HOLDERS, castOf } from "./lib/demo/cast";
 import { moveClock } from "./lib/demo/moveClock";
+import {
+  careerTargetValidator,
+  moveCareerClock as moveCareers,
+  writePivotCrews,
+} from "./lib/demo/pivotCrews";
+import { isDemoAccount } from "./lib/orgs/people";
 import { demoTargetValidator } from "./lib/demo/schedule";
 import { throwUserError } from "./lib/errors";
 import { getViewer, type Viewer } from "./lib/viewer";
@@ -31,7 +41,9 @@ function demoOrgOf(viewer: Viewer) {
  * NO PERMISSION CHECK, ON PURPOSE. The tester switches personas on /guide, so
  * any persona in the demo workspace (Dan, an Employee, as much as Priya) may
  * reset it. The only gates are DEMO_MODE and `org.isDemo`. Accounts survive;
- * the workspace's product rows, including the tester's, don't.
+ * the workspace's product rows, including the tester's, don't. One reset
+ * rewrites both tracks (spec 11.2): every career row, Dan's included, goes
+ * and the careers demo is written fresh.
  */
 export const reset = viewerMutation()({
   args: {},
@@ -39,7 +51,72 @@ export const reset = viewerMutation()({
   handler: async (ctx): Promise<null> => {
     demoOrgOf(ctx.viewer);
     await writeCalderLane(ctx, await demoAccounts(ctx));
+    await writePivotCrews(ctx);
     return null;
+  },
+});
+
+/** DEMO_MODE on and a demo account: the careers controls' gate (spec 7), not a seat. */
+async function assertCareerDemo(
+  ctx: Parameters<typeof isDemoAccount>[0],
+  userId: string,
+) {
+  assertFlag("demo", true);
+  if (!(await isDemoAccount(ctx, userId))) {
+    throwUserError("FORBIDDEN", "Only a demo account can do that.");
+  }
+}
+
+/**
+ * Move the careers clock forward (week1, week2, week3, proof) or simulate a
+ * missed week (plan A4). NO PERMISSION CHECK, ON PURPOSE, as with `setClock`:
+ * any demo account may, Amara as much as Dan. It never moves backwards; only
+ * a reset goes back. Its UI is P14b.
+ */
+export const moveCareerClock = authenticatedMutation({
+  args: { target: careerTargetValidator },
+  returns: v.object({ now: v.number(), missedWeek: v.boolean() }),
+  handler: async (ctx, { target }) => {
+    await assertCareerDemo(ctx, ctx.userId);
+    return await moveCareers(ctx, target);
+  },
+});
+
+/**
+ * The careers clock and event counts for the guide (spec 7). Separate from
+ * `status`, which stays byte-identical (X2). Null with DEMO_MODE off, signed
+ * out, or for an account that isn't a demo one. Counts are raw, by event
+ * name, as `status`'s are (G-f): `careerEvents` holds no person id (P10).
+ */
+export const careerStatus = publicQuery({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      now: v.union(v.null(), v.number()),
+      missedWeek: v.boolean(),
+      counts: v.array(v.object({ name: v.string(), count: v.number() })),
+    }),
+  ),
+  handler: async (ctx) => {
+    if (!flagOn("demo") || ctx.userId === null) return null;
+    if (!(await isDemoAccount(ctx, ctx.userId))) return null;
+    // The stored clock, not a read of it (Ruling 16), as `status` does.
+    const { now, missedWeek } = (await ctx.db.query("careerDemo").first()) ?? {
+      now: null,
+      missedWeek: false,
+    };
+    const events = await ctx.db.query("careerEvents").take(MAX_DEMO_EVENTS);
+    const counts = new Map<string, number>();
+    for (const { name } of events)
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    return {
+      now: now ?? null,
+      missedWeek,
+      counts: [...counts]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([name, count]) => ({ name, count })),
+    };
   },
 });
 
