@@ -5,10 +5,9 @@ import { profileOf } from "../lib/account/profile";
 import { careerMutation, careerQuery } from "../lib/customFunctions";
 import { throwUserError } from "../lib/errors";
 import { initialsOf } from "../lib/initials";
-import { dayOf, weekOf } from "../lib/sprintTime";
+import { weeklyOf } from "../lib/careers/crew";
 import type { Career } from "../lib/viewer";
 
-const ZONE = "Australia/Melbourne";
 const MAX_RULE = 120;
 
 /** R6: the crew functions are a learner's; a guide profile is refused. */
@@ -32,23 +31,6 @@ export async function crewOf(
     .first();
   const crew = member && (await ctx.db.get(member.crewId));
   return crew ? { crew, member } : null;
-}
-
-/** The crew's week (1 is the week it starts) for any instant, in the crew's zone. */
-export function crewWeek(crew: Doc<"crews">, at: number): number {
-  // ponytail: one zone for every crew, the demo's; store it on the crew when another city joins.
-  return weekOf(
-    {
-      startDate: crew.startsOn,
-      timeZone: ZONE,
-      protectedHour: {
-        weekday: dayOf(crew.startsOn),
-        start: crew.checkInTime,
-        durationMinutes: 60,
-      },
-    },
-    at,
-  );
 }
 
 async function membersOf(ctx: QueryCtx | MutationCtx, crewId: Id<"crews">) {
@@ -199,8 +181,8 @@ export const rules = careerQuery({
 
 /**
  * P2: each crewmate's first name, initials and one word for this week, and
- * nothing at all for someone who turned off `showDoneToCrew`. "done" is any
- * lesson finished this week, "back" is that after a week with none.
+ * nothing at all for someone who turned off `showDoneToCrew`. The word is
+ * `weeklyOf` (lib/careers/crew.ts), P2's one definition.
  */
 export const status = careerQuery({
   args: {},
@@ -221,7 +203,7 @@ export const status = careerQuery({
     const joined = await crewOf(ctx, profile._id);
     if (!joined) return [];
     const { crew } = joined;
-    const week = crewWeek(crew, ctx.career.now);
+    const now = ctx.career.now;
     const out = [];
     for (const row of await membersOf(ctx, crew._id)) {
       const settings = await ctx.db
@@ -233,23 +215,15 @@ export const status = careerQuery({
       if (!settings?.showDoneToCrew) continue;
       const p = await ctx.db.get(row.careerProfileId);
       if (!p) continue;
-      const weeks = new Set(
-        (
-          await ctx.db
-            .query("lessonProgress")
-            .withIndex("by_careerProfile", (q) =>
-              q.eq("careerProfileId", row.careerProfileId),
-            )
-            .collect()
-        ).map((l) => crewWeek(crew, l.completedAt)),
-      );
+      const progress = await ctx.db
+        .query("lessonProgress")
+        .withIndex("by_careerProfile", (q) =>
+          q.eq("careerProfileId", row.careerProfileId),
+        )
+        .collect();
       out.push({
         ...(await personOf(ctx, p)),
-        status: !weeks.has(week)
-          ? ("notYet" as const)
-          : week > 1 && !weeks.has(week - 1)
-            ? ("back" as const)
-            : ("done" as const),
+        status: weeklyOf(crew, progress, now),
       });
     }
     return out;

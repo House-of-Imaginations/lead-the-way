@@ -1,7 +1,10 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { harness, seat, workspace, type T } from "./workspace/helpers";
+
+/** Wednesday of the crew's week 2 (it starts Monday 26 October 2026). */
+const WEEK_2 = Date.parse("2026-11-04T09:00:00Z");
 
 /**
  * P12b Task 6: demo day, proof, guide, partners, career settings, and the
@@ -100,7 +103,7 @@ async function crewWorld() {
     await ctx.db.insert("lessonProgress", {
       careerProfileId: amara,
       lessonId: "data-fundamentals-1",
-      completedAt: Date.now(),
+      completedAt: WEEK_2,
     });
     await ctx.db.insert("careerBadges", {
       userId: "user_amara",
@@ -310,7 +313,13 @@ test("proof: mine, rateConfidence and createProofLink are the learner's own", as
 
 test("P3: the guide sees progress only with permission, and only their crew", async () => {
   const { t, ids, project, rajProject, amara, raj, lena } = await crewWorld();
+  // The careers clock in week 2, the week of Amara's only lesson: she is back.
+  vi.stubEnv("DEMO_MODE", "on");
+  await t.run((ctx) =>
+    ctx.db.insert("careerDemo", { now: WEEK_2, missedWeek: false }),
+  );
   const learners = await lena.query(api.careers.guide.myLearners, {});
+  vi.unstubAllEnvs();
   expect(learners).toEqual([
     {
       careerProfileId: ids.amara,

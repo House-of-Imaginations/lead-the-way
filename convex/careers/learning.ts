@@ -10,7 +10,8 @@ import {
 import { careerMutation, careerQuery } from "../lib/customFunctions";
 import { throwUserError } from "../lib/errors";
 import { addDays, mondayOf } from "../lib/sprintTime";
-import { crewOf, crewWeek, learnerOf } from "./crews";
+import { crewWeek } from "../lib/careers/crew";
+import { crewOf, learnerOf } from "./crews";
 
 async function completionsOf(
   ctx: QueryCtx | MutationCtx,

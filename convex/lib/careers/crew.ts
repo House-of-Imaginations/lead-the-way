@@ -2,14 +2,13 @@ import type { Doc, Id } from "../../_generated/dataModel";
 import type { QueryCtx } from "../../_generated/server";
 import { throwUserError } from "../errors";
 import type { Career } from "../viewer";
-import { lessonsFor, type CredentialId } from "./catalog";
+import { dayOf, weekOf } from "../sprintTime";
+import type { CredentialId } from "./catalog";
 
 /**
  * Reads the P12b demo day, proof, guide and settings functions share. Each
  * takes the caller's own profile; nothing here takes an id from a client.
  */
-
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type Weekly = "done" | "back" | "notYet";
 
@@ -104,30 +103,37 @@ export async function doneLessons(
     .take(200);
 }
 
-/** The crew's week, from 1, by its `startsOn` date. */
-export function crewWeek(crew: Doc<"crews">, now: number): number {
-  // ponytail: UTC midnight of `startsOn`; use the crew's zone if a week edge ever matters.
-  return Math.max(
-    1,
-    Math.floor((now - Date.parse(crew.startsOn)) / WEEK_MS) + 1,
+const ZONE = "Australia/Melbourne";
+
+/** The crew's week (1 is the week it starts) for any instant, in the crew's zone. */
+export function crewWeek(crew: Doc<"crews">, at: number): number {
+  // ponytail: one zone for every crew, the demo's; store it on the crew when another city joins.
+  return weekOf(
+    {
+      startDate: crew.startsOn,
+      timeZone: ZONE,
+      protectedHour: {
+        weekday: dayOf(crew.startsOn),
+        start: crew.checkInTime,
+        durationMinutes: 60,
+      },
+    },
+    at,
   );
 }
 
 /**
- * P2: one word for this week. `done` when the week's lessons are all done,
- * `back` when a lesson was finished in the last 7 days, else `notYet`. No
- * count, streak or missed week leaves this function.
+ * P2, the one definition: a word for this week. `done` is any lesson
+ * finished this week, `back` is that after a week with none, else `notYet`.
+ * No count, streak or missed week leaves this function.
  */
 export function weeklyOf(
   crew: Doc<"crews">,
   progress: Doc<"lessonProgress">[],
   now: number,
 ): Weekly {
-  const done = new Set(progress.map((p) => p.lessonId));
-  const due = lessonsFor(crew.credentialId).filter(
-    (l) => l.week === crewWeek(crew, now),
-  );
-  if (due.length > 0 && due.every((l) => done.has(l.id))) return "done";
-  if (progress.some((p) => p.completedAt > now - WEEK_MS)) return "back";
-  return "notYet";
+  const week = crewWeek(crew, now);
+  const weeks = new Set(progress.map((l) => crewWeek(crew, l.completedAt)));
+  if (!weeks.has(week)) return "notYet";
+  return week > 1 && !weeks.has(week - 1) ? "back" : "done";
 }
