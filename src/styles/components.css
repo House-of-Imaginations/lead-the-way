@@ -531,7 +531,7 @@ input.ltw-field:read-only:not(:disabled) {
 .ltw-track {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
   width: 100%;
   padding: 16px;
   background: var(--layer-01);
@@ -555,7 +555,11 @@ input.ltw-field:read-only:not(:disabled) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 8px;
+}
+.ltw-track-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .ltw-track-i {
   flex-shrink: 0;
@@ -564,6 +568,7 @@ input.ltw-field:read-only:not(:disabled) {
 .ltw-track-title {
   font-size: 20px;
   line-height: 28px;
+  letter-spacing: 0;
 }
 .ltw-track-body {
   color: var(--text-secondary);

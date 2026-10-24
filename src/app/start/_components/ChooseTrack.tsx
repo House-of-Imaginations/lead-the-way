@@ -47,6 +47,25 @@ export function ChooseTrack({
         ? { label: "Set up team", href: hrefs.lead }
         : null;
   const invited = track === "team" && way === "invited";
+  const help = invited
+    ? "Open the link in your invitation email to join your team."
+    : track === "team"
+      ? "Choose how you join to continue."
+      : "Pick a track to continue.";
+  // S2: twice, so focus order follows what people see. Below 1024px it sits
+  // above the sticky footer; from 1024px, below the button (MS1D).
+  const logIn = (className: string) =>
+    !signedIn && (
+      <p className={`text-body-02 ${className}`}>
+        Already have an account?{" "}
+        <Link
+          href="/login"
+          className="text-link underline hover:text-link-hover"
+        >
+          Log in
+        </Link>
+      </p>
+    );
 
   return (
     <div className="flex flex-1 flex-col gap-05 min-[1024px]:flex-none">
@@ -84,8 +103,9 @@ export function ChooseTrack({
         Already in a team sprint? You can add a private Change careers track
         later. Your team never sees it.
       </p>
+      {logIn("min-[1024px]:hidden")}
       {/* Below 1024px the footer comes last and sticks to the bottom, full bleed with its hairline (MS1). */}
-      <div className="sticky bottom-0 order-last -mx-05 mt-auto flex flex-col gap-03 border-t border-border-subtle bg-background p-05 md:-mx-09 md:px-09 min-[1024px]:static min-[1024px]:order-none min-[1024px]:m-0 min-[1024px]:w-[320px] min-[1024px]:border-0 min-[1024px]:p-0">
+      <div className="sticky bottom-0 -mx-05 mt-auto flex flex-col gap-03 border-t border-border-subtle bg-background p-05 md:-mx-09 md:px-09 min-[1024px]:static min-[1024px]:m-0 min-[1024px]:w-[320px] min-[1024px]:border-0 min-[1024px]:p-0">
         {ready ? (
           <ButtonLink href={ready.href} icon={ArrowRight} className="w-full">
             {ready.label}
@@ -105,23 +125,11 @@ export function ChooseTrack({
             id={helpId}
             className="text-center text-label-01 text-text-secondary"
           >
-            {invited
-              ? "Open the link in your invitation email to join your team."
-              : "Pick a track to continue."}
+            {help}
           </p>
         )}
       </div>
-      {!signedIn && (
-        <p className="text-body-02">
-          Already have an account?{" "}
-          <Link
-            href="/login"
-            className="text-link underline hover:text-link-hover"
-          >
-            Log in
-          </Link>
-        </p>
-      )}
+      {logIn("hidden min-[1024px]:block")}
     </div>
   );
 }

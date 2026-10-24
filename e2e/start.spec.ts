@@ -20,6 +20,10 @@ test("Continue waits for a track and a way in", async ({ page }) => {
   const ways = page.getByRole("group", { name: "How are you joining?" });
   await expect(ways).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
+  await expect(
+    page.getByText("Choose how you join to continue."),
+  ).toBeVisible();
+  await expect(page.getByText("Pick a track to continue.")).toHaveCount(0);
 
   await ways.getByLabel("I lead a team").check();
   await expect(footer(page, "Set up team")).toHaveAttribute(
@@ -82,12 +86,26 @@ for (const width of [390, 1440]) {
       const note = page.getByText("Already in a team sprint?");
       const go = page.getByRole("button", { name: "Continue" });
       const button = (await go.boundingBox())!;
+      // S2: focus order is what people see, the log in line above the
+      // sticky footer on a phone and below the button from 1024px.
+      const logIn = page.getByRole("link", { name: "Log in" });
+      const login = (await logIn.boundingBox())!;
+      const loginFirst = await logIn.evaluate(
+        (link, b) =>
+          !!(
+            link.compareDocumentPosition(b!) & Node.DOCUMENT_POSITION_FOLLOWING
+          ),
+        await go.elementHandle(),
+      );
+      expect(loginFirst).toBe(login.y < button.y);
       if (width === 1440) {
+        expect(login.y).toBeGreaterThan(button.y);
         expect(career.y).toBe(team.y);
         await expect(panel).toBeVisible();
         await expect(note).toBeHidden();
         expect(button.width).toBe(320);
       } else {
+        expect(login.y).toBeLessThan(button.y);
         expect(career.y).toBeGreaterThanOrEqual(team.y + team.height);
         await expect(panel).toBeHidden();
         await expect(note).toBeVisible();

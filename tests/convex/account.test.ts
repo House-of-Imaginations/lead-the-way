@@ -104,10 +104,16 @@ test("two learner tracks list both rows", async () => {
 });
 
 test("the team caption is the workspace alone outside an active sprint", async () => {
-  const { as } = await calderLane();
+  const { t, as } = await calderLane();
+  await clock(t, "setup");
   await addCareer(as("priya"), "learner", false);
-  const rows = (await as("priya").query(api.viewer.shell, {}))?.switcher;
-  expect(rows?.map((r) => r.caption)).toEqual(["Calder Lane", "Pivot Crews"]);
+  const captions = async () =>
+    (await as("priya").query(api.viewer.shell, {}))?.switcher?.map(
+      (r) => r.caption,
+    );
+  expect(await captions()).toEqual(["Calder Lane", "Pivot Crews"]);
+  await clock(t, "complete");
+  expect(await captions()).toEqual(["Calder Lane", "Pivot Crews"]);
 });
 
 test("a guide profile beside a seat shows no switcher", async () => {

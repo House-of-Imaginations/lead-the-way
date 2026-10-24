@@ -215,7 +215,7 @@ export const clearCareers = internalMutation({
  * `pnpm exec convex run seed:careerProfile '{"email":"x@e2e.test"}'`: a
  * learner career profile for that account, for e2e only, until MS3 can start
  * a track (P12a). Null if no account has the email; an existing profile is
- * kept. `private` defaults to true. Demo only, like `invite`.
+ * kept, with `private` set. `private` defaults to true. Demo only, like `invite`.
  */
 export const careerProfile = internalMutation({
   args: { email: v.string(), private: v.optional(v.boolean()) },
@@ -228,7 +228,10 @@ export const careerProfile = internalMutation({
       .query("careerProfiles")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
-    if (existing) return existing._id;
+    if (existing) {
+      await ctx.db.patch(existing._id, { private: isPrivate });
+      return existing._id;
+    }
     const name = (await profileOf(ctx, userId))?.displayName.split(" ")[0];
     return await ctx.db.insert("careerProfiles", {
       userId,

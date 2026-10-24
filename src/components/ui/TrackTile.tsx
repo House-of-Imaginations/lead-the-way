@@ -32,8 +32,10 @@ export function TrackTile({
         <Icon size={20} className="ltw-track-i" aria-hidden="true" />
         <Tag color={kind === "team" ? "purple" : "blue"}>{tag}</Tag>
       </span>
-      <span className="ltw-track-title">{title}</span>
-      <span className="ltw-track-body">{body}</span>
+      <span className="ltw-track-text">
+        <span className="ltw-track-title">{title}</span>
+        <span className="ltw-track-body">{body}</span>
+      </span>
     </button>
   );
 }

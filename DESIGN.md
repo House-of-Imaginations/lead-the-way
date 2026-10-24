@@ -456,7 +456,7 @@ The palette is Carbon's White theme (light, default) and Gray 100 theme (dark). 
 - **Greys:** `background` white for pages, `layer-01` (#f4f4f4) for fields, tiles and stat blocks, `layer-hover` and `layer-selected` for interaction, `border-subtle` for hairlines, `border-strong` for the bottom rule of fields.
 - **Highlight (#edf5ff):** the present moment and the privacy promise: current week, info notifications, the agreement quote.
 - **Status:** green (`support-success`) for done, always with a word or check icon; red (`support-error`) for errors and destructive actions only; yellow (`support-warning`) for warning icons only, never text.
-- **Tags:** blue pair for current or active, green pair for finished, grey pair for neutral, purple pair for the Grow in my role track tag only.
+- **Tags:** blue pair for current or active and for the Change careers track tag, green pair for finished, grey pair for neutral, purple pair for the Grow in my role track tag only.
 
 
 | Token                    | Light (White)   | Dark (Gray 100) | Use                                                                                                                                             |
@@ -493,7 +493,7 @@ The palette is Carbon's White theme (light, default) and Gray 100 theme (dark). 
 | `support-warning`        | `#f1c21b`       | `#f1c21b`       | Warning icons only, with dark text beside them. Never text colour.                                                                              |
 | `tag-gray-bg`            | `#e0e0e0`       | `#525252`       | Neutral tags: Draft, Not started, member names.                                                                                                 |
 | `tag-gray-text`          | `#161616`       | `#f4f4f4`       | Text on tag-gray-bg.                                                                                                                            |
-| `tag-blue-bg`            | `#d0e2ff`       | `#002d9c`       | State tags that mean current or active: Active, Now, In progress, Week 4.                                                                       |
+| `tag-blue-bg`            | `#d0e2ff`       | `#002d9c`       | State tags that mean current or active: Active, Now, In progress, Week 4. Also the Change careers track tag.                                    |
 | `tag-blue-text`          | `#002d9c`       | `#d0e2ff`       | Text on tag-blue-bg.                                                                                                                            |
 | `tag-green-bg`           | `#a7f0ba`       | `#044317`       | State tags that mean finished: Completed, Done, Saved, Output reviewed.                                                                         |
 | `tag-green-text`         | `#0e6027`       | `#a7f0ba`       | Text on tag-green-bg.                                                                                                                            |
@@ -601,7 +601,7 @@ The reference implementation for every component is `docs/design/design-system/c
 - **Progress bar.** 4px `interactive` fill on a `border-subtle` track, label and count above ("5 of 8 teammates"), never a named person's percentage.
 - **Progress steps.** Horizontal, a 2px top rule per step, `interactive` for done and current, check icons for done.
 - **Stat tile.** `layer-01`, label on top, one large light number (`display-03`), optional helper. In groups of two to four with 2px gaps.
-- **Side nav.** Brand, organisation block, grouped links (32px rows, 600 weight, `text-secondary`), a status block, a Collapse row, the account block that opens a menu upward, and the disclaimer. Collapsed, only the logo, avatars and icons remain and every label hides. Avatar initials use `label-01` at weight 600.
+- **Side nav.** Brand, organisation block, grouped links (32px rows, 600 weight, `text-secondary`), a status block, a Collapse row, the account block that opens a menu upward, and the disclaimer. Collapsed, only the logo, avatars and icons remain and every label hides. Avatar initials use `label-01` at weight 600. With two tracks the TrackSwitcher replaces the organisation block, the account block's caption reads "Two tracks", and the organisation menu's items (Switch to, Create workspace, Workspace settings) move to the top of the account menu.
 - **Modal.** `layer-01` panel up to 560px, label and title at the top, a 48px close button, body with 48px bottom padding, 64px button pair.
 - **Tables.** 48px rows, a `layer-selected` header row in 600 weight, hairlines between rows. The members table shows name, email, role and invitation state only, never participation data.
 

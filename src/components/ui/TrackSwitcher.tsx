@@ -30,7 +30,7 @@ export function TrackSwitcher({ rows, selected }: TrackSwitcherProps) {
             key={row.kind}
             className="ltw-sn-tr"
             href={row.href}
-            title={row.name}
+            title={`${row.name}, ${row.caption}`}
             aria-current={row.kind === selected ? "true" : undefined}
           >
             {row.kind === "team" ? (

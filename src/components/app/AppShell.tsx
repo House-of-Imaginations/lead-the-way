@@ -112,8 +112,9 @@ export function AppShell({
   const shell = (!switched && live) || initial;
   // R3: every route that renders AppShell in P11 is a team route, so the team
   // row is selected. P13c reads the selected track from the switcher cookie on
-  // /home and /settings/privacy.
-  const rows = all === undefined ? switcher : all?.switcher;
+  // /home and /settings/privacy. Like the shell, the rows stay the server's
+  // copy through a sign-out or a switch in another tab (Ruling 17).
+  const rows = live && !switched ? all?.switcher : switcher;
   // Settings' Reduce motion (P7b-1), as an attribute globals.css reads.
   const reduceMotion = shell.reduceMotion;
   useEffect(() => {

@@ -6,10 +6,10 @@ import { AppShell, useShell } from "../../../src/components/app/AppShell";
 import { useExpectOrgId } from "../../../src/components/app/ExpectOrgId";
 
 let live: Shell | undefined;
-/** The whole live `viewer.shell`, when a test needs more than its `team`. */
-let account: AccountShell | undefined;
+/** The whole live `viewer.shell` (null once signed out), when a test needs more than its `team`. */
+let account: AccountShell | null | undefined;
 vi.mock("convex-helpers/react/cache", () => ({
-  useQuery: () => account ?? (live && { team: live }),
+  useQuery: () => (account !== undefined ? account : live && { team: live }),
 }));
 vi.mock("convex/react", () => ({
   useConvex: () => ({}),
@@ -167,4 +167,34 @@ test("one track: the org block stays", () => {
   const html = render();
   expect(html).toContain("ltw-sn-org");
   expect(html).not.toContain("Your tracks");
+});
+
+const renderRows = (switcher?: TrackRow[]) =>
+  renderToStaticMarkup(
+    <AppShell initial={shell} hour={0} navState={null} switcher={switcher}>
+      <Probe />
+    </AppShell>,
+  );
+const me = { name: "Dan", initials: "D" };
+
+test("the live rows win over the server's copy", () => {
+  account = { account: me, team: shell, switcher: rows };
+  expect(renderRows()).toContain("Your tracks");
+  account = { account: me, team: shell };
+  expect(renderRows(rows)).not.toContain("Your tracks");
+});
+
+test("signed out, the server's rows stay", () => {
+  account = null;
+  expect(renderRows(rows)).toContain("Your tracks");
+});
+
+test("after a switch in another tab, the server's rows stay", () => {
+  account = {
+    account: me,
+    team: { ...shell, expectOrgId: "other" } as Shell,
+  };
+  const html = renderRows(rows);
+  expect(html).toContain("Your tracks");
+  expect(html).toContain("You switched workspace in another tab");
 });

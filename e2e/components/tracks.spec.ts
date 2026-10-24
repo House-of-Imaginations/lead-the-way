@@ -23,6 +23,11 @@ for (const theme of THEMES) {
       TOKENS[theme].tagPurpleBg,
     );
     await expect(team.locator("svg").first()).toHaveCSS("width", "20px");
+    // 0, not the tile's inherited 0.16px: Chrome reports a zero as "normal".
+    await expect(team.locator(".ltw-track-title")).toHaveCSS(
+      "letter-spacing",
+      "normal",
+    );
   });
 
   test(`the track switcher marks the selected row, ${theme}`, async ({
@@ -66,8 +71,14 @@ for (const theme of THEMES) {
     ]) {
       await expect(nav.getByText(text, { exact: true })).toBeHidden();
     }
-    await expect(links.nth(0)).toHaveAttribute("title", "Team sprint");
-    await expect(links.nth(1)).toHaveAttribute("title", "Change careers");
+    await expect(links.nth(0)).toHaveAttribute(
+      "title",
+      "Team sprint, Calder Lane, week 2 of 4",
+    );
+    await expect(links.nth(1)).toHaveAttribute(
+      "title",
+      "Change careers, Private",
+    );
     const square = nav
       .locator('.ltw-sn-tr[aria-current="true"] > span')
       .first();

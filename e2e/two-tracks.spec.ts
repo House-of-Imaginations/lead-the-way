@@ -35,7 +35,28 @@ test.describe("two tracks", () => {
     await expect(
       nav(page).getByRole("button", { name: "Calder Lane" }),
     ).toHaveCount(0);
+    await expect(nav(page).locator(".ltw-sn-org")).toHaveCount(0);
 
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await expectAxeClean(page);
+    }
+  });
+
+  test("on a phone the drawer holds the switcher @mobile", async ({
+    page,
+    expectAxeClean,
+  }) => {
+    resetDemo("week2");
+    seedCareer(PERSONA.dan);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signInAs(page, "dan");
+    await page.goto("/me");
+    await page.getByRole("button", { name: "Open menu" }).click();
+    const drawer = page.getByRole("dialog", { name: "Menu" });
+    await expect(
+      drawer.getByRole("group", { name: "Your tracks" }),
+    ).toBeVisible();
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await expectAxeClean(page);
@@ -82,5 +103,19 @@ test.describe("two tracks", () => {
     await expect(
       page.getByRole("menuitem", { name: "Workspace settings" }),
     ).toHaveCount(1);
+    await page.keyboard.press("Escape");
+
+    // A second workspace: the account menu can still switch (R4).
+    await page.goto("/workspace/new");
+    await page.getByLabel("Workspace name").fill("Kai Studio");
+    await page.getByLabel("Team name").fill("Studio team");
+    await page.getByRole("button", { name: "Create workspace" }).click();
+    await expect(page).toHaveURL("/setup/team");
+    await page.goto("/workspace/settings");
+    await expect(tracks(page)).toBeVisible();
+    await nav(page).getByRole("button", { name: "Kai Moreno" }).click();
+    await expect(
+      page.getByRole("menuitem", { name: "Switch to Kai's workspace" }),
+    ).toBeVisible();
   });
 });
