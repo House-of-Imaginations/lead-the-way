@@ -49,6 +49,27 @@ test("Priya at setup sees the time, the two accounts and every count", async () 
     expect(Object.keys(row).sort()).toEqual(["count", "type"]);
 });
 
+test("an event in another workspace leaves the demo counts alone", async () => {
+  const { t, as } = await calderLane();
+  const { orgId: other } = await workspace(t);
+  const before = (await as("priya").query(api.demo.status, {}))!.demo!.counts;
+  await t.run((ctx) =>
+    ctx.db.insert("events", { orgId: other, type: "sprint.launched", at: 0 }),
+  );
+  const after = (await as("priya").query(api.demo.status, {}))!.demo!.counts;
+  expect(after).toEqual(before);
+});
+
+test("a seated cast account other than Priya or Dan has no persona", async () => {
+  const { as, orgId } = await calderLane();
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week2",
+    expectOrgId: orgId,
+  });
+  const demo = (await as("sarah").query(api.demo.status, {}))!.demo!;
+  expect(demo.persona).toBeNull();
+});
+
 // A reset makes a new demo workspace; the guide echoes this id, not a stale one.
 test("after a reset the status names the new workspace", async () => {
   const { as, orgId } = await calderLane();
