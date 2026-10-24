@@ -23,7 +23,7 @@ import {
 import { StepTile } from "./_components/StepTile";
 
 export const metadata: Metadata = {
-  title: "Prototype guide · From hero to zero",
+  title: "Prototype guide · From zero to hero",
 };
 
 const DISCLAIMER = "Concept prototype. Not an official IBM product.";
@@ -42,7 +42,7 @@ export default async function GuidePage() {
       <header className="flex min-h-control-md flex-wrap items-center justify-between gap-x-05 border-b border-border-subtle px-05 md:px-07">
         <span className="flex items-center gap-[10px] text-body-02">
           <Logo />
-          <span className="font-semibold">From hero to zero</span>
+          <span className="font-semibold">From zero to hero</span>
           <span className="text-text-secondary">Prototype guide</span>
         </span>
         <span className="text-label-01 text-text-secondary">{DISCLAIMER}</span>
@@ -53,7 +53,7 @@ export default async function GuidePage() {
         >
           <section className="grid items-end gap-09 min-[900px]:grid-cols-[6fr_5fr]">
             <div className="flex flex-col gap-07">
-              <h1 className="text-display-01 font-light">From hero to zero</h1>
+              <h1 className="text-display-01 font-light">From zero to hero</h1>
               <p className="max-w-[36rem] text-heading-03 text-text-secondary">
                 {LEAD}
               </p>

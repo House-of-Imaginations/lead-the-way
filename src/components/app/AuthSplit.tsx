@@ -29,7 +29,7 @@ export function AuthSplit({
           className="flex items-center gap-[10px] self-start text-body-emphasis"
         >
           <Logo />
-          From hero to zero
+          From zero to hero
         </Link>
         <main className="mx-auto flex w-full max-w-auth-form flex-1 flex-col justify-center gap-07">
           <div className="flex flex-col gap-03 text-center">

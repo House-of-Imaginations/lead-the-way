@@ -28,7 +28,7 @@ export function TopBar({ homeHref, user, accountMenu, children }: TopBarProps) {
         </Dialog.Trigger>
         <Link href={homeHref}>
           <Logo />
-          From hero to zero
+          From zero to hero
         </Link>
         <Menu
           align="end"

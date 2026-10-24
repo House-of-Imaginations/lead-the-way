@@ -5,7 +5,7 @@ import { resetDemo, signInAs } from "./demo";
 
 const REASON = "What would make this easier? (optional)";
 const BODY =
-  "Protected time is the core assumption behind From hero to zero. You can keep exploring, but the team sprint should not launch until learning time is agreed.";
+  "Protected time is the core assumption behind From zero to hero. You can keep exploring, but the team sprint should not launch until learning time is agreed.";
 const STALE =
   "You switched workspace in another tab. Reload the page to continue.";
 

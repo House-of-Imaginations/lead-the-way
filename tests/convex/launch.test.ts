@@ -38,7 +38,7 @@ afterEach(() => {
 /** A configured sender: only the product's rules decide whether mail goes. */
 function emailOn() {
   vi.useFakeTimers({ toFake: ["setTimeout"] });
-  vi.stubEnv("RESEND_FROM", "From hero to zero <hello@example.com>");
+  vi.stubEnv("RESEND_FROM", "From zero to hero <hello@example.com>");
 }
 
 const CAST = DEMO_CAST.filter((p) => p.key !== "priya").map((p) => p.email);
@@ -619,7 +619,7 @@ test("links need members:manage", async () => {
   expect(JSON.stringify(forLead)).not.toContain("@example.com");
   expect((await owner.query(api.sprints.launchPage, {}))?.invitedCount).toBe(1);
   // With email on, the page hands out no links: the invitations were mailed.
-  vi.stubEnv("RESEND_FROM", "From hero to zero <hello@example.com>");
+  vi.stubEnv("RESEND_FROM", "From zero to hero <hello@example.com>");
   expect((await owner.query(api.sprints.launchPage, {}))?.links).toBeNull();
 });
 

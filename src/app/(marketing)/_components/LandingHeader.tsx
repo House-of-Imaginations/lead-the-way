@@ -174,7 +174,7 @@ export function LandingHeader() {
           {/* The sheet isn't aria-modal (that hid its toggle), so keep the brand out of reach while open. */}
           <a className="brand" href="#top" inert={open}>
             <Logo />
-            From hero to zero
+            From zero to hero
           </a>
           <nav className="nav-links" aria-label="Sections">
             {SECTIONS.slice(1).map((s) => (

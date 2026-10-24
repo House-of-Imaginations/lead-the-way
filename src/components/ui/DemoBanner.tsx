@@ -11,7 +11,7 @@ export function DemoBanner({ workspace }: { workspace: string }) {
       <Information className="ltw-i" aria-hidden="true" />
       <p>
         <strong>Demo workspace.</strong> {workspace} is sample data for trying
-        From hero to zero. It can be reset at any time.
+        From zero to hero. It can be reset at any time.
       </p>
     </div>
   );

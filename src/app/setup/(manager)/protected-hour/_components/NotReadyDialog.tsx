@@ -64,7 +64,7 @@ export function NotReadyDialog() {
       }
       label="Protected time"
       title="The sprint depends on this hour"
-      description="Protected time is the core assumption behind From hero to zero. You can keep exploring, but the team sprint should not launch until learning time is agreed."
+      description="Protected time is the core assumption behind From zero to hero. You can keep exploring, but the team sprint should not launch until learning time is agreed."
       formId="not-ready-form"
       primaryText="Back to scheduling"
       primaryDisabled={pending}

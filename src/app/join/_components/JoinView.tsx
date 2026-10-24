@@ -55,7 +55,7 @@ export function JoinBar({
         className="flex items-center gap-[10px] text-body-emphasis"
       >
         <Logo />
-        From hero to zero
+        From zero to hero
       </Link>
       {orgName && (
         <span className="text-body-02 text-text-secondary">{orgName}</span>
@@ -273,7 +273,7 @@ export function JoinView({
               </p>
             )}
             <h1 className="text-heading-01 [text-wrap:balance] min-[900px]:text-display-02">
-              {`${first} invited you to From hero to zero`}
+              {`${first} invited you to From zero to hero`}
             </h1>
             <p className="max-w-[44ch] text-body-01 text-text-secondary">
               For the next four weeks, one hour of your working week is

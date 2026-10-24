@@ -5,7 +5,7 @@ import { currentHour, getShell, openOrHome } from "@/lib/account/queries";
 import { MyAgreement } from "./_components/MyAgreement";
 
 export const metadata: Metadata = {
-  title: "Team AI Agreement · From hero to zero",
+  title: "Team AI Agreement · From zero to hero",
 };
 
 export default async function MyAgreementPage() {

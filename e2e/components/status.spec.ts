@@ -134,7 +134,7 @@ for (const theme of THEMES) {
       .getByRole("status")
       .filter({ hasText: "Demo workspace." });
     await expect(banner).toHaveText(
-      "Demo workspace. Calder Lane is sample data for trying From hero to zero. It can be reset at any time.",
+      "Demo workspace. Calder Lane is sample data for trying From zero to hero. It can be reset at any time.",
     );
     await expect(banner).toHaveCSS("background-color", TOKENS[theme].highlight);
     await expect(banner).toHaveCSS(
