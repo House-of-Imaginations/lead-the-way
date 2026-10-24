@@ -5,7 +5,7 @@ import { CREDENTIALS, TARGETS } from "../lib/careers/catalog";
 /** A map's hours a week: 1, 2 or 3 (`catalog.weeksForHours`). */
 export const hours = v.union(v.literal(1), v.literal(2), v.literal(3));
 export const targetRole = v.union(...TARGETS.map((t) => v.literal(t.id)));
-const credentialId = v.union(...CREDENTIALS.map((c) => v.literal(c.id)));
+export const credentialId = v.union(...CREDENTIALS.map((c) => v.literal(c.id)));
 
 /**
  * The Change careers track (D12, spec 5.1): keyed by `userId` or

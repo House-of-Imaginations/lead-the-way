@@ -4,7 +4,11 @@ import { throwUserError } from "../errors";
 
 /** Counts only (P10, X5): a name, a time and the partner, never a person id. */
 export type CareerEventName =
-  "mapBuilt" | "accountCreated" | "privateTrackStarted" | "trackDeleted";
+  | "mapBuilt"
+  | "accountCreated"
+  | "privateTrackStarted"
+  | "trackDeleted"
+  | "answersDeleted";
 
 /** The only writer of `careerEvents`. `at` is the careers clock where one is in hand. */
 export async function logCareerEvent(

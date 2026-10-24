@@ -32,11 +32,17 @@ function imported(source: string): Set<string> {
 }
 
 const CAREER_TABLE_FILES = [
+  "careers/careerSettings.ts",
   "careers/crews.ts",
+  "careers/demoDay.ts",
   "careers/drafts.ts",
+  "careers/guide.ts",
   "careers/hours.ts",
   "careers/learning.ts",
+  "careers/partners.ts",
+  "careers/proof.ts",
   "careers/tracks.ts",
+  "lib/careers/crew.ts",
   "lib/careers/writers.ts",
   // The careers clock and counts (plan A3), and the careers seed.
   "demo.ts",
@@ -63,12 +69,13 @@ test.each(CAREER_TABLES)(
   },
 );
 
-test("only viewer.ts imports getAccount", () => {
+test("only the shared functions import getAccount (spec 5.2)", () => {
   expect(
     sources
       .filter(({ source }) => imported(source).has("getAccount"))
-      .map(({ file }) => file),
-  ).toEqual(["viewer.ts"]);
+      .map(({ file }) => file)
+      .sort(),
+  ).toEqual(["home.ts", "privacy.ts", "viewer.ts"]);
 });
 
 const TEAM_BUILDERS = ["viewerQuery", "viewerMutation", "timedViewerQuery"];

@@ -110,6 +110,10 @@ test("no public function reads another workspace's ids", async () => {
   for (const fn of publicFunctions()) {
     const fixed = calls[fn.name];
     if (!fixed) continue;
+    // X1: a career function names no workspace, and refuses a caller with no
+    // track. Its P11 checks live in careerCrews and careerPeople, and X2 is
+    // swept in careerIsolation.test.ts.
+    if (fn.name.startsWith("careers/")) continue;
     let args = fixed;
     // Otherwise the only foreign id is `expectOrgId`: the workspace check
     // itself must refuse the victim's (R6).
@@ -127,9 +131,6 @@ test("no public function reads another workspace's ids", async () => {
       // A query that names no workspace answers from the caller's own open
       // one, so whatever it returns must hold none of the victim's ids.
       if (fn.kind !== "query") continue;
-      // A career query names no workspace and refuses a caller with no
-      // career track; X2 is swept in careerIsolation.test.ts.
-      if (fn.name.startsWith("careers/")) continue;
       read++;
       const answer: unknown = await call(attacker, fn, fixed);
       if (holdsId(answer, theirs)) leaked.push(`${fn.name} answered theirs`);

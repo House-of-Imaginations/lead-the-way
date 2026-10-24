@@ -64,6 +64,10 @@ const SIGNED_OUT: Record<
     },
     answer: expect.any(String),
   },
+  // Public proof and partner pages (P4, P5): a slug nobody holds answers null.
+  "careers/proof:publicProof": { args: { slug: "nobody" }, answer: null },
+  "careers/partners:bySlug": { args: { slug: "nobody" }, answer: null },
+  "careers/partners:totals": { args: { slug: "nobody" }, answer: null },
   // The public credential: a slug nobody holds answers null (the page's 404).
   "badges:publicBySlug": {
     args: { slug: "dan-okafor-ai-fundamentals" },
