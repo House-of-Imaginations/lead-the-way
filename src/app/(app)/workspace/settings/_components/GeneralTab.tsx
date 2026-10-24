@@ -79,7 +79,7 @@ export function GeneralTab({ data }: { data: WorkspaceData }) {
       <form onSubmit={onSubmit} className="flex flex-col gap-07" noValidate>
         {/* Locked while saving, so nothing typed then is shown as saved. */}
         <fieldset disabled={saving} className="contents">
-          <div className="grid max-w-[640px] grid-cols-2 gap-06 max-[900px]:grid-cols-1">
+          <div className="grid max-w-[720px] grid-cols-2 gap-06 max-[900px]:grid-cols-1">
             <TextInput
               id={ID_OF.name}
               label="Workspace name"
