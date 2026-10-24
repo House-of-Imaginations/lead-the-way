@@ -57,8 +57,6 @@ async function expectNoNames(page: Page) {
   for (const name of NAMES) expect(text, name).not.toContain(name);
 }
 
-// The trace would record the typed demo password.
-test.use({ trace: "off" });
 test.describe.configure({ mode: "serial" });
 
 let errors: string[] = [];

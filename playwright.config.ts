@@ -13,7 +13,11 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL: "http://localhost:3000",
-    trace: "retain-on-failure",
+    // Off: the shared DEMO_PASSWORD reaches a trace by too many paths to mask
+    // (signInAs's request body, typed fields, evaluate arguments, /guide's
+    // password field in DOM snapshots). Pass `--trace on` to debug, then
+    // delete test-results/.
+    trace: "off",
   },
   projects: [
     {
