@@ -13,12 +13,14 @@ import { fetchAuthMutation } from "./auth-server";
 export async function startAccount(
   acceptTerms: boolean,
   token?: string,
+  track?: "team" | "career",
 ): Promise<{ next: string } | { error: string }> {
   try {
     return {
       next: await fetchAuthMutation(api.onboarding.start, {
         acceptTerms,
         token,
+        track,
       }),
     };
   } catch (error) {

@@ -307,3 +307,38 @@ test("start with a token still asks for the terms", async () => {
     sam.mutation(api.onboarding.start, { acceptTerms: false, token: "x" }),
   ).rejects.toMatchObject({ data: { code: "TERMS_REQUIRED" } });
 });
+
+test("a career sign-up accepts the terms and makes no workspace", async () => {
+  const t = harness();
+  const cam = await account(t, "Cam Career", "cam@example.com");
+  expect(
+    await cam.mutation(api.onboarding.start, {
+      acceptTerms: true,
+      track: "career",
+    }),
+  ).toBe("/home");
+  expect(await orgsOf(t)).toEqual([]);
+  const profile = await cam.query(api.profiles.me, {});
+  expect(profile?.termsAcceptedAt).toEqual(expect.any(Number));
+  expect(await cam.query(api.viewer.home, {})).toBe("/start");
+});
+
+test("a career sign-up from a join link still goes to the link", async () => {
+  const t = harness();
+  const cam = await account(t, "Cam Career", "cam@example.com");
+  expect(
+    await cam.mutation(api.onboarding.start, {
+      acceptTerms: true,
+      token: "abc",
+      track: "career",
+    }),
+  ).toBe("/join/abc");
+});
+
+test("a career sign-up still needs the terms", async () => {
+  const t = harness();
+  const cam = await account(t, "Cam Career", "cam@example.com");
+  await expect(
+    cam.mutation(api.onboarding.start, { acceptTerms: false, track: "career" }),
+  ).rejects.toMatchObject({ data: { code: "TERMS_REQUIRED" } });
+});

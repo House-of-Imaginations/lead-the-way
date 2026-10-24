@@ -20,6 +20,7 @@ import { getViewer } from "./lib/viewer";
  *    has VERIFIED that address. Without the link in hand, an unverified
  *    address proves nothing, so the token is never returned to it (spec 5).
  *    An invitation from the demo workspace never counts;
+ *  - "/home" for a career sign-up (`track: "career"`), with no workspace;
  *  - "/setup/team" after making a fresh workspace and team.
  * The terms box is asked once and stored on the profile.
  *
@@ -30,9 +31,13 @@ import { getViewer } from "./lib/viewer";
  * skips mailing one.
  */
 export const start = authenticatedMutation({
-  args: { acceptTerms: v.boolean(), token: v.optional(v.string()) },
+  args: {
+    acceptTerms: v.boolean(),
+    token: v.optional(v.string()),
+    track: v.optional(v.union(v.literal("team"), v.literal("career"))),
+  },
   returns: v.string(),
-  handler: async (ctx, { acceptTerms, token }) => {
+  handler: async (ctx, { acceptTerms, token, track }) => {
     const profile = await ensureProfile(ctx, ctx.userId);
     if (profile.termsAcceptedAt === undefined) {
       if (!acceptTerms) {
@@ -45,6 +50,9 @@ export const start = authenticatedMutation({
     }
     // Holding the link is the proof (spec 5); the join page checks the rest.
     if (token) return `/join/${encodeURIComponent(token)}`;
+    // Spec 5.3: a career sign-up never makes a workspace. P12a's claimDraft makes
+    // the career profile; until then /home resolves to /start.
+    if (track === "career") return "/home";
     if (await getViewer(ctx)) return "/home";
 
     const user = await authComponent.getAnyUserById(ctx, ctx.userId);
