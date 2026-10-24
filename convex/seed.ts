@@ -199,7 +199,10 @@ export const clearCareers = internalMutation({
     let count = 0;
     for (const table of CAREER_TABLES) {
       // ponytail: one transaction, fine for a demo's few hundred rows; page it if P12a's seed outgrows it.
-      for (const row of await ctx.db.query(table).take(1000)) {
+      const rows = await ctx.db.query(table).take(1000);
+      if (rows.length === 1000)
+        throw new Error(`${table} has 1000 or more rows; page clearCareers.`);
+      for (const row of rows) {
         await ctx.db.delete(row._id);
         count++;
       }
@@ -238,7 +241,8 @@ export const careerProfile = internalMutation({
 
 /**
  * `npx convex run seed:reset`: the accounts, a fresh Calder Lane, then the e2e
- * accounts and every career row cleared (Ruling 34, R11). Last, so a reseed that can't run clears nothing.
+ * accounts and every career row cleared (Ruling 34, R11). Last, so a reseed
+ * that can't run clears nothing.
  */
 export const reset = internalAction({
   args: {},

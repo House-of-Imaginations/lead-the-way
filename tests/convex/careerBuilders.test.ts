@@ -76,6 +76,7 @@ test("the manager overview is identical with or without Dan's career track", asy
   const { t, as } = await calderLane();
   await clock(t, "week2");
   const before = await as("priya").query(api.manager.overview, {});
+  expect(before?.phase).toBe("active");
   await addCareer(as("dan"));
   expect(await as("priya").query(api.manager.overview, {})).toEqual(before);
 });
