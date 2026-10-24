@@ -31,11 +31,14 @@ const READS_CLOCK = new RegExp(
   `\\.now\\b|nowIn\\(|nowFor\\(|\\b(?:${CLOCK_HELPERS.join("|")})\\(`,
 );
 
-/** Every `export const x = builder(...)({ ... });` in a top-level module. */
+/**
+ * Every `export const x = builder(...)({ ... });` under convex/, at any depth
+ * (`convex/careers/*.ts` too), skipping `_generated`.
+ */
 function exportedQueries() {
   const out: { name: string; builder: string; body: string }[] = [];
-  for (const file of readdirSync(dir)) {
-    if (!file.endsWith(".ts")) continue;
+  for (const file of readdirSync(dir, { recursive: true }) as string[]) {
+    if (!file.endsWith(".ts") || file.startsWith("_generated")) continue;
     const source = readFileSync(new URL(file, dir), "utf8");
     for (const m of source.matchAll(
       /^export const (\w+) = (\w+)\b[\s\S]*?^\}\);$/gm,

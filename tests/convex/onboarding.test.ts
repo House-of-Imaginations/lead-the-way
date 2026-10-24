@@ -342,3 +342,30 @@ test("a career sign-up still needs the terms", async () => {
     cam.mutation(api.onboarding.start, { acceptTerms: false, track: "career" }),
   ).rejects.toMatchObject({ data: { code: "TERMS_REQUIRED" } });
 });
+
+// L4: a private career sign-up is never pulled into an employer's team by its
+// address, even a verified one with a live invitation.
+test("a career sign-up skips a verified address's invitation", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const roles = await owner.query(api.orgRoles.list, {});
+  const roleId = roles.find((r) => r.name === "Employee")!._id;
+  const { token } = await owner.mutation(api.invites.create, {
+    roleId,
+    email: "sam@example.com",
+    expectOrgId: orgId,
+  });
+  const peopleBefore = await t.run((ctx) => ctx.db.query("people").collect());
+  const sam = await account(t, "Sam Ito", "sam@example.com", true);
+
+  const to = await sam.mutation(api.onboarding.start, {
+    acceptTerms: true,
+    track: "career",
+  });
+  expect(to).toBe("/home");
+  expect(to).not.toContain(token);
+  expect(await t.run((ctx) => ctx.db.query("people").collect())).toEqual(
+    peopleBefore,
+  );
+  expect(await orgsOf(t)).toHaveLength(1);
+});

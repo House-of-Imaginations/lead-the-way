@@ -15,12 +15,14 @@ import { getViewer } from "./lib/viewer";
  *    makes nothing, whatever the token names. The join page says what's wrong
  *    with a link that won't seat this account (wrong address, used, demo,
  *    unknown), so a join link never ends in a fresh workspace;
+ *  - "/home" for a career sign-up (`track: "career"`), with no workspace. It
+ *    skips the invitation lookup below on purpose: a private career sign-up
+ *    is never pulled into an employer's team by its address;
  *  - "/home" when the account already has a workspace;
  *  - "/join/<token>" when a live invitation names its address and the account
  *    has VERIFIED that address. Without the link in hand, an unverified
  *    address proves nothing, so the token is never returned to it (spec 5).
  *    An invitation from the demo workspace never counts;
- *  - "/home" for a career sign-up (`track: "career"`), with no workspace;
  *  - "/setup/team" after making a fresh workspace and team.
  * The terms box is asked once and stored on the profile.
  *

@@ -1,4 +1,4 @@
-import type { GenericValidator } from "convex/values";
+import { type GenericValidator, v } from "convex/values";
 import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -38,12 +38,42 @@ function holds(validator: GenericValidator, table: string): boolean {
   }
 }
 
+/** Every field name in this validator, nested objects included, as a dotted path. */
+function fieldsOf(validator: GenericValidator, at = ""): string[] {
+  switch (validator.kind) {
+    case "object":
+      return Object.entries(validator.fields).flatMap(([name, f]) => [
+        at + name,
+        ...fieldsOf(f, `${at}${name}.`),
+      ]);
+    case "array":
+      return fieldsOf(validator.element, at);
+    case "union":
+      return validator.members.flatMap((m) => fieldsOf(m, at));
+    case "record":
+      return fieldsOf(validator.value, at);
+    default:
+      return [];
+  }
+}
+
+test("fieldsOf looks inside nested objects", () => {
+  expect(
+    fieldsOf(
+      v.object({
+        a: v.optional(v.object({ employerName: v.string() })),
+        b: v.array(v.union(v.null(), v.object({ c: v.string() }))),
+      }),
+    ),
+  ).toEqual(["a", "a.employerName", "b", "b.c"]);
+});
+
 test("X1: career tables hold no workspace data, and team tables no career ids", () => {
   const team = [...ORG_LAYER, ...ORG_TABLES] as (keyof typeof schema.tables)[];
   for (const name of CAREER_TABLES) {
     const validator = schema.tables[name].validator;
     expect(
-      Object.keys(validator.fields).filter((f) =>
+      fieldsOf(validator).filter((f) =>
         /org|employer|company|workspace/i.test(f),
       ),
       name,

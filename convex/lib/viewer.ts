@@ -112,13 +112,6 @@ export async function requireCareer(
   return career;
 }
 
-/** The team viewer, with no permission asked. */
-export async function requireTeam(
-  ctx: QueryCtx | MutationCtx,
-): Promise<Viewer> {
-  return await requireViewer(ctx, []);
-}
-
 /** The account and each learner track it has. Keys are left out, never undefined. */
 export type Account = {
   account: { userId: string; name: string };

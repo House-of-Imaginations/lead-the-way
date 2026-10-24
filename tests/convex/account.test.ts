@@ -1,11 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
-import {
-  getAccount,
-  getCareer,
-  requireCareer,
-  requireTeam,
-} from "../../convex/lib/viewer";
+import { getAccount, getCareer, requireCareer } from "../../convex/lib/viewer";
 import {
   addCareer,
   calderLane,
@@ -60,7 +55,7 @@ test("a guide profile is not a track", async () => {
   expect(await owner.query(api.viewer.home, {})).toBe(teamHome);
 });
 
-test("getAccount, getCareer, requireCareer and requireTeam", async () => {
+test("getAccount, getCareer and requireCareer", async () => {
   const t = harness();
   await expect(t.run((ctx) => getAccount(ctx))).rejects.toMatchObject({
     data: { code: "NOT_SIGNED_IN" },
@@ -69,9 +64,6 @@ test("getAccount, getCareer, requireCareer and requireTeam", async () => {
   expect(await loner.run((ctx) => getCareer(ctx))).toBeNull();
   await expect(loner.run((ctx) => requireCareer(ctx))).rejects.toMatchObject({
     data: { code: "NO_CAREER_TRACK" },
-  });
-  await expect(loner.run((ctx) => requireTeam(ctx))).rejects.toMatchObject({
-    data: { code: "NO_WORKSPACE" },
   });
   await addCareer(loner, "guide");
   expect((await loner.run((ctx) => requireCareer(ctx))).profile.kind).toBe(
