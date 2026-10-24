@@ -112,10 +112,10 @@ test.describe("sign up", () => {
     await expect(page).toHaveURL("/signup");
   });
 
-  test("sign-up lands on /setup/team without a banner, and ?ref changes nothing", async ({
+  test("sign-up lands on /setup/team without a banner, and ?ref joins nothing", async ({
     page,
   }) => {
-    // R8: ?ref is display-only. The account gets its own workspace, not Calder Lane.
+    // R9: ?ref is display-only. The account gets its own workspace, not Calder Lane.
     await page.goto("/signup?ref=calder-lane");
     await page.getByLabel("Full name").fill("Sam Lee");
     await page.getByLabel("Work email").fill(`e2e-${Date.now()}@example.com`);
@@ -157,6 +157,37 @@ test.describe("sign up", () => {
     await expect(dialog).toBeHidden();
     await expect(page.getByLabel("Work email")).toBeFocused();
   });
+});
+
+test("?ref= changes only the lead line (R9)", async ({ page }) => {
+  await page.goto("/signup?ref=calder-lane");
+  await expect(
+    page.getByText(
+      "A manager shared From Zero to Hero with you. Set up a four-week AI sprint for your own team.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+
+  await page.goto("/signup");
+  await expect(
+    page.getByText("Set up a four-week AI sprint for your team.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  // An invitation's lead wins over ?ref (Review Focus 5).
+  const token = JSON.parse(convex(["run", "seed:invite", "{}"])) as string;
+  await page.goto(`/signup?ref=calder-lane&invite=${token}`);
+  await expect(
+    page.getByText("Join your team's sprint at Calder Lane.", { exact: true }),
+  ).toBeVisible();
+  // So does one that isn't pending: the plain lead, not the ref one (R9).
+  await page.goto("/signup?ref=calder-lane&invite=e2e-no-such-token");
+  await expect(
+    page.getByText("Set up a four-week AI sprint for your team.", {
+      exact: true,
+    }),
+  ).toBeVisible();
 });
 
 test("sign-up from a join link goes back to the link and makes no workspace (Review Focus 1)", async ({

@@ -333,11 +333,11 @@ test.describe("week 2", () => {
     });
   }
 
-  test("sign out ends at log in", async ({ page }) => {
+  test("log out ends at log in", async ({ page }) => {
     await signInAs(page, "dan");
     await page.goto("/me");
     await openAccount(page, "Dan Okafor");
-    await page.getByRole("menuitem", { name: "Sign out" }).click();
+    await page.getByRole("menuitem", { name: "Log out" }).click();
     await expect(page).toHaveURL(/\/login/);
     await page.goto("/me");
     await expect(page).toHaveURL(/\/login/);
@@ -379,8 +379,14 @@ test("the app re-reads the server at the top of the hour (Ruling 14)", async ({
 }) => {
   await page.clock.install();
   await signInAs(page, "priya");
+  // The h1 is server HTML. The Convex token is fetched once the page hydrates,
+  // which is when HourlyRefresh arms its timer: move the clock after that.
+  const hydrated = page.waitForResponse((r) =>
+    r.url().endsWith("/api/auth/convex/token"),
+  );
   await page.goto("/manager");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await hydrated;
   const now = await page.evaluate(() => Date.now());
   // router.refresh() refetches the page's server components (an RSC request, not a prefetch).
   const refresh = page.waitForRequest(

@@ -9,12 +9,14 @@ import { setPrototypeNotes, usePrototypeNotes } from "@/lib/prototypeNotes";
 /** R12: the current route's research note, floating at the right edge, not modal. */
 export function PrototypeNotesPanel() {
   const on = usePrototypeNotes();
-  const note = noteFor(usePathname());
+  const pathname = usePathname();
+  const note = noteFor(pathname);
   if (!on || !note) return null;
   return (
     <aside
       aria-label="Prototype notes"
-      className="fixed inset-y-0 right-0 z-40 flex w-[360px] max-w-full flex-col gap-05 overflow-y-auto bg-layer-01 p-05 shadow-float"
+      // Setup pages end in a 64px full-width footer; the panel stops above it.
+      className={`fixed top-0 right-0 z-40 flex w-[360px] max-w-full flex-col gap-05 overflow-y-auto bg-layer-01 p-05 shadow-float ${pathname.startsWith("/setup/") ? "bottom-16" : "bottom-0"}`}
     >
       <div className="flex items-start justify-between gap-05">
         <div>

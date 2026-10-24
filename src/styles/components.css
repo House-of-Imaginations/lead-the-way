@@ -1829,3 +1829,47 @@ button.ltw-sn-acct:hover {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* R11: forced colours. The custom-drawn marks (tile radio dot, checkbox, toggle, progress) opt out of the
+   forced palette on the mark only and repaint in system colours, so a chosen state never fades into Canvas. */
+@media (forced-colors: active) {
+  .ltw-tile-radio input,
+  .ltw-cb input,
+  .ltw-toggle,
+  .ltw-pb-track {
+    forced-color-adjust: none;
+  }
+  .ltw-tile-radio input {
+    border-color: CanvasText;
+    background: Canvas;
+  }
+  .ltw-tile-radio input:checked {
+    border-color: Highlight;
+    background: Highlight;
+    box-shadow: inset 0 0 0 3px Canvas;
+  }
+  .ltw-cb input {
+    accent-color: Highlight;
+  }
+  .ltw-toggle {
+    background: ButtonText;
+  }
+  .ltw-toggle::after {
+    background: Canvas;
+  }
+  .ltw-toggle[aria-checked="true"] {
+    background: Highlight;
+  }
+  .ltw-toggle[aria-checked="true"]::after {
+    background: HighlightText;
+  }
+  .ltw-toggle:disabled {
+    background: GrayText;
+  }
+  .ltw-pb-track {
+    background: GrayText;
+  }
+  .ltw-pb-fill {
+    background: Highlight;
+  }
+}

@@ -312,8 +312,8 @@ test.describe("side nav", () => {
         return m ? m.y + m.height : Infinity;
       })
       .toBeLessThanOrEqual(accountBox.y);
-    await menu.getByRole("menuitem", { name: "Sign out" }).click();
-    await expect(page.getByText("Last account action: Sign out")).toBeVisible();
+    await menu.getByRole("menuitem", { name: "Log out" }).click();
+    await expect(page.getByText("Last account action: Log out")).toBeVisible();
     await nav(page)
       .getByRole("button", { name: /Calder Lane/ })
       .click();

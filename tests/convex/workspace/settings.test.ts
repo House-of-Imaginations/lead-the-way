@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api } from "../../../convex/_generated/api";
+import { ALL_PERMISSIONS } from "../../../convex/lib/orgs/permissions";
 import type { TimeZone } from "../../../convex/lib/profileFields";
 import { snapshotSeries } from "../../../convex/lib/snapshots";
 import { launchedSprint } from "../../../convex/lib/sprint";
@@ -350,6 +351,19 @@ test("defaults are checked, and need sprint:manage as well as org:manage", async
       expectOrgId: orgId,
     }),
   ).resolves.toBeNull();
+});
+
+test("settings.canDelete is true for the owner only, never in the demo", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const { as: six } = await seat(t, orgId, "user_six", [...ALL_PERMISSIONS]);
+  expect((await owner.query(api.workspace.settings, {})).canDelete).toBe(true);
+  expect((await six.query(api.workspace.settings, {})).canDelete).toBe(false);
+
+  const { as } = await calderLane();
+  expect((await as("priya").query(api.workspace.settings, {})).canDelete).toBe(
+    false,
+  );
 });
 
 test("the settings name the workspace they were read from (R-g)", async () => {

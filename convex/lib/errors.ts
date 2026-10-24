@@ -31,6 +31,8 @@ export type ErrorCode =
   | "FORBIDDEN"
   | "PERMISSION_ESCALATION"
   | "ORG_NAME_REQUIRED"
+  // Delete workspace: the typed name isn't the workspace's (R3).
+  | "ORG_NAME_MISMATCH"
   | "SLUG_TAKEN"
   | "ROLE_IN_USE"
   | "ROLE_INVALID"

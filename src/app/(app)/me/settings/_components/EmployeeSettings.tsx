@@ -56,7 +56,7 @@ export function EmployeeSettings({
           value: "privacy",
           label: "Privacy and sharing",
           content: (
-            <div className="grid grid-cols-[minmax(0,1fr)_300px] gap-09 max-[900px]:grid-cols-1 max-[900px]:gap-07">
+            <div className="grid max-w-[936px] grid-cols-[minmax(0,1fr)_300px] gap-07 max-[900px]:grid-cols-1">
               <ToggleList
                 rows={sharingRows(mine.threshold)}
                 values={mine.settings}

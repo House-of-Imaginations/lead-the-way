@@ -237,6 +237,23 @@ export async function ownerRoleOf(
 }
 
 /**
+ * Would losing `losingId` leave the owner role empty? The one owner check:
+ * `assertOwnerSurvives` refuses on it, and `settings.mine` asks it ahead of
+ * time, so the UI and the server never disagree (C6).
+ */
+export async function isLastOwner(
+  ctx: QueryCtx,
+  ownerRoleId: Id<"orgRoles">,
+  losingId: Id<"people">,
+): Promise<boolean> {
+  const owners = await ctx.db
+    .query("people")
+    .withIndex("by_role", (q) => q.eq("roleId", ownerRoleId))
+    .take(2);
+  return owners.every((row) => row._id === losingId);
+}
+
+/**
  * Would this org still have an owner afterwards?
  *
  * THE COUNT IS READ HERE, INSIDE THE TRANSACTION, and that is the whole of why
@@ -253,14 +270,7 @@ export async function assertOwnerSurvives(
   losingId: Id<"people">,
 ): Promise<void> {
   const ownerRole = await ownerRoleOf(ctx, orgId);
-
-  const owners = await ctx.db
-    .query("people")
-    .withIndex("by_role", (q) => q.eq("roleId", ownerRole._id))
-    .take(2);
-
-  const remaining = owners.filter((row) => row._id !== losingId);
-  if (remaining.length === 0) {
+  if (await isLastOwner(ctx, ownerRole._id, losingId)) {
     throwUserError(
       "LAST_OWNER",
       "This workspace would be left with no owner. Make somebody else an owner first.",

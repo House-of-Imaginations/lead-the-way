@@ -29,7 +29,10 @@ test("getViewer falls back when the active workspace is gone", async () => {
   expect(await viewerOrg()).toBe(second);
 
   // The active workspace is deleted: the next seat answers.
-  await owner.mutation(api.orgs.remove, { expectOrgId: second });
+  await owner.mutation(api.orgs.remove, {
+    expectOrgId: second,
+    name: "Second Network",
+  });
   expect(await viewerOrg()).toBe(first);
 
   // A stale pointer, however it got there, is not an error either.

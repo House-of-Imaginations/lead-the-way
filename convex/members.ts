@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
+import { isDemoAddress } from "./lib/demo/cast";
 import { throwUserError } from "./lib/errors";
 import {
   MAX_MEMBERS_PER_ORG,
@@ -154,11 +155,20 @@ export const remove = viewerMutation("members:manage")({
  * P7b R-h, accepted: a credential you shared stays public after you leave, under
  * the name stored on it at issue (M-c), and nothing in the product takes it
  * down. Spec 5.1 says so.
+ *
+ * R6: a demo persona never leaves; only a reset puts the demo back. A real
+ * account seated in the demo (a tester, an e2e run) may.
  */
 export const leave = viewerMutation()({
   args: {},
   returns: v.null(),
   handler: async (ctx): Promise<null> => {
+    if (isDemoAddress(ctx.viewer.person.email)) {
+      throwUserError(
+        "FORBIDDEN",
+        "Demo people can't leave. Reset the demo instead.",
+      );
+    }
     await dropSeat(ctx, ctx.viewer.person);
     return null;
   },

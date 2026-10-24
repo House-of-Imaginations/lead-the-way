@@ -8,6 +8,7 @@ import {
   HIDDEN_PERMISSIONS,
 } from "../../../convex/lib/orgs/permissions";
 import { writeSettings } from "../../../convex/lib/settings";
+import { seedAuthUser } from "../testHelpers";
 import { calderLane, harness, seat, workspace } from "./helpers";
 
 /**
@@ -367,6 +368,25 @@ test("a removed member leaves sprint 1's joined count and Members (M-c)", async 
   expect(
     (await priya.query(api.members.list, {})).map((m) => m.name),
   ).not.toContain("Sarah Whitlock");
+});
+
+test("a demo persona cannot leave; a real account in the demo can (R6)", async () => {
+  const { t, orgId, as } = await calderLane();
+  await t.mutation(internal.seed.clock, { target: "week2" });
+  await expect(
+    as("dan").mutation(api.members.leave, { expectOrgId: orgId }),
+  ).rejects.toMatchObject(FORBIDDEN);
+
+  const email = "kai@e2e.test";
+  const kai = t.withIdentity(
+    await seedAuthUser(t, { name: "Kai Moreno", email, emailVerified: true }),
+  );
+  const token = await t.mutation(internal.seed.invite, { email });
+  await kai.mutation(api.invites.accept, { token });
+  await expect(
+    kai.mutation(api.members.leave, { expectOrgId: orgId }),
+  ).resolves.toBeNull();
+  expect(await kai.query(api.orgs.mine, {})).toEqual([]);
 });
 
 test("the holder backfill stamps older badges once", async () => {

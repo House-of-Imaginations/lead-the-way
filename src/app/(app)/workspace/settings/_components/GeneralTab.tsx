@@ -9,6 +9,7 @@ import { useExpectOrgId } from "@/components/app/ExpectOrgId";
 import { SaveBar } from "@/components/settings/SaveBar";
 import { Select, TextInput, useToast } from "@/components/ui";
 import { errorCode, userMessage } from "@/lib/errors";
+import { DeleteWorkspace } from "./DeleteWorkspace";
 import type { WorkspaceData } from "./WorkspaceSettings";
 
 const choose = (empty: string, list: readonly string[]) => [
@@ -74,60 +75,65 @@ export function GeneralTab({ data }: { data: WorkspaceData }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-07" noValidate>
-      {/* Locked while saving, so nothing typed then is shown as saved. */}
-      <fieldset disabled={saving} className="contents">
-        <div className="grid max-w-[640px] grid-cols-2 gap-06 max-[900px]:grid-cols-1">
-          <TextInput
-            id={ID_OF.name}
-            label="Workspace name"
-            value={form.name}
-            error={errors.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-          <TextInput
-            id={ID_OF.teamName}
-            label="Team name"
-            value={form.teamName}
-            error={errors.teamName}
-            onChange={(e) => setForm({ ...form, teamName: e.target.value })}
-          />
-          <Select
-            id="workspace-industry"
-            label="Industry"
-            options={choose("Choose an industry", INDUSTRIES)}
-            value={form.industry}
-            onChange={(e) => setForm({ ...form, industry: e.target.value })}
-          />
-          <Select
-            id="workspace-function"
-            label="Main team function"
-            options={choose("Choose a team function", TEAM_FUNCTIONS)}
-            value={form.teamFunction}
-            onChange={(e) => setForm({ ...form, teamFunction: e.target.value })}
-          />
-          {data.partner ? (
-            <div className="col-span-2 max-[900px]:col-span-1">
+    <div className="flex flex-col gap-07">
+      <form onSubmit={onSubmit} className="flex flex-col gap-07" noValidate>
+        {/* Locked while saving, so nothing typed then is shown as saved. */}
+        <fieldset disabled={saving} className="contents">
+          <div className="grid max-w-[720px] grid-cols-2 gap-06 max-[900px]:grid-cols-1">
+            <TextInput
+              id={ID_OF.name}
+              label="Workspace name"
+              value={form.name}
+              error={errors.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+            <TextInput
+              id={ID_OF.teamName}
+              label="Team name"
+              value={form.teamName}
+              error={errors.teamName}
+              onChange={(e) => setForm({ ...form, teamName: e.target.value })}
+            />
+            <Select
+              id="workspace-industry"
+              label="Industry"
+              options={choose("Choose an industry", INDUSTRIES)}
+              value={form.industry}
+              onChange={(e) => setForm({ ...form, industry: e.target.value })}
+            />
+            <Select
+              id="workspace-function"
+              label="Main team function"
+              options={choose("Choose a team function", TEAM_FUNCTIONS)}
+              value={form.teamFunction}
+              onChange={(e) =>
+                setForm({ ...form, teamFunction: e.target.value })
+              }
+            />
+            {data.partner ? (
+              <div className="col-span-2 max-[900px]:col-span-1">
+                <TextInput
+                  id="workspace-partner"
+                  label="Partner program"
+                  value={data.partner}
+                  readOnly
+                  helper="Set by your partner. Contact them to change it."
+                />
+              </div>
+            ) : null}
+            <div className="col-start-1">
               <TextInput
-                id="workspace-partner"
-                label="Partner program"
-                value={data.partner}
+                id="workspace-id"
+                label="Workspace ID"
+                value={data.slug}
                 readOnly
-                helper="Set by your partner. Contact them to change it."
               />
             </div>
-          ) : null}
-          <div className="col-start-1">
-            <TextInput
-              id="workspace-id"
-              label="Workspace ID"
-              value={data.slug}
-              readOnly
-            />
           </div>
-        </div>
-      </fieldset>
-      <SaveBar saving={saving} error={errors.form ?? null} />
-    </form>
+        </fieldset>
+        <SaveBar saving={saving} error={errors.form ?? null} />
+      </form>
+      {data.canDelete ? <DeleteWorkspace name={data.name} /> : null}
+    </div>
   );
 }

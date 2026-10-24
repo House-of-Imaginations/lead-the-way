@@ -275,7 +275,7 @@ export function JoinView({
             <h1 className="text-heading-01 [text-wrap:balance] min-[900px]:text-display-02">
               {`${first} invited you to From Zero to Hero`}
             </h1>
-            <p className="max-w-[44ch] text-body-01 text-text-secondary">
+            <p className="max-w-[44ch] text-body-01 text-text-secondary min-[900px]:max-w-[34ch] min-[900px]:text-heading-03">
               For the next four weeks, one hour of your working week is
               protected for practical AI learning.
             </p>

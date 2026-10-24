@@ -22,7 +22,7 @@ export function NeverSees({
           <li key={item} className="flex items-start gap-03">
             <span
               aria-hidden
-              className="mt-[7px] size-[6px] shrink-0 bg-text-primary"
+              className="mt-[7px] size-[6px] shrink-0 bg-text-primary forced-colors:bg-[CanvasText] forced-colors:forced-color-adjust-none"
             />
             {item}
           </li>

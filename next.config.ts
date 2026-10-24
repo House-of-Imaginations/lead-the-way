@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   },
   // Otherwise `next dev` appends an agent rules block to AGENTS.md on every run.
   agentRules: false,
+  // R13: the dev indicator sat over the side nav disclaimer. Dev only.
+  devIndicators: false,
 };
 
 export default nextConfig;

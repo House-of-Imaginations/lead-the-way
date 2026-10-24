@@ -911,7 +911,10 @@ test("a broken demo workspace says to reset, in words the client gets", async ()
 test("the demo workspace can't be deleted in the app", async () => {
   const { t, orgId, as } = await calderLane();
   await expect(
-    as("priya").mutation(api.orgs.remove, { expectOrgId: orgId }),
+    as("priya").mutation(api.orgs.remove, {
+      expectOrgId: orgId,
+      name: "Calder Lane",
+    }),
   ).rejects.toMatchObject({
     data: { code: "FORBIDDEN", message: "Reset the demo instead." },
   });

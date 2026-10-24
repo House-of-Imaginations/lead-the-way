@@ -32,7 +32,7 @@ import {
   type SideNavProps,
 } from "@/components/ui";
 import { api } from "@convex/_generated/api";
-import type { Shell, TrackRow } from "@convex/lib/shell";
+import type { AccountShell, Shell, TrackRow } from "@convex/lib/shell";
 import { useHour } from "@/lib/useHour";
 import { authClient } from "@/lib/account/auth-client";
 import { switchPersona } from "@/lib/demo/switchPersona";
@@ -78,13 +78,27 @@ export function useShell(): Shell {
 const SwitchedContext = createContext(false);
 
 /**
- * True once another tab switched workspace (R6), while the notice shows. A
+ * True once the live shell is another workspace's: another tab switched (R6)
+ * and the notice shows, or this one is gone and /home is loading (R8). A
  * page whose live queries follow the viewer's workspace stops them then, as
  * AppShell stops showing the live shell, so it never shows the other
  * workspace's data under this one's heading.
  */
 export function useWorkspaceSwitched(): boolean {
   return useContext(SwitchedContext);
+}
+
+/**
+ * R8: the live shell is loaded and the page's workspace is no longer among
+ * the account's seats (deleted, left, or a seat lost). Not while loading or
+ * signed out: the server's copy stays then (Ruling 17).
+ */
+export function workspaceGone(
+  all: AccountShell | null | undefined,
+  orgId: Shell["expectOrgId"],
+): boolean {
+  if (!all) return false;
+  return !all.team?.workspaces.some((w) => w.id === orgId);
 }
 
 /** The signed-in shell. The (app) layout renders the demo banner above it. */
@@ -108,13 +122,21 @@ export function AppShell({
   // is not shown: the page stays the one it was rendered for.
   const all = useQuery(api.viewer.shell, { hour });
   const live = all?.team;
-  const switched = !!live && live.expectOrgId !== initial.expectOrgId;
-  const shell = (!switched && live) || initial;
+  // `moved`: the live shell is another workspace's. `switched`: one this
+  // account still holds, so another tab switched (R6). Gone, it's a full load
+  // of /home (R8), never the other workspace's data under this one's heading.
+  const gone = workspaceGone(all, initial.expectOrgId);
+  const moved = !!live && live.expectOrgId !== initial.expectOrgId;
+  const switched = moved && !gone;
+  useEffect(() => {
+    if (gone) window.location.replace("/home");
+  }, [gone]);
+  const shell = (!moved && live) || initial;
   // R3: every route that renders AppShell in P11 is a team route, so the team
   // row is selected. P13c reads the selected track from the switcher cookie on
   // /home and /settings/privacy. Like the shell, the rows stay the server's
   // copy through a sign-out or a switch in another tab (Ruling 17).
-  const rows = live && !switched ? all?.switcher : switcher;
+  const rows = live && !moved ? all?.switcher : switcher;
   // Settings' Reduce motion (P7b-1), as an attribute globals.css reads.
   const reduceMotion = shell.reduceMotion;
   useEffect(() => {
@@ -196,7 +218,7 @@ export function AppShell({
     // Once: an open Workspace settings is in the org items above with two tracks.
     ...(rows && ws.open ? [] : [workspaceItem]),
     {
-      label: "Sign out",
+      label: "Log out",
       // /signed-out drops the cookies and goes to log in, so a sign-out that
       // failed on the server still ends signed out here.
       onSelect: () =>
@@ -253,8 +275,13 @@ export function AppShell({
           <SideNav {...nav} initialState={navState} />
         </div>
         {/* relative: absolutely placed children (sr-only text) are clipped by main's scroll,
-            not left hanging below the window where they made the whole page scroll. */}
-        <main className="relative flex min-w-0 flex-1 flex-col gap-07 overflow-y-auto p-05 md:p-07">
+            not left hanging below the window where they made the whole page scroll.
+            tabIndex: main is the scroller, so a keyboard can reach and scroll it on a page with
+            nothing focusable inside (10, the agreement once signed, at 390). */}
+        <main
+          tabIndex={0}
+          className="relative flex min-w-0 flex-1 flex-col gap-07 overflow-y-auto p-05 md:p-07"
+        >
           {switched && !leaving && (
             <div role="status">
               <InlineNotification>
@@ -266,7 +293,7 @@ export function AppShell({
           )}
           <ExpectOrgIdProvider value={initial.expectOrgId}>
             <ShellContext value={shell}>
-              <SwitchedContext value={switched}>{children}</SwitchedContext>
+              <SwitchedContext value={moved}>{children}</SwitchedContext>
             </ShellContext>
           </ExpectOrgIdProvider>
           {/* The disclaimer must be on every surface. The expanded nav carries it; the rail hides
@@ -275,7 +302,7 @@ export function AppShell({
             Concept prototype. Not an official IBM product.
           </p>
           {/* A stale demo page (a reset or switch elsewhere) gets the notice, not a clock. */}
-          {shell.isDemo && !switched && <DemoClock />}
+          {shell.isDemo && !moved && <DemoClock />}
         </main>
       </div>
       <Suspense>

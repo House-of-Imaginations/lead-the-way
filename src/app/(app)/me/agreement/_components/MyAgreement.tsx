@@ -87,7 +87,7 @@ export function MyAgreement({
             {a.practise && <p className="text-text-secondary">{a.practise}</p>}
           </Row>
           <Row title="How we check outputs">
-            <ul className="list-disc pl-05">
+            <ul className="list-[square] pl-05">
               {a.checks.map((c) => (
                 <li key={c}>{c}</li>
               ))}
@@ -110,7 +110,7 @@ export function MyAgreement({
       >
         <div className="flex flex-col gap-04 p-05">
           <div className="flex items-center justify-between gap-03">
-            <h2 id="signatures-title" className="text-heading-03">
+            <h2 id="signatures-title" className="text-heading-04">
               Signatures
             </h2>
             {a.signatures && (

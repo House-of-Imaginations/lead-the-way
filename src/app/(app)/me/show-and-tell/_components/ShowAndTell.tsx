@@ -319,7 +319,7 @@ export function ShowAndTell({
               <h2 id="discuss-title" className="text-heading-04">
                 Discuss as a team
               </h2>
-              <ul className="flex list-disc flex-col gap-02 pl-05 text-body-02">
+              <ul className="flex list-[square] flex-col gap-02 pl-05 text-body-02">
                 {DISCUSS.map((q) => (
                   <li key={q}>{q}</li>
                 ))}

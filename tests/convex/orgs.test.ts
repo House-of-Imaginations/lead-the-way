@@ -4,6 +4,8 @@ import { ConvexError } from "convex/values";
 import { expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { issueBadge } from "../../convex/lib/badges";
+import { DEFAULT_SETTINGS, writeSettings } from "../../convex/lib/settings";
 import schema from "../../convex/schema";
 import { personFields, registerComponents, seedAuthUser } from "./testHelpers";
 
@@ -368,6 +370,50 @@ test("a role somebody still holds cannot be deleted", async () => {
       expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "ROLE_IN_USE" } });
+});
+
+test("after a leave, a new seat's preferences fall back to defaults", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+  const bob = t.withIdentity(BOB);
+  const employee = (await alice.query(api.orgRoles.list, {})).find(
+    (r) => !r.isOwner,
+  )!;
+  const first = await alice.mutation(api.invites.create, {
+    roleId: employee._id,
+    expectOrgId: orgId,
+  });
+  await bob.mutation(api.invites.accept, { token: first.token });
+  await t.run(async (ctx) => {
+    const seat = (await ctx.db
+      .query("people")
+      .withIndex("by_user_and_org", (q) =>
+        q.eq("userId", BOB.subject).eq("orgId", orgId),
+      )
+      .unique())!;
+    await writeSettings(ctx, seat, { reduceMotion: true });
+  });
+  expect((await bob.query(api.settings.mine, {})).settings.reduceMotion).toBe(
+    true,
+  );
+  await bob.mutation(api.members.leave, { expectOrgId: orgId });
+
+  const carol = t.withIdentity(CAROL);
+  const { orgId: birch } = await carol.mutation(api.orgs.create, {
+    name: "Birch Studio",
+  });
+  const birchEmployee = (await carol.query(api.orgRoles.list, {})).find(
+    (r) => !r.isOwner,
+  )!;
+  const second = await carol.mutation(api.invites.create, {
+    roleId: birchEmployee._id,
+    expectOrgId: birch,
+  });
+  await bob.mutation(api.invites.accept, { token: second.token });
+  expect((await bob.query(api.settings.mine, {})).settings).toEqual(
+    DEFAULT_SETTINGS,
+  );
 });
 
 /** THE INVITE AS A CREDENTIAL. */
@@ -900,7 +946,9 @@ test("deleting a workspace takes its picture with it", async () => {
     return stored;
   });
 
-  await t.withIdentity(ALICE).mutation(api.orgs.remove, { expectOrgId: orgId });
+  await t
+    .withIdentity(ALICE)
+    .mutation(api.orgs.remove, { expectOrgId: orgId, name: "Acme" });
 
   const after = await t.run(async (ctx) => ({
     file: await ctx.db.system.get(file),
@@ -908,6 +956,98 @@ test("deleting a workspace takes its picture with it", async () => {
   }));
   expect(after.file).toBeNull();
   expect(after.org).toBeNull();
+});
+
+test("remove needs the workspace name, trimmed and case-sensitive (R3, L14)", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+  for (const name of ["acme", "", "Acme Inc"]) {
+    await expect(
+      alice.mutation(api.orgs.remove, { expectOrgId: orgId, name }),
+    ).rejects.toMatchObject({ data: { code: "ORG_NAME_MISMATCH" } });
+  }
+  expect(await t.run((ctx) => ctx.db.get(orgId))).not.toBeNull();
+
+  await alice.mutation(api.orgs.remove, { expectOrgId: orgId, name: " Acme " });
+  expect(await t.run((ctx) => ctx.db.get(orgId))).toBeNull();
+});
+
+/** Alice's workspace with Bob seated and holding a badge. */
+async function badgeHolder(t: ReturnType<typeof harness>) {
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+  const employee = (await alice.query(api.orgRoles.list, {})).find(
+    (r) => !r.isOwner,
+  )!;
+  const { token } = await alice.mutation(api.invites.create, {
+    roleId: employee._id,
+    expectOrgId: orgId,
+  });
+  await t.withIdentity(BOB).mutation(api.invites.accept, { token });
+  const { slug, holder } = await t.run(async (ctx) => {
+    const bob = (await ctx.db
+      .query("people")
+      .withIndex("by_user_and_org", (q) =>
+        q.eq("userId", BOB.subject).eq("orgId", orgId),
+      )
+      .unique())!;
+    const badge = await issueBadge(ctx, bob, Date.now());
+    return { slug: badge.shareSlug, holder: bob.name };
+  });
+  return { orgId, slug, holder };
+}
+
+test("remove keeps public badges: the shared link still opens after the workspace is gone (R1)", async () => {
+  const t = harness();
+  const { orgId, slug, holder } = await badgeHolder(t);
+
+  await t
+    .withIdentity(ALICE)
+    .mutation(api.orgs.remove, { expectOrgId: orgId, name: "Acme" });
+
+  const credential = await t.query(api.badges.publicBySlug, { slug });
+  expect(credential).not.toBeNull();
+  expect(credential!.holder).toBe(holder);
+  const left = await t.run(async (ctx) => {
+    const count = async (table: "projects" | "people" | "teams") =>
+      (
+        await ctx.db
+          .query(table)
+          .withIndex("by_org", (q) => q.eq("orgId", orgId))
+          .collect()
+      ).length;
+    return {
+      projects: await count("projects"),
+      people: await count("people"),
+      teams: await count("teams"),
+    };
+  });
+  expect(left).toEqual({ projects: 0, people: 0, teams: 0 });
+});
+
+test("remove stamps unstamped badges before people go (R1)", async () => {
+  const t = harness();
+  const { orgId, slug, holder } = await badgeHolder(t);
+  // As a badge issued before issueBadge stored the holder.
+  await t.run(async (ctx) => {
+    const badge = (await ctx.db
+      .query("badges")
+      .withIndex("by_shareSlug", (q) => q.eq("shareSlug", slug))
+      .unique())!;
+    await ctx.db.patch(badge._id, {
+      holderName: undefined,
+      holderTimeZone: undefined,
+    });
+  });
+
+  await t
+    .withIdentity(ALICE)
+    .mutation(api.orgs.remove, { expectOrgId: orgId, name: "Acme" });
+
+  expect((await t.query(api.badges.publicBySlug, { slug }))?.holder).toBe(
+    holder,
+  );
 });
 
 /**

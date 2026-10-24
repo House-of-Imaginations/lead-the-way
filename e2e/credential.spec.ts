@@ -201,6 +201,34 @@ test("week 4: the badge without a reflection points to show and tell", async ({
   ).toHaveCount(0);
 });
 
+test("the credential page carries Open Graph tags (R10)", async ({ page }) => {
+  resetDemo("week4");
+  await page.goto(publicPath());
+  const meta = (selector: string) => page.locator(`head ${selector}`);
+  await expect(meta('meta[property="og:title"]')).toHaveAttribute(
+    "content",
+    "Dan Okafor's credential",
+  );
+  await expect(meta('meta[property="og:description"]')).toHaveAttribute(
+    "content",
+    "An IBM SkillsBuild badge, with evidence of how it was used at work.",
+  );
+  await expect(meta('meta[property="og:type"]')).toHaveAttribute(
+    "content",
+    "website",
+  );
+  await expect(meta('meta[name="twitter:card"]')).toHaveAttribute(
+    "content",
+    "summary",
+  );
+  await expect(meta('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /noindex/,
+  );
+  await expect(meta('meta[property="og:image"]')).toHaveCount(0);
+  await expect(page).toHaveTitle("Dan Okafor's credential · From Zero to Hero");
+});
+
 test("without a badge, 15 says when it appears", async ({ page }) => {
   resetDemo("week3");
   await signInAs(page, "dan");

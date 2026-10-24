@@ -119,7 +119,10 @@ test("only an owner deletes a workspace, whatever a custom role holds (M-j)", as
   const { orgId } = await workspace(t);
   const { as: all } = await seat(t, orgId, "user_all", [...PERMISSIONS]);
   await expect(
-    all.mutation(api.orgs.remove, { expectOrgId: orgId }),
+    all.mutation(api.orgs.remove, {
+      expectOrgId: orgId,
+      name: "Aster Network",
+    }),
   ).rejects.toMatchObject({
     data: {
       code: "FORBIDDEN",

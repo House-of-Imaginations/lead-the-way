@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { viewerMutation, viewerQuery } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { MAX_TEAM_NAME, orgNameOf } from "./lib/orgs/create";
+import { isOwnerRole } from "./lib/orgs/membership";
 import { grants } from "./lib/orgs/permissions";
 import { thresholdOf } from "./lib/privacy";
 import { TIME_ZONES } from "./lib/profileFields";
@@ -46,6 +47,8 @@ export const settings = viewerQuery("org:manage")({
     }),
     /** Sprint defaults' Save needs sprint:manage too (`saveSprintDefaults`). */
     canSetDefaults: v.boolean(),
+    /** Delete workspace shows for the owner only, never in the demo (R2). */
+    canDelete: v.boolean(),
   }),
   handler: async (ctx) => {
     const { org, permissions } = ctx.viewer;
@@ -69,6 +72,7 @@ export const settings = viewerQuery("org:manage")({
         ctx.viewer.person.timeZone,
       ),
       canSetDefaults: grants(permissions, ["sprint:manage"]),
+      canDelete: isOwnerRole(ctx.viewer.role) && !org.isDemo,
     };
   },
 });

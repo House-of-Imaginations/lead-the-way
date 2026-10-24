@@ -5,7 +5,14 @@ import { DEFAULT_SETTINGS } from "../../convex/lib/settings";
 import { snapshotSeries } from "../../convex/lib/snapshots";
 import { DEFAULT_TIME_ZONE } from "../../convex/lib/orgs/people";
 import { TIME_ZONES, TIME_ZONE_LABELS } from "../../convex/lib/profileFields";
-import { calderLane, harness, workspace, type T } from "./workspace/helpers";
+import { personFields } from "./testHelpers";
+import {
+  calderLane,
+  harness,
+  seat,
+  workspace,
+  type T,
+} from "./workspace/helpers";
 import { move, personOf } from "./sprintHelpers";
 
 beforeEach(() => {
@@ -35,7 +42,42 @@ test("mine reads the viewer's own fields, the defaults, the owner's name and the
     manager: { name: "Priya Raman" },
     threshold: 5,
     settings: { ...DEFAULT_SETTINGS },
+    leave: "demo",
+    orgName: "Calder Lane",
   });
+});
+
+test("mine.leave says whether the viewer may leave (R5, R6)", async () => {
+  const t = harness();
+  const { owner, orgId } = await workspace(t);
+  const { as: member } = await seat(t, orgId, "user_member", []);
+  expect((await member.query(api.settings.mine, {})).leave).toBe("allowed");
+  expect(await owner.query(api.settings.mine, {})).toMatchObject({
+    leave: "lastOwner",
+    orgName: "Aster Network",
+  });
+
+  // A second owner: either may now leave.
+  await t.run(async (ctx) => {
+    const ownerRole = (
+      await ctx.db
+        .query("orgRoles")
+        .withIndex("by_org", (q) => q.eq("orgId", orgId))
+        .collect()
+    ).find((r) => r.kind === "owner")!;
+    await ctx.db.insert("people", {
+      orgId,
+      roleId: ownerRole._id,
+      ...personFields("user_second_owner"),
+    });
+  });
+  expect((await owner.query(api.settings.mine, {})).leave).toBe("allowed");
+
+  const lane = await calderLane();
+  await move(lane.t, "week1");
+  expect((await lane.as("dan").query(api.settings.mine, {})).leave).toBe(
+    "demo",
+  );
 });
 
 test("two writes leave one settings row per person (writer contract 5)", async () => {

@@ -66,7 +66,7 @@ export function sampleNav(onAction: (label: string) => void): SideNavProps {
         helper: "Managed by Priya Raman",
       },
       act("Switch to Dan's view"),
-      act("Sign out"),
+      act("Log out"),
     ],
   };
 }

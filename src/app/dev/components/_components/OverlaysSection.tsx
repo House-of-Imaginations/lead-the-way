@@ -56,7 +56,7 @@ export function OverlaysSection() {
               disabled: true,
               helper: "Managed by Priya Raman",
             },
-            { label: "Sign out", onSelect: () => setLast("Sign out") },
+            { label: "Log out", onSelect: () => setLast("Log out") },
           ]}
         />
         <Menu
@@ -68,7 +68,7 @@ export function OverlaysSection() {
           }
           items={[
             { label: "Your profile", onSelect: () => setLast("Your profile") },
-            { label: "Sign out", onSelect: () => setLast("Sign out") },
+            { label: "Log out", onSelect: () => setLast("Log out") },
           ]}
         />
         <Modal

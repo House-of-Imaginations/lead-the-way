@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, components, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { issueBadge } from "../../convex/lib/badges";
 import {
   ACCOUNT_HOLDERS,
   castOf,
@@ -625,6 +626,14 @@ test("clearE2e removes e2e.test accounts and the workspaces they own, and nothin
   const { orgId } = await t
     .withIdentity({ subject: kai })
     .mutation(api.orgs.create, { name: "Kai's studio", teamName: "Studio" });
+  // A badge in it: clearE2e erases badges, unlike orgs.remove (R1).
+  await t.run(async (ctx) => {
+    const seat = (await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first())!;
+    await issueBadge(ctx, seat, Date.now());
+  });
   // A password reset in flight for each: Better Auth keeps the user id in `value`.
   for (const id of [kai, bec]) {
     await t.run((ctx) =>
@@ -669,6 +678,10 @@ test("clearE2e removes e2e.test accounts and the workspaces they own, and nothin
       .query("people")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .first(),
+    badge: await ctx.db
+      .query("badges")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first(),
     kaiProfile: await ctx.db
       .query("profiles")
       .withIndex("by_user", (q) => q.eq("userId", kai))
@@ -683,6 +696,7 @@ test("clearE2e removes e2e.test accounts and the workspaces they own, and nothin
     team: null,
     role: null,
     seat: null,
+    badge: null,
     kaiProfile: null,
   });
   expect(left.becProfile).not.toBeNull();
@@ -842,4 +856,41 @@ test("seed.careerProfile sets private on a profile that exists", async () => {
   ).toBe(id);
   const row = await t.run((ctx) => ctx.db.get(id!));
   expect(row?.private).toBe(false);
+});
+
+test("unseat drops an e2e account's demo seat and refuses anyone else", async () => {
+  const t = harness();
+  const accounts = await seedDemoAccounts(t);
+  const orgId = await t.mutation(internal.seed.writeCalderLane, { accounts });
+  const email = "kai@e2e.test";
+  const kai = await seedAuthUser(t, {
+    name: "Kai Moreno",
+    email,
+    emailVerified: false,
+  });
+  const token = await t.mutation(internal.seed.invite, { email });
+  await t.withIdentity(kai).mutation(api.invites.accept, { token });
+  const seatIn = (userId: string) =>
+    t.run((ctx) =>
+      ctx.db
+        .query("people")
+        .withIndex("by_user_and_org", (q) =>
+          q.eq("userId", userId).eq("orgId", orgId),
+        )
+        .unique(),
+    );
+  expect(await seatIn(kai.subject)).not.toBeNull();
+
+  expect(await t.mutation(internal.seed.unseat, { email })).toBe(true);
+  expect(await seatIn(kai.subject)).toBeNull();
+  // No seat left to drop.
+  expect(await t.mutation(internal.seed.unseat, { email })).toBe(false);
+
+  // Dan has no seat until week 1; Priya, seated from the start, keeps hers.
+  for (const key of ["dan", "priya"] as const) {
+    await expect(
+      t.mutation(internal.seed.unseat, { email: castOf(key).email }),
+    ).rejects.toThrow(/e2e\.test/);
+  }
+  expect(await seatIn(accounts.priya)).not.toBeNull();
 });
