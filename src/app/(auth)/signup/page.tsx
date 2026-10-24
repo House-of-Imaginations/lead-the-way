@@ -35,7 +35,11 @@ export default async function SignUpPage({
       lead={
         preview
           ? `Join your team's sprint at ${preview.orgName}.`
-          : typeof ref === "string" && ref && track !== "career"
+          : // Any `invite`, pending or not, wins (R9).
+            invite === undefined &&
+              typeof ref === "string" &&
+              ref &&
+              track !== "career"
             ? "A manager shared From Zero to Hero with you. Set up a four-week AI sprint for your own team."
             : "Set up a four-week AI sprint for your team."
       }

@@ -181,6 +181,13 @@ test("?ref= changes only the lead line (R9)", async ({ page }) => {
   await expect(
     page.getByText("Join your team's sprint at Calder Lane.", { exact: true }),
   ).toBeVisible();
+  // So does one that isn't pending: the plain lead, not the ref one (R9).
+  await page.goto("/signup?ref=calder-lane&invite=e2e-no-such-token");
+  await expect(
+    page.getByText("Set up a four-week AI sprint for your team.", {
+      exact: true,
+    }),
+  ).toBeVisible();
 });
 
 test("sign-up from a join link goes back to the link and makes no workspace (Review Focus 1)", async ({
