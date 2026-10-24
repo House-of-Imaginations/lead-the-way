@@ -2,7 +2,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { AccountShell, Shell, TrackRow } from "../../../convex/lib/shell";
-import { AppShell, useShell } from "../../../src/components/app/AppShell";
+import {
+  AppShell,
+  useShell,
+  useWorkspaceSwitched,
+  workspaceGone,
+} from "../../../src/components/app/AppShell";
 import { useExpectOrgId } from "../../../src/components/app/ExpectOrgId";
 
 let live: Shell | undefined;
@@ -29,7 +34,11 @@ const shell = {
   area: "employee",
   org: { name: "Calder Lane" },
   nav: [],
-  workspaces: [],
+  // The account holds both, so a live shell for "other" is a switch, not a loss.
+  workspaces: [
+    { id: "org1", name: "Calder Lane", current: true },
+    { id: "other", name: "Other", current: false },
+  ],
   user: { name: "Dan", email: "dan@example.com" },
   status: null,
   checklist: null,
@@ -120,12 +129,58 @@ test("useShell needs AppShell above it", () => {
   );
 });
 
-test("a live shell with no team keeps the server's shell", () => {
+test("a live shell with no team keeps the server's shell while /home loads (R8)", () => {
   account = { account: { name: "Dan", initials: "D" } };
   const html = render();
   expect(html).toContain("id:org1");
   expect(html).toContain("Calder Lane");
   expect(html).not.toContain("another tab");
+});
+
+test("the workspace is gone only once the live shell no longer lists it (R8)", () => {
+  const me = { name: "Dan", initials: "D" };
+  const other = { ...shell, expectOrgId: "other" } as Shell;
+  const without = {
+    ...other,
+    workspaces: [{ id: "other", name: "Other", current: true }],
+  } as Shell;
+  // Loading or signed out: the server's copy stays.
+  expect(workspaceGone(undefined, shell.expectOrgId)).toBe(false);
+  expect(workspaceGone(null, shell.expectOrgId)).toBe(false);
+  // Still held: the same workspace, or a switch in another tab.
+  expect(workspaceGone({ account: me, team: shell }, "org1" as never)).toBe(
+    false,
+  );
+  expect(workspaceGone({ account: me, team: other }, "org1" as never)).toBe(
+    false,
+  );
+  // Deleted, left or lost: no seat at all, or the next seat without it.
+  expect(workspaceGone({ account: me }, "org1" as never)).toBe(true);
+  expect(workspaceGone({ account: me, team: without }, "org1" as never)).toBe(
+    true,
+  );
+});
+
+test("a deleted workspace with another seat left never says it switched (R8)", () => {
+  const Stale = () => <u>stale:{String(useWorkspaceSwitched())}</u>;
+  account = {
+    account: { name: "Dan", initials: "D" },
+    team: {
+      ...shell,
+      expectOrgId: "other",
+      org: { name: "Other" },
+      workspaces: [{ id: "other", name: "Other", current: true }],
+    } as Shell,
+  };
+  const html = renderToStaticMarkup(
+    <AppShell initial={shell} hour={0} navState={null}>
+      <Stale />
+    </AppShell>,
+  );
+  expect(html).not.toContain("another tab");
+  // The page's own workspace stays on screen and its live queries stop.
+  expect(html).toContain("Calder Lane");
+  expect(html).toContain("stale:true");
 });
 
 const rows: TrackRow[] = [

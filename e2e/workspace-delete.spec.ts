@@ -58,10 +58,15 @@ test.describe("Delete workspace", () => {
     await page.getByRole("button", { name: "Create workspace" }).click();
     await expect(page).toHaveURL("/setup/team");
 
-    await page.goto("/workspace/settings");
-    await expect(
-      page.getByRole("heading", { name: "Delete workspace" }),
-    ).toBeVisible();
+    // A second tab on the same workspace (M1): it lands on /home's answer too.
+    const other = await page.context().newPage();
+    for (const p of [page, other]) {
+      await p.goto("/workspace/settings");
+      await expect(
+        p.getByRole("heading", { name: "Delete workspace" }),
+      ).toBeVisible();
+    }
+    await page.bringToFront();
     await page.getByRole("button", { name: "Delete workspace" }).click();
     const dialog = page.getByRole("dialog");
     await expect(
@@ -78,8 +83,12 @@ test.describe("Delete workspace", () => {
     await expectAxeClean(page, '[role="dialog"]');
     await confirm.click();
 
-    // The Calder Lane seat is next: an employee's home.
-    await expect(page).toHaveURL("/me");
+    // The Calder Lane seat is next: an employee's home, in both tabs, and
+    // nobody switched anything (R8).
+    for (const p of [page, other]) {
+      await expect(p).toHaveURL("/me", { timeout: 10_000 });
+      await expect(p.getByText(/switched workspace/)).toHaveCount(0);
+    }
     await nav(page).getByRole("button", { name: "Calder Lane" }).click();
     await expect(page.getByRole("menuitem").first()).toBeVisible();
     await expect(
