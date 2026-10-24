@@ -68,7 +68,7 @@ export function AgreementPreview({
         </Part>
         <Part title="How we check outputs">
           {checks.length ? (
-            <ul className="list-disc pl-05">
+            <ul className="list-[square] pl-05">
               {checks.map((c) => (
                 <li key={c}>{c}</li>
               ))}
