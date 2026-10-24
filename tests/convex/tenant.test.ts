@@ -127,6 +127,9 @@ test("no public function reads another workspace's ids", async () => {
       // A query that names no workspace answers from the caller's own open
       // one, so whatever it returns must hold none of the victim's ids.
       if (fn.kind !== "query") continue;
+      // A career query names no workspace and refuses a caller with no
+      // career track; X2 is swept in careerIsolation.test.ts.
+      if (fn.name.startsWith("careers/")) continue;
       read++;
       const answer: unknown = await call(attacker, fn, fixed);
       if (holdsId(answer, theirs)) leaked.push(`${fn.name} answered theirs`);
