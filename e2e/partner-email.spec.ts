@@ -18,7 +18,7 @@ const COPY = [
   "Southbank Business Collective",
   "Member program",
   "Hi Priya,",
-  "As a member, your team can join From hero to zero: a free four-week AI sprint for managers and their teams, built on existing IBM SkillsBuild courses.",
+  "As a member, your team can join From zero to hero: a free four-week AI sprint for managers and their teams, built on existing IBM SkillsBuild courses.",
   "It starts with you. You get a short manager path, a ready-made Team AI Agreement, and a plan to protect one working hour a week, so your team learns during work instead of after it.",
   "60 min",
   "Leading AI in Your Team: safe use, checking outputs, supporting nervous learners",
@@ -41,7 +41,7 @@ test("partner email renders signed out", async ({ page }) => {
   });
   await page.goto(PATH);
   await expect(page).toHaveURL(PATH);
-  await expect(page).toHaveTitle("Partner email · From hero to zero");
+  await expect(page).toHaveTitle("Partner email · From zero to hero");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
     "content",
     /noindex/,

@@ -16,7 +16,7 @@ test("the guide shows Main.png's sections and copy", async ({ page }) => {
   await signInAs(page, "priya");
   await page.goto("/guide");
   await expect(
-    page.getByRole("heading", { level: 1, name: "From hero to zero" }),
+    page.getByRole("heading", { level: 1, name: "From zero to hero" }),
   ).toBeVisible();
   for (const text of [
     "A manager-first SkillsBuild team path. Priya learns first, sets shared AI norms and protects one paid hour a week. Dan learns inside that hour, applies it to a real task and shows what changed.",
@@ -168,7 +168,7 @@ test("an account without a demo seat sees only Start as Priya", async ({
   await signInAs(page, "dan"); // no seat until 8 September
   await page.goto("/guide");
   await expect(
-    page.getByRole("heading", { level: 1, name: "From hero to zero" }),
+    page.getByRole("heading", { level: 1, name: "From zero to hero" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Start as Priya" }),

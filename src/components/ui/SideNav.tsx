@@ -220,10 +220,10 @@ export function SideNav({
         <Link
           className="ltw-sn-brand"
           href={homeHref}
-          title={collapsed ? "From hero to zero" : undefined}
+          title={collapsed ? "From zero to hero" : undefined}
         >
           <Logo />
-          <span className="ltw-sn-t">From hero to zero</span>
+          <span className="ltw-sn-t">From zero to hero</span>
         </Link>
         {orgMenu ? (
           <Menu

@@ -5,7 +5,7 @@ import { fetchAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, getShell, openOrHome } from "@/lib/account/queries";
 import { ProjectForm } from "./_components/ProjectForm";
 
-export const metadata: Metadata = { title: "Work project · From hero to zero" };
+export const metadata: Metadata = { title: "Work project · From zero to hero" };
 
 export default async function WorkProjectPage() {
   // The employee layout redirects everyone else; the page renders in parallel.

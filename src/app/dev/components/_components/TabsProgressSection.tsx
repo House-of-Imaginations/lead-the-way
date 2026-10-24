@@ -58,7 +58,7 @@ export function TabsProgressSection() {
         </p>
       </div>
       <Disclosure summary="Why can't I see individual progress?">
-        From hero to zero shows you team totals only. Individual course
+        From zero to hero shows you team totals only. Individual course
         activity, time spent and scores stay private to each person, so learning
         feels safe. Projects appear only when their owner chooses to present
         them.

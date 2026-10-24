@@ -20,7 +20,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "From hero to zero",
+  title: "From zero to hero",
   description:
     "A manager-first team AI learning experience. Concept prototype. Not an official IBM product.",
 };

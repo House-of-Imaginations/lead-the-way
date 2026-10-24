@@ -30,7 +30,7 @@ export function icsFor(hour: CalendarHour, now = Date.now()): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//From hero to zero//Protected hour//EN",
+    "PRODID:-//From zero to hero//Protected hour//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
   ];

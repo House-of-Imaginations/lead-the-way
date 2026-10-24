@@ -17,7 +17,7 @@ const COPY: Record<ModuleKey, Pick<ModuleContent, "objective" | "idea">> = {
   "without-micromanaging": {
     objective:
       "Protect time and celebrate application while keeping individual learning private.",
-    idea: "Your job is to protect the hour and use AI openly yourself, not to track who finished what. From hero to zero only ever shows you team totals.",
+    idea: "Your job is to protect the hour and use AI openly yourself, not to track who finished what. From zero to hero only ever shows you team totals.",
   },
   "team-agreement": {
     objective: "Run a 30-minute conversation that ends with four shared rules.",

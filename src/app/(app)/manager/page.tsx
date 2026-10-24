@@ -4,7 +4,7 @@ import { preloadAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, getShell, openOrHome } from "@/lib/account/queries";
 import { Overview } from "./_components/Overview";
 
-export const metadata: Metadata = { title: "Overview · From hero to zero" };
+export const metadata: Metadata = { title: "Overview · From zero to hero" };
 
 export default async function ManagerOverviewPage() {
   // The manager layout redirects everyone else; the page renders in parallel,

@@ -22,7 +22,7 @@ for (const theme of THEMES) {
     const bar = page.locator("#topbar .ltw-tb");
     await expect(bar).toHaveCSS("height", "48px");
     await expect(
-      bar.getByRole("link", { name: "From hero to zero" }),
+      bar.getByRole("link", { name: "From zero to hero" }),
     ).toBeVisible();
     const open = bar.getByRole("button", { name: "Open menu" });
     await expect(open).toHaveAttribute("aria-expanded", "false");
@@ -60,7 +60,7 @@ for (const theme of THEMES) {
     await page.goto(gallery(theme));
     const bar = page.locator("#topbar .ltw-tb");
     const menu = bar.getByRole("button", { name: "Open menu" });
-    const brand = bar.getByRole("link", { name: "From hero to zero" });
+    const brand = bar.getByRole("link", { name: "From zero to hero" });
     const avatar = bar.getByRole("button", { name: "Priya Raman" });
     const barBox = (await bar.boundingBox())!;
     const [m, b, a] = [
