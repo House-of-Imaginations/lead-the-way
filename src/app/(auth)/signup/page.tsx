@@ -6,7 +6,8 @@ import { currentHour, getAuthMethods, openOrHome } from "@/lib/account/queries";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-// R8: `?ref=<slug>` is accepted and changes nothing; the account gets its own workspace.
+// R9: `?ref=<slug>` changes the lead line only. Nothing is read or stored,
+// and the account gets its own workspace. `invite` and `track=career` win.
 // Ruling 19: `?invite=<token>` sends the new account back to its join link,
 // and a pending link's pinned address shows locked (Ruling 2). A link that
 // isn't pending shows the plain form; /join/<token> says what's wrong.
@@ -15,7 +16,7 @@ export default async function SignUpPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const [providers, { invite, track }] = await Promise.all([
+  const [providers, { invite, track, ref }] = await Promise.all([
     getAuthMethods(),
     searchParams,
   ]);
@@ -34,7 +35,9 @@ export default async function SignUpPage({
       lead={
         preview
           ? `Join your team's sprint at ${preview.orgName}.`
-          : "Set up a four-week AI sprint for your team."
+          : typeof ref === "string" && ref && track !== "career"
+            ? "A manager shared Lead the Way with you. Set up a four-week AI sprint for your own team."
+            : "Set up a four-week AI sprint for your team."
       }
       panelTitle="Start with one hour a week."
       panelBody="You learn first, agree the rules with your team, then protect the hour. Your team joins after that."
