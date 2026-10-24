@@ -20,8 +20,8 @@ import { firstNameOf, isDemoAccount, ownerOf } from "./orgs/people";
 import { settingsOf } from "./settings";
 import { SETUP_STEPS } from "./setupSteps";
 import { setupSprint, currentTeam, launchedSprint, setupGate } from "./sprint";
-import { sprintStatus } from "./sprintTime";
-import type { Viewer } from "./viewer";
+import { sprintPhase, sprintStatus, weekOf } from "./sprintTime";
+import type { Career, Viewer } from "./viewer";
 
 /** Carbon icon names the nav may use. `AppShell` maps each to its component. */
 export const NAV_ICONS = [
@@ -127,11 +127,24 @@ export const shellValidator = v.object({
 });
 export type Shell = Infer<typeof shellValidator>;
 
+/** One row of the side nav's "Your tracks" (R2). */
+export const trackRowValidator = v.object({
+  kind: v.union(v.literal("team"), v.literal("career")),
+  name: v.string(),
+  caption: v.string(),
+  initials: v.optional(v.string()),
+  private: v.boolean(),
+  href: v.string(),
+});
+export type TrackRow = Infer<typeof trackRowValidator>;
+
 /** `viewer.shell`: the account, plus each learner track it has (spec 5.2). */
 export const accountShellValidator = v.object({
   account: v.object({ name: v.string(), initials: v.string() }),
   team: v.optional(shellValidator),
   career: v.optional(v.object({ private: v.boolean() })),
+  /** Both learner tracks (R2): the switcher's rows. Absent with one track. */
+  switcher: v.optional(v.array(trackRowValidator)),
 });
 export type AccountShell = Infer<typeof accountShellValidator>;
 
@@ -372,4 +385,41 @@ export async function shellOf(ctx: QueryCtx, viewer: Viewer): Promise<Shell> {
     status: shown ? sprintStatus(shown, now, manager) : null,
     switchTo: await switchToOf(ctx, viewer, isDemo),
   };
+}
+
+/**
+ * The switcher's rows for an account with both tracks (R2). The team caption
+ * reads the team clock, as the status block does; outside an active sprint it
+ * is the workspace alone. R13: P12a appends the career's target role.
+ */
+export async function tracksOf(
+  ctx: QueryCtx,
+  team: Viewer,
+  shell: Shell,
+  career: Career,
+): Promise<TrackRow[]> {
+  // `now` is a getter that reads the clock; read it once.
+  const now = team.now;
+  const sprint = await launchedSprint(ctx, team.org._id);
+  const caption =
+    sprint && sprintPhase(sprint, now) === "active"
+      ? `${team.org.name}, week ${weekOf(sprint, now)} of ${sprint.weeks}`
+      : team.org.name;
+  return [
+    {
+      kind: "team",
+      name: "Team sprint",
+      caption,
+      initials: shell.org.initials,
+      private: false,
+      href: shell.home,
+    },
+    {
+      kind: "career",
+      name: "Change careers",
+      caption: career.profile.private ? "Private" : "Pivot Crews",
+      private: career.profile.private,
+      href: "/careers/journey",
+    },
+  ];
 }

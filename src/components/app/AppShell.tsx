@@ -32,7 +32,7 @@ import {
   type SideNavProps,
 } from "@/components/ui";
 import { api } from "@convex/_generated/api";
-import type { Shell } from "@convex/lib/shell";
+import type { Shell, TrackRow } from "@convex/lib/shell";
 import { useHour } from "@/lib/useHour";
 import { authClient } from "@/lib/account/auth-client";
 import { switchPersona } from "@/lib/demo/switchPersona";
@@ -92,20 +92,28 @@ export function AppShell({
   initial,
   hour,
   navState,
+  switcher,
   children,
 }: {
   initial: Shell;
   /** The server read's `hour`. A refresh brings a new one and a fresh subscription (P5 Ruling 14). */
   hour: number;
   navState: NavState | null;
+  /** The server read's switcher rows: the account has both learner tracks (R2). */
+  switcher?: TrackRow[];
   children: ReactNode;
 }) {
   // Ruling 17: live, starting from the server's copy (and kept through a
   // sign-out). A live shell for another workspace (switched in another tab)
   // is not shown: the page stays the one it was rendered for.
-  const live = useQuery(api.viewer.shell, { hour })?.team;
+  const all = useQuery(api.viewer.shell, { hour });
+  const live = all?.team;
   const switched = !!live && live.expectOrgId !== initial.expectOrgId;
   const shell = (!switched && live) || initial;
+  // R3: every route that renders AppShell in P11 is a team route, so the team
+  // row is selected. P13c reads the selected track from the switcher cookie on
+  // /home and /settings/privacy.
+  const rows = all === undefined ? switcher : all?.switcher;
   // Settings' Reduce motion (P7b-1), as an attribute globals.css reads.
   const reduceMotion = shell.reduceMotion;
   useEffect(() => {
@@ -161,6 +169,8 @@ export function AppShell({
   ];
   const switchTo = shell.switchTo;
   const accountMenu: MenuItem[] = [
+    // R4: with two tracks the switcher replaces the org block, so its items lead here.
+    ...(rows ? orgMenu : []),
     ...(switchTo
       ? [
           {
@@ -182,7 +192,8 @@ export function AppShell({
       // 17 for the manager area, 19 for everyone else (Ruling 10).
       href: shell.area === "manager" ? "/settings" : "/me/settings",
     },
-    workspaceItem,
+    // Once: an open Workspace settings is in the org items above with two tracks.
+    ...(rows && ws.open ? [] : [workspaceItem]),
     {
       label: "Sign out",
       // /signed-out drops the cookies and goes to log in, so a sign-out that
@@ -199,11 +210,16 @@ export function AppShell({
   ];
 
   // Ruling: a person who isn't a manager gets the neutral avatar.
-  const user = { ...shell.user, manager: shell.area === "manager" };
+  const user = {
+    ...shell.user,
+    ...(rows && { role: "Two tracks" }),
+    manager: shell.area === "manager",
+  };
   const nav: SideNavProps = {
     homeHref: shell.home,
     org: shell.org,
-    orgMenu: orgMenu.length > 0 ? orgMenu : undefined,
+    orgMenu: !rows && orgMenu.length > 0 ? orgMenu : undefined,
+    tracks: rows && { rows, selected: "team" },
     sections: shell.nav.map((section) => ({
       title: section.title,
       links: section.links.map((l) => ({

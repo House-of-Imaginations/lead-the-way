@@ -6,12 +6,19 @@ import { AppShell } from "@/components/app/AppShell";
 import { HourlyRefresh } from "@/components/app/HourlyRefresh";
 import { DemoBanner } from "@/components/ui/DemoBanner";
 import { getToken } from "@/lib/account/auth-server";
-import { currentHour, getHome, getShell } from "@/lib/account/queries";
+import {
+  currentHour,
+  getAccountShell,
+  getHome,
+  getShell,
+} from "@/lib/account/queries";
 import { NAV_COOKIE, parseNav } from "@/lib/navState";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const [token, shell, jar] = await Promise.all([
+  // getShell reads getAccountShell: one cached fetch for both.
+  const [token, all, shell, jar] = await Promise.all([
     getToken(),
+    getAccountShell(),
     getShell(),
     cookies(),
   ]);
@@ -35,6 +42,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           initial={shell}
           hour={currentHour()}
           navState={parseNav(jar.get(NAV_COOKIE)?.value)}
+          switcher={all?.switcher}
         >
           {children}
         </AppShell>

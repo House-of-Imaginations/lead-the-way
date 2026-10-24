@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import {
   getAccount,
@@ -6,7 +6,20 @@ import {
   requireCareer,
   requireTeam,
 } from "../../convex/lib/viewer";
-import { addCareer, harness, workspace } from "./workspace/helpers";
+import {
+  addCareer,
+  calderLane,
+  clock,
+  harness,
+  workspace,
+} from "./workspace/helpers";
+
+beforeEach(() => {
+  vi.stubEnv("DEMO_MODE", "on");
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 test("no track sends home to /start, and the shell has only the account", async () => {
   const loner = harness().withIdentity({ subject: "user_loner" });
@@ -65,4 +78,54 @@ test("getAccount, getCareer, requireCareer and requireTeam", async () => {
     "guide",
   );
   expect((await loner.run((ctx) => getAccount(ctx))).career).toBeUndefined();
+});
+
+test("two learner tracks list both rows", async () => {
+  const { t, as } = await calderLane();
+  await clock(t, "week2");
+  await addCareer(as("dan"));
+  expect((await as("dan").query(api.viewer.shell, {}))?.switcher).toEqual([
+    {
+      kind: "team",
+      name: "Team sprint",
+      caption: "Calder Lane, week 2 of 4",
+      initials: "CL",
+      private: false,
+      href: "/me",
+    },
+    {
+      kind: "career",
+      name: "Change careers",
+      caption: "Private",
+      private: true,
+      href: "/careers/journey",
+    },
+  ]);
+});
+
+test("the team caption is the workspace alone outside an active sprint", async () => {
+  const { as } = await calderLane();
+  await addCareer(as("priya"), "learner", false);
+  const rows = (await as("priya").query(api.viewer.shell, {}))?.switcher;
+  expect(rows?.map((r) => r.caption)).toEqual(["Calder Lane", "Pivot Crews"]);
+});
+
+test("a guide profile beside a seat shows no switcher", async () => {
+  const { t, as } = await calderLane();
+  await clock(t, "week2");
+  await addCareer(as("dan"), "guide");
+  expect(
+    (await as("dan").query(api.viewer.shell, {}))?.switcher,
+  ).toBeUndefined();
+});
+
+test("one track shows no switcher", async () => {
+  const { t, as } = await calderLane();
+  await clock(t, "week2");
+  expect(
+    (await as("dan").query(api.viewer.shell, {}))?.switcher,
+  ).toBeUndefined();
+  const loner = t.withIdentity({ subject: "user_loner" });
+  await addCareer(loner);
+  expect((await loner.query(api.viewer.shell, {}))?.switcher).toBeUndefined();
 });

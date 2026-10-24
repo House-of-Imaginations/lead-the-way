@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { publicQuery } from "./lib/customFunctions";
 import { initialsOf } from "./lib/initials";
-import { accountShellValidator, homeOf, shellOf } from "./lib/shell";
+import { accountShellValidator, homeOf, shellOf, tracksOf } from "./lib/shell";
 import { getAccount } from "./lib/viewer";
 
 /**
@@ -36,10 +36,15 @@ export const shell = publicQuery({
   handler: async (ctx) => {
     if (!ctx.userId) return null;
     const { account, team, career } = await getAccount(ctx);
+    const teamShell = team && (await shellOf(ctx, team));
     return {
       account: { name: account.name, initials: initialsOf(account.name) },
-      ...(team && { team: await shellOf(ctx, team) }),
+      ...(teamShell && { team: teamShell }),
       ...(career && { career: { private: career.profile.private } }),
+      // R2: a seat and a learner profile (`career` is learner only, R6).
+      ...(team &&
+        teamShell &&
+        career && { switcher: await tracksOf(ctx, team, teamShell, career) }),
     };
   },
 });

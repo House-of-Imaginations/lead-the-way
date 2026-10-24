@@ -24,6 +24,7 @@ const CLOCK_HELPERS = [
   "launchedFor",
   "joinFacts",
   "weekNow",
+  "tracksOf",
 ];
 
 const READS_CLOCK = new RegExp(
