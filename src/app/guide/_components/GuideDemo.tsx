@@ -18,8 +18,10 @@ import {
   PasswordInput,
   Select,
   StatTile,
+  Toggle,
 } from "@/components/ui";
 import { switchPersona } from "@/lib/demo/switchPersona";
+import { setPrototypeNotes, usePrototypeNotes } from "@/lib/prototypeNotes";
 import { forwardTargets } from "@/lib/demo/targets";
 import { errorCode } from "@/lib/errors";
 import type { Persona } from "./guideContent";
@@ -162,12 +164,20 @@ export function StartAsDan() {
 /** R9: the demo's clock, reset, personas, accounts and raw event counts. */
 export function DemoSection() {
   const { status, expectOrgId } = useGuideDemo();
+  const notesOn = usePrototypeNotes();
   if (!status) return null;
   return (
     <section aria-labelledby="demo-controls" className="flex flex-col gap-07">
       <h2 id="demo-controls" className="text-heading-01 font-light">
         Demo controls
       </h2>
+      <Toggle
+        id="prototype-notes"
+        label="Prototype notes"
+        description="Shows the research behind each screen in a side panel. Remembered in this browser."
+        checked={notesOn}
+        onChange={setPrototypeNotes}
+      />
       {status.demo ? (
         <DemoControls demo={status.demo} expectOrgId={expectOrgId} />
       ) : (

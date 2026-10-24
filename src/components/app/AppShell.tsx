@@ -37,6 +37,7 @@ import { useHour } from "@/lib/useHour";
 import { authClient } from "@/lib/account/auth-client";
 import { switchPersona } from "@/lib/demo/switchPersona";
 import type { NavState } from "@/lib/navState";
+import { setPrototypeNotes, usePrototypeNotes } from "@/lib/prototypeNotes";
 import { DemoClock } from "./DemoClock";
 import { MovedToast } from "./MovedToast";
 import { ExpectOrgIdProvider } from "./ExpectOrgId";
@@ -118,6 +119,7 @@ export function AppShell({
   const convex = useConvex();
   const warmHour = useHour(); // what useTimedQuery subscribes with
   const setActiveOrg = useMutation(api.profiles.setActiveOrg);
+  const notesOn = usePrototypeNotes();
 
   // Exact path, first match: "/manager" and "/manager#resources" share a path,
   // and after launch Sprint opens "/manager" too. Labels are unique, hrefs aren't.
@@ -164,6 +166,14 @@ export function AppShell({
           {
             label: switchTo.label,
             onSelect: () => void switchPersona(convex, switchTo.email),
+          },
+        ]
+      : []),
+    ...(shell.isDemo
+      ? [
+          {
+            label: notesOn ? "Hide prototype notes" : "Show prototype notes",
+            onSelect: () => setPrototypeNotes(!notesOn),
           },
         ]
       : []),
