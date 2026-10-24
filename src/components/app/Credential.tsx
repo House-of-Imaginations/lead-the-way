@@ -35,7 +35,7 @@ export function Credential({
 }) {
   const { reflection } = credential;
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_24px_minmax(0,1fr)] max-[900px]:grid-cols-1 max-[900px]:gap-05">
+    <div className="grid grid-cols-[minmax(0,5fr)_24px_minmax(0,7fr)] max-[900px]:grid-cols-1 max-[900px]:gap-05">
       <section
         aria-labelledby="badge-title"
         className="flex flex-col bg-layer-01"
@@ -48,7 +48,10 @@ export function Credential({
             <p className="text-label-01 text-text-secondary">
               {credential.issuer} badge
             </p>
-            <h2 id="badge-title" className="text-heading-02">
+            <h2
+              id="badge-title"
+              className="text-heading-02 max-[672px]:text-heading-03"
+            >
               {credential.name}
             </h2>
             <p className="text-body-02 text-text-secondary">
@@ -56,7 +59,7 @@ export function Credential({
             </p>
           </div>
         </div>
-        <p className="bg-layer-selected px-06 py-05 text-heading-03 font-light max-[672px]:px-05">
+        <p className="bg-layer-selected px-06 py-05 text-heading-03 font-light max-[672px]:px-05 max-[672px]:py-04 max-[672px]:text-body-01">
           Badge = I learned it.
         </p>
       </section>
@@ -100,7 +103,7 @@ export function Credential({
           {reflection ? null : empty}
         </div>
         {reflection ? (
-          <p className="bg-interactive px-06 py-05 text-heading-03 font-light text-text-on-color max-[672px]:px-05">
+          <p className="bg-interactive px-06 py-05 text-heading-03 font-light text-text-on-color max-[672px]:px-05 max-[672px]:py-04 max-[672px]:text-body-01">
             Applied reflection = I used it.
           </p>
         ) : null}
