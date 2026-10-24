@@ -288,18 +288,27 @@ export const clearImage = viewerMutation("org:manage")({
  *
  * R1: its badges stay, stamped with their holder, so a credential link
  * somebody shared still opens once the workspace is gone.
+ *
+ * R3: `name` is what the owner typed, checked here as the form checks it
+ * (trimmed, case-sensitive), so no caller skips the confirmation.
  */
 export const remove = viewerMutation("org:manage")({
-  args: {},
+  args: { name: v.string() },
   returns: v.null(),
-  handler: async (ctx): Promise<null> => {
-    const orgId = ctx.viewer.org._id;
+  handler: async (ctx, { name }): Promise<null> => {
+    const org = ctx.viewer.org;
     requireOwner(ctx.viewer, "Only an owner can delete a workspace.");
     // Only a reset brings the demo back, and a reset needs the workspace.
-    if ((await ctx.db.get(orgId))?.isDemo) {
+    if (org.isDemo) {
       throwUserError("FORBIDDEN", "Reset the demo instead.");
     }
-    await deleteOrg(ctx, orgId, { keepBadges: true });
+    if (name.trim() !== org.name) {
+      throwUserError(
+        "ORG_NAME_MISMATCH",
+        `Type ${org.name} exactly to delete this workspace.`,
+      );
+    }
+    await deleteOrg(ctx, org._id, { keepBadges: true });
     return null;
   },
 });

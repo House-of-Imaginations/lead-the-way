@@ -133,7 +133,7 @@ export const callsFor = ({
   "orgs:generateImageUploadUrl": { expectOrgId: orgId },
   "orgs:setImage": { storageId, expectOrgId: orgId },
   "orgs:clearImage": { expectOrgId: orgId },
-  "orgs:remove": { expectOrgId: orgId },
+  "orgs:remove": { name: "Aster Network", expectOrgId: orgId },
   "orgs:myPermissions": {},
   "orgRoles:list": {},
   "orgRoles:create": { name: "Lead", permissions: [], expectOrgId: orgId },

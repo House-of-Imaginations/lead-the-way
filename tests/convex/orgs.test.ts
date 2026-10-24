@@ -946,7 +946,9 @@ test("deleting a workspace takes its picture with it", async () => {
     return stored;
   });
 
-  await t.withIdentity(ALICE).mutation(api.orgs.remove, { expectOrgId: orgId });
+  await t
+    .withIdentity(ALICE)
+    .mutation(api.orgs.remove, { expectOrgId: orgId, name: "Acme" });
 
   const after = await t.run(async (ctx) => ({
     file: await ctx.db.system.get(file),
@@ -954,6 +956,21 @@ test("deleting a workspace takes its picture with it", async () => {
   }));
   expect(after.file).toBeNull();
   expect(after.org).toBeNull();
+});
+
+test("remove needs the workspace name, trimmed and case-sensitive (R3, L14)", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+  for (const name of ["acme", "", "Acme Inc"]) {
+    await expect(
+      alice.mutation(api.orgs.remove, { expectOrgId: orgId, name }),
+    ).rejects.toMatchObject({ data: { code: "ORG_NAME_MISMATCH" } });
+  }
+  expect(await t.run((ctx) => ctx.db.get(orgId))).not.toBeNull();
+
+  await alice.mutation(api.orgs.remove, { expectOrgId: orgId, name: " Acme " });
+  expect(await t.run((ctx) => ctx.db.get(orgId))).toBeNull();
 });
 
 /** Alice's workspace with Bob seated and holding a badge. */
@@ -985,7 +1002,9 @@ test("remove keeps public badges: the shared link still opens after the workspac
   const t = harness();
   const { orgId, slug, holder } = await badgeHolder(t);
 
-  await t.withIdentity(ALICE).mutation(api.orgs.remove, { expectOrgId: orgId });
+  await t
+    .withIdentity(ALICE)
+    .mutation(api.orgs.remove, { expectOrgId: orgId, name: "Acme" });
 
   const credential = await t.query(api.badges.publicBySlug, { slug });
   expect(credential).not.toBeNull();
@@ -1022,7 +1041,9 @@ test("remove stamps unstamped badges before people go (R1)", async () => {
     });
   });
 
-  await t.withIdentity(ALICE).mutation(api.orgs.remove, { expectOrgId: orgId });
+  await t
+    .withIdentity(ALICE)
+    .mutation(api.orgs.remove, { expectOrgId: orgId, name: "Acme" });
 
   expect((await t.query(api.badges.publicBySlug, { slug }))?.holder).toBe(
     holder,

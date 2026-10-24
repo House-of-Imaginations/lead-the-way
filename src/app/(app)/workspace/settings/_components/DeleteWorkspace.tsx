@@ -27,7 +27,7 @@ export function DeleteWorkspace({ name }: { name: string }) {
     setError(null);
     setPending(true);
     try {
-      await remove({ expectOrgId });
+      await remove({ expectOrgId, name: typed });
       // Stays pending: the page is leaving. A full load, so /home picks the next seat (R7).
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
       window.location.assign("/home");
