@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, components, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { issueBadge } from "../../convex/lib/badges";
 import {
   ACCOUNT_HOLDERS,
   castOf,
@@ -625,6 +626,14 @@ test("clearE2e removes e2e.test accounts and the workspaces they own, and nothin
   const { orgId } = await t
     .withIdentity({ subject: kai })
     .mutation(api.orgs.create, { name: "Kai's studio", teamName: "Studio" });
+  // A badge in it: clearE2e erases badges, unlike orgs.remove (R1).
+  await t.run(async (ctx) => {
+    const seat = (await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first())!;
+    await issueBadge(ctx, seat, Date.now());
+  });
   // A password reset in flight for each: Better Auth keeps the user id in `value`.
   for (const id of [kai, bec]) {
     await t.run((ctx) =>
@@ -669,6 +678,10 @@ test("clearE2e removes e2e.test accounts and the workspaces they own, and nothin
       .query("people")
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .first(),
+    badge: await ctx.db
+      .query("badges")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .first(),
     kaiProfile: await ctx.db
       .query("profiles")
       .withIndex("by_user", (q) => q.eq("userId", kai))
@@ -683,6 +696,7 @@ test("clearE2e removes e2e.test accounts and the workspaces they own, and nothin
     team: null,
     role: null,
     seat: null,
+    badge: null,
     kaiProfile: null,
   });
   expect(left.becProfile).not.toBeNull();

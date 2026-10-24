@@ -285,6 +285,9 @@ export const clearImage = viewerMutation("org:manage")({
  * `org:manage`: a custom role could be given that permission for renaming, and
  * "you may edit the name" must not quietly mean "you may end the workspace for
  * everybody in it".
+ *
+ * R1: its badges stay, stamped with their holder, so a credential link
+ * somebody shared still opens once the workspace is gone.
  */
 export const remove = viewerMutation("org:manage")({
   args: {},
@@ -296,7 +299,7 @@ export const remove = viewerMutation("org:manage")({
     if ((await ctx.db.get(orgId))?.isDemo) {
       throwUserError("FORBIDDEN", "Reset the demo instead.");
     }
-    await deleteOrg(ctx, orgId);
+    await deleteOrg(ctx, orgId, { keepBadges: true });
     return null;
   },
 });

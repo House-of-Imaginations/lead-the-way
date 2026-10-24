@@ -63,13 +63,33 @@ export const ON_REMOVE = {
 /**
  * Erase a workspace and everything filed under it: its rows, its people and
  * invitations, its roles, and the files its projects and picture point at.
+ * `keepBadges` (R1) leaves its badges, stamped with their holder first, so
+ * shared credential links keep opening, as they do after a Leave (M-c).
  */
 export async function deleteOrg(
   ctx: MutationCtx,
   orgId: Id<"orgs">,
+  opts: { keepBadges?: boolean } = {},
 ): Promise<void> {
+  if (opts.keepBadges) {
+    const badges = await ctx.db
+      .query("badges")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .collect();
+    for (const badge of badges) {
+      if (badge.holderName !== undefined && badge.holderTimeZone !== undefined)
+        continue;
+      const holder = await ctx.db.get(badge.personId);
+      if (!holder) continue;
+      await ctx.db.patch(badge._id, {
+        holderName: holder.name,
+        holderTimeZone: holder.timeZone,
+      });
+    }
+  }
   // ponytail: one-transaction delete, fine at prototype scale; batch with .take(n) and reschedule past ~4k rows
   for (const table of ORG_TABLES) {
+    if (opts.keepBadges && table === "badges") continue;
     const rows = await ctx.db
       .query(table)
       .withIndex("by_org", (q) => q.eq("orgId", orgId))
