@@ -29,6 +29,7 @@ import { CAREER_TABLES, deleteOrg } from "./lib/orgs/cascade";
 import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
 import {
   dropSeat,
+  findSeat,
   isOwnerRole,
   permissionsOf,
   rolesOf,
@@ -184,6 +185,31 @@ export const clearE2e = internalMutation({
       });
     }
     return userIds.length;
+  },
+});
+
+/**
+ * `pnpm exec convex run seed:unseat '{"email":"x@e2e.test"}'`: drop that e2e
+ * account's Calder Lane seat, so e2e can watch an open page lose it (R8).
+ * False when it holds none. Refuses any address off `E2E_DOMAIN`. Demo only.
+ */
+export const unseat = internalMutation({
+  args: { email: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { email }) => {
+    assertFlag("demo", true);
+    if (!email.endsWith(`@${E2E_DOMAIN}`))
+      throw new Error(`seed:unseat takes @${E2E_DOMAIN} addresses only.`);
+    const org = await ctx.db
+      .query("orgs")
+      .withIndex("by_slug", (q) => q.eq("slug", DEMO_SLUG))
+      .unique();
+    const userId = await demoUserId(ctx, email);
+    if (!org?.isDemo || !userId) return false;
+    const seat = await findSeat(ctx, userId, org._id);
+    if (!seat) return false;
+    await dropSeat(ctx, seat.person);
+    return true;
   },
 });
 

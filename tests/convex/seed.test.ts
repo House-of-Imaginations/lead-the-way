@@ -857,3 +857,40 @@ test("seed.careerProfile sets private on a profile that exists", async () => {
   const row = await t.run((ctx) => ctx.db.get(id!));
   expect(row?.private).toBe(false);
 });
+
+test("unseat drops an e2e account's demo seat and refuses anyone else", async () => {
+  const t = harness();
+  const accounts = await seedDemoAccounts(t);
+  const orgId = await t.mutation(internal.seed.writeCalderLane, { accounts });
+  const email = "kai@e2e.test";
+  const kai = await seedAuthUser(t, {
+    name: "Kai Moreno",
+    email,
+    emailVerified: false,
+  });
+  const token = await t.mutation(internal.seed.invite, { email });
+  await t.withIdentity(kai).mutation(api.invites.accept, { token });
+  const seatIn = (userId: string) =>
+    t.run((ctx) =>
+      ctx.db
+        .query("people")
+        .withIndex("by_user_and_org", (q) =>
+          q.eq("userId", userId).eq("orgId", orgId),
+        )
+        .unique(),
+    );
+  expect(await seatIn(kai.subject)).not.toBeNull();
+
+  expect(await t.mutation(internal.seed.unseat, { email })).toBe(true);
+  expect(await seatIn(kai.subject)).toBeNull();
+  // No seat left to drop.
+  expect(await t.mutation(internal.seed.unseat, { email })).toBe(false);
+
+  // Dan has no seat until week 1; Priya, seated from the start, keeps hers.
+  for (const key of ["dan", "priya"] as const) {
+    await expect(
+      t.mutation(internal.seed.unseat, { email: castOf(key).email }),
+    ).rejects.toThrow(/e2e\.test/);
+  }
+  expect(await seatIn(accounts.priya)).not.toBeNull();
+});
