@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 import { assertFlag, flagOn } from "./app";
-import { authenticatedQuery, viewerMutation } from "./lib/customFunctions";
+import {
+  authenticatedQuery,
+  publicQuery,
+  viewerMutation,
+} from "./lib/customFunctions";
 import { demoAccounts, writeCalderLane } from "./lib/demo/calderLane";
 import { castOf } from "./lib/demo/cast";
 import { moveClock } from "./lib/demo/moveClock";
@@ -93,7 +97,7 @@ const personaValidator = v.union(v.literal("priya"), v.literal("dan"));
  * ids and no `meta`. The under-threshold rule of manager views does not apply
  * to the demo's own test instrument. Only someone seated in the demo sees them.
  */
-export const status = authenticatedQuery({
+export const status = publicQuery({
   args: {},
   returns: v.union(
     v.null(),
@@ -120,6 +124,8 @@ export const status = authenticatedQuery({
   ),
   handler: async (ctx) => {
     if (!flagOn("demo")) return null;
+    // A page left open after sign-out keeps this subscription; don't throw.
+    if (ctx.userId === null) return { demo: null };
     const viewer = await getViewer(ctx);
     if (!viewer?.org.isDemo) return { demo: null };
     const events = await ctx.db

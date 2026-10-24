@@ -18,11 +18,11 @@ import { forwardTargets } from "@/lib/demo/targets";
  */
 export function DemoClock({
   expectOrgId,
-  lift = false,
+  inline = false,
 }: {
   expectOrgId: Id<"orgs">;
-  /** Setup only: its 64px footer buttons are flush with the page bottom, so sit above them. */
-  lift?: boolean;
+  /** Setup only: a plain block at the top. Floating, it covered the in-flow footer buttons on short pages. */
+  inline?: boolean;
 }) {
   const status = useQuery(api.demo.status, {});
   const setClock = useMutation(api.demo.setClock);
@@ -45,7 +45,7 @@ export function DemoClock({
   return (
     <section
       aria-label="Demo clock"
-      className={`sticky ${lift ? "bottom-[80px]" : "bottom-05"} z-30 flex w-fit items-center gap-04 self-start bg-layer-01 py-03 pr-03 pl-05 shadow-float`}
+      className={`${inline ? "" : "sticky bottom-05 z-30 shadow-float "}flex w-fit items-center gap-04 self-start bg-layer-01 py-03 pr-03 pl-05`}
     >
       <Time size={16} aria-hidden="true" />
       <span className="flex flex-col">

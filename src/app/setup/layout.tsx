@@ -30,8 +30,10 @@ export default async function SetupLayout({
       <SetupHeader home={shell?.home ?? "/"} />
       <ConvexClientProvider initialToken={token}>
         <main className="flex w-full flex-1 flex-col gap-07 px-10 pt-07 max-md:px-05">
+          {shell?.isDemo && (
+            <DemoClock expectOrgId={shell.expectOrgId} inline />
+          )}
           {children}
-          {shell?.isDemo && <DemoClock expectOrgId={shell.expectOrgId} lift />}
         </main>
       </ConvexClientProvider>
       {/* Ruling 9: a role redirect can land here (a manager's home is /setup/team until the team is saved). */}

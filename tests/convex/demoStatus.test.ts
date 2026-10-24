@@ -23,6 +23,12 @@ test("an account outside the demo gets no demo", async () => {
   });
 });
 
+// A page left open after sign-out keeps its subscription; it must not throw.
+test("signed out gets no demo", async () => {
+  const t = harness();
+  expect(await t.query(api.demo.status, {})).toEqual({ demo: null });
+});
+
 test("Dan before he joins gets no demo", async () => {
   const { as } = await calderLane();
   expect(await as("dan").query(api.demo.status, {})).toEqual({ demo: null });
