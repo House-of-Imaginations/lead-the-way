@@ -6,7 +6,9 @@ import { AppShell, useShell } from "../../../src/components/app/AppShell";
 import { useExpectOrgId } from "../../../src/components/app/ExpectOrgId";
 
 let live: Shell | undefined;
-vi.mock("convex-helpers/react/cache", () => ({ useQuery: () => live }));
+vi.mock("convex-helpers/react/cache", () => ({
+  useQuery: () => live && { team: live },
+}));
 vi.mock("convex/react", () => ({
   useConvex: () => ({}),
   useMutation: () => vi.fn(),

@@ -103,7 +103,7 @@ export function AppShell({
   // Ruling 17: live, starting from the server's copy (and kept through a
   // sign-out). A live shell for another workspace (switched in another tab)
   // is not shown: the page stays the one it was rendered for.
-  const live = useQuery(api.viewer.shell, { hour });
+  const live = useQuery(api.viewer.shell, { hour })?.team;
   const switched = !!live && live.expectOrgId !== initial.expectOrgId;
   const shell = (!switched && live) || initial;
   // Settings' Reduce motion (P7b-1), as an attribute globals.css reads.

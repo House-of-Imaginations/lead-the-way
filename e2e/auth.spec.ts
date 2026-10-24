@@ -180,9 +180,9 @@ test("sign-up from a join link goes back to the link and makes no workspace (Rev
     .check();
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL("/join/e2e-no-such-token");
-  // No workspace was made: home is still the start page.
+  // No workspace was made: home is the track choice.
   await page.goto("/home");
-  await expect(page).toHaveURL("/setup/start");
+  await expect(page).toHaveURL("/start");
 });
 
 test.describe("log in", () => {

@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import {
+  CAREER_TABLES,
   ON_REMOVE,
   ORG_TABLES,
   deleteOrg,
@@ -15,7 +16,7 @@ const ORG_LAYER = ["orgs", "profiles", "people", "orgRoles", "orgInvites"];
 
 test("every table is cleared with its workspace or belongs to the org layer", () => {
   expect(Object.keys(schema.tables).sort()).toEqual(
-    [...ORG_LAYER, ...ORG_TABLES].sort(),
+    [...ORG_LAYER, ...ORG_TABLES, ...CAREER_TABLES].sort(),
   );
 });
 
@@ -36,6 +37,27 @@ function holds(validator: GenericValidator, table: string): boolean {
       return false;
   }
 }
+
+test("X1: career tables hold no workspace data, and team tables no career ids", () => {
+  const team = [...ORG_LAYER, ...ORG_TABLES] as (keyof typeof schema.tables)[];
+  for (const name of CAREER_TABLES) {
+    const validator = schema.tables[name].validator;
+    expect(
+      Object.keys(validator.fields).filter((f) =>
+        /org|employer|company|workspace/i.test(f),
+      ),
+      name,
+    ).toEqual([]);
+    for (const other of team)
+      expect(holds(validator, other), `${name} -> ${other}`).toBe(false);
+  }
+  for (const name of team)
+    for (const career of CAREER_TABLES)
+      expect(
+        holds(schema.tables[name].validator, career),
+        `${name} -> ${career}`,
+      ).toBe(false);
+});
 
 test("every table holding a person id says what removing that person does to it (M-c)", () => {
   // Every table, the org layer's too: orgInvites.personId is one.

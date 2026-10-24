@@ -64,7 +64,7 @@ test("employees read the newest launched sprint", async () => {
     sprint: await dan.query(api.me.sprint, {}),
     project: await dan.query(api.projects.mine, {}),
     board: await dan.query(api.showAndTell.board, {}),
-    shell: await dan.query(api.viewer.shell, {}),
+    shell: (await dan.query(api.viewer.shell, {}))?.team,
   });
   const before = await reads();
   for (const [name, value] of Object.entries(before)) {

@@ -186,7 +186,7 @@ test("commit logs hour.committed once", async () => {
   ]);
   expect((await priya.query(api.sprints.current, {}))?.committed).toBe(true);
   // The setup checklist sees it.
-  const shell = await priya.query(api.viewer.shell, {});
+  const shell = (await priya.query(api.viewer.shell, {}))?.team;
   expect(
     shell?.checklist?.items.find((i) => i.label === "Protected hour")?.state,
   ).toBe("done");

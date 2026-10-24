@@ -127,6 +127,14 @@ export const shellValidator = v.object({
 });
 export type Shell = Infer<typeof shellValidator>;
 
+/** `viewer.shell`: the account, plus each learner track it has (spec 5.2). */
+export const accountShellValidator = v.object({
+  account: v.object({ name: v.string(), initials: v.string() }),
+  team: v.optional(shellValidator),
+  career: v.optional(v.object({ private: v.boolean() })),
+});
+export type AccountShell = Infer<typeof accountShellValidator>;
+
 /**
  * Where this viewer belongs (R4). Launch doesn't need the team profile, and
  * setup closes at launch, so a launched sprint is home at /manager either way.

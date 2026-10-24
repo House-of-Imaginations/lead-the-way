@@ -179,7 +179,7 @@ test.describe("setup", () => {
   });
 });
 
-test("an account with no workspace accepts the terms at /setup/start", async ({
+test("an account with no workspace is sent to /start, then accepts the terms at /setup/start", async ({
   page,
 }) => {
   // Signed up through the API, so onboarding.start never ran: the OAuth first-sign-in state.
@@ -193,7 +193,8 @@ test("an account with no workspace accepts the terms at /setup/start", async ({
   });
   expect(res.ok()).toBe(true);
   await page.goto("/home");
-  await expect(page).toHaveURL("/setup/start");
+  await expect(page).toHaveURL("/start");
+  await page.goto("/setup/start");
   const go = page.getByRole("button", { name: "Continue" });
   await expect(go).toBeDisabled();
   await page
