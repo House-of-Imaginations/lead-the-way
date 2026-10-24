@@ -105,6 +105,9 @@ test("04 at 1280: the preview's hours sit top right and time chips stay on one l
     .boundingBox())!;
   expect(Math.abs(hours.y - heading.y)).toBeLessThanOrEqual(4);
   expect(hours.x).toBeGreaterThan(heading.x + heading.width);
+  // The title breaks after the day, never inside "2:00 PM": the times are one 28px line.
+  const times = preview.getByText("2:00 PM to 3:00 PM", { exact: true });
+  expect((await times.boundingBox())!.height).toBeLessThanOrEqual(28);
 
   const chips = preview.getByText("Learn 2 PM", { exact: true });
   await expect(chips).toHaveCount(4);

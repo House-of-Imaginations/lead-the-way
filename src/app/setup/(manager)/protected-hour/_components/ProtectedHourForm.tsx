@@ -73,6 +73,8 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
     weeks: initial.weeks,
   };
   const block = `Learn ${clockLabel(start).replace(":00", "")}`;
+  // The title wraps after the day at 1280, never inside "2:00 PM" (same text, one more box).
+  const [day, times] = hourPattern(weekday, start, 60).split(", ");
 
   function onSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -187,7 +189,8 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
           <div className="flex flex-wrap items-start justify-between gap-06 min-[1280px]:flex-nowrap">
             <div className="flex flex-col gap-02">
               <h2 className="text-heading-03">
-                {hourPattern(weekday, start, 60)}
+                {`${day}, `}
+                <span className="whitespace-nowrap">{times}</span>
               </h2>
               <p className="text-text-secondary">
                 Added to your team&apos;s calendars when you launch
