@@ -31,11 +31,13 @@ export function DemoClock({
   const items = [
     ...forwardTargets(demo.demoNow).map(({ target, label }) => ({
       label,
-      onSelect: () =>
+      onSelect: () => {
+        setFailed(false);
         void setClock({ target, expectOrgId: demo.orgId }).then(
           () => window.location.reload(),
           () => setFailed(true),
-        ),
+        );
+      },
     })),
     { label: "Open guide", href: "/guide" },
   ];
