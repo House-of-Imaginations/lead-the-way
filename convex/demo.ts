@@ -1,10 +1,6 @@
 import { v } from "convex/values";
 import { assertFlag, flagOn } from "./app";
-import {
-  authenticatedQuery,
-  publicQuery,
-  viewerMutation,
-} from "./lib/customFunctions";
+import { publicQuery, viewerMutation } from "./lib/customFunctions";
 import { demoAccounts, writeCalderLane } from "./lib/demo/calderLane";
 import { castOf } from "./lib/demo/cast";
 import { moveClock } from "./lib/demo/moveClock";
@@ -68,15 +64,18 @@ export const setClock = viewerMutation()({
 
 /**
  * The shared demo password, for the persona switch (spec 6). Null unless
- * DEMO_MODE is on, and only for a signed-in caller. /guide's "Start as Priya"
- * signs in from nothing. The guide is private (G-a): the tester signs in
- * first. It unlocks only the seeded demo accounts, which the auth hook keeps
- * from being changed (DEMO_ALLOWED in `convex/auth.ts`).
+ * DEMO_MODE is on, and only for a signed-in caller: signed out it answers
+ * null rather than throwing, as `status` does, since a page left open after
+ * sign-out keeps its subscription. The guide is private (G-a): the tester
+ * signs in first. It unlocks only the seeded demo accounts, which the auth
+ * hook keeps from being changed (DEMO_ALLOWED in `convex/auth.ts`).
  */
-export const personaPassword = authenticatedQuery({
+export const personaPassword = publicQuery({
   args: {},
   returns: v.union(v.null(), v.string()),
-  handler: async () => (flagOn("demo") && process.env.DEMO_PASSWORD) || null,
+  handler: async (ctx) =>
+    (ctx.userId !== null && flagOn("demo") && process.env.DEMO_PASSWORD) ||
+    null,
 });
 
 // ponytail: a demo workspace sees hundreds of events, not thousands. Past
@@ -105,6 +104,9 @@ export const status = publicQuery({
       demo: v.union(
         v.null(),
         v.object({
+          // The viewer's own workspace (already in the shell): live, so the
+          // guide's mutations follow a reset made in another tab.
+          orgId: v.id("orgs"),
           demoNow: v.number(),
           persona: v.union(v.null(), personaValidator),
           accounts: v.array(
@@ -138,6 +140,7 @@ export const status = publicQuery({
     });
     return {
       demo: {
+        orgId: viewer.org._id,
         demoNow: viewer.org.demoNow ?? 0, // the stored clock, not a read of it (Ruling 16)
         persona:
           accounts.find((a) => a.email === viewer.person.email)?.key ?? null,

@@ -35,7 +35,8 @@ export function setPrototypeNotes(on: boolean) {
     if (on) localStorage.setItem(KEY, "on");
     else localStorage.removeItem(KEY);
   } catch {
-    // Not remembered; this page still follows the event below.
+    // Not remembered. The event below still fires, but read() goes back to
+    // the storage that threw, so the toggle stays off (see the note above).
   }
   window.dispatchEvent(new Event(CHANGE));
 }

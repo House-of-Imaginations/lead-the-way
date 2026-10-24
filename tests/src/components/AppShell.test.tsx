@@ -51,6 +51,17 @@ test("a switch in another tab keeps the page's workspace and says so", () => {
   expect(html).toContain("You switched workspace in another tab");
 });
 
+test("a demo page left stale by another tab says so and drops the clock", () => {
+  live = { ...shell, isDemo: true, expectOrgId: "other" } as Shell;
+  const html = renderToStaticMarkup(
+    <AppShell initial={{ ...shell, isDemo: true }} hour={0} navState={null}>
+      <Probe />
+    </AppShell>,
+  );
+  expect(html).toContain("The demo changed in another tab");
+  expect(html).not.toContain("Demo clock");
+});
+
 test("the same workspace shows no notice", () => {
   live = shell;
   const html = render();

@@ -1,9 +1,8 @@
 "use client";
 
 import { useConvex, useMutation, useQuery } from "convex/react";
-import { createContext, use, useState, type ReactNode } from "react";
+import { createContext, use, useRef, useState, type ReactNode } from "react";
 import { api } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
 import {
   DEMO_TARGETS,
   DEMO_TIME_ZONE,
@@ -54,7 +53,8 @@ const COUNT_LABELS: Record<EventType, string> = {
 
 const Ctx = createContext<{
   status: Status | undefined;
-  expectOrgId: Id<"orgs"> | null;
+  /** A persona switch is running: every persona control waits for it. */
+  switching: boolean;
   startAs: (who: Persona, to: string) => Promise<void>;
 } | null>(null);
 
@@ -65,40 +65,46 @@ export function useGuideDemo() {
 }
 
 /**
- * The guide's one subscription to `demo.status` and the persona switch.
- * `expectOrgId` is the demo's id when the page was rendered for a demo seat
- * (`shell.isDemo`), else null.
+ * The guide's one subscription to `demo.status` and the persona switch. The
+ * mutations echo the live `demo.orgId`, so a reset in another tab (a new demo
+ * workspace) doesn't strand this page. One switch at a time: the ref is the
+ * synchronous check, the state what the controls render.
  */
-export function GuideDemoProvider({
-  expectOrgId,
-  children,
-}: {
-  expectOrgId: Id<"orgs"> | null;
-  children: ReactNode;
-}) {
+export function GuideDemoProvider({ children }: { children: ReactNode }) {
   const convex = useConvex();
   const status = useQuery(api.demo.status, {});
   const setClock = useMutation(api.demo.setClock);
+  const busy = useRef(false);
+  const [switching, setSwitching] = useState(false);
 
+  // On success the page navigates away, so only a failure clears the flag.
   async function startAs(who: Persona, to: string) {
-    const demo = status?.demo;
-    if (demo?.persona === who) {
-      window.location.assign(to);
-      return;
-    }
-    // G-e and R4: Dan has a seat from 8 September, so jump to week 1 first.
-    if (who === "dan" && demo && demo.demoNow < DEMO_TARGETS.week1) {
-      if (!expectOrgId) throw new Error("Rendered without a seat.");
-      try {
-        await setClock({ target: "week1", expectOrgId });
-      } catch (e) {
-        if (errorCode(e) !== "DEMO_CLOCK_BACKWARDS") throw e;
+    if (busy.current) return;
+    busy.current = true;
+    setSwitching(true);
+    try {
+      const demo = status?.demo;
+      if (demo?.persona === who) {
+        window.location.assign(to);
+        return;
       }
+      // G-e and R4: Dan has a seat from 8 September, so jump to week 1 first.
+      if (who === "dan" && demo && demo.demoNow < DEMO_TARGETS.week1) {
+        try {
+          await setClock({ target: "week1", expectOrgId: demo.orgId });
+        } catch (e) {
+          if (errorCode(e) !== "DEMO_CLOCK_BACKWARDS") throw e;
+        }
+      }
+      await switchPersona(convex, EMAIL[who], to);
+    } catch (e) {
+      busy.current = false;
+      setSwitching(false);
+      throw e;
     }
-    await switchPersona(convex, EMAIL[who], to);
   }
 
-  return <Ctx value={{ status, expectOrgId, startAs }}>{children}</Ctx>;
+  return <Ctx value={{ status, switching, startAs }}>{children}</Ctx>;
 }
 
 function ErrorLine({ children }: { children: string }) {
@@ -109,7 +115,7 @@ function ErrorLine({ children }: { children: string }) {
   );
 }
 
-/** A persona switch button: disabled while it runs, with its own error line. */
+/** A persona switch button: disabled while any switch runs, with its own error line. */
 function StartAs({
   who,
   to,
@@ -121,23 +127,20 @@ function StartAs({
   kind: "tertiary" | "secondary";
   children?: string;
 }) {
-  const { startAs } = useGuideDemo();
-  const [pending, setPending] = useState(false);
+  const { switching, startAs } = useGuideDemo();
   const [failed, setFailed] = useState(false);
   const name = who === "dan" ? "Dan" : "Priya";
   return (
     <div className="flex flex-col items-start gap-02">
       <Button
         kind={kind}
-        disabled={pending}
+        disabled={switching}
         onClick={async () => {
-          setPending(true);
           setFailed(false);
           try {
             await startAs(who, to);
           } catch {
             setFailed(true);
-            setPending(false);
           }
         }}
       >
@@ -146,7 +149,7 @@ function StartAs({
       {failed && (
         <ErrorLine>
           {who === "dan"
-            ? "Couldn't switch to Dan. Reset the demo and try again."
+            ? "Couldn't switch to Dan. Reload the page and try again."
             : "Couldn't switch to Priya. Reload the page and try again."}
         </ErrorLine>
       )}
@@ -163,7 +166,7 @@ export function StartAsDan() {
 
 /** R9: the demo's clock, reset, personas, accounts and raw event counts. */
 export function DemoSection() {
-  const { status, expectOrgId } = useGuideDemo();
+  const { status } = useGuideDemo();
   const notesOn = usePrototypeNotes();
   if (!status) return null;
   return (
@@ -179,7 +182,7 @@ export function DemoSection() {
         onChange={setPrototypeNotes}
       />
       {status.demo ? (
-        <DemoControls demo={status.demo} expectOrgId={expectOrgId} />
+        <DemoControls demo={status.demo} />
       ) : (
         <div className="flex flex-col items-start gap-05">
           <InlineNotification title="Start as Priya first.">
@@ -193,13 +196,7 @@ export function DemoSection() {
   );
 }
 
-function DemoControls({
-  demo,
-  expectOrgId,
-}: {
-  demo: Demo;
-  expectOrgId: Id<"orgs"> | null;
-}) {
+function DemoControls({ demo }: { demo: Demo }) {
   const { startAs } = useGuideDemo();
   const setClock = useMutation(api.demo.setClock);
   const reset = useMutation(api.demo.reset);
@@ -228,10 +225,9 @@ function DemoControls({
               setMoving(true);
               setMoveFailed(false);
               try {
-                if (!expectOrgId) throw new Error("Rendered without a seat.");
                 await setClock({
                   target: target as DemoTarget,
-                  expectOrgId,
+                  expectOrgId: demo.orgId,
                 });
                 window.location.reload();
               } catch {
@@ -281,8 +277,7 @@ function DemoControls({
               setResetting(true);
               setResetFailed(false);
               try {
-                if (!expectOrgId) throw new Error("Rendered without a seat.");
-                await reset({ expectOrgId });
+                await reset({ expectOrgId: demo.orgId });
                 // R3: the reset ends as Priya on the guide.
                 if (wasPriya) window.location.reload();
                 else await startAs("priya", "/guide");

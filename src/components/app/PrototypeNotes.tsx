@@ -30,17 +30,20 @@ export function PrototypeNotesPanel() {
           Hide notes
         </Button>
       </div>
-      <dl className="flex flex-col gap-05 text-body-02">
+      {/* ponytail: a <dl> per labelled line keeps the lines in order; an unlabelled line is a plain <p>. */}
+      <div className="flex flex-col gap-05 text-body-02">
         {note.lines.map((line) => {
           const { label, text } = splitNoteLine(line);
-          return (
-            <div key={line} className="flex flex-col gap-02">
-              {label && <dt className="font-semibold">{label}</dt>}
+          return label ? (
+            <dl key={line} className="flex flex-col gap-02">
+              <dt className="font-semibold">{label}</dt>
               <dd>{text}</dd>
-            </div>
+            </dl>
+          ) : (
+            <p key={line}>{text}</p>
           );
         })}
-      </dl>
+      </div>
     </aside>
   );
 }

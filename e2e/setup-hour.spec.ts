@@ -266,7 +266,7 @@ test("Download .ics saves four weekly events", async ({ page }) => {
   const saved = page.waitForEvent("download");
   await page.getByRole("menuitem", { name: "Download .ics" }).click();
   const file = await saved;
-  expect(file.suggestedFilename()).toBe("lead-the-way-protected-hour.ics");
+  expect(file.suggestedFilename()).toBe("from-zero-to-hero-protected-hour.ics");
   const ics = readFileSync(await file.path(), "utf8");
   expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(4);
   expect([...ics.matchAll(/DTSTART:(\w+)/g)].map((m) => m[1])).toEqual([

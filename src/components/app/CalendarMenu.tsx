@@ -9,7 +9,7 @@ function download(ics: string) {
   const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = "lead-the-way-protected-hour.ics";
+  a.download = "from-zero-to-hero-protected-hour.ics";
   a.click();
   // A second later: Safari can cancel a download whose URL is revoked sooner.
   setTimeout(() => URL.revokeObjectURL(url), 1000);

@@ -5,7 +5,6 @@ import { throwUserError } from "../errors";
 import { MIN_THRESHOLD } from "../privacy";
 import { assertCanCreate } from "./membership";
 import { insertPerson, isDemoAccount } from "./people";
-import type { Permission } from "./permissions";
 import {
   MAX_SLUG_LENGTH,
   cleanOrgName,
@@ -29,15 +28,6 @@ export function orgNameOf(name: string): string {
   }
   return trimmed;
 }
-
-/**
- * The one starter role besides the owner. Employee holds nothing: everything
- * an employee does is their own rows, which need a seat and no permission.
- * An ordinary custom row, renamed or deleted like any other.
- */
-const DEFAULT_ROLES: readonly { name: string; permissions: Permission[] }[] = [
-  { name: "Employee", permissions: [] },
-];
 
 async function slugTaken(ctx: MutationCtx, slug: string) {
   const clash = await ctx.db
@@ -128,19 +118,18 @@ export async function createWorkspace(
   });
   await insertPerson(ctx, userId, orgId, ownerRoleId, now);
   await setActiveOrgOf(ctx, userId, orgId);
-  // Seeded, because an invitation grants a role and the owner role cannot be
-  // invited into: without it a new owner had nothing to invite anybody as.
-  let inviteRoleId: Id<"orgRoles"> | undefined;
-  for (const role of DEFAULT_ROLES) {
-    const id = await ctx.db.insert("orgRoles", {
-      orgId,
-      kind: "custom",
-      name: role.name,
-      permissions: [...role.permissions],
-      createdAt: now,
-    });
-    if (role.name === "Employee") inviteRoleId = id;
-  }
+  // The one starter role besides the owner, seeded because an invitation
+  // grants a role and the owner role cannot be invited into: without it a new
+  // owner had nothing to invite anybody as. Employee holds nothing: everything
+  // an employee does is their own rows, which need a seat and no permission.
+  // An ordinary custom row, renamed or deleted like any other.
+  const inviteRoleId = await ctx.db.insert("orgRoles", {
+    orgId,
+    kind: "custom",
+    name: "Employee",
+    permissions: [],
+    createdAt: now,
+  });
   // G-g: the roles exist only now, so the org row is patched rather than born with it.
   await ctx.db.patch(orgId, { inviteRoleId });
   // One team per workspace (spec 4.2). 03 fills it in and sets `savedAt`.

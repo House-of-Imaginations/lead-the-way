@@ -48,9 +48,7 @@ export default async function GuidePage() {
         <span className="text-label-01 text-text-secondary">{DISCLAIMER}</span>
       </header>
       <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-10 px-05 py-09 md:px-10">
-        <GuideDemoProvider
-          expectOrgId={shell?.isDemo ? shell.expectOrgId : null}
-        >
+        <GuideDemoProvider>
           <section className="grid items-end gap-09 min-[900px]:grid-cols-[6fr_5fr]">
             <div className="flex flex-col gap-07">
               <h1 className="text-display-01 font-light">From zero to hero</h1>

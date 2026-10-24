@@ -1024,9 +1024,8 @@ test("personaPassword answers a signed-in caller only while the demo is on", asy
   const t = harness();
   const bec = t.withIdentity({ subject: "user_bec" });
   vi.stubEnv("DEMO_PASSWORD", "correct horse battery");
-  await expect(t.query(api.demo.personaPassword, {})).rejects.toMatchObject({
-    data: { code: "NOT_SIGNED_IN" },
-  });
+  // Signed out: null, not a throw (a page left open after sign-out).
+  expect(await t.query(api.demo.personaPassword, {})).toBeNull();
   expect(await bec.query(api.demo.personaPassword, {})).toBe(
     "correct horse battery",
   );

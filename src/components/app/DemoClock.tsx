@@ -4,7 +4,6 @@ import { Time } from "@carbon/icons-react";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
 import { DEMO_TIME_ZONE } from "@convex/lib/demo/schedule";
 import { hourLabel } from "@convex/lib/sprintTime";
 import { Menu, buttonClass } from "@/components/ui";
@@ -13,14 +12,13 @@ import { forwardTargets } from "@/lib/demo/targets";
 /**
  * The floating demo clock (spec 3.2): bottom left of the main column, sticky
  * in its scroll (R11), for anyone seated in the demo while DEMO_MODE is on.
- * The caller renders it only when `shell.isDemo`. A move reloads the page in
- * full: the server layouts read the clock.
+ * The caller renders it only when `shell.isDemo`. A move echoes the live
+ * `demo.orgId` and reloads the page in full: the server layouts read the
+ * clock, and a page left stale by a reset elsewhere recovers.
  */
 export function DemoClock({
-  expectOrgId,
   inline = false,
 }: {
-  expectOrgId: Id<"orgs">;
   /** Setup only: a plain block at the top. Floating, it covered the in-flow footer buttons on short pages. */
   inline?: boolean;
 }) {
@@ -33,11 +31,13 @@ export function DemoClock({
   const items = [
     ...forwardTargets(demo.demoNow).map(({ target, label }) => ({
       label,
-      onSelect: () =>
-        void setClock({ target, expectOrgId }).then(
+      onSelect: () => {
+        setFailed(false);
+        void setClock({ target, expectOrgId: demo.orgId }).then(
           () => window.location.reload(),
           () => setFailed(true),
-        ),
+        );
+      },
     })),
     { label: "Open guide", href: "/guide" },
   ];

@@ -119,6 +119,8 @@ export const callsFor = ({
   inviteId,
   storageId,
 }: Ids): Record<string, Record<string, unknown>> => ({
+  // These two answer signed out (SIGNED_OUT in signedOut.test.ts); the
+  // tenant and canary sweeps still read them as a seated caller.
   "demo:personaPassword": {},
   "demo:status": {},
   "demo:reset": { expectOrgId: orgId },

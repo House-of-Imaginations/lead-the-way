@@ -7,9 +7,8 @@ import type { Step } from "./guideContent";
 
 /** One walkthrough step: a 3px top rule, blue for Priya's steps and ink for Dan's (R8). */
 export function StepTile({ step }: { step: Step }) {
-  const { status, startAs } = useGuideDemo();
+  const { status, switching: busy, startAs } = useGuideDemo();
   const demo = status?.demo;
-  const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
   // R5: in the demo, a step for the other persona switches first.
   const switching = demo != null && demo.persona !== step.persona;
@@ -17,20 +16,19 @@ export function StepTile({ step }: { step: Step }) {
     <Link
       href={step.href}
       prefetch={false}
+      aria-disabled={busy || undefined}
       onClick={(e) => {
-        if (status === undefined) {
+        // A new tab or window is the browser's to open, not a switch.
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        // Still loading, or a switch is already running: wait for it.
+        if (status === undefined || busy) {
           e.preventDefault();
           return;
         }
         if (!switching) return;
         e.preventDefault();
-        if (pending) return;
-        setPending(true);
         setFailed(false);
-        startAs(step.persona, step.href).catch(() => {
-          setFailed(true);
-          setPending(false);
-        });
+        startAs(step.persona, step.href).catch(() => setFailed(true));
       }}
       className={`flex flex-col gap-03 border-t-[3px] bg-layer-01 p-05 pb-07 transition-colors duration-[70ms] ease-productive hover:bg-layer-hover ${
         step.persona === "priya"

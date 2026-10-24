@@ -30,9 +30,7 @@ export default async function SetupLayout({
       <SetupHeader home={shell?.home ?? "/"} />
       <ConvexClientProvider initialToken={token}>
         <main className="flex w-full flex-1 flex-col gap-07 px-10 pt-07 max-md:px-05">
-          {shell?.isDemo && (
-            <DemoClock expectOrgId={shell.expectOrgId} inline />
-          )}
+          {shell?.isDemo && <DemoClock inline />}
           {children}
         </main>
       </ConvexClientProvider>
