@@ -35,9 +35,10 @@ test("Dan before he joins gets no demo", async () => {
 });
 
 test("Priya at setup sees the time, the two accounts and every count", async () => {
-  const { as } = await calderLane();
+  const { as, orgId } = await calderLane();
   const status = await as("priya").query(api.demo.status, {});
   const demo = status!.demo!;
+  expect(demo.orgId).toBe(orgId);
   expect(demo.demoNow).toBe(DEMO_TARGETS.setup);
   expect(demo.persona).toBe("priya");
   expect(demo.accounts.map((a) => a.key)).toEqual(["priya", "dan"]);
@@ -46,6 +47,18 @@ test("Priya at setup sees the time, the two accounts and every count", async () 
   // G-f: types and numbers only, no names and no ids.
   for (const row of demo.counts)
     expect(Object.keys(row).sort()).toEqual(["count", "type"]);
+});
+
+// A reset makes a new demo workspace; the guide echoes this id, not a stale one.
+test("after a reset the status names the new workspace", async () => {
+  const { as, orgId } = await calderLane();
+  await as("priya").mutation(api.demo.reset, { expectOrgId: orgId });
+  const demo = (await as("priya").query(api.demo.status, {}))!.demo!;
+  expect(demo.orgId).not.toBe(orgId);
+  await as("priya").mutation(api.demo.setClock, {
+    target: "week1",
+    expectOrgId: demo.orgId,
+  });
 });
 
 test("the counts follow the clock, and Dan sees them once he joins", async () => {

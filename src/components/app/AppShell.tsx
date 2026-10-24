@@ -241,8 +241,9 @@ export function AppShell({
           {switched && !leaving && (
             <div role="status">
               <InlineNotification>
-                You switched workspace in another tab. Reload the page to
-                continue.
+                {initial.isDemo
+                  ? "The demo changed in another tab. Reload the page to continue."
+                  : "You switched workspace in another tab. Reload the page to continue."}
               </InlineNotification>
             </div>
           )}
@@ -256,7 +257,8 @@ export function AppShell({
           <p className="mt-auto text-label-01 text-text-helper md:hidden md:group-has-[.ltw-sn-col]/shell:block">
             Concept prototype. Not an official IBM product.
           </p>
-          {shell.isDemo && <DemoClock expectOrgId={initial.expectOrgId} />}
+          {/* A stale demo page (a reset or switch elsewhere) gets the notice, not a clock. */}
+          {shell.isDemo && !switched && <DemoClock />}
         </main>
       </div>
       <Suspense>

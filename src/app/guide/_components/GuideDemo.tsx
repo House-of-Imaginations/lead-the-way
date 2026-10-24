@@ -3,7 +3,6 @@
 import { useConvex, useMutation, useQuery } from "convex/react";
 import { createContext, use, useState, type ReactNode } from "react";
 import { api } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
 import {
   DEMO_TARGETS,
   DEMO_TIME_ZONE,
@@ -54,7 +53,6 @@ const COUNT_LABELS: Record<EventType, string> = {
 
 const Ctx = createContext<{
   status: Status | undefined;
-  expectOrgId: Id<"orgs"> | null;
   startAs: (who: Persona, to: string) => Promise<void>;
 } | null>(null);
 
@@ -65,17 +63,11 @@ export function useGuideDemo() {
 }
 
 /**
- * The guide's one subscription to `demo.status` and the persona switch.
- * `expectOrgId` is the demo's id when the page was rendered for a demo seat
- * (`shell.isDemo`), else null.
+ * The guide's one subscription to `demo.status` and the persona switch. The
+ * mutations echo the live `demo.orgId`, so a reset in another tab (a new demo
+ * workspace) doesn't strand this page.
  */
-export function GuideDemoProvider({
-  expectOrgId,
-  children,
-}: {
-  expectOrgId: Id<"orgs"> | null;
-  children: ReactNode;
-}) {
+export function GuideDemoProvider({ children }: { children: ReactNode }) {
   const convex = useConvex();
   const status = useQuery(api.demo.status, {});
   const setClock = useMutation(api.demo.setClock);
@@ -88,9 +80,8 @@ export function GuideDemoProvider({
     }
     // G-e and R4: Dan has a seat from 8 September, so jump to week 1 first.
     if (who === "dan" && demo && demo.demoNow < DEMO_TARGETS.week1) {
-      if (!expectOrgId) throw new Error("Rendered without a seat.");
       try {
-        await setClock({ target: "week1", expectOrgId });
+        await setClock({ target: "week1", expectOrgId: demo.orgId });
       } catch (e) {
         if (errorCode(e) !== "DEMO_CLOCK_BACKWARDS") throw e;
       }
@@ -98,7 +89,7 @@ export function GuideDemoProvider({
     await switchPersona(convex, EMAIL[who], to);
   }
 
-  return <Ctx value={{ status, expectOrgId, startAs }}>{children}</Ctx>;
+  return <Ctx value={{ status, startAs }}>{children}</Ctx>;
 }
 
 function ErrorLine({ children }: { children: string }) {
@@ -146,7 +137,7 @@ function StartAs({
       {failed && (
         <ErrorLine>
           {who === "dan"
-            ? "Couldn't switch to Dan. Reset the demo and try again."
+            ? "Couldn't switch to Dan. Reload the page and try again."
             : "Couldn't switch to Priya. Reload the page and try again."}
         </ErrorLine>
       )}
@@ -163,7 +154,7 @@ export function StartAsDan() {
 
 /** R9: the demo's clock, reset, personas, accounts and raw event counts. */
 export function DemoSection() {
-  const { status, expectOrgId } = useGuideDemo();
+  const { status } = useGuideDemo();
   const notesOn = usePrototypeNotes();
   if (!status) return null;
   return (
@@ -179,7 +170,7 @@ export function DemoSection() {
         onChange={setPrototypeNotes}
       />
       {status.demo ? (
-        <DemoControls demo={status.demo} expectOrgId={expectOrgId} />
+        <DemoControls demo={status.demo} />
       ) : (
         <div className="flex flex-col items-start gap-05">
           <InlineNotification title="Start as Priya first.">
@@ -193,13 +184,7 @@ export function DemoSection() {
   );
 }
 
-function DemoControls({
-  demo,
-  expectOrgId,
-}: {
-  demo: Demo;
-  expectOrgId: Id<"orgs"> | null;
-}) {
+function DemoControls({ demo }: { demo: Demo }) {
   const { startAs } = useGuideDemo();
   const setClock = useMutation(api.demo.setClock);
   const reset = useMutation(api.demo.reset);
@@ -228,10 +213,9 @@ function DemoControls({
               setMoving(true);
               setMoveFailed(false);
               try {
-                if (!expectOrgId) throw new Error("Rendered without a seat.");
                 await setClock({
                   target: target as DemoTarget,
-                  expectOrgId,
+                  expectOrgId: demo.orgId,
                 });
                 window.location.reload();
               } catch {
@@ -281,8 +265,7 @@ function DemoControls({
               setResetting(true);
               setResetFailed(false);
               try {
-                if (!expectOrgId) throw new Error("Rendered without a seat.");
-                await reset({ expectOrgId });
+                await reset({ expectOrgId: demo.orgId });
                 // R3: the reset ends as Priya on the guide.
                 if (wasPriya) window.location.reload();
                 else await startAs("priya", "/guide");

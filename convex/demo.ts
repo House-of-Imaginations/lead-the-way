@@ -105,6 +105,9 @@ export const status = publicQuery({
       demo: v.union(
         v.null(),
         v.object({
+          // The viewer's own workspace (already in the shell): live, so the
+          // guide's mutations follow a reset made in another tab.
+          orgId: v.id("orgs"),
           demoNow: v.number(),
           persona: v.union(v.null(), personaValidator),
           accounts: v.array(
@@ -138,6 +141,7 @@ export const status = publicQuery({
     });
     return {
       demo: {
+        orgId: viewer.org._id,
         demoNow: viewer.org.demoNow ?? 0, // the stored clock, not a read of it (Ruling 16)
         persona:
           accounts.find((a) => a.email === viewer.person.email)?.key ?? null,
