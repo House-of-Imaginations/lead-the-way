@@ -163,7 +163,7 @@ test("the menu offers the calls to action, Log in and the disclaimer", async ({
   const menu = page.getByRole("dialog", { name: "Menu" });
   await expect(
     menu.getByRole("link", { name: "See the prototype" }),
-  ).toHaveAttribute("href", "/login");
+  ).toHaveAttribute("href", "/guide");
   await expect(
     menu.getByRole("link", { name: "Start your sprint" }),
   ).toHaveAttribute("href", "/signup");

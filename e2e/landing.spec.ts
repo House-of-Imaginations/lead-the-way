@@ -85,11 +85,13 @@ test("every link goes to a real route or an anchor on the page", async ({
     if (href.startsWith("#"))
       await expect(page.locator(href), href).toHaveCount(1);
     else {
-      expect(href, href).toMatch(/^\/(login|signup)$/);
+      expect(href, href).toMatch(/^\/(login|signup|guide)$/);
       routes.add(href);
     }
   }
-  expect([...routes].sort()).toEqual(["/login", "/signup"]);
+  expect([...routes].sort()).toEqual(["/guide", "/login", "/signup"]);
+  // The guide is private, so a signed-out request redirects; checked below.
+  routes.delete("/guide");
   for (const route of routes) {
     const res = await page.request.get(route, { maxRedirects: 0 });
     expect(res.status(), route).toBe(200);
@@ -101,7 +103,7 @@ test("the calls to action go where the rulings say", async ({ page }) => {
   const header = page.getByRole("banner");
   await expect(
     header.getByRole("link", { name: "See the prototype" }),
-  ).toHaveAttribute("href", "/login");
+  ).toHaveAttribute("href", "/guide");
   await expect(
     header.getByRole("link", { name: "Start your sprint" }),
   ).toHaveAttribute("href", "/signup");
@@ -128,7 +130,15 @@ test("the calls to action go where the rulings say", async ({ page }) => {
   );
   await expect(
     footer.getByRole("link", { name: "Open the prototype" }),
-  ).toHaveAttribute("href", "/login");
+  ).toHaveAttribute("href", "/guide");
+});
+
+test("See the prototype sends a signed-out visitor to log in, then the guide", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "See the prototype" }).first().click();
+  await expect(page).toHaveURL(/\/login\?next=%2Fguide$/);
 });
 
 test("the sticky frame follows the step in view", async ({ page }) => {
