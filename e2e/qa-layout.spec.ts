@@ -178,8 +178,10 @@ test("Run another sprint goes straight to the draft overview (C-M-1)", async ({
   });
   await page.getByRole("button", { name: "Run another sprint" }).click();
   await expect(page).toHaveURL("/setup/protected-hour");
-  await page.waitForTimeout(2000);
-  expect(
-    await page.evaluate(() => (window as unknown as { h1s: string[] }).h1s),
-  ).toEqual([before, "Make learning part of the working week"]);
+  // Polled until the draft's h1 is recorded: a flash in between never matches.
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { h1s: string[] }).h1s),
+    )
+    .toEqual([before, "Make learning part of the working week"]);
 });
