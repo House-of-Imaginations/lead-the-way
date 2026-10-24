@@ -91,7 +91,10 @@ for (const [name, routes] of groups) {
           expect(sizes.scroll, `${path} at ${width}`).toBeLessThanOrEqual(
             sizes.inner,
           );
-          await expect(page.getByText(DISCLAIMER).first()).toBeAttached();
+          // Visible, not just attached: main's phone copy is always in the DOM (M4).
+          await expect(
+            page.getByText(DISCLAIMER).filter({ visible: true }).first(),
+          ).toBeVisible();
         }
       });
 
