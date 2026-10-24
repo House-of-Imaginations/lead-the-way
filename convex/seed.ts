@@ -25,7 +25,7 @@ import { moveClock } from "./lib/demo/moveClock";
 import { demoTargetValidator } from "./lib/demo/schedule";
 import { INVITE_MESSAGE } from "./lib/demo/script";
 import { throwUserError } from "./lib/errors";
-import { deleteOrg } from "./lib/orgs/cascade";
+import { CAREER_TABLES, deleteOrg } from "./lib/orgs/cascade";
 import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
 import {
   dropSeat,
@@ -188,8 +188,57 @@ export const clearE2e = internalMutation({
 });
 
 /**
+ * R11: every row of every career table. `reset` runs it after `clearE2e`.
+ * Demo only. Returns how many rows went.
+ */
+export const clearCareers = internalMutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    assertFlag("demo", true);
+    let count = 0;
+    for (const table of CAREER_TABLES) {
+      // ponytail: one transaction, fine for a demo's few hundred rows; page it if P12a's seed outgrows it.
+      for (const row of await ctx.db.query(table).take(1000)) {
+        await ctx.db.delete(row._id);
+        count++;
+      }
+    }
+    return count;
+  },
+});
+
+/**
+ * `pnpm exec convex run seed:careerProfile '{"email":"x@e2e.test"}'`: a
+ * learner career profile for that account, for e2e only, until MS3 can start
+ * a track (P12a). Null if no account has the email; an existing profile is
+ * kept. `private` defaults to true. Demo only, like `invite`.
+ */
+export const careerProfile = internalMutation({
+  args: { email: v.string(), private: v.optional(v.boolean()) },
+  returns: v.union(v.null(), v.id("careerProfiles")),
+  handler: async (ctx, { email, private: isPrivate = true }) => {
+    assertFlag("demo", true);
+    const userId = await demoUserId(ctx, email);
+    if (!userId) return null;
+    const existing = await ctx.db
+      .query("careerProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    if (existing) return existing._id;
+    const name = (await profileOf(ctx, userId))?.displayName.split(" ")[0];
+    return await ctx.db.insert("careerProfiles", {
+      userId,
+      kind: "learner",
+      firstName: name || "Learner",
+      private: isPrivate,
+    });
+  },
+});
+
+/**
  * `npx convex run seed:reset`: the accounts, a fresh Calder Lane, then the e2e
- * accounts cleared (Ruling 34). Last, so a reseed that can't run clears nothing.
+ * accounts and every career row cleared (Ruling 34, R11). Last, so a reseed that can't run clears nothing.
  */
 export const reset = internalAction({
   args: {},
@@ -201,6 +250,9 @@ export const reset = internalAction({
     });
     const cleared = await ctx.runMutation(internal.seed.clearE2e, {});
     console.log(`Cleared ${cleared} e2e accounts.`);
+    // R11: every career row goes, until P12a reseeds the careers demo.
+    const careers = await ctx.runMutation(internal.seed.clearCareers, {});
+    console.log(`Cleared ${careers} career rows.`);
     // Calder Lane's badges come from issueBadge; other workspaces' may be older.
     await ctx.runMutation(internal.badges.backfillHolders, {});
     return orgId;

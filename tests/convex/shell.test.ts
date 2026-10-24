@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { api, internal } from "../../convex/_generated/api";
+import { api } from "../../convex/_generated/api";
 import {
   DEMO_TARGETS,
   mel,
@@ -13,11 +13,11 @@ import { personOf } from "./sprintHelpers";
 import { personFields } from "./testHelpers";
 import {
   calderLane,
+  clock,
   harness,
   OWNER,
   seat,
   workspace,
-  type T,
 } from "./workspace/helpers";
 
 beforeEach(() => {
@@ -26,10 +26,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
 });
-
-async function clock(t: T, target: DemoTarget) {
-  await t.mutation(internal.seed.clock, { target });
-}
 
 const next = (value: string) => ({
   label: "Next protected hour",

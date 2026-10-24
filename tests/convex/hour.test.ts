@@ -7,11 +7,11 @@ import { harness, workspace } from "./workspace/helpers";
  * Ruling 16: a query that reads the clock goes stale when the hour turns,
  * unless the client sends a new `hour`. So every exported query whose handler
  * reads `.now` (`viewer.now`, or `Date.now()`, which is stale in the same way)
- * is built with `timedViewerQuery`, which declares it.
+ * is built with `timedViewerQuery` (or `careerQuery`), which declares it.
  */
 const dir = new URL("../../convex/", import.meta.url);
 const QUERY =
-  /^(?:publicQuery|authenticatedQuery|viewerQuery|timedViewerQuery|query)$/;
+  /^(?:publicQuery|authenticatedQuery|viewerQuery|timedViewerQuery|careerQuery|query)$/;
 
 /**
  * Helpers that read the clock for their caller. Add a new one here when you
@@ -72,6 +72,7 @@ test("every query that reads the clock takes hour (Ruling 16)", () => {
       .filter(
         (q) =>
           q.builder !== "timedViewerQuery" &&
+          q.builder !== "careerQuery" &&
           !/hour: v\.optional\(v\.number\(\)\)/.test(q.body),
       )
       .map((q) => q.name),

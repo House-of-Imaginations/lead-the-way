@@ -24,6 +24,15 @@ export function demoBadgeSlug(): string {
   return slug;
 }
 
+/** A learner career profile for `email` (`seed:careerProfile`), until MS3 can start a track (P12a). */
+export function seedCareer(email: string, isPrivate = true): void {
+  convex([
+    "run",
+    "seed:careerProfile",
+    JSON.stringify({ email, private: isPrivate }),
+  ]);
+}
+
 /** `convex/seed.ts`'s `E2E_DOMAIN`: accounts on it go at `seed:reset` (Ruling 34). */
 export const E2E_DOMAIN = "e2e.test";
 export type DemoTarget =
