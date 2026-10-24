@@ -10,7 +10,7 @@ export type Step = {
 export const LEAD =
   "A manager-first SkillsBuild team path. Priya learns first, sets shared AI norms and protects one paid hour a week. Dan learns inside that hour, applies it to a real task and shows what changed.";
 export const HMW =
-  "make AI learning part of the working week for mid-career professionals in AI-exposed roles, so that what they learn is used, completed and openly valued at work?";
+  "make AI learning part of the working week for professionals aged 25 to 40 in AI-exposed roles, so that what they learn is used, completed and openly valued at work?";
 // R6: the canvas wording ("Press Play", "on the canvas") becomes app wording.
 export const WALKTHROUGH_NOTE =
   "Open any step. The account menu switches between Priya and Dan, and prototype notes show the research behind each screen.";

@@ -16,11 +16,11 @@ test("the guide shows Main.png's sections and copy", async ({ page }) => {
   await signInAs(page, "priya");
   await page.goto("/guide");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Lead the Way" }),
+    page.getByRole("heading", { level: 1, name: "From hero to zero" }),
   ).toBeVisible();
   for (const text of [
     "A manager-first SkillsBuild team path. Priya learns first, sets shared AI norms and protects one paid hour a week. Dan learns inside that hour, applies it to a real task and shows what changed.",
-    "make AI learning part of the working week for mid-career professionals in AI-exposed roles, so that what they learn is used, completed and openly valued at work?",
+    "make AI learning part of the working week for professionals aged 25 to 40 in AI-exposed roles, so that what they learn is used, completed and openly valued at work?",
     "Open any step. The account menu switches between Priya and Dan, and prototype notes show the research behind each screen.",
     "Will managers commit one protected hour per employee per week?",
     "These are prototype test criteria, not verified product outcomes. All data is mocked. Course completion, invitations, calendar holds, badge issuance and sharing are simulated. Company, association and people are fictional.",
@@ -168,7 +168,7 @@ test("an account without a demo seat sees only Start as Priya", async ({
   await signInAs(page, "dan"); // no seat until 8 September
   await page.goto("/guide");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Lead the Way" }),
+    page.getByRole("heading", { level: 1, name: "From hero to zero" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Start as Priya" }),

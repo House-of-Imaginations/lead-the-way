@@ -4,7 +4,7 @@ import { preloadAuthQuery } from "@/lib/account/auth-server";
 import { getShell, openOrHome } from "@/lib/account/queries";
 import { EmployeeSettings } from "./_components/EmployeeSettings";
 
-export const metadata: Metadata = { title: "Settings · Lead the Way" };
+export const metadata: Metadata = { title: "Settings · From hero to zero" };
 
 export default async function SettingsPage() {
   // The layout redirects everyone else; the page renders in parallel.

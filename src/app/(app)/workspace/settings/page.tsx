@@ -6,7 +6,7 @@ import type { MembersData } from "./_components/MembersTab";
 import { WorkspaceSettings } from "./_components/WorkspaceSettings";
 
 export const metadata: Metadata = {
-  title: "Workspace settings · Lead the Way",
+  title: "Workspace settings · From hero to zero",
 };
 
 /** Members' three reads, in parallel. `invites.list` is timed (Ruling 14). */

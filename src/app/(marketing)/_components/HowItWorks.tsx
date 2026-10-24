@@ -34,7 +34,7 @@ const STEPS = [
     everyone: false,
     time: "5 min",
     title: "Protect the hour",
-    body: "Pick one weekly slot. Lead the Way holds it in every calendar for four weeks and sends the invitations.",
+    body: "Pick one weekly slot. From hero to zero holds it in every calendar for four weeks and sends the invitations.",
     img: "/landing/step-launch.webp",
     height: 1000,
     alt: "Protected hour scheduler",

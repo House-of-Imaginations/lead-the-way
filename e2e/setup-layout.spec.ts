@@ -67,7 +67,7 @@ test.describe("at setup", () => {
       const header = page.getByRole("banner");
       await expect(header.getByText(DISCLAIMER, { exact: true })).toBeVisible();
       await expect(
-        header.getByRole("link", { name: "Lead the Way" }),
+        header.getByRole("link", { name: "From hero to zero" }),
       ).toHaveAttribute("href", "/setup/team");
       await expect(header).toHaveCSS(
         "border-bottom-color",

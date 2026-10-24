@@ -23,7 +23,7 @@ export function SetupHeader({ home }: { home: string }) {
         className="flex items-center gap-[10px] text-body-emphasis"
       >
         <Logo />
-        Lead the Way
+        From hero to zero
       </Link>
       <span className="text-body-02 text-text-secondary">
         {pathname === "/workspace/new"

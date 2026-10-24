@@ -58,9 +58,10 @@ export function TabsProgressSection() {
         </p>
       </div>
       <Disclosure summary="Why can't I see individual progress?">
-        Lead the Way shows you team totals only. Individual course activity,
-        time spent and scores stay private to each person, so learning feels
-        safe. Projects appear only when their owner chooses to present them.
+        From hero to zero shows you team totals only. Individual course
+        activity, time spent and scores stay private to each person, so learning
+        feels safe. Projects appear only when their owner chooses to present
+        them.
       </Disclosure>
       <Disclosure summary="What happens in the protected hour?" defaultOpen>
         Your team works on one real task with AI, then notes what it saved.

@@ -36,7 +36,7 @@ for (const theme of THEMES) {
       await page.keyboard.press("Enter");
       await expect(details).toHaveAttribute("open", "");
       await expect(
-        details.getByText(/Lead the Way shows you team totals only/),
+        details.getByText(/From hero to zero shows you team totals only/),
       ).toBeVisible();
       await page.keyboard.press("Enter");
       await expect(details).not.toHaveAttribute("open", "");

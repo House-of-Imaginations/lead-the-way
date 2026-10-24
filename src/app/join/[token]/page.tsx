@@ -7,7 +7,7 @@ import { errorCode } from "@/lib/errors";
 import { initialsOf } from "@convex/lib/initials";
 import { JoinInvalid, JoinView } from "../_components/JoinView";
 
-export const metadata: Metadata = { title: "Invitation · Lead the Way" };
+export const metadata: Metadata = { title: "Invitation · From hero to zero" };
 
 /**
  * 09 (Ruling 18), public: the proxy lets /join through. Signed in, it reads
