@@ -1,0 +1,177 @@
+import type { Locator, Page } from "@playwright/test";
+import { resetDemo, signInAs } from "./demo";
+import { expect, test } from "./fixtures";
+
+test.describe.configure({ mode: "serial" });
+test.afterAll(() => resetDemo());
+
+const TRANSPARENT = "rgba(0, 0, 0, 0)";
+
+/** R11: the mark opts out of forced colours and still paints something. */
+async function expectForcedMark(mark: Locator, name: string) {
+  const style = await mark.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return {
+      adjust: s.forcedColorAdjust,
+      background: s.backgroundColor,
+      border: s.borderTopColor,
+    };
+  });
+  expect(style.adjust, name).toBe("none");
+  expect(
+    style.background !== TRANSPARENT || style.border !== TRANSPARENT,
+    name,
+  ).toBe(true);
+}
+
+/** For the PR. output/ is git-ignored. */
+async function shoot(target: Locator, name: string) {
+  const path = `output/screens/qa-${name}.png`;
+  await target.screenshot({ path });
+  await test.info().attach(name, { path, contentType: "image/png" });
+}
+
+/** 03 saved as its PNG has it (6 to 10 people), which lands on 04 with "8 hrs". */
+async function saveTeam(page: Page) {
+  await page.goto("/setup/team");
+  await page
+    .getByRole("group", { name: "Team size" })
+    .getByRole("button", { name: "6 to 10" })
+    .click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL("/setup/team?page=2");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL("/setup/protected-hour");
+}
+
+test("forced colours keep the chosen tile dot, toggle, checkbox and progress visible (R11)", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.emulateMedia({ forcedColors: "active" });
+
+  resetDemo("setup");
+  await signInAs(page, "priya");
+  await page.goto("/setup/team");
+  const tiles = page.getByRole("group", {
+    name: "How does your team use AI today?",
+  });
+  const dot = tiles.getByRole("radio").first();
+  await dot.check();
+  await expectForcedMark(dot, "tile dot");
+  await shoot(tiles, "forced-tile");
+
+  await page.goto("/setup/team?page=2");
+  const box = page.getByRole("checkbox").first();
+  await box.check();
+  // A native checkbox: its mark is drawn in accent-color, not a background.
+  const cb = await box.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { adjust: s.forcedColorAdjust, accent: s.accentColor };
+  });
+  expect(cb.adjust).toBe("none");
+  expect(cb.accent).not.toBe("auto");
+  await shoot(box.locator("xpath=ancestor::fieldset[1]"), "forced-checkbox");
+
+  resetDemo("week1");
+  await page.context().clearCookies();
+  await signInAs(page, "dan");
+  await page.goto("/me/settings");
+  const toggle = page.getByRole("switch").first();
+  await expect(toggle).toBeVisible();
+  await expectForcedMark(toggle, "toggle");
+  await shoot(page.getByRole("main"), "forced-toggle");
+
+  await page.goto("/me/sprint");
+  const bar = page
+    .getByRole("main")
+    .getByRole("progressbar", { name: "Sprint progress" });
+  await expectForcedMark(bar, "progress track");
+  await expectForcedMark(bar.locator(".ltw-pb-fill"), "progress fill");
+  await shoot(bar.locator(".."), "forced-progress");
+});
+
+test("04 at 1280: the preview's hours sit top right and time chips stay on one line", async ({
+  page,
+}) => {
+  resetDemo("setup");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signInAs(page, "priya");
+  await saveTeam(page);
+  const preview = page.getByRole("region", { name: "Calendar preview" });
+  const heading = (await preview.getByRole("heading").boundingBox())!;
+  const hours = (await preview
+    .getByText("8 hrs", { exact: true })
+    .boundingBox())!;
+  expect(Math.abs(hours.y - heading.y)).toBeLessThanOrEqual(4);
+  expect(hours.x).toBeGreaterThan(heading.x + heading.width);
+
+  const chips = preview.getByText("Learn 2 PM", { exact: true });
+  await expect(chips).toHaveCount(4);
+  const first = (await chips.first().boundingBox())!;
+  // One 16px line of label-01 plus 2px top and bottom.
+  expect(first.height).toBeLessThanOrEqual(20);
+  for (const chip of await chips.all())
+    expect((await chip.boundingBox())!.height).toBe(first.height);
+  await shoot(preview, "04-1280-preview");
+});
+
+for (const width of [1280, 1440]) {
+  test(`the notes panel never covers the setup footer's primary button at ${width}`, async ({
+    page,
+  }) => {
+    resetDemo("setup");
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(() =>
+      localStorage.setItem("ltw-prototype-notes", "on"),
+    );
+    await signInAs(page, "priya");
+    await page.goto("/setup/team");
+    const panel = page.getByRole("complementary", { name: "Prototype notes" });
+    await expect(panel).toBeVisible();
+    const button = page.getByRole("button", { name: "Continue" });
+    // The footer is the page's last row, so this scrolls to the bottom.
+    await button.scrollIntoViewIfNeeded();
+    const a = (await panel.boundingBox())!;
+    const b = (await button.boundingBox())!;
+    const overlap =
+      a.x < b.x + b.width &&
+      b.x < a.x + a.width &&
+      a.y < b.y + b.height &&
+      b.y < a.y + a.height;
+    expect(overlap).toBe(false);
+    await page.screenshot({ path: `output/screens/qa-notes-${width}.png` });
+  });
+}
+
+test("Run another sprint goes straight to the draft overview (C-M-1)", async ({
+  page,
+}) => {
+  resetDemo("complete");
+  await signInAs(page, "priya");
+  await page.goto("/manager");
+  const before = await page.getByRole("heading", { level: 1 }).textContent();
+  // Client navigation keeps the document, so one observer sees every h1.
+  await page.evaluate(() => {
+    const w = window as unknown as { h1s: string[] };
+    w.h1s = [];
+    const record = () => {
+      const text = [...document.querySelectorAll("h1")]
+        .map((h) => h.textContent)
+        .join(" | ");
+      if (text && w.h1s.at(-1) !== text) w.h1s.push(text);
+    };
+    record();
+    new MutationObserver(record).observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
+  });
+  await page.getByRole("button", { name: "Run another sprint" }).click();
+  await expect(page).toHaveURL("/setup/protected-hour");
+  await page.waitForTimeout(2000);
+  expect(
+    await page.evaluate(() => (window as unknown as { h1s: string[] }).h1s),
+  ).toEqual([before, "Make learning part of the working week"]);
+});

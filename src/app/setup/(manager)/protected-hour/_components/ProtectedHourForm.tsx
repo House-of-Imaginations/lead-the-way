@@ -183,7 +183,8 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
           aria-label="Calendar preview"
           className="flex min-w-0 flex-col gap-05 self-start bg-layer-01 p-06 max-md:p-05"
         >
-          <div className="flex flex-wrap items-start justify-between gap-06">
+          {/* From 1280 the hours stay top right and the title wraps (04); narrower, the hours drop below. */}
+          <div className="flex flex-wrap items-start justify-between gap-06 min-[1280px]:flex-nowrap">
             <div className="flex flex-col gap-02">
               <h2 className="text-heading-03">
                 {hourPattern(weekday, start, 60)}
@@ -194,7 +195,7 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
               <CalendarMenu hour={hour} />
             </div>
             {initial.teamHours !== null && (
-              <p className="flex flex-col items-end">
+              <p className="flex shrink-0 flex-col items-end">
                 <span className="text-heading-02 tabular-nums">
                   {initial.teamHours} hrs
                 </span>
@@ -204,13 +205,13 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
               </p>
             )}
           </div>
-          {/* On a phone the week column and paddings shrink, so "Learn 2 PM" fits. */}
-          <div className="grid grid-cols-[64px_repeat(5,minmax(0,1fr))] gap-01 text-label-01 tabular-nums max-md:grid-cols-[48px_repeat(5,minmax(0,1fr))]">
+          {/* Below 1440 the week column and paddings shrink: "Learn 2 PM" stays on one line at 1280 and fits by the word on a phone. A longer time wraps rather than clip. */}
+          <div className="grid grid-cols-[64px_repeat(5,minmax(0,1fr))] gap-01 text-label-01 tabular-nums max-[1439px]:grid-cols-[48px_repeat(5,minmax(0,1fr))]">
             <span />
             {WEEKDAYS.map((d) => (
               <span
                 key={d}
-                className="px-03 pb-02 text-text-secondary max-md:px-02"
+                className="px-03 pb-02 text-text-secondary max-[1439px]:px-02"
               >
                 {d}
               </span>
@@ -226,7 +227,7 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
                     <div
                       key={d}
                       className={clsx(
-                        "flex min-h-16 flex-col gap-03 p-03 max-md:p-02",
+                        "flex min-h-16 flex-col gap-03 p-03 max-[1439px]:p-02",
                         on
                           ? "bg-highlight text-link"
                           : "bg-background text-text-secondary",
@@ -234,7 +235,7 @@ export function ProtectedHourForm({ initial }: { initial: Current }) {
                     >
                       {dayMonth(addDays(monday, w * 7 + i))}
                       {on && (
-                        <span className="bg-interactive px-03 py-01 text-text-on-color max-md:px-02">
+                        <span className="bg-interactive px-03 py-01 text-text-on-color max-[1439px]:px-02">
                           {block}
                         </span>
                       )}
