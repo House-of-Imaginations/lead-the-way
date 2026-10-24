@@ -5,6 +5,7 @@ import { expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { issueBadge } from "../../convex/lib/badges";
+import { DEFAULT_SETTINGS, writeSettings } from "../../convex/lib/settings";
 import schema from "../../convex/schema";
 import { personFields, registerComponents, seedAuthUser } from "./testHelpers";
 
@@ -369,6 +370,50 @@ test("a role somebody still holds cannot be deleted", async () => {
       expectOrgId: orgId,
     }),
   ).rejects.toMatchObject({ data: { code: "ROLE_IN_USE" } });
+});
+
+test("after a leave, a new seat's preferences fall back to defaults", async () => {
+  const t = harness();
+  const { orgId } = await workspace(t);
+  const alice = t.withIdentity(ALICE);
+  const bob = t.withIdentity(BOB);
+  const employee = (await alice.query(api.orgRoles.list, {})).find(
+    (r) => !r.isOwner,
+  )!;
+  const first = await alice.mutation(api.invites.create, {
+    roleId: employee._id,
+    expectOrgId: orgId,
+  });
+  await bob.mutation(api.invites.accept, { token: first.token });
+  await t.run(async (ctx) => {
+    const seat = (await ctx.db
+      .query("people")
+      .withIndex("by_user_and_org", (q) =>
+        q.eq("userId", BOB.subject).eq("orgId", orgId),
+      )
+      .unique())!;
+    await writeSettings(ctx, seat, { reduceMotion: true });
+  });
+  expect((await bob.query(api.settings.mine, {})).settings.reduceMotion).toBe(
+    true,
+  );
+  await bob.mutation(api.members.leave, { expectOrgId: orgId });
+
+  const carol = t.withIdentity(CAROL);
+  const { orgId: birch } = await carol.mutation(api.orgs.create, {
+    name: "Birch Studio",
+  });
+  const birchEmployee = (await carol.query(api.orgRoles.list, {})).find(
+    (r) => !r.isOwner,
+  )!;
+  const second = await carol.mutation(api.invites.create, {
+    roleId: birchEmployee._id,
+    expectOrgId: birch,
+  });
+  await bob.mutation(api.invites.accept, { token: second.token });
+  expect((await bob.query(api.settings.mine, {})).settings).toEqual(
+    DEFAULT_SETTINGS,
+  );
 });
 
 /** THE INVITE AS A CREDENTIAL. */
