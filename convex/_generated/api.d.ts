@@ -25,6 +25,7 @@ import type * as lib_agreementLimits from "../lib/agreementLimits.js";
 import type * as lib_auth_identity from "../lib/auth/identity.js";
 import type * as lib_auth_providers from "../lib/auth/providers.js";
 import type * as lib_badges from "../lib/badges.js";
+import type * as lib_careers_catalog from "../lib/careers/catalog.js";
 import type * as lib_clock from "../lib/clock.js";
 import type * as lib_customFunctions from "../lib/customFunctions.js";
 import type * as lib_demo_calderLane from "../lib/demo/calderLane.js";
@@ -116,6 +117,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth/identity": typeof lib_auth_identity;
   "lib/auth/providers": typeof lib_auth_providers;
   "lib/badges": typeof lib_badges;
+  "lib/careers/catalog": typeof lib_careers_catalog;
   "lib/clock": typeof lib_clock;
   "lib/customFunctions": typeof lib_customFunctions;
   "lib/demo/calderLane": typeof lib_demo_calderLane;

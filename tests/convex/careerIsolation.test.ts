@@ -46,8 +46,8 @@ test.each(CAREER_TABLES)(
     const found = sources
       .filter(({ source }) => named.test(source))
       .map(({ file }) => file);
-    // Nothing found would pass vacuously.
-    expect(found).toContain("lib/viewer.ts");
+    // Nothing found would pass vacuously: `CAREER_TABLES` names every one.
+    expect(found).toContain("lib/orgs/cascade.ts");
     expect(found.filter((file) => !CAREER_TABLE_FILES.includes(file))).toEqual(
       [],
     );
