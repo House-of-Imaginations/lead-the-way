@@ -1,7 +1,7 @@
 "use client";
 
 import { useConvex, useMutation, useQuery } from "convex/react";
-import { createContext, use, useState, type ReactNode } from "react";
+import { createContext, use, useRef, useState, type ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import {
   DEMO_TARGETS,
@@ -53,6 +53,8 @@ const COUNT_LABELS: Record<EventType, string> = {
 
 const Ctx = createContext<{
   status: Status | undefined;
+  /** A persona switch is running: every persona control waits for it. */
+  switching: boolean;
   startAs: (who: Persona, to: string) => Promise<void>;
 } | null>(null);
 
@@ -65,31 +67,44 @@ export function useGuideDemo() {
 /**
  * The guide's one subscription to `demo.status` and the persona switch. The
  * mutations echo the live `demo.orgId`, so a reset in another tab (a new demo
- * workspace) doesn't strand this page.
+ * workspace) doesn't strand this page. One switch at a time: the ref is the
+ * synchronous check, the state what the controls render.
  */
 export function GuideDemoProvider({ children }: { children: ReactNode }) {
   const convex = useConvex();
   const status = useQuery(api.demo.status, {});
   const setClock = useMutation(api.demo.setClock);
+  const busy = useRef(false);
+  const [switching, setSwitching] = useState(false);
 
+  // On success the page navigates away, so only a failure clears the flag.
   async function startAs(who: Persona, to: string) {
-    const demo = status?.demo;
-    if (demo?.persona === who) {
-      window.location.assign(to);
-      return;
-    }
-    // G-e and R4: Dan has a seat from 8 September, so jump to week 1 first.
-    if (who === "dan" && demo && demo.demoNow < DEMO_TARGETS.week1) {
-      try {
-        await setClock({ target: "week1", expectOrgId: demo.orgId });
-      } catch (e) {
-        if (errorCode(e) !== "DEMO_CLOCK_BACKWARDS") throw e;
+    if (busy.current) return;
+    busy.current = true;
+    setSwitching(true);
+    try {
+      const demo = status?.demo;
+      if (demo?.persona === who) {
+        window.location.assign(to);
+        return;
       }
+      // G-e and R4: Dan has a seat from 8 September, so jump to week 1 first.
+      if (who === "dan" && demo && demo.demoNow < DEMO_TARGETS.week1) {
+        try {
+          await setClock({ target: "week1", expectOrgId: demo.orgId });
+        } catch (e) {
+          if (errorCode(e) !== "DEMO_CLOCK_BACKWARDS") throw e;
+        }
+      }
+      await switchPersona(convex, EMAIL[who], to);
+    } catch (e) {
+      busy.current = false;
+      setSwitching(false);
+      throw e;
     }
-    await switchPersona(convex, EMAIL[who], to);
   }
 
-  return <Ctx value={{ status, startAs }}>{children}</Ctx>;
+  return <Ctx value={{ status, switching, startAs }}>{children}</Ctx>;
 }
 
 function ErrorLine({ children }: { children: string }) {
@@ -100,7 +115,7 @@ function ErrorLine({ children }: { children: string }) {
   );
 }
 
-/** A persona switch button: disabled while it runs, with its own error line. */
+/** A persona switch button: disabled while any switch runs, with its own error line. */
 function StartAs({
   who,
   to,
@@ -112,23 +127,20 @@ function StartAs({
   kind: "tertiary" | "secondary";
   children?: string;
 }) {
-  const { startAs } = useGuideDemo();
-  const [pending, setPending] = useState(false);
+  const { switching, startAs } = useGuideDemo();
   const [failed, setFailed] = useState(false);
   const name = who === "dan" ? "Dan" : "Priya";
   return (
     <div className="flex flex-col items-start gap-02">
       <Button
         kind={kind}
-        disabled={pending}
+        disabled={switching}
         onClick={async () => {
-          setPending(true);
           setFailed(false);
           try {
             await startAs(who, to);
           } catch {
             setFailed(true);
-            setPending(false);
           }
         }}
       >
