@@ -11,6 +11,7 @@ import { StatusSection } from "./StatusSection";
 import { TabsProgressSection } from "./TabsProgressSection";
 import { ToastSection } from "./ToastSection";
 import { TopBarSection } from "./TopBarSection";
+import { TracksSection } from "./TracksSection";
 
 export function Gallery() {
   return (
@@ -33,6 +34,7 @@ export function Gallery() {
         <LogoSection />
         <ButtonsSection />
         <StatusSection />
+        <TracksSection />
         <FieldsSection />
         <ChoicesSection />
         <TabsProgressSection />

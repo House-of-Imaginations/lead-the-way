@@ -31,10 +31,12 @@
   .ltw-tabpanel,
   .ltw-cs button,
   .ltw-tile,
+  .ltw-track,
   .ltw-toggle,
   .ltw-sn a,
   .ltw-sn button,
   .ltw-sn-rs,
+  .ltw-sn-tr,
   .ltw-tag button,
   .ltw-toast,
   .ltw-toast button,
@@ -524,6 +526,72 @@ input.ltw-field:read-only:not(:disabled) {
   margin-top: 2px;
 }
 
+/* local: TrackTile (TrackTile.md). Selected: a 1px ink outline plus a 1px inset ink line, 2px in all.
+   :not(:focus-visible) leaves the focus ring as it is. */
+.ltw-track {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+  background: var(--layer-01);
+  border: 0;
+  text-align: left;
+  font: inherit;
+  letter-spacing: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 70ms;
+}
+.ltw-track:hover {
+  background: var(--layer-hover);
+}
+.ltw-track[aria-pressed="true"]:not(:focus-visible) {
+  outline: 1px solid var(--border-inverse);
+  box-shadow: inset 0 0 0 1px var(--border-inverse);
+}
+.ltw-track-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ltw-track-i {
+  flex-shrink: 0;
+  color: var(--interactive);
+}
+.ltw-track-title {
+  font-size: 20px;
+  line-height: 28px;
+}
+.ltw-track-body {
+  color: var(--text-secondary);
+}
+
+/* local: WhoSeesWhat (WhoSeesWhat.md). Text wraps, so it never scrolls sideways. */
+.ltw-wsw {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.16px;
+  color: var(--text-primary);
+}
+.ltw-wsw th,
+.ltw-wsw td {
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.ltw-wsw th {
+  font-weight: 600;
+}
+.ltw-wsw thead th {
+  background: var(--layer-selected);
+}
+
 /* Inline notification */
 .ltw-ntf {
   display: flex;
@@ -865,6 +933,50 @@ input.ltw-field:read-only:not(:disabled) {
 }
 .ltw-sn-rs:hover::after {
   background: var(--interactive);
+}
+/* local: TrackSwitcher (TrackSwitcher.md), "Your tracks" in place of the org block. Rows are links. */
+.ltw-sn-tr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 8px 4px;
+  padding: 8px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.ltw-sn-tr:hover {
+  background: var(--layer-hover);
+}
+.ltw-sn-tr[aria-current="true"] {
+  background: var(--layer-01);
+}
+.ltw-sn-tr[aria-current="true"]:not(:focus-visible) {
+  outline: 1px solid var(--border-inverse);
+  outline-offset: -1px;
+}
+.ltw-sn-sq {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  background: var(--background);
+  border: 1px solid var(--border-inverse);
+  color: var(--text-primary);
+}
+/* In the rail only the squares remain; the selected one gets the accent outline. */
+.ltw-sn-col .ltw-sn-tr {
+  padding: 0;
+  background: transparent;
+}
+.ltw-sn-col .ltw-sn-tr[aria-current="true"]:not(:focus-visible) {
+  outline: none;
+}
+.ltw-sn-col .ltw-sn-tr[aria-current="true"] > :first-child {
+  outline: 2px solid var(--interactive);
+  outline-offset: 2px;
 }
 
 /* Modal */
@@ -1552,6 +1664,17 @@ button.ltw-sn-acct:hover {
   .ltw-sn-auto .ltw-sn-st + .ltw-sn-tg,
   .ltw-sn-auto .ltw-sn-st + .ltw-sn-ck {
     margin-top: auto;
+  }
+  .ltw-sn-auto .ltw-sn-tr {
+    padding: 0;
+    background: transparent;
+  }
+  .ltw-sn-auto .ltw-sn-tr[aria-current="true"]:not(:focus-visible) {
+    outline: none;
+  }
+  .ltw-sn-auto .ltw-sn-tr[aria-current="true"] > :first-child {
+    outline: 2px solid var(--interactive);
+    outline-offset: 2px;
   }
 }
 
