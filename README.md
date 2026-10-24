@@ -6,8 +6,6 @@
 
 **One protected hour a week for a team to learn AI on real work.**
 
-[Overview](#overview) · [Getting started](#getting-started) · [Demo](#the-demo) · [Development](#development) · [Project structure](#project-structure)
-
 </div>
 
 > [!IMPORTANT]
@@ -58,6 +56,8 @@ The privacy rules are enforced in the backend, not the UI, and tested.
 
    Then add `NEXT_PUBLIC_CONVEX_SITE_URL` to `.env.local` by hand: the same URL ending in `.convex.site`.
 
+   With Docker instead of a Convex account, run `docker compose up -d` and follow the notes at the top of `docker-compose.yml` and `.env.example` before `npx convex dev`; the two URLs are then `http://127.0.0.1:3210` and `http://127.0.0.1:3211`.
+
 3. Set the deployment's own environment. Secrets live in Convex, not in `.env.local`:
 
    ```bash
@@ -93,7 +93,7 @@ With `DEMO_MODE` on, the app is seeded with **Calder Lane**, a client services t
 Choose either from the dropdown on `/login`. The demo clock moves the sprint through its four weeks, and `/guide` walks through the whole journey. `npx convex run seed:reset` puts everything back.
 
 > [!WARNING]
-> On a deployed copy, `DEMO_PASSWORD` must be set in **two** places with the **same** value: the Convex production env, which creates the demo accounts, and the hosting env (for example Vercel), which the `/login` picker signs in with. If they differ, the picker answers "We couldn't log in as that person."
+> On a deployed copy, `DEMO_PASSWORD` must be set in **two** places with the **same** value: the Convex production env, which creates the demo accounts, and the hosting env (for example Vercel), which the `/login` picker signs in with. If they differ, the picker answers "We couldn't log in as that person. Try again."
 
 ## Development
 
@@ -116,10 +116,15 @@ CI runs typecheck, lint, format and both test suites on pull requests to `main`.
 src/app/
   (marketing)/      landing page
   (auth)/           sign up, log in, reset password
+  home/             sends a signed-in person to their home
+  start/            choose a track
+  join/             invitation links
+  workspace/new/    create a workspace
   setup/            the manager's setup flow: team, protected hour, pathway, agreement, invite
   (app)/manager/    Priya's views: dashboard, sprint, learning, agreement, outcomes
-  (app)/me/         Dan's views: this week, project, agreement, show and tell, credential
-  (app)/settings/   workspace and profile settings
+  (app)/me/         Dan's views: this week, project, agreement, show and tell, credential, settings (19)
+  (app)/settings/   the manager's settings (17)
+  (app)/workspace/  workspace settings (18)
   credential/       public credential pages
   guide/            the prototype guide
 convex/             schema, queries and mutations; convex/lib/privacy.ts holds the aggregate rules
