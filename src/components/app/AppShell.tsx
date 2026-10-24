@@ -196,7 +196,7 @@ export function AppShell({
     // Once: an open Workspace settings is in the org items above with two tracks.
     ...(rows && ws.open ? [] : [workspaceItem]),
     {
-      label: "Sign out",
+      label: "Log out",
       // /signed-out drops the cookies and goes to log in, so a sign-out that
       // failed on the server still ends signed out here.
       onSelect: () =>

@@ -37,7 +37,7 @@ async function logIn(page: Page, who: Persona) {
 /** The account menu's sign-out, which ends on log in. */
 async function logOut(page: Page, name: string) {
   await nav(page).getByRole("button", { name }).click();
-  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await page.getByRole("menuitem", { name: "Log out" }).click();
   await expect(page).toHaveURL(/\/login/);
 }
 

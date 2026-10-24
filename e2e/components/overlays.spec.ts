@@ -195,7 +195,7 @@ for (const theme of THEMES) {
     test("menu items are 48px tall on phones @mobile", async ({ page }) => {
       await page.setViewportSize({ width: 390, height: 844 });
       await openMenu(page, "Show actions");
-      const item = page.getByRole("menuitem", { name: "Sign out" });
+      const item = page.getByRole("menuitem", { name: "Log out" });
       expect((await item.boundingBox())!.height).toBeCloseTo(48, 1);
     });
 
@@ -229,11 +229,11 @@ for (const theme of THEMES) {
       expect(await focusRing(first)).toEqual(expectedRing(theme));
       await page.keyboard.press("ArrowDown"); // skips the disabled item
       await expect(
-        menu.getByRole("menuitem", { name: "Sign out" }),
+        menu.getByRole("menuitem", { name: "Log out" }),
       ).toBeFocused();
       await page.keyboard.press("Enter");
       await expect(menu).toHaveCount(0);
-      await expect(overlays.getByText("Last action: Sign out")).toBeVisible();
+      await expect(overlays.getByText("Last action: Log out")).toBeVisible();
       await expect(trigger).toBeFocused();
       await page.keyboard.press("Enter");
       await expect(page.getByRole("menu")).toBeVisible();

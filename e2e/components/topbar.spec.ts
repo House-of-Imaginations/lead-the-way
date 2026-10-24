@@ -83,9 +83,7 @@ for (const theme of THEMES) {
     await expectAxeClean(page, "#topbar");
 
     await avatar.click();
-    await expect(
-      page.getByRole("menuitem", { name: "Sign out" }),
-    ).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Log out" })).toBeVisible();
     await expectAxeClean(page, '[role="menu"]');
   });
 

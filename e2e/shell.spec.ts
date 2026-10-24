@@ -333,11 +333,11 @@ test.describe("week 2", () => {
     });
   }
 
-  test("sign out ends at log in", async ({ page }) => {
+  test("log out ends at log in", async ({ page }) => {
     await signInAs(page, "dan");
     await page.goto("/me");
     await openAccount(page, "Dan Okafor");
-    await page.getByRole("menuitem", { name: "Sign out" }).click();
+    await page.getByRole("menuitem", { name: "Log out" }).click();
     await expect(page).toHaveURL(/\/login/);
     await page.goto("/me");
     await expect(page).toHaveURL(/\/login/);
