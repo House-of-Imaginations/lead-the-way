@@ -39,7 +39,7 @@ test.describe("sign up", () => {
       "/login",
     );
     await expect(
-      page.getByRole("link", { name: "From zero to hero" }),
+      page.getByRole("link", { name: "From Zero to Hero" }),
     ).toHaveAttribute("href", "/");
     await expect(
       page.getByRole("heading", { name: "Start with one hour a week." }),

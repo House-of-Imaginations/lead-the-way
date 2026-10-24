@@ -636,7 +636,7 @@ Carbon productive easing, `cubic-bezier(.2, 0, .38, .9)`, inside the app: 70ms f
 ## Content and voice
 
 - Plain, specific and warm. Say what happens and when: "One hour of your working week is protected for practical AI learning."
-- Sentence case everywhere. "Team AI Agreement" is the only title-case product term.
+- Sentence case everywhere. The product name "From Zero to Hero" and "Team AI Agreement" are the only title-case terms.
 - "You" for the reader; the manager by first name ("Priya sees team totals"); "your team", never "resources" or "users".
 - Buttons are 1 to 3 words starting with a verb: Continue, Save agreement, Send invitations, Log in, Create account.
 - Privacy wording is exact and repeated: "Aggregate only." "Your answers are private to you." "Priya sees team totals, never your individual answers."

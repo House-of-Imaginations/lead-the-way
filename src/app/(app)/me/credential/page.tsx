@@ -4,7 +4,7 @@ import { preloadAuthQuery } from "@/lib/account/auth-server";
 import { openOrHome } from "@/lib/account/queries";
 import { MyCredential } from "./_components/MyCredential";
 
-export const metadata: Metadata = { title: "Credential · From zero to hero" };
+export const metadata: Metadata = { title: "Credential · From Zero to Hero" };
 
 // badges.mine reads no time, so it takes no hour (Ruling 16).
 export default async function CredentialPage() {

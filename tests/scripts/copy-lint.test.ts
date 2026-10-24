@@ -82,10 +82,16 @@ describe("does not flag", () => {
       rules(`const b = <Button><span>Save agreement</span></Button>;`),
     ).toEqual([]);
   });
-  test("the one title-case product term", () => {
+  test("the title-case product terms", () => {
     expect(rules(`const b = <Button>Open Team AI Agreement</Button>;`)).toEqual(
       [],
     );
+    expect(
+      rules(`const b = <Button>Share From Zero to Hero</Button>;`),
+    ).toEqual([]);
+    expect(
+      rules(`const b = <Button>Open From Zero to Hero Guide</Button>;`),
+    ).toEqual(["title-case-button"]);
   });
   test("class names, calc(), ISO dates and import paths", () => {
     expect(

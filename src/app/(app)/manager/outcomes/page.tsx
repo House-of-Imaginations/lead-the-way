@@ -4,7 +4,7 @@ import { preloadAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, getShell, managerRead } from "@/lib/account/queries";
 import { Outcomes } from "./_components/Outcomes";
 
-export const metadata: Metadata = { title: "Outcomes · From zero to hero" };
+export const metadata: Metadata = { title: "Outcomes · From Zero to Hero" };
 
 export default async function ManagerOutcomesPage() {
   // The manager layout redirects everyone else; don't ask for them.

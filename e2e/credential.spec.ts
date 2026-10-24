@@ -97,7 +97,7 @@ test.describe("complete", () => {
       page.getByRole("heading", { level: 1, name: "Dan Okafor" }),
     ).toBeVisible();
     await expect(
-      page.getByText("From zero to hero", { exact: true }),
+      page.getByText("From Zero to Hero", { exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText("Shared by Dan Okafor", { exact: true }),

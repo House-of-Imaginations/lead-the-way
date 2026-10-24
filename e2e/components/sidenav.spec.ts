@@ -33,7 +33,7 @@ test.describe("side nav", () => {
     const n = nav(page);
     await expect(n).toHaveCSS("width", "256px");
     await expect(
-      n.getByRole("link", { name: "From zero to hero" }),
+      n.getByRole("link", { name: "From Zero to Hero" }),
     ).toBeVisible();
     await expect(n.getByText("Calder Lane")).toBeVisible();
     await expect(n.getByRole("link", { name: "Overview" })).toHaveAttribute(
@@ -150,7 +150,7 @@ test.describe("side nav", () => {
       nav(page).getByRole("link", { name: "Overview" }),
     ).toBeVisible();
     await expect(
-      nav(page).getByRole("link", { name: "From zero to hero" }),
+      nav(page).getByRole("link", { name: "From Zero to Hero" }),
     ).toBeVisible();
   });
 

@@ -5,7 +5,7 @@ import { currentHour, getShell, managerRead } from "@/lib/account/queries";
 import { AgreementBuilder } from "./_components/AgreementBuilder";
 
 export const metadata: Metadata = {
-  title: "Team AI Agreement · From zero to hero",
+  title: "Team AI Agreement · From Zero to Hero",
 };
 
 export default async function ManagerAgreementPage() {

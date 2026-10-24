@@ -3,7 +3,7 @@ import { TOKENS } from "./components/helpers";
 import { PERSONA, convex, demoPassword, resetDemo, signInAs } from "./demo";
 
 const BANNER =
-  "Demo workspace. Calder Lane is sample data for trying From zero to hero. It can be reset at any time.";
+  "Demo workspace. Calder Lane is sample data for trying From Zero to Hero. It can be reset at any time.";
 const MOVED = "That page is for your team. You're back on your home.";
 
 test("signed out, private pages go to log in and keep where you were going", async ({

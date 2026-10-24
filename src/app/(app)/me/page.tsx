@@ -4,7 +4,7 @@ import { preloadAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, getShell, openOrHome } from "@/lib/account/queries";
 import { Home } from "./_components/Home";
 
-export const metadata: Metadata = { title: "This week · From zero to hero" };
+export const metadata: Metadata = { title: "This week · From Zero to Hero" };
 
 export default async function ThisWeekPage() {
   // The employee layout redirects everyone else, and it renders in parallel

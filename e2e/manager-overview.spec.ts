@@ -42,7 +42,7 @@ const nav = (page: Page) => page.getByRole("navigation", { name: "Main" });
 const SIMULATED = "Simulated in this prototype.";
 const WHY = "Why can't I see individual progress?";
 const WHY_TEXT =
-  "From zero to hero shows you team totals only. Individual course activity, time spent and scores stay private to each person, so learning feels safe. Projects appear only when their owner chooses to present them.";
+  "From Zero to Hero shows you team totals only. Individual course activity, time spent and scores stay private to each person, so learning feels safe. Projects appear only when their owner chooses to present them.";
 
 async function open(page: Page) {
   await signInAs(page, "priya");

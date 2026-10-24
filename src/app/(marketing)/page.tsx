@@ -169,10 +169,10 @@ export default function LandingPage() {
           </dl>
         </section>
 
-        <section className="manifesto wrap" aria-label="Why From zero to hero">
+        <section className="manifesto wrap" aria-label="Why From Zero to Hero">
           <p className="mf">
             {words(
-              "Most teams want to use AI well. Few are given the time to learn it, so it happens after hours, alone, or not at all. From zero to hero gives your team ",
+              "Most teams want to use AI well. Few are given the time to learn it, so it happens after hours, alone, or not at all. From Zero to Hero gives your team ",
             )}
             <em>{words("one protected hour a week")}</em>
             {words(", a shared set of rules, and a real task to try it on.")}
@@ -380,7 +380,7 @@ export default function LandingPage() {
           <div>
             <a className="brand" href="#top">
               <Logo />
-              From zero to hero
+              From Zero to Hero
             </a>
             <p className="fine">
               A Southbank Business Collective member program, delivered with IBM
