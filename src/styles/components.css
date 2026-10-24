@@ -163,6 +163,10 @@
   background: var(--tag-green-bg);
   color: var(--tag-green-text);
 }
+.ltw-tag-purple {
+  background: var(--tag-purple-bg);
+  color: var(--tag-purple-text);
+}
 .ltw-tag button {
   width: 16px;
   height: 16px;

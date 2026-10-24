@@ -2,8 +2,9 @@ import { Close } from "@carbon/icons-react";
 import clsx from "clsx";
 
 export type TagProps = {
-  /** blue: current or active. green: finished. gray: neutral. */
-  color?: "gray" | "blue" | "green";
+  /** blue: current or active. green: finished. gray: neutral.
+   * purple: the Grow in my role track. */
+  color?: "gray" | "blue" | "green" | "purple";
   children: string;
   onDismiss?: () => void;
 };

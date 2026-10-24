@@ -45,6 +45,8 @@ colors:
   tag-blue-text: "#002d9c"
   tag-green-bg: "#a7f0ba"
   tag-green-text: "#0e6027"
+  tag-purple-bg: "#e8daff"
+  tag-purple-text: "#491d8b"
   avatar-manager: "#a6c8ff"
   avatar-ink: "#001141"
   chart-before: "#a8a8a8"
@@ -253,6 +255,13 @@ components:
     rounded: "{rounded.tag}"
     padding: "0 8px"
     height: 24px
+  tag-purple:
+    backgroundColor: "{colors.tag-purple-bg}"
+    textColor: "{colors.tag-purple-text}"
+    typography: "{typography.label-01}"
+    rounded: "{rounded.tag}"
+    padding: "0 8px"
+    height: 24px
   toggle-off:
     backgroundColor: "{colors.border-strong}"
     rounded: 12px
@@ -447,7 +456,7 @@ The palette is Carbon's White theme (light, default) and Gray 100 theme (dark). 
 - **Greys:** `background` white for pages, `layer-01` (#f4f4f4) for fields, tiles and stat blocks, `layer-hover` and `layer-selected` for interaction, `border-subtle` for hairlines, `border-strong` for the bottom rule of fields.
 - **Highlight (#edf5ff):** the present moment and the privacy promise: current week, info notifications, the agreement quote.
 - **Status:** green (`support-success`) for done, always with a word or check icon; red (`support-error`) for errors and destructive actions only; yellow (`support-warning`) for warning icons only, never text.
-- **Tags:** blue pair for current or active, green pair for finished, grey pair for neutral.
+- **Tags:** blue pair for current or active, green pair for finished, grey pair for neutral, purple pair for the Grow in my role track tag only.
 
 
 | Token                    | Light (White)   | Dark (Gray 100) | Use                                                                                                                                             |
@@ -488,6 +497,8 @@ The palette is Carbon's White theme (light, default) and Gray 100 theme (dark). 
 | `tag-blue-text`          | `#002d9c`       | `#d0e2ff`       | Text on tag-blue-bg.                                                                                                                            |
 | `tag-green-bg`           | `#a7f0ba`       | `#044317`       | State tags that mean finished: Completed, Done, Saved, Output reviewed.                                                                         |
 | `tag-green-text`         | `#0e6027`       | `#a7f0ba`       | Text on tag-green-bg.                                                                                                                            |
+| `tag-purple-bg`          | `#e8daff`       | `#491d8b`       | The Grow in my role track tag only.                                                                                                              |
+| `tag-purple-text`        | `#491d8b`       | `#e8daff`       | Text on tag-purple-bg.                                                                                                                           |
 | `avatar-manager`         | `#a6c8ff`       | `#a6c8ff`       | Manager avatar fill. Text on it is avatar-ink.                                                                                                  |
 | `avatar-ink`             | `#001141`       | `#001141`       | Initials on avatar-manager (Blue 100 navy from the brand palette).                                                                              |
 | `chart-before`           | `#a8a8a8`       | `#6f6f6f`       | The before bar in before and after comparisons. Always labelled with its value.                                                                 |
@@ -594,6 +605,16 @@ The reference implementation for every component is `docs/design/design-system/c
 - **Modal.** `layer-01` panel up to 560px, label and title at the top, a 48px close button, body with 48px bottom padding, 64px button pair.
 - **Tables.** 48px rows, a `layer-selected` header row in 600 weight, hairlines between rows. The members table shows name, email, role and invitation state only, never participation data.
 
+## Two tracks
+
+One account can hold a team track (Grow in my role, through a workspace seat) and a career track (Change careers, Pivot Crews).
+
+- Track tags are purple (team) and blue (careers). They are only ever tags, never a fill or a heading colour.
+- **TrackTile** is the choice on `/start`: icon, track tag, title and one sentence stating that track's privacy rule.
+- **TrackSwitcher** sits at the top of the side nav, only when the account has two learner tracks. Its rows are links: switching tracks navigates.
+- **WhoSeesWhat** is a plain table that states the strongest true statement about who sees what, per track.
+- Career data is never visible to an employer.
+
 ## Do's and Don'ts
 
 - Do use `interactive` blue for exactly one primary action per view, plus progress and focus.
@@ -636,7 +657,7 @@ Carbon productive easing, `cubic-bezier(.2, 0, .38, .9)`, inside the app: 70ms f
 ## Content and voice
 
 - Plain, specific and warm. Say what happens and when: "One hour of your working week is protected for practical AI learning."
-- Sentence case everywhere. The product name "From Zero to Hero" and "Team AI Agreement" are the only title-case terms.
+- Sentence case everywhere. The product name "From Zero to Hero" and the terms "Team AI Agreement", "Pivot Map", "Crew Agreement", "Pathway Guide" and "Pivot Crews" are the only title-case terms.
 - "You" for the reader; the manager by first name ("Priya sees team totals"); "your team", never "resources" or "users".
 - Buttons are 1 to 3 words starting with a verb: Continue, Save agreement, Send invitations, Log in, Create account.
 - Privacy wording is exact and repeated: "Aggregate only." "Your answers are private to you." "Priya sees team totals, never your individual answers."

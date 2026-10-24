@@ -89,9 +89,21 @@ describe("does not flag", () => {
     expect(
       rules(`const b = <Button>Share From Zero to Hero</Button>;`),
     ).toEqual([]);
+    for (const term of [
+      "Pivot Map",
+      "Crew Agreement",
+      "Pathway Guide",
+      "Pivot Crews",
+    ])
+      expect(rules(`const b = <Button>Open ${term}</Button>;`), term).toEqual(
+        [],
+      );
     expect(
       rules(`const b = <Button>Open From Zero to Hero Guide</Button>;`),
     ).toEqual(["title-case-button"]);
+    expect(rules(`const b = <Button>Open Pivot Crews Guide</Button>;`)).toEqual(
+      ["title-case-button"],
+    );
   });
   test("class names, calc(), ISO dates and import paths", () => {
     expect(

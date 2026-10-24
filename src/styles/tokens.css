@@ -36,6 +36,8 @@
   --tag-blue-text: #002d9c;
   --tag-green-bg: #a7f0ba;
   --tag-green-text: #0e6027;
+  --tag-purple-bg: #e8daff;
+  --tag-purple-text: #491d8b;
   --avatar-manager: #a6c8ff;
   --avatar-ink: #001141;
   --chart-before: #a8a8a8;
@@ -105,6 +107,8 @@
     --tag-blue-text: #d0e2ff;
     --tag-green-bg: #044317;
     --tag-green-text: #a7f0ba;
+    --tag-purple-bg: #491d8b;
+    --tag-purple-text: #e8daff;
     --chart-before: #6f6f6f;
     color-scheme: dark;
   }
@@ -140,6 +144,8 @@
   --tag-blue-text: #d0e2ff;
   --tag-green-bg: #044317;
   --tag-green-text: #a7f0ba;
+  --tag-purple-bg: #491d8b;
+  --tag-purple-text: #e8daff;
   --chart-before: #6f6f6f;
   color-scheme: dark;
 }
