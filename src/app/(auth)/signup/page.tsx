@@ -36,7 +36,7 @@ export default async function SignUpPage({
         preview
           ? `Join your team's sprint at ${preview.orgName}.`
           : typeof ref === "string" && ref && track !== "career"
-            ? "A manager shared Lead the Way with you. Set up a four-week AI sprint for your own team."
+            ? "A manager shared From Zero to Hero with you. Set up a four-week AI sprint for your own team."
             : "Set up a four-week AI sprint for your team."
       }
       panelTitle="Start with one hour a week."

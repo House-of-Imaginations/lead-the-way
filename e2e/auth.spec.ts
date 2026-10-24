@@ -163,7 +163,7 @@ test("?ref= changes only the lead line (R9)", async ({ page }) => {
   await page.goto("/signup?ref=calder-lane");
   await expect(
     page.getByText(
-      "A manager shared Lead the Way with you. Set up a four-week AI sprint for your own team.",
+      "A manager shared From Zero to Hero with you. Set up a four-week AI sprint for your own team.",
       { exact: true },
     ),
   ).toBeVisible();
