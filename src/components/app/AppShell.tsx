@@ -35,7 +35,10 @@ import { api } from "@convex/_generated/api";
 import type { Shell } from "@convex/lib/shell";
 import { useHour } from "@/lib/useHour";
 import { authClient } from "@/lib/account/auth-client";
+import { switchPersona } from "@/lib/demo/switchPersona";
 import type { NavState } from "@/lib/navState";
+import { setPrototypeNotes, usePrototypeNotes } from "@/lib/prototypeNotes";
+import { DemoClock } from "./DemoClock";
 import { MovedToast } from "./MovedToast";
 import { ExpectOrgIdProvider } from "./ExpectOrgId";
 
@@ -116,32 +119,13 @@ export function AppShell({
   const convex = useConvex();
   const warmHour = useHour(); // what useTimedQuery subscribes with
   const setActiveOrg = useMutation(api.profiles.setActiveOrg);
+  const notesOn = usePrototypeNotes();
 
   // Exact path, first match: "/manager" and "/manager#resources" share a path,
   // and after launch Sprint opens "/manager" too. Labels are unique, hrefs aren't.
   const currentLabel = shell.nav
     .flatMap((section) => section.links)
     .find((l) => l.href.split("#")[0] === pathname)?.label;
-
-  // Switching persona or workspace and signing out all end in a full load, on
-  // purpose: the server layout reads the new session and paints its shell and banner.
-  // R2 and spec 6: the demo password comes from a DEMO_MODE-gated query, never the bundle.
-  // Anything that fails ends at log in, never silently where it started.
-  async function switchPersona(email: string) {
-    let to = "/login";
-    try {
-      const password = await convex.query(api.demo.personaPassword, {});
-      if (password) {
-        await authClient.signOut();
-        const { error } = await authClient.signIn.email({ email, password });
-        if (!error) to = "/home";
-      }
-    } catch {
-      // A rejection ends at log in too.
-    }
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
-    window.location.assign(to);
-  }
 
   // 18 for whoever holds one of its tabs (W-g); everyone else is told who manages it.
   const ws = shell.workspaceSettings;
@@ -181,7 +165,15 @@ export function AppShell({
       ? [
           {
             label: switchTo.label,
-            onSelect: () => void switchPersona(switchTo.email),
+            onSelect: () => void switchPersona(convex, switchTo.email),
+          },
+        ]
+      : []),
+    ...(shell.isDemo
+      ? [
+          {
+            label: notesOn ? "Hide prototype notes" : "Show prototype notes",
+            onSelect: () => setPrototypeNotes(!notesOn),
           },
         ]
       : []),
@@ -264,6 +256,7 @@ export function AppShell({
           <p className="mt-auto text-label-01 text-text-helper md:hidden md:group-has-[.ltw-sn-col]/shell:block">
             Concept prototype. Not an official IBM product.
           </p>
+          {shell.isDemo && <DemoClock expectOrgId={initial.expectOrgId} />}
         </main>
       </div>
       <Suspense>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
+import { PrototypeNotesPanel } from "@/components/app/PrototypeNotes";
 import { ToastProvider } from "@/components/ui/Toast";
 import { themeScript } from "@/lib/theme";
 
@@ -19,7 +20,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lead the Way",
+  title: "From hero to zero",
   description:
     "A manager-first team AI learning experience. Concept prototype. Not an official IBM product.",
 };
@@ -42,6 +43,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full bg-background" suppressHydrationWarning>
         <ToastProvider>{children}</ToastProvider>
+        <PrototypeNotesPanel />
       </body>
     </html>
   );

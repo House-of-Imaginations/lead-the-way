@@ -2,7 +2,7 @@ import clsx from "clsx";
 
 /**
  * The held hour: one interactive block between two square brackets on a 24px
- * grid. The brackets take currentColor; the name "Lead the Way" is always live
+ * grid. The brackets take currentColor; the name "From hero to zero" is always live
  * type beside it, never part of the mark.
  */
 export function Logo({ className }: { className?: string }) {

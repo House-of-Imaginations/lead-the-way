@@ -5,7 +5,7 @@ import { resetDemo, signInAs } from "./demo";
 
 const DISCLAIMER = "Concept prototype. Not an official IBM product.";
 const BANNER =
-  "Demo workspace. Calder Lane is sample data for trying Lead the Way. It can be reset at any time.";
+  "Demo workspace. Calder Lane is sample data for trying From hero to zero. It can be reset at any time.";
 const EMPTY_OVERVIEW =
   "Your team's totals appear here after you launch the sprint.";
 const nav = (page: Page) => page.getByRole("navigation", { name: "Main" });
@@ -27,7 +27,7 @@ test.describe("week 2", () => {
       page.getByRole("heading", { level: 1, name: "Good afternoon, Priya" }),
     ).toBeVisible();
     await expect(nav(page).getByRole("link")).toHaveText([
-      "Lead the Way",
+      "From hero to zero",
       "Overview",
       "Sprint",
       "Team agreement",
@@ -87,7 +87,7 @@ test.describe("week 2", () => {
       page.getByRole("heading", { level: 1, name: "Good afternoon, Dan" }),
     ).toBeVisible();
     await expect(nav(page).getByRole("link")).toHaveText([
-      "Lead the Way",
+      "From hero to zero",
       "This week",
       "My sprint",
       "Work project",

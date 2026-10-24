@@ -15,7 +15,8 @@ import {
   type ManagerRoute,
   type Permission,
 } from "./orgs/permissions";
-import { firstNameOf, initialsOf, isDemoAccount, ownerOf } from "./orgs/people";
+import { initialsOf } from "./initials";
+import { firstNameOf, isDemoAccount, ownerOf } from "./orgs/people";
 import { settingsOf } from "./settings";
 import { SETUP_STEPS } from "./setupSteps";
 import { setupSprint, currentTeam, launchedSprint, setupGate } from "./sprint";

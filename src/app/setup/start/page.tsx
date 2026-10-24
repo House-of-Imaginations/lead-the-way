@@ -27,8 +27,8 @@ export default async function SetupStartPage({
       <div className="flex flex-col gap-04">
         <h1 className="text-display-03">Before you start</h1>
         <p className="max-w-[65ch] text-body-01 text-text-secondary">
-          Lead the Way sets up a workspace for your team, or takes you to your
-          invitation if you have one.
+          From hero to zero sets up a workspace for your team, or takes you to
+          your invitation if you have one.
         </p>
       </div>
       <StartForm

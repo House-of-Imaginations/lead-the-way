@@ -12,7 +12,7 @@ import {
 import { JoinView } from "../_components/JoinView";
 
 export const metadata: Metadata = {
-  title: "Invitation preview · Lead the Way",
+  title: "Invitation preview · From hero to zero",
 };
 
 /** 09 as the team sees it, for a manager who can set up the sprint (Ruling 18). */

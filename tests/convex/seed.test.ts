@@ -68,7 +68,7 @@ test("demo addresses never get email", async () => {
 
   // A configured sender, so the only thing stopping the send is the address.
   vi.stubEnv("RESEND_API_KEY", "re_test");
-  vi.stubEnv("RESEND_FROM", "Lead the Way <hello@example.com>");
+  vi.stubEnv("RESEND_FROM", "From hero to zero <hello@example.com>");
   await expect(
     sendEmail({} as EmailCtx, "dan.okafor@calderlane.com.au", "Hello", {
       heading: "Hello",

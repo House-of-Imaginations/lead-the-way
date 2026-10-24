@@ -130,15 +130,19 @@ export async function createWorkspace(
   await setActiveOrgOf(ctx, userId, orgId);
   // Seeded, because an invitation grants a role and the owner role cannot be
   // invited into: without it a new owner had nothing to invite anybody as.
+  let inviteRoleId: Id<"orgRoles"> | undefined;
   for (const role of DEFAULT_ROLES) {
-    await ctx.db.insert("orgRoles", {
+    const id = await ctx.db.insert("orgRoles", {
       orgId,
       kind: "custom",
       name: role.name,
       permissions: [...role.permissions],
       createdAt: now,
     });
+    if (role.name === "Employee") inviteRoleId = id;
   }
+  // G-g: the roles exist only now, so the org row is patched rather than born with it.
+  await ctx.db.patch(orgId, { inviteRoleId });
   // One team per workspace (spec 4.2). 03 fills it in and sets `savedAt`.
   await ctx.db.insert("teams", {
     orgId,

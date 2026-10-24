@@ -5,7 +5,9 @@ import { fetchAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, getShell, managerRead } from "@/lib/account/queries";
 import { LaunchForm } from "./_components/LaunchForm";
 
-export const metadata: Metadata = { title: "Launch sprint · Lead the Way" };
+export const metadata: Metadata = {
+  title: "Launch sprint · From hero to zero",
+};
 
 export default async function SprintLaunchPage() {
   // The manager layout redirects everyone else; don't ask for them.

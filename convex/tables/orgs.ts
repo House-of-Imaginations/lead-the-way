@@ -64,6 +64,13 @@ export const orgTables = {
     // only there does `demoNow` replace real time (`nowFor` in `lib/clock.ts`).
     isDemo: v.boolean(),
     demoNow: v.optional(v.number()),
+    /**
+     * The role a team is invited into (G-g): set when the workspace is made,
+     * so renaming it, or adding another role called "Employee", never moves
+     * it. Absent on workspaces made before P9, which keep the name guess in
+     * `pickInviteRole`. R-a keeps it bare and undeletable.
+     */
+    inviteRoleId: v.optional(v.id("orgRoles")),
     createdAt: v.number(),
   })
     .index("by_slug", ["slug"])

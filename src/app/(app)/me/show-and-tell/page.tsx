@@ -4,7 +4,9 @@ import { preloadAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, openOrHome } from "@/lib/account/queries";
 import { ShowAndTell } from "./_components/ShowAndTell";
 
-export const metadata: Metadata = { title: "Show and tell · Lead the Way" };
+export const metadata: Metadata = {
+  title: "Show and tell · From hero to zero",
+};
 
 /**
  * 14. One subscription, preloaded with the request's hour; the (app) layout's

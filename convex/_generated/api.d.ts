@@ -37,6 +37,7 @@ import type * as lib_email_send from "../lib/email/send.js";
 import type * as lib_email_template from "../lib/email/template.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_events from "../lib/events.js";
+import type * as lib_initials from "../lib/initials.js";
 import type * as lib_inviteRules from "../lib/inviteRules.js";
 import type * as lib_learning from "../lib/learning.js";
 import type * as lib_orgs_cascade from "../lib/orgs/cascade.js";
@@ -126,6 +127,7 @@ declare const fullApi: ApiFromModules<{
   "lib/email/template": typeof lib_email_template;
   "lib/errors": typeof lib_errors;
   "lib/events": typeof lib_events;
+  "lib/initials": typeof lib_initials;
   "lib/inviteRules": typeof lib_inviteRules;
   "lib/learning": typeof lib_learning;
   "lib/orgs/cascade": typeof lib_orgs_cascade;

@@ -130,7 +130,7 @@ test.describe("complete", () => {
     await expect(dialog(page)).toBeVisible();
     await expect(dialog(page)).toContainText("Share");
     await expect(dialog(page)).toContainText(
-      "Know another manager? Share Lead the Way.",
+      "Know another manager? Share From hero to zero.",
     );
     const field = dialog(page).getByLabel("Sign-up link");
     await expect(field).toHaveValue(LINK);

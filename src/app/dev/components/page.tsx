@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Gallery } from "./_components/Gallery";
 
 export const metadata: Metadata = {
-  title: "Components · Lead the Way",
+  title: "Components · From hero to zero",
   robots: { index: false },
 };
 

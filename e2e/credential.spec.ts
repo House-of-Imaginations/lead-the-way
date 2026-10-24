@@ -1,9 +1,8 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { resetDemo, signInAs } from "./demo";
+import { demoBadgeSlug, resetDemo, signInAs } from "./demo";
 
-const SLUG = "dan-okafor-ai-fundamentals";
-const PUBLIC = `/credential/${SLUG}`;
+const publicPath = () => `/credential/${demoBadgeSlug()}`;
 const PROJECT = "AI-assisted weekly client reporting";
 const SKILLS = [
   "AI prompting",
@@ -81,7 +80,7 @@ test.describe("complete", () => {
       page.getByText("Credential link copied.", { exact: true }),
     ).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-      `http://localhost:3000${PUBLIC}`,
+      `http://localhost:3000${publicPath()}`,
     );
     await linkedInButton(page).click();
     await expect(
@@ -92,12 +91,14 @@ test.describe("complete", () => {
   test("the public link shows the badge and reflection signed out, and nothing else", async ({
     page,
   }) => {
-    const res = await page.goto(PUBLIC);
+    const res = await page.goto(publicPath());
     expect(res?.status()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: "Dan Okafor" }),
     ).toBeVisible();
-    await expect(page.getByText("Lead the Way", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("From hero to zero", { exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByText("Shared by Dan Okafor", { exact: true }),
     ).toBeVisible();
@@ -156,7 +157,7 @@ test.describe("complete", () => {
     }) => {
       await page.setViewportSize({ width: 1440, height: 1040 });
       await page.emulateMedia({ colorScheme: scheme });
-      await page.goto(PUBLIC);
+      await page.goto(publicPath());
       await expect(applied(page)).toBeVisible();
       await expectAxeClean(page);
       await page.screenshot({
@@ -192,7 +193,7 @@ test("week 4: the badge without a reflection points to show and tell", async ({
   ).toHaveCount(0);
 
   await page.context().clearCookies();
-  await page.goto(PUBLIC);
+  await page.goto(publicPath());
   await expect(badge(page)).toBeVisible();
   await expect(applied(page).getByRole("term")).toHaveText(["Skills shown"]);
   await expect(
@@ -207,6 +208,8 @@ test("without a badge, 15 says when it appears", async ({ page }) => {
   await expect(page.getByText(NO_BADGE, { exact: true })).toBeVisible();
   await expect(copyButton(page)).toHaveCount(0);
   await expect(badge(page)).toHaveCount(0);
-  // No badge yet, so its public link is a 404 too.
-  expect((await page.request.get(PUBLIC)).status()).toBe(404);
+  // No badge yet, so no credential link resolves.
+  expect(
+    (await page.request.get("/credential/dan-okafor-ai-fundamentals")).status(),
+  ).toBe(404);
 });

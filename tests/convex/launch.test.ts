@@ -38,7 +38,7 @@ afterEach(() => {
 /** A configured sender: only the product's rules decide whether mail goes. */
 function emailOn() {
   vi.useFakeTimers({ toFake: ["setTimeout"] });
-  vi.stubEnv("RESEND_FROM", "Lead the Way <hello@example.com>");
+  vi.stubEnv("RESEND_FROM", "From hero to zero <hello@example.com>");
 }
 
 const CAST = DEMO_CAST.filter((p) => p.key !== "priya").map((p) => p.email);
@@ -619,7 +619,7 @@ test("links need members:manage", async () => {
   expect(JSON.stringify(forLead)).not.toContain("@example.com");
   expect((await owner.query(api.sprints.launchPage, {}))?.invitedCount).toBe(1);
   // With email on, the page hands out no links: the invitations were mailed.
-  vi.stubEnv("RESEND_FROM", "Lead the Way <hello@example.com>");
+  vi.stubEnv("RESEND_FROM", "From hero to zero <hello@example.com>");
   expect((await owner.query(api.sprints.launchPage, {}))?.links).toBeNull();
 });
 
@@ -691,10 +691,12 @@ test("launch never invites into a role that grants anything", async () => {
   const { t, orgId, launch } = await manager();
   await ready(t, orgId);
   const employee = await employeeRoleId(t, orgId);
-  // "Employee" widened to manage members is no longer a safe default.
-  await t.run((ctx) =>
-    ctx.db.patch(employee, { permissions: ["members:manage"] }),
-  );
+  // "Employee" widened to manage members is no longer a safe default. The
+  // workspace is from before P9 (no stored launch role, G-g), so the guess runs.
+  await t.run(async (ctx) => {
+    await ctx.db.patch(orgId, { inviteRoleId: undefined });
+    await ctx.db.patch(employee, { permissions: ["members:manage"] });
+  });
   const noRole = {
     data: {
       code: "NOT_FOUND",

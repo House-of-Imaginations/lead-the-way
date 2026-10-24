@@ -4,7 +4,9 @@ import { preloadAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, getShell, openOrHome } from "@/lib/account/queries";
 import { MyAgreement } from "./_components/MyAgreement";
 
-export const metadata: Metadata = { title: "Team AI Agreement · Lead the Way" };
+export const metadata: Metadata = {
+  title: "Team AI Agreement · From hero to zero",
+};
 
 export default async function MyAgreementPage() {
   // The employee layout redirects everyone else; the page renders in parallel.

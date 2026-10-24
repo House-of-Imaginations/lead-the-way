@@ -14,7 +14,7 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import { Logo } from "@/components/ui/Logo";
 import { authClient } from "@/lib/account/auth-client";
-import { initialsOf } from "@/lib/initials";
+import { initialsOf } from "@convex/lib/initials";
 import { PROTOTYPE_HREF } from "../links";
 
 const SECTIONS = [
@@ -174,7 +174,7 @@ export function LandingHeader() {
           {/* The sheet isn't aria-modal (that hid its toggle), so keep the brand out of reach while open. */}
           <a className="brand" href="#top" inert={open}>
             <Logo />
-            Lead the Way
+            From hero to zero
           </a>
           <nav className="nav-links" aria-label="Sections">
             {SECTIONS.slice(1).map((s) => (

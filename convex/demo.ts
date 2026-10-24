@@ -1,11 +1,17 @@
 import { v } from "convex/values";
 import { assertFlag, flagOn } from "./app";
-import { authenticatedQuery, viewerMutation } from "./lib/customFunctions";
+import {
+  authenticatedQuery,
+  publicQuery,
+  viewerMutation,
+} from "./lib/customFunctions";
 import { demoAccounts, writeCalderLane } from "./lib/demo/calderLane";
+import { castOf } from "./lib/demo/cast";
 import { moveClock } from "./lib/demo/moveClock";
 import { demoTargetValidator } from "./lib/demo/schedule";
 import { throwUserError } from "./lib/errors";
-import type { Viewer } from "./lib/viewer";
+import { getViewer, type Viewer } from "./lib/viewer";
+import { EVENT_TYPES, eventTypeValidator } from "./tables/sprint";
 
 /**
  * The demo controls on /guide: reset, setClock and personaPassword. The two
@@ -63,12 +69,84 @@ export const setClock = viewerMutation()({
 /**
  * The shared demo password, for the persona switch (spec 6). Null unless
  * DEMO_MODE is on, and only for a signed-in caller. /guide's "Start as Priya"
- * signs in from nothing; P9 decides how it signs in. It unlocks only the
- * seeded demo accounts, which the auth hook keeps from being changed
- * (DEMO_ALLOWED in `convex/auth.ts`).
+ * signs in from nothing. The guide is private (G-a): the tester signs in
+ * first. It unlocks only the seeded demo accounts, which the auth hook keeps
+ * from being changed (DEMO_ALLOWED in `convex/auth.ts`).
  */
 export const personaPassword = authenticatedQuery({
   args: {},
   returns: v.union(v.null(), v.string()),
   handler: async () => (flagOn("demo") && process.env.DEMO_PASSWORD) || null,
+});
+
+// ponytail: a demo workspace sees hundreds of events, not thousands. Past
+// this the counts stop growing; count with an aggregate component if a demo
+// ever runs that long without a reset.
+const MAX_DEMO_EVENTS = 2000;
+
+const PERSONAS = ["priya", "dan"] as const;
+const personaValidator = v.union(v.literal("priya"), v.literal("dan"));
+
+/**
+ * What the guide and the floating clock show (P9). Null with DEMO_MODE off.
+ * `{ demo: null }` for a signed-in account whose open workspace is not the
+ * demo, Dan before he joins included: the guide then offers Start as Priya.
+ *
+ * COUNTS ARE RAW, ON PURPOSE (G-f, the user's ruling of 2026-10-14): every
+ * event type's total in the demo workspace, however small, with no names, no
+ * ids and no `meta`. The under-threshold rule of manager views does not apply
+ * to the demo's own test instrument. Only someone seated in the demo sees them.
+ */
+export const status = publicQuery({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      demo: v.union(
+        v.null(),
+        v.object({
+          demoNow: v.number(),
+          persona: v.union(v.null(), personaValidator),
+          accounts: v.array(
+            v.object({
+              key: personaValidator,
+              name: v.string(),
+              email: v.string(),
+              jobTitle: v.string(),
+            }),
+          ),
+          counts: v.array(
+            v.object({ type: eventTypeValidator, count: v.number() }),
+          ),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx) => {
+    if (!flagOn("demo")) return null;
+    // A page left open after sign-out keeps this subscription; don't throw.
+    if (ctx.userId === null) return { demo: null };
+    const viewer = await getViewer(ctx);
+    if (!viewer?.org.isDemo) return { demo: null };
+    const events = await ctx.db
+      .query("events")
+      .withIndex("by_org", (q) => q.eq("orgId", viewer.org._id))
+      .take(MAX_DEMO_EVENTS);
+    const accounts = PERSONAS.map((key) => {
+      const { name, email, jobTitle } = castOf(key);
+      return { key, name, email, jobTitle };
+    });
+    return {
+      demo: {
+        demoNow: viewer.org.demoNow ?? 0, // the stored clock, not a read of it (Ruling 16)
+        persona:
+          accounts.find((a) => a.email === viewer.person.email)?.key ?? null,
+        accounts,
+        counts: EVENT_TYPES.map((type) => ({
+          type,
+          count: events.filter((e) => e.type === type).length,
+        })),
+      },
+    };
+  },
 });

@@ -39,6 +39,8 @@ const SIGNED_OUT: Record<
       join: null,
     },
   },
+  // The clock and guide stay subscribed through a sign-out; null with DEMO_MODE off.
+  "demo:status": { args: {}, answer: null },
   // The public credential: a slug nobody holds answers null (the page's 404).
   "badges:publicBySlug": {
     args: { slug: "dan-okafor-ai-fundamentals" },

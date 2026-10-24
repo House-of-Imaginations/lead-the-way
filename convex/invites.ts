@@ -31,7 +31,8 @@ import {
   permissionsOf,
   requireWithin,
 } from "./lib/orgs/membership";
-import { firstNameOf, initialsOf, isDemoAccount } from "./lib/orgs/people";
+import { initialsOf } from "./lib/initials";
+import { firstNameOf, isDemoAccount } from "./lib/orgs/people";
 import { isManager } from "./lib/orgs/permissions";
 import { reserveRateLimit } from "./lib/rateLimits";
 import { getInOrg } from "./lib/tenant";

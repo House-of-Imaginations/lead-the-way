@@ -10,12 +10,14 @@ import type { Id } from "./_generated/dataModel";
 import {
   internalAction,
   internalMutation,
+  internalQuery,
   type ActionCtx,
   type MutationCtx,
 } from "./_generated/server";
 import { assertFlag } from "./app";
 import { createAuth } from "./auth";
 import { profileOf } from "./lib/account/profile";
+import { badgeOf } from "./lib/badges";
 import { DEMO_SLUG, writeCalderLane as write } from "./lib/demo/calderLane";
 import { nowFor } from "./lib/clock";
 import { ACCOUNT_HOLDERS, castOf, demoUserId } from "./lib/demo/cast";
@@ -202,6 +204,28 @@ export const reset = internalAction({
     // Calder Lane's badges come from issueBadge; other workspaces' may be older.
     await ctx.runMutation(internal.badges.backfillHolders, {});
     return orgId;
+  },
+});
+
+/** Dan's (or any demo person's) public credential slug, for e2e (roadmap P6 note: never hard-code it). */
+export const badgeSlug = internalQuery({
+  args: { email: v.string() },
+  returns: v.union(v.null(), v.string()),
+  handler: async (ctx, { email }) => {
+    const org = await ctx.db
+      .query("orgs")
+      .withIndex("by_slug", (q) => q.eq("slug", DEMO_SLUG))
+      .unique();
+    if (!org?.isDemo) return null;
+    // At most nine people in the demo (as in `clock` above).
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_org", (q) => q.eq("orgId", org._id))
+      .take(20);
+    const person = people.find((p) => p.email === email);
+    return person
+      ? ((await badgeOf(ctx, person._id))?.shareSlug ?? null)
+      : null;
   },
 });
 

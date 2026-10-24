@@ -4,7 +4,9 @@ import { fetchAuthQuery } from "@/lib/account/auth-server";
 import { currentHour, getShell, managerRead } from "@/lib/account/queries";
 import { AgreementBuilder } from "./_components/AgreementBuilder";
 
-export const metadata: Metadata = { title: "Team AI Agreement · Lead the Way" };
+export const metadata: Metadata = {
+  title: "Team AI Agreement · From hero to zero",
+};
 
 export default async function ManagerAgreementPage() {
   // The manager layout redirects everyone else; don't ask for them.

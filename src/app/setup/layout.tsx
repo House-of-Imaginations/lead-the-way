@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { ConvexClientProvider } from "@/app/_components/ConvexClientProvider";
+import { DemoClock } from "@/components/app/DemoClock";
 import { HourlyRefresh } from "@/components/app/HourlyRefresh";
 import { MovedToast } from "@/components/app/MovedToast";
 import { SetupHeader } from "@/components/app/SetupHeader";
@@ -29,6 +30,9 @@ export default async function SetupLayout({
       <SetupHeader home={shell?.home ?? "/"} />
       <ConvexClientProvider initialToken={token}>
         <main className="flex w-full flex-1 flex-col gap-07 px-10 pt-07 max-md:px-05">
+          {shell?.isDemo && (
+            <DemoClock expectOrgId={shell.expectOrgId} inline />
+          )}
           {children}
         </main>
       </ConvexClientProvider>

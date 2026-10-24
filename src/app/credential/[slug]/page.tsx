@@ -6,7 +6,7 @@ import { Credential } from "@/components/app/Credential";
 import { Logo } from "@/components/ui/Logo";
 
 export const metadata: Metadata = {
-  title: "Credential · Lead the Way",
+  title: "Credential · From hero to zero",
   robots: { index: false },
 };
 
@@ -30,7 +30,7 @@ export default async function PublicCredentialPage({
       <header className="flex min-h-control-lg flex-wrap items-center justify-between gap-x-05 border-b border-border-subtle px-05">
         <p className="flex items-center gap-[10px] text-body-emphasis">
           <Logo />
-          Lead the Way
+          From hero to zero
         </p>
         <p className="text-body-02 text-text-secondary">
           Shared by {credential.holder}

@@ -4,6 +4,7 @@ import { flagOn } from "../../app";
 import { authComponent } from "../../auth";
 import { ensureProfile } from "../account/ensureProfile";
 import { isDemoAddress } from "../demo/cast";
+import { initialsOf } from "../initials";
 import { DEFAULT_SETTINGS, settingsOf, writeSettings } from "../settings";
 import { findOwnerRole, findSeat } from "./membership";
 
@@ -12,15 +13,6 @@ export const DEFAULT_TIME_ZONE = "Australia/Melbourne";
 /** The first word of a name, whatever whitespace surrounds it ("" for none). */
 export const firstNameOf = (name: string): string =>
   name.trim().split(/\s+/)[0] ?? "";
-
-/** Two letters for an avatar: the first and last word of a name. */
-export function initialsOf(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "?";
-  const first = words[0] ?? "";
-  const last = words.length > 1 ? (words.at(-1) ?? "") : "";
-  return (first.charAt(0) + last.charAt(0)).toUpperCase();
-}
 
 /**
  * Who runs the workspace, by name: the earliest-seated holder of the owner

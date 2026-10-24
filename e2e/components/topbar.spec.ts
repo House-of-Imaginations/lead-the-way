@@ -21,7 +21,9 @@ for (const theme of THEMES) {
     await page.goto(gallery(theme));
     const bar = page.locator("#topbar .ltw-tb");
     await expect(bar).toHaveCSS("height", "48px");
-    await expect(bar.getByRole("link", { name: "Lead the Way" })).toBeVisible();
+    await expect(
+      bar.getByRole("link", { name: "From hero to zero" }),
+    ).toBeVisible();
     const open = bar.getByRole("button", { name: "Open menu" });
     await expect(open).toHaveAttribute("aria-expanded", "false");
     // An open Radix modal hides the rest of the page from the accessibility tree, so re-find the button by CSS.
@@ -58,7 +60,7 @@ for (const theme of THEMES) {
     await page.goto(gallery(theme));
     const bar = page.locator("#topbar .ltw-tb");
     const menu = bar.getByRole("button", { name: "Open menu" });
-    const brand = bar.getByRole("link", { name: "Lead the Way" });
+    const brand = bar.getByRole("link", { name: "From hero to zero" });
     const avatar = bar.getByRole("button", { name: "Priya Raman" });
     const barBox = (await bar.boundingBox())!;
     const [m, b, a] = [

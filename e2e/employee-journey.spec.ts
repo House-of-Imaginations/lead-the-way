@@ -1,8 +1,7 @@
 import { expect, test } from "./fixtures";
-import { convex, resetDemo, signInAs } from "./demo";
+import { convex, demoBadgeSlug, resetDemo, signInAs } from "./demo";
 
 const TITLE = "AI-assisted weekly client reporting";
-const PUBLIC = "http://localhost:3000/credential/dan-okafor-ai-fundamentals";
 const CHECKS = [
   "I reviewed the output before using it in work.",
   "I did not include restricted client or personal information.",
@@ -128,11 +127,12 @@ test("Dan's sprint, from week 2 to his public credential", async ({
     page.getByRole("region", { name: "Applied at work" }),
   ).toContainText("Shared at show and tell, 30 Sep");
   await page.getByRole("button", { name: "Copy credential link" }).click();
+  const publicUrl = `http://localhost:3000/credential/${demoBadgeSlug()}`;
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-    PUBLIC,
+    publicUrl,
   );
   const stranger = await browser.newPage();
-  await stranger.goto(PUBLIC);
+  await stranger.goto(publicUrl);
   await expect(
     stranger.getByText("Shared by Dan Okafor", { exact: true }),
   ).toBeVisible();
