@@ -87,7 +87,7 @@ export function AuthSplit({
         <p
           className={clsx(
             "text-body-01 text-text-secondary",
-            !wide && "max-w-[40ch]",
+            wide ? "max-w-[65ch]" : "max-w-[40ch]",
           )}
         >
           {panelBody}
@@ -96,10 +96,16 @@ export function AuthSplit({
         {/* The stair blocks and the working week, Wednesday in blue. Heights
             measured from 02a at 1440 by 900; the widths keep 02a's ratio but
             span the whole panel. The week grid scales with its block (cqw) so
-            it never overflows at 1024. */}
+            it never overflows at 1024. Wide, they are in flow at the bottom
+            and give way, so they never cover the aside. */}
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 flex h-2/3 items-end"
+          className={clsx(
+            "flex h-2/3 items-end",
+            wide
+              ? "-mx-09 -mb-09 mt-auto min-h-0"
+              : "absolute inset-x-0 bottom-0",
+          )}
         >
           <div className="h-[46.67%] w-1/3 bg-tag-blue-bg" />
           <div className="@container flex h-[73.33%] w-[37.5%] justify-center bg-text-primary">

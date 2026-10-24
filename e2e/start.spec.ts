@@ -2,8 +2,13 @@ import type { Page } from "@playwright/test";
 import { resetDemo, signInAs } from "./demo";
 import { expect, test } from "./fixtures";
 
+// The label is what people click; the radio inside it holds the state (one choice, L5).
 const tile = (page: Page, name: string) =>
-  page.getByRole("button", { name: new RegExp(name) });
+  page.locator("label.ltw-track", { hasText: name });
+const radio = (page: Page, name: string) =>
+  page
+    .getByRole("group", { name: "Choose a track" })
+    .getByRole("radio", { name });
 const footer = (page: Page, name: string) =>
   page.getByRole("link", { name, exact: true });
 
@@ -13,10 +18,8 @@ test("Continue waits for a track and a way in", async ({ page }) => {
   await expect(page.getByText("Pick a track to continue.")).toBeVisible();
 
   await tile(page, "Grow in my role").click();
-  await expect(tile(page, "Grow in my role")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(radio(page, "Grow in my role")).toBeChecked();
+  await expect(radio(page, "Change careers")).not.toBeChecked();
   const ways = page.getByRole("group", { name: "How are you joining?" });
   await expect(ways).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
@@ -40,6 +43,8 @@ test("Continue waits for a track and a way in", async ({ page }) => {
   ).toBeVisible();
 
   await tile(page, "Change careers").click();
+  await expect(radio(page, "Change careers")).toBeChecked();
+  await expect(radio(page, "Grow in my role")).not.toBeChecked();
   await expect(ways).toHaveCount(0);
   await expect(footer(page, "Start my map")).toHaveAttribute(
     "href",
@@ -60,11 +65,47 @@ test("Dan's choices follow his account", async ({ page }) => {
     "href",
     "/tracks/private/new",
   );
+  // M1: Dan is already on a team, so he is never asked how he joins, and
+  // never told to open an invitation.
   await tile(page, "Grow in my role").click();
-  await page.getByLabel("I lead a team").check();
-  await expect(footer(page, "Set up team")).toHaveAttribute("href", "/home");
+  await expect(
+    page.getByRole("group", { name: "How are you joining?" }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel("My manager invited me")).toHaveCount(0);
+  await expect(page.getByText("Open my invitation")).toHaveCount(0);
+  await expect(footer(page, "Continue")).toHaveAttribute("href", "/home");
   await expect(page.getByRole("link", { name: "Log in" })).toHaveCount(0);
 });
+
+// M2: the stair blocks sit below the panel tiles at laptop heights.
+for (const [width, height] of [
+  [1440, 900],
+  [1280, 800],
+  [1024, 768],
+]) {
+  test(`the panel tiles clear the stair blocks at ${width} by ${height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/start");
+    const aside = page.locator("aside");
+    const blocks = (await aside
+      .locator(":scope > div[aria-hidden='true']")
+      .boundingBox())!;
+    for (const name of ["Grow in my role", "Change careers"]) {
+      const card = (await aside
+        .locator("div", {
+          has: page.getByRole("heading", { name, exact: true }),
+        })
+        .last()
+        .boundingBox())!;
+      expect(card.y + card.height).toBeLessThanOrEqual(blocks.y);
+    }
+    await expect(
+      page.getByText("No employer sees anything, not even that you started."),
+    ).toBeVisible();
+  });
+}
 
 for (const width of [390, 1440]) {
   for (const colorScheme of ["light", "dark"] as const) {

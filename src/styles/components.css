@@ -31,7 +31,6 @@
   .ltw-tabpanel,
   .ltw-cs button,
   .ltw-tile,
-  .ltw-track,
   .ltw-toggle,
   .ltw-sn a,
   .ltw-sn button,
@@ -47,6 +46,7 @@
   .ltw-tb a,
   .ltw-tb button
 ):focus-visible,
+.ltw-track:has(input:focus-visible),
 .ltw-lk input:focus-visible + span {
   outline: 2px solid var(--focus);
   outline-offset: -2px;
@@ -526,9 +526,10 @@ input.ltw-field:read-only:not(:disabled) {
   margin-top: 2px;
 }
 
-/* local: TrackTile (TrackTile.md). Selected: a 1px ink outline plus a 1px inset ink line, 2px in all.
-   :not(:focus-visible) leaves the focus ring as it is. */
+/* local: TrackTile (TrackTile.md). A label around a hidden native radio. Selected: a 1px ink outline plus
+   a 1px inset ink line, 2px in all. :not(:has(input:focus-visible)) leaves the focus ring as it is. */
 .ltw-track {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -546,7 +547,7 @@ input.ltw-field:read-only:not(:disabled) {
 .ltw-track:hover {
   background: var(--layer-hover);
 }
-.ltw-track[aria-pressed="true"]:not(:focus-visible) {
+.ltw-track:has(input:checked):not(:has(input:focus-visible)) {
   outline: 1px solid var(--border-inverse);
   box-shadow: inset 0 0 0 1px var(--border-inverse);
 }

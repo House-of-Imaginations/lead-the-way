@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { AuthSplit } from "@/components/app/AuthSplit";
 import { getAccountShell, getHome } from "@/lib/account/queries";
 import { ChooseTrack } from "./_components/ChooseTrack";
-import { startHrefs } from "./_components/startHrefs";
 
 export const metadata: Metadata = {
   title: "Choose a track · From Zero to Hero",
@@ -55,12 +54,7 @@ export default async function StartPage() {
       }
     >
       <ChooseTrack
-        hrefs={startHrefs({
-          signedIn,
-          team: !!all?.team,
-          career: !!all?.career,
-        })}
-        signedIn={signedIn}
+        state={{ signedIn, team: !!all?.team, career: !!all?.career }}
       />
     </AuthSplit>
   );

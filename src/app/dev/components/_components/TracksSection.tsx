@@ -49,7 +49,8 @@ export function TracksSection() {
   const [track, setTrack] = useState<"team" | "career" | null>(null);
   return (
     <Section id="tracks" title="Tracks">
-      <div className="grid max-w-[744px] gap-01 md:grid-cols-2">
+      <fieldset className="m-0 grid min-w-0 max-w-[744px] gap-01 border-0 p-0 md:grid-cols-2">
+        <legend className="sr-only">Choose a track</legend>
         <TrackTile
           kind="team"
           title="Grow in my role"
@@ -68,7 +69,7 @@ export function TracksSection() {
           selected={track === "career"}
           onSelect={() => setTrack("career")}
         />
-      </div>
+      </fieldset>
       <div className="w-[256px] border border-border-subtle py-03">
         <TrackSwitcher {...sampleTracks} />
       </div>

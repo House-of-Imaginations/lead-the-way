@@ -14,23 +14,23 @@ import {
   SelectableTileGroup,
   TrackTile,
 } from "@/components/ui";
-
-type Track = "team" | "career";
-type Way = "lead" | "invited";
+import {
+  type StartState,
+  type Track,
+  type Way,
+  startReady,
+} from "./startHrefs";
 
 const WAYS = [
   { value: "lead", title: "I lead a team" },
   { value: "invited", title: "My manager invited me" },
 ];
 
-/** MS1: two tracks, then for Grow in my role how you are joining. The footer follows the choice (R8, R9). */
-export function ChooseTrack({
-  hrefs,
-  signedIn,
-}: {
-  hrefs: { lead: string; career: string };
-  signedIn: boolean;
-}) {
+/**
+ * MS1: two tracks, then for Grow in my role how you are joining, unless the
+ * account is already on a team. The footer follows the choice (R8 to R10).
+ */
+export function ChooseTrack({ state }: { state: StartState }) {
   const [track, setTrack] = useState<Track | null>(null);
   const [way, setWay] = useState<Way | null>(null);
   const helpId = useId();
@@ -40,12 +40,7 @@ export function ChooseTrack({
     setWay(null);
   };
 
-  const ready =
-    track === "career"
-      ? { label: "Start my map", href: hrefs.career }
-      : track === "team" && way === "lead"
-        ? { label: "Set up team", href: hrefs.lead }
-        : null;
+  const ready = startReady(state, track, way);
   const invited = track === "team" && way === "invited";
   const help = invited
     ? "Open the link in your invitation email to join your team."
@@ -55,7 +50,7 @@ export function ChooseTrack({
   // S2: twice, so focus order follows what people see. Below 1024px it sits
   // above the sticky footer; from 1024px, below the button (MS1D).
   const logIn = (className: string) =>
-    !signedIn && (
+    !state.signedIn && (
       <p className={`text-body-02 ${className}`}>
         Already have an account?{" "}
         <Link
@@ -69,7 +64,8 @@ export function ChooseTrack({
 
   return (
     <div className="flex flex-1 flex-col gap-05 min-[1024px]:flex-none">
-      <div className="grid grid-cols-1 gap-01 min-[1024px]:grid-cols-2">
+      <fieldset className="m-0 grid min-w-0 grid-cols-1 gap-01 border-0 p-0 min-[1024px]:grid-cols-2">
+        <legend className="sr-only">Choose a track</legend>
         <TrackTile
           kind="team"
           icon={UserMultiple}
@@ -88,8 +84,8 @@ export function ChooseTrack({
           selected={track === "career"}
           onSelect={() => pick("career")}
         />
-      </div>
-      {track === "team" && (
+      </fieldset>
+      {track === "team" && !state.team && (
         <SelectableTileGroup
           legend="How are you joining?"
           name="way"

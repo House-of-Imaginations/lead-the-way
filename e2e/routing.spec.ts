@@ -1,6 +1,13 @@
 import { expect, test } from "./fixtures";
 import { TOKENS } from "./components/helpers";
-import { PERSONA, convex, demoPassword, resetDemo, signInAs } from "./demo";
+import {
+  E2E_DOMAIN,
+  PERSONA,
+  convex,
+  demoPassword,
+  resetDemo,
+  signInAs,
+} from "./demo";
 
 const BANNER =
   "Demo workspace. Calder Lane is sample data for trying From Zero to Hero. It can be reset at any time.";
@@ -193,7 +200,7 @@ test("an account with no track picks I lead a team and reaches /setup/team", asy
   const res = await page.request.post("/api/auth/sign-up/email", {
     data: {
       name: "Ada Park",
-      email: `e2e-start-${Date.now()}@example.com`,
+      email: `e2e-start-${Date.now()}-${Math.floor(Math.random() * 1e6)}@${E2E_DOMAIN}`,
       password: "a long enough password",
     },
     headers: { origin: "http://localhost:3000" },
@@ -201,7 +208,7 @@ test("an account with no track picks I lead a team and reaches /setup/team", asy
   expect(res.ok()).toBe(true);
   await page.goto("/home");
   await expect(page).toHaveURL("/start");
-  await page.getByRole("button", { name: /Grow in my role/ }).click();
+  await page.locator("label.ltw-track", { hasText: "Grow in my role" }).click();
   await page.getByLabel("I lead a team").check();
   await page.getByRole("link", { name: "Set up team" }).click();
   await expect(page).toHaveURL("/setup/start");

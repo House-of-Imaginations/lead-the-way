@@ -2,19 +2,28 @@ import { expect, test } from "../fixtures";
 import { THEMES, TOKENS, gallery } from "./helpers";
 
 for (const theme of THEMES) {
-  test(`track tiles toggle and show the selected outline, ${theme}`, async ({
+  test(`track tiles are one choice and show the selected outline, ${theme}`, async ({
     page,
   }) => {
     await page.goto(gallery(theme));
-    const tracks = page.locator("#tracks");
-    const team = tracks.getByRole("button", { name: "Grow in my role" });
-    const career = tracks.getByRole("button", { name: "Change careers" });
-    await expect(team).toHaveAttribute("aria-pressed", "false");
-    await expect(career).toHaveAttribute("aria-pressed", "false");
+    const group = page
+      .locator("#tracks")
+      .getByRole("group", { name: "Choose a track" });
+    const teamRadio = group.getByRole("radio", { name: "Grow in my role" });
+    const careerRadio = group.getByRole("radio", { name: "Change careers" });
+    // The label is what people click; the hidden radio holds the state.
+    const team = group.locator("label", { hasText: "Grow in my role" });
+    const career = group.locator("label", { hasText: "Change careers" });
+    await expect(teamRadio).not.toBeChecked();
+    await expect(careerRadio).not.toBeChecked();
 
     await team.click();
-    await expect(team).toHaveAttribute("aria-pressed", "true");
-    await expect(career).toHaveAttribute("aria-pressed", "false");
+    await expect(teamRadio).toBeChecked();
+    await expect(careerRadio).not.toBeChecked();
+    await career.click();
+    await expect(careerRadio).toBeChecked();
+    await expect(teamRadio).not.toBeChecked();
+    await team.click();
     // border-inverse has the same value as text-primary in both themes.
     await expect(team).toHaveCSS("outline-color", TOKENS[theme].textPrimary);
     await expect(team).toHaveCSS("border-radius", "0px");
