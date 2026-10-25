@@ -22,7 +22,9 @@ export function PrivateTrackForm() {
     if (!agreed || pending) return;
     setError(null);
     setPending(true);
-    const result = await startPrivateTrack(email);
+    const result = await startPrivateTrack(email).catch(() => ({
+      error: "The track wasn't started. Try again.",
+    }));
     if (result) {
       setError(result.error);
       setPending(false);

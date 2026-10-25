@@ -52,7 +52,7 @@ test.describe("MS2 home with two tracks", () => {
     );
     await expect(
       career.getByRole("link", { name: "Open my map" }),
-    ).toHaveAttribute("href", "/careers/map");
+    ).toHaveAttribute("href", "/careers/journey");
 
     const table = page.getByRole("table");
     await expect(table.getByRole("columnheader")).toHaveText([

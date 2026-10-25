@@ -83,10 +83,13 @@ test("the full path: partner page, tell us, map, sign up, then home", async ({
     .getByLabel("I agree to the terms of use and privacy notice.")
     .check();
   await page.getByRole("button", { name: "Create free account" }).click();
-  // `viewer.home` for a career-only account. The page itself is P13b.
+  // `viewer.home` for a career-only account: a holding page until P13b.
   await expect(page).toHaveURL("/careers/journey");
+  await expect(
+    page.getByRole("heading", { name: "Your map is saved" }),
+  ).toBeVisible();
 
-  // Sign-up claimed the draft: the map has nothing left to show.
+  // Sign-up claimed the draft: the map sends the track to its journey.
   await page.goto("/careers/map");
-  await expect(page).toHaveURL("/careers/map/new");
+  await expect(page).toHaveURL("/careers/journey");
 });

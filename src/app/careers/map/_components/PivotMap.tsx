@@ -64,7 +64,8 @@ export function PivotMap({ map }: { map: PivotMapData }) {
         onChange={(v) => {
           const next = Number(v) as Hours;
           setHours(next);
-          startTransition(() => setMapHours(next));
+          // A failed save keeps the local choice rather than the error page.
+          startTransition(() => setMapHours(next).catch(() => {}));
         }}
       />
     </div>

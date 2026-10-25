@@ -22,7 +22,9 @@ export async function startAccount(
 ): Promise<{ next: string } | { error: string }> {
   try {
     // Spec 5.3: a career sign-up claims the Pivot Map draft in the cookie.
-    const draftToken = track === "career" ? await readDraft() : undefined;
+    // An invitation joins a team instead, so its draft stays for later.
+    const draftToken =
+      track === "career" && !token ? await readDraft() : undefined;
     const next = await fetchAuthMutation(api.onboarding.start, {
       acceptTerms,
       token,

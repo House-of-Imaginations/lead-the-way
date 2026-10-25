@@ -11,7 +11,7 @@ import type {
 } from "@convex/lib/careers/catalog";
 import { fetchAuthMutation } from "@/lib/account/auth-server";
 import { userMessage } from "@/lib/errors";
-import { DRAFT_COOKIE, DRAFT_MAX_AGE, draftToken } from "./draftCookie";
+import { DRAFT_COOKIE, draftToken } from "./draftCookie";
 
 type CurrentRole = (typeof CURRENT_ROLES)[number];
 
@@ -43,7 +43,6 @@ export async function saveMap(answers: {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: DRAFT_MAX_AGE,
   });
   redirect("/careers/map");
 }

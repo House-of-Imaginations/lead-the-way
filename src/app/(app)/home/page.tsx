@@ -157,7 +157,11 @@ export default async function HomePage() {
               ? `Next: crew check-in on ${DAYS[career.checkIn.day]}, ${career.checkIn.time}${career.guide ? `, with your guide ${career.guide}` : ""}.`
               : "Next: finish your map, then join a crew."}
           </p>
-          <ButtonLink href="/careers/map" icon={ArrowRight} className="w-full">
+          <ButtonLink
+            href="/careers/journey"
+            icon={ArrowRight}
+            className="w-full"
+          >
             Open my map
           </ButtonLink>
           <p className={note}>

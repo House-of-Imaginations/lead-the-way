@@ -51,7 +51,9 @@ test.describe("MS4 privacy by track", () => {
     const guide = toggle(page, "Let my guide see lesson progress");
     await expect(guide).toHaveAttribute("aria-checked", "true");
     await guide.click();
-    await expect(page.getByText("Setting saved.")).toBeVisible();
+    await expect(
+      page.getByText("Setting saved.", { exact: true }),
+    ).toBeVisible();
     await expect(guide).toHaveAttribute("aria-checked", "false");
 
     const ask = toggle(page, "Ask me before anything is shared");
@@ -83,10 +85,13 @@ test.describe("MS4 privacy by track", () => {
     await expect(
       nav(page).getByRole("group", { name: "Your tracks" }),
     ).toHaveCount(0);
-    await nav(page).getByRole("button", { name: "Dan Okafor" }).click();
-    await expect(
-      page.getByRole("menuitem", { name: "Start private track" }),
-    ).toBeVisible();
+    // The full load may not have hydrated yet; retry the open until the menu shows.
+    await expect(async () => {
+      await nav(page).getByRole("button", { name: "Dan Okafor" }).click();
+      await expect(
+        page.getByRole("menuitem", { name: "Start private track" }),
+      ).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
     await page.keyboard.press("Escape");
 
     // MS4 is for two tracks only; one track keeps its own settings.
