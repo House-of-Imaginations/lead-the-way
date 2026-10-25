@@ -1,11 +1,13 @@
 "use server";
 
 import { fetchMutation } from "convex/nextjs";
+import type { FunctionArgs } from "convex/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { api } from "@convex/_generated/api";
 import type {
   CURRENT_ROLES,
+  CredentialId,
   Hours,
   TargetId,
 } from "@convex/lib/careers/catalog";
@@ -88,4 +90,101 @@ export async function startPrivateTrack(
   }
   if (token) (await cookies()).delete(DRAFT_COOKIE);
   return null;
+}
+
+type Result = { error: string } | null;
+
+/** A career mutation as the signed-in account; its refusal becomes a sentence. */
+async function tryMutation(
+  write: () => Promise<unknown>,
+  fallback: string,
+): Promise<Result> {
+  try {
+    await write();
+    return null;
+  } catch (error) {
+    return { error: userMessage(error, fallback) };
+  }
+}
+
+/** D8 and 6: one privacy or reminder switch, saved at once. */
+export async function setCareerSetting(
+  key: FunctionArgs<typeof api.careers.careerSettings.set>["key"],
+  on: boolean,
+): Promise<Result> {
+  return tryMutation(
+    () => fetchAuthMutation(api.careers.careerSettings.set, { key, on }),
+    "That setting wasn't saved. Try again.",
+  );
+}
+
+/** 6: the project's own switch, "Add this reflection to my proof" (P5). */
+export async function setReflectionOnProof(on: boolean): Promise<Result> {
+  return tryMutation(
+    () => fetchAuthMutation(api.careers.demoDay.setAddToProof, { on }),
+    "That setting wasn't saved. Try again.",
+  );
+}
+
+/** 6: the Test Card measure, 1 to 5. */
+export async function rateConfidence(
+  credentialId: CredentialId,
+  value: number,
+): Promise<Result> {
+  return tryMutation(
+    () =>
+      fetchAuthMutation(api.careers.proof.rateConfidence, {
+        credentialId,
+        value,
+      }),
+    "Your answer wasn't saved. Try again.",
+  );
+}
+
+/** 6: the shareable link for a badge; the same one on a repeat. */
+export async function createProofLink(
+  credentialId: CredentialId,
+): Promise<{ slug: string } | { error: string }> {
+  try {
+    return {
+      slug: await fetchAuthMutation(api.careers.proof.createProofLink, {
+        credentialId,
+      }),
+    };
+  } catch (error) {
+    return {
+      error: userMessage(error, "The link wasn't made. Try again."),
+    };
+  }
+}
+
+/** D8 Profile: a private track's contact address (X3). */
+export async function saveContactEmail(contactEmail: string): Promise<Result> {
+  return tryMutation(
+    () =>
+      fetchAuthMutation(api.careers.tracks.setContactEmail, { contactEmail }),
+    "Your email wasn't saved. Try again.",
+  );
+}
+
+/** D8, P8: deletes the Pivot Map answers and the draft the cookie names. */
+export async function deleteMapAnswers(): Promise<Result> {
+  const token = await draftToken();
+  const result = await tryMutation(
+    () =>
+      fetchAuthMutation(api.careers.careerSettings.deleteAnswers, {
+        draftToken: token,
+      }),
+    "Your answers weren't deleted. Try again.",
+  );
+  if (!result && token) (await cookies()).delete(DRAFT_COOKIE);
+  return result;
+}
+
+/** D8, MS4: deletes the whole career track. Badges and endorsements stay. */
+export async function deleteCareerTrack(): Promise<Result> {
+  return tryMutation(
+    () => fetchAuthMutation(api.careers.tracks.deleteCareer, {}),
+    "The track wasn't deleted. Try again.",
+  );
 }

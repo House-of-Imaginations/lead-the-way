@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { ConvexClientProvider } from "@/app/_components/ConvexClientProvider";
@@ -8,6 +8,7 @@ import { DemoBanner } from "@/components/ui/DemoBanner";
 import { getToken } from "@/lib/account/auth-server";
 import { currentHour, getAccountShell, getHome } from "@/lib/account/queries";
 import { NAV_COOKIE, parseNav } from "@/lib/navState";
+import { PATH_HEADER } from "@/proxy";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const [token, all, jar] = await Promise.all([
@@ -18,7 +19,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const shell = all?.team ?? null;
   // No shell: a cookie Convex doesn't accept (Ruling 16), or no workspace yet
   // (R4). Only then ask where the person belongs, so a normal load reads once.
-  if (shell === null) redirect((await getHome()) ?? "/signed-out");
+  if (shell === null) {
+    // D8: a career-only account's settings are the career track's.
+    if (all?.career && (await headers()).get(PATH_HEADER) === "/settings")
+      redirect("/careers/settings");
+    redirect((await getHome()) ?? "/signed-out");
+  }
   return (
     <div className="flex h-dvh flex-col">
       {/* Reduce motion before paint, as the theme does; AppShell keeps it live. */}
