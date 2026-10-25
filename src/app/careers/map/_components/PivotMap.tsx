@@ -74,9 +74,12 @@ function SaveMap({
 export function PivotMap({
   map,
   signedIn,
+  saved = false,
 }: {
   map: PivotMapData;
   signedIn: boolean;
+  /** The learner's saved map, inside the member shell: no save, and the hours are read only. */
+  saved?: boolean;
 }) {
   const [skill, setSkill] = useState(0);
   const [hours, setHours] = useState<Hours>(map.hoursPerWeek);
@@ -100,6 +103,163 @@ export function PivotMap({
       />
     </div>
   );
+
+  const main = (
+    <main className="flex flex-1 flex-col gap-06 px-05 pt-06 pb-07 lg:gap-07 lg:px-[40px] lg:py-07">
+      <div className="flex items-end justify-between gap-06">
+        <div className="flex flex-col gap-03">
+          <h1 className="text-heading-01 text-balance">Your Pivot Map</h1>
+          <span className="ltw-tag ltw-tag-blue self-start">
+            {map.currentRole}
+            <ArrowRight size={12} aria-label="to" />
+            {map.target.name}
+          </span>
+        </div>
+        {!saved && (
+          <SaveMap signedIn={signedIn} className="hidden lg:inline-flex" />
+        )}
+      </div>
+
+      <div className="grid gap-06 lg:grid-cols-[1fr_1.4fr_1.2fr] lg:gap-[40px]">
+        <section className="flex flex-col gap-04 lg:gap-05">
+          <div className="flex flex-col gap-03">
+            <h2 className="text-heading-04 lg:text-heading-03">
+              You already have
+            </h2>
+            <p className="hidden text-body-02 text-text-secondary lg:block">
+              {map.note}.
+            </p>
+          </div>
+          <ul className="grid grid-cols-2 gap-x-05 gap-y-03 lg:grid-cols-1 lg:gap-0 lg:border-t lg:border-border-inverse">
+            {map.strengths.map((s) => (
+              <li
+                key={s}
+                className="flex items-center gap-03 lg:border-b lg:border-border-subtle lg:py-04"
+              >
+                <Checkmark
+                  className="ltw-i text-support-success"
+                  aria-hidden="true"
+                />
+                {s}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="flex flex-col gap-04 lg:gap-05">
+          <div className="flex items-baseline justify-between gap-05 lg:flex-col lg:items-start lg:gap-03">
+            <h2 className="text-heading-04 lg:text-heading-03">
+              <span className="lg:hidden">Skills to build</span>
+              <span className="hidden lg:inline">
+                {map.skills.length} skills to build
+              </span>
+            </h2>
+            <p className="text-label-01 text-text-secondary lg:hidden">
+              Tap one to see why
+            </p>
+            <p className="hidden text-body-02 text-text-secondary lg:block">
+              Capped at three, chosen from job ads for your target role.
+            </p>
+          </div>
+          <ul className="flex flex-col gap-01">
+            {map.skills.map((s, i) => (
+              <li key={s.name}>
+                <button
+                  type="button"
+                  aria-pressed={i === skill}
+                  onClick={() => setSkill(i)}
+                  className={clsx(
+                    "flex w-full items-center gap-04 border bg-layer-01 px-05 py-[13px] text-left hover:bg-layer-hover",
+                    i === skill
+                      ? "border-border-inverse"
+                      : "border-transparent",
+                  )}
+                >
+                  <Dot n={i + 1} />
+                  <span className="flex-1">{s.name}</span>
+                  <ChevronRight className="ltw-i" aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div aria-live="polite">
+            <InlineNotification title={`Why ${why.name}?`}>
+              <span className="mt-02 block text-label-01 text-text-secondary">
+                Example job ad: {why.jobAd.title}, {why.jobAd.place}
+              </span>
+              <span className="mt-02 block">“{why.jobAd.quote}”</span>
+            </InlineNotification>
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-05">
+          <div className="flex flex-col gap-03">
+            <h2 className="text-heading-04 lg:text-heading-03">
+              <span className="lg:hidden">
+                {map.skills.length} free credentials, about {weeks.total} weeks
+              </span>
+              <span className="hidden lg:inline">
+                About {weeks.total} weeks
+              </span>
+            </h2>
+            <p className="hidden text-body-02 text-text-secondary lg:block">
+              At {hoursText} a week, in lessons of about 15 minutes.
+            </p>
+          </div>
+          {/* Phone: three steps in a row, then the switcher. */}
+          <ol className="relative grid grid-cols-3 lg:hidden">
+            <span
+              aria-hidden="true"
+              className="absolute inset-x-[16.67%] top-[14px] h-px bg-border-strong"
+            />
+            {map.skills.map((s, i) => (
+              <li
+                key={s.credential.id}
+                className="relative flex flex-col items-center gap-02 text-center text-label-01"
+              >
+                <Dot n={i + 1} />
+                {s.credential.name}
+              </li>
+            ))}
+          </ol>
+          {/* Saved, the hours are 4b's learning days: read only here. */}
+          {!saved && switcher}
+          <ol className="hidden border-t border-border-inverse lg:block">
+            {map.skills.map((s, i) => (
+              <li
+                key={s.credential.id}
+                className="flex items-center gap-04 border-b border-border-subtle py-05"
+              >
+                <Dot n={i + 1} now={i === 0} />
+                <span className="flex flex-col">
+                  <span className="text-body-emphasis">
+                    {s.credential.name}
+                  </span>
+                  <span className="text-label-01 text-text-secondary">
+                    Free IBM SkillsBuild credential, {weeks.perCredential} weeks
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <p className="text-label-01 text-text-secondary lg:hidden">
+            Weeks are worked out from the {hoursText} a week you chose.
+          </p>
+        </section>
+      </div>
+
+      <div className="mt-auto flex flex-col gap-02 text-label-01 text-text-secondary">
+        <p>Example roles, job-ad text and credential names are illustrative.</p>
+        {/* The expanded nav carries the disclaimer; the rail hides every label, so it shows here on phones and beside the rail. The member shell has its own. */}
+        {!saved && (
+          <p className="text-text-helper lg:hidden lg:group-has-[.ltw-sn-col]/shell:block">
+            Concept prototype. Not an official IBM product.
+          </p>
+        )}
+      </div>
+    </main>
+  );
+  if (saved) return main;
 
   return (
     <div className="group/shell flex min-h-dvh bg-background text-text-primary">
@@ -137,7 +297,7 @@ export function PivotMap({
               links: [
                 {
                   label: "Privacy and settings",
-                  href: "/settings",
+                  href: "/careers/settings",
                   icon: Locked,
                 },
               ],
@@ -156,158 +316,7 @@ export function PivotMap({
         <div className="lg:hidden">
           <CareersHeader title="Your Pivot Map" back="/careers/map/new" />
         </div>
-        <main className="flex flex-1 flex-col gap-06 px-05 pt-06 pb-07 lg:gap-07 lg:px-[40px] lg:py-07">
-          <div className="flex items-end justify-between gap-06">
-            <div className="flex flex-col gap-03">
-              <h1 className="text-heading-01 text-balance">Your Pivot Map</h1>
-              <span className="ltw-tag ltw-tag-blue self-start">
-                {map.currentRole}
-                <ArrowRight size={12} aria-label="to" />
-                {map.target.name}
-              </span>
-            </div>
-            <SaveMap signedIn={signedIn} className="hidden lg:inline-flex" />
-          </div>
-
-          <div className="grid gap-06 lg:grid-cols-[1fr_1.4fr_1.2fr] lg:gap-[40px]">
-            <section className="flex flex-col gap-04 lg:gap-05">
-              <div className="flex flex-col gap-03">
-                <h2 className="text-heading-04 lg:text-heading-03">
-                  You already have
-                </h2>
-                <p className="hidden text-body-02 text-text-secondary lg:block">
-                  {map.note}.
-                </p>
-              </div>
-              <ul className="grid grid-cols-2 gap-x-05 gap-y-03 lg:grid-cols-1 lg:gap-0 lg:border-t lg:border-border-inverse">
-                {map.strengths.map((s) => (
-                  <li
-                    key={s}
-                    className="flex items-center gap-03 lg:border-b lg:border-border-subtle lg:py-04"
-                  >
-                    <Checkmark
-                      className="ltw-i text-support-success"
-                      aria-hidden="true"
-                    />
-                    {s}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="flex flex-col gap-04 lg:gap-05">
-              <div className="flex items-baseline justify-between gap-05 lg:flex-col lg:items-start lg:gap-03">
-                <h2 className="text-heading-04 lg:text-heading-03">
-                  <span className="lg:hidden">Skills to build</span>
-                  <span className="hidden lg:inline">
-                    {map.skills.length} skills to build
-                  </span>
-                </h2>
-                <p className="text-label-01 text-text-secondary lg:hidden">
-                  Tap one to see why
-                </p>
-                <p className="hidden text-body-02 text-text-secondary lg:block">
-                  Capped at three, chosen from job ads for your target role.
-                </p>
-              </div>
-              <ul className="flex flex-col gap-01">
-                {map.skills.map((s, i) => (
-                  <li key={s.name}>
-                    <button
-                      type="button"
-                      aria-pressed={i === skill}
-                      onClick={() => setSkill(i)}
-                      className={clsx(
-                        "flex w-full items-center gap-04 border bg-layer-01 px-05 py-[13px] text-left hover:bg-layer-hover",
-                        i === skill
-                          ? "border-border-inverse"
-                          : "border-transparent",
-                      )}
-                    >
-                      <Dot n={i + 1} />
-                      <span className="flex-1">{s.name}</span>
-                      <ChevronRight className="ltw-i" aria-hidden="true" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <div aria-live="polite">
-                <InlineNotification title={`Why ${why.name}?`}>
-                  <span className="mt-02 block text-label-01 text-text-secondary">
-                    Example job ad: {why.jobAd.title}, {why.jobAd.place}
-                  </span>
-                  <span className="mt-02 block">“{why.jobAd.quote}”</span>
-                </InlineNotification>
-              </div>
-            </section>
-
-            <section className="flex flex-col gap-05">
-              <div className="flex flex-col gap-03">
-                <h2 className="text-heading-04 lg:text-heading-03">
-                  <span className="lg:hidden">
-                    {map.skills.length} free credentials, about {weeks.total}{" "}
-                    weeks
-                  </span>
-                  <span className="hidden lg:inline">
-                    About {weeks.total} weeks
-                  </span>
-                </h2>
-                <p className="hidden text-body-02 text-text-secondary lg:block">
-                  At {hoursText} a week, in lessons of about 15 minutes.
-                </p>
-              </div>
-              {/* Phone: three steps in a row, then the switcher. */}
-              <ol className="relative grid grid-cols-3 lg:hidden">
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-x-[16.67%] top-[14px] h-px bg-border-strong"
-                />
-                {map.skills.map((s, i) => (
-                  <li
-                    key={s.credential.id}
-                    className="relative flex flex-col items-center gap-02 text-center text-label-01"
-                  >
-                    <Dot n={i + 1} />
-                    {s.credential.name}
-                  </li>
-                ))}
-              </ol>
-              {switcher}
-              <ol className="hidden border-t border-border-inverse lg:block">
-                {map.skills.map((s, i) => (
-                  <li
-                    key={s.credential.id}
-                    className="flex items-center gap-04 border-b border-border-subtle py-05"
-                  >
-                    <Dot n={i + 1} now={i === 0} />
-                    <span className="flex flex-col">
-                      <span className="text-body-emphasis">
-                        {s.credential.name}
-                      </span>
-                      <span className="text-label-01 text-text-secondary">
-                        Free IBM SkillsBuild credential, {weeks.perCredential}{" "}
-                        weeks
-                      </span>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-              <p className="text-label-01 text-text-secondary lg:hidden">
-                Weeks are worked out from the {hoursText} a week you chose.
-              </p>
-            </section>
-          </div>
-
-          <div className="mt-auto flex flex-col gap-02 text-label-01 text-text-secondary">
-            <p>
-              Example roles, job-ad text and credential names are illustrative.
-            </p>
-            {/* The expanded nav carries the disclaimer; the rail hides every label, so it shows here on phones and beside the rail. */}
-            <p className="text-text-helper lg:hidden lg:group-has-[.ltw-sn-col]/shell:block">
-              Concept prototype. Not an official IBM product.
-            </p>
-          </div>
-        </main>
+        {main}
         <div className="ltw-cf lg:hidden">
           <SaveMap signedIn={signedIn} className="w-full" />
         </div>

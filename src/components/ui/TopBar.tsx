@@ -15,20 +15,30 @@ export type TopBarProps = {
   accountMenu: MenuItem[];
   /** The drawer contents: the SideNav with resizable={false}. */
   children: ReactNode;
+  /** The careers bar reads "Pivot Crews" on the dark careers header (spec 6.1). */
+  brand?: string;
+  dark?: boolean;
 };
 
 /** M2: menu on the left, then the brand, then the person's avatar on the right. */
-export function TopBar({ homeHref, user, accountMenu, children }: TopBarProps) {
+export function TopBar({
+  homeHref,
+  user,
+  accountMenu,
+  children,
+  brand = "From Zero to Hero",
+  dark,
+}: TopBarProps) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <header className="ltw-tb">
+      <header className={dark ? "ltw-tb ltw-ch" : "ltw-tb"}>
         <Dialog.Trigger aria-label="Open menu">
           <MenuIcon size={20} aria-hidden="true" />
         </Dialog.Trigger>
         <Link href={homeHref}>
           <Logo />
-          From Zero to Hero
+          {brand}
         </Link>
         <Menu
           align="end"

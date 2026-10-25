@@ -11,7 +11,11 @@ import {
   weeksForHours,
 } from "../lib/careers/catalog";
 import { logCareerEvent } from "../lib/careers/writers";
-import { publicMutation, publicQuery } from "../lib/customFunctions";
+import {
+  careerQuery,
+  publicMutation,
+  publicQuery,
+} from "../lib/customFunctions";
 import { throwUserError } from "../lib/errors";
 import { mintToken } from "../lib/orgs/invites";
 import { reserveRateLimit } from "../lib/rateLimits";
@@ -111,50 +115,81 @@ export const setHours = publicMutation({
 
 const named = v.object({ id: v.string(), name: v.string() });
 
+const map = v.union(
+  v.null(),
+  v.object({
+    currentRole: v.string(),
+    target: named,
+    hoursPerWeek: hours,
+    strengths: v.array(v.string()),
+    note: v.string(),
+    skills: v.array(
+      v.object({
+        name: v.string(),
+        credential: named,
+        jobAd: v.object({
+          title: v.string(),
+          place: v.string(),
+          quote: v.string(),
+        }),
+      }),
+    ),
+    weeks: v.object({ total: v.number(), perCredential: v.number() }),
+  }),
+);
+
+/** The Pivot Map from three answers, a draft's or a saved profile's. */
+function mapOf(
+  currentRole: string,
+  targetRole: Doc<"mapDrafts">["targetRole"],
+  hoursPerWeek: Doc<"mapDrafts">["hoursPerWeek"],
+) {
+  const target = TARGETS.find((t) => t.id === targetRole)!;
+  return {
+    currentRole,
+    target: { id: target.id, name: target.name },
+    hoursPerWeek,
+    ...strengthsFor(currentRole),
+    skills: target.skills.map((s) => ({
+      name: s.name,
+      credential: {
+        id: s.credentialId,
+        name: CREDENTIALS.find((c) => c.id === s.credentialId)!.name,
+      },
+      jobAd: s.jobAd,
+    })),
+    weeks: weeksForHours(hoursPerWeek),
+  };
+}
+
 /** What the Pivot Map shows (screen 3): strengths, three skills, three credentials, weeks. */
 export const pivotMap = publicQuery({
   args: { token: v.string() },
-  returns: v.union(
-    v.null(),
-    v.object({
-      currentRole: v.string(),
-      target: named,
-      hoursPerWeek: hours,
-      strengths: v.array(v.string()),
-      note: v.string(),
-      skills: v.array(
-        v.object({
-          name: v.string(),
-          credential: named,
-          jobAd: v.object({
-            title: v.string(),
-            place: v.string(),
-            quote: v.string(),
-          }),
-        }),
-      ),
-      weeks: v.object({ total: v.number(), perCredential: v.number() }),
-    }),
-  ),
+  returns: map,
   handler: async (ctx, { token }) => {
     const draft = await draftOf(ctx, token);
     if (!draft) return null;
-    const target = TARGETS.find((t) => t.id === draft.targetRole)!;
-    return {
-      currentRole: draft.currentRole,
-      target: { id: target.id, name: target.name },
-      hoursPerWeek: draft.hoursPerWeek,
-      ...strengthsFor(draft.currentRole),
-      skills: target.skills.map((s) => ({
-        name: s.name,
-        credential: {
-          id: s.credentialId,
-          name: CREDENTIALS.find((c) => c.id === s.credentialId)!.name,
-        },
-        jobAd: s.jobAd,
-      })),
-      weeks: weeksForHours(draft.hoursPerWeek),
-    };
+    return mapOf(draft.currentRole, draft.targetRole, draft.hoursPerWeek);
+  },
+});
+
+/**
+ * The signed-in learner's own saved map, from their career profile (P13b).
+ * Null for a guide, or once Delete my answers (P8) has removed an answer.
+ */
+export const savedMap = careerQuery({
+  args: {},
+  returns: map,
+  handler: async (ctx) => {
+    const { profile } = ctx.career;
+    if (
+      profile.kind !== "learner" ||
+      !profile.currentRole ||
+      !profile.targetRole ||
+      !profile.hoursPerWeek
+    )
+      return null;
+    return mapOf(profile.currentRole, profile.targetRole, profile.hoursPerWeek);
   },
 });
 

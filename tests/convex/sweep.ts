@@ -157,6 +157,7 @@ export const callsFor = ({
   "onboarding:start": { acceptTerms: true },
   "careers/tracks:startPrivate": { contactEmail: "pat@home.example" },
   "careers/tracks:deleteCareer": {},
+  "careers/drafts:savedMap": {},
   "careers/crews:mine": {},
   "careers/crews:rules": {},
   "careers/crews:status": {},

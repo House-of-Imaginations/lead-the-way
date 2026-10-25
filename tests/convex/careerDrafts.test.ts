@@ -205,6 +205,10 @@ test("onboarding.start claims the draft into a career profile and deletes it", a
     sundaySummary: false,
   });
   expect(await pat.query(api.viewer.home, {})).toBe("/careers/journey");
+  // The claimed answers are the learner's saved map; nobody else has one.
+  const saved = await pat.query(api.careers.drafts.savedMap, {});
+  expect(saved?.target.name).toBe("Business Analyst");
+  expect(saved?.weeks).toEqual({ total: 9, perCredential: 3 });
   // A claimed token makes nothing a second time.
   await pat.mutation(api.onboarding.start, {
     acceptTerms: true,
@@ -218,4 +222,8 @@ test("onboarding.start claims the draft into a career profile and deletes it", a
   ).toBe(1);
   // No workspace was made for a career sign-up.
   expect(await t.run((ctx) => ctx.db.query("orgs").collect())).toEqual([]);
+  // A profile with no answers has no saved map.
+  const other = t.withIdentity({ subject: "user_other" });
+  await addCareer(other);
+  expect(await other.query(api.careers.drafts.savedMap, {})).toBeNull();
 });
