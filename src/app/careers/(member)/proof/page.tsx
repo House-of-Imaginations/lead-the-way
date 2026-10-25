@@ -60,7 +60,7 @@ export default async function ProofPage() {
   );
 
   return (
-    <div className="flex flex-col gap-07">
+    <main className="flex flex-1 flex-col gap-07 px-05 pt-06 pb-07 lg:px-07 lg:py-07">
       <header className="flex flex-col gap-06 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex flex-col gap-03">
           <h1 className="text-heading-01 text-balance">
@@ -229,6 +229,6 @@ export default async function ProofPage() {
           {next}
         </div>
       )}
-    </div>
+    </main>
   );
 }

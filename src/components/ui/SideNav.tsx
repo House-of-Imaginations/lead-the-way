@@ -262,7 +262,7 @@ export function SideNav({
           </div>
         )}
         {sections.map((section, i) => (
-          <Fragment key={section.title ?? i}>
+          <Fragment key={i}>
             {section.title && (
               <div className="ltw-sn-h">
                 <span className="ltw-sn-t">{section.title}</span>

@@ -251,6 +251,10 @@ export async function writePivotCrews(ctx: MutationCtx): Promise<number> {
     ba.push(await learner(`seed-${key}`, firstName, "business-analyst"));
   }
   await crew(kofi, "business-analyst", "business-analysis-fundamentals", 4, ba);
+
+  // Lena's next crew, open, so a visitor's Data Analyst map can join one
+  // (Amara's is full). Wednesdays 7 to 8 PM.
+  await crew(lena, "data-analyst", "data-fundamentals", 3, []);
   return cleared;
 }
 

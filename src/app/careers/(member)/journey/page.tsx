@@ -45,7 +45,7 @@ export default async function JourneyPage() {
   const nextCrew = current !== null && current.id !== week?.credentialId;
 
   return (
-    <div className="flex flex-col gap-07">
+    <main className="flex flex-1 flex-col gap-07 px-05 pt-06 pb-07 lg:px-07 lg:py-07">
       {reentry && (
         <ReentryBanner>
           Pick up at lesson {reentry.position} of {reentry.of},{" "}
@@ -128,6 +128,6 @@ export default async function JourneyPage() {
           </ButtonLink>
         )}
       </div>
-    </div>
+    </main>
   );
 }

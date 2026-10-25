@@ -178,7 +178,8 @@ export function JoinCrew({
           </ul>
           <p className="text-body-02">
             <b className="font-semibold">
-              {crew.members.length} changers heading to{" "}
+              {crew.members.length}{" "}
+              {crew.members.length === 1 ? "changer" : "changers"} heading to{" "}
               {target ?? "your target role"}.
             </b>{" "}
             Check-ins {weekday}s, {hourSpan(crew.checkInTime)}, from{" "}

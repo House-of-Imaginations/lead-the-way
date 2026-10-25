@@ -18,7 +18,7 @@ export default async function CareerSettingsPage() {
     openOrHome(() => fetchAuthQuery(api.careers.crews.mine, {})),
   ]);
   return (
-    <div className="flex flex-col gap-07">
+    <main className="flex flex-1 flex-col gap-07 px-05 pt-06 pb-07 lg:px-07 lg:py-07">
       <header className="flex flex-col gap-03">
         <h1 className="text-heading-01 text-balance">Privacy and settings</h1>
         <p className="text-body-01 text-text-secondary">
@@ -31,6 +31,6 @@ export default async function CareerSettingsPage() {
         hasAnswers={mine.answers.targetRole !== null}
         guide={crew?.guide.firstName || null}
       />
-    </div>
+    </main>
   );
 }
