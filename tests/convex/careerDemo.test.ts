@@ -43,7 +43,8 @@ test("the careers reset is idempotent and writes the cast", async () => {
     // Amara, Jordan, Sofia, Tevita, Raj; Lena and Kofi; Kofi's three.
     careerProfiles: 10,
     careerSettings: 8,
-    crews: 2,
+    // Amara's, Kofi's and Lena's open one.
+    crews: 3,
     crewMembers: 8,
     lessonProgress: 3,
     demoDays: 1,

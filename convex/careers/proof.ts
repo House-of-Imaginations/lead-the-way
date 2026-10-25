@@ -33,6 +33,8 @@ export const mine = careerQuery({
       v.null(),
       v.object({
         credentialId,
+        // The demo day name; null for a project that never had one.
+        title: v.union(v.null(), v.string()),
         task: v.string(),
         whatIDid: v.string(),
         reflection: v.string(),
@@ -82,6 +84,7 @@ export const mine = careerQuery({
       })),
       project: project && {
         credentialId: project.credentialId,
+        title: project.title ?? null,
         task: project.task,
         whatIDid: project.whatIDid,
         reflection: project.reflection,

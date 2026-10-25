@@ -18,7 +18,7 @@ export function proxy(request: NextRequest) {
   if (!signedIn && PRIVATE.test(pathname)) {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", pathname + search);
-    // L: a careers page asks for the Pivot Crews log in.
+    // L: a careers page asks for the From Zero to Hero log in.
     if (pathname.startsWith("/careers/"))
       login.searchParams.set("track", "career");
     return NextResponse.redirect(login);
@@ -29,8 +29,14 @@ export function proxy(request: NextRequest) {
     const next = safeNext(request.nextUrl.searchParams.get("next"));
     return NextResponse.redirect(new URL(next ?? "/home", request.url));
   }
-  return NextResponse.next();
+  // A layout can't see its path; the (app) layout needs it to send a
+  // career-only account from /settings to /careers/settings (D8).
+  const headers = new Headers(request.headers);
+  headers.set(PATH_HEADER, pathname);
+  return NextResponse.next({ request: { headers } });
 }
+
+export const PATH_HEADER = "x-ltw-path";
 
 export const config = {
   // Build output, API routes and anything with an extension pass untouched.

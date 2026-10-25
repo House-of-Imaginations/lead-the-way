@@ -35,6 +35,9 @@ export const mine = careerQuery({
   args: {},
   returns: v.object({
     settings: settingsValidator,
+    // D8 Profile: a private track's contact address (X3), shown only to its owner.
+    private: v.boolean(),
+    contactEmail: v.union(v.null(), v.string()),
     answers: v.object({
       currentRole: v.union(v.null(), v.string()),
       targetRole: v.union(v.null(), targetRole),
@@ -49,6 +52,8 @@ export const mine = careerQuery({
       settings: Object.fromEntries(CAREER_KEYS.map((k) => [k, row[k]])) as {
         [K in CareerKey]: boolean;
       },
+      private: profile.private,
+      contactEmail: profile.contactEmail ?? null,
       answers: {
         currentRole: profile.currentRole ?? null,
         targetRole: profile.targetRole ?? null,

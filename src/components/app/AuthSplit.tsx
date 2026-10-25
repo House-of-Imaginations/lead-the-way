@@ -13,7 +13,7 @@ type AuthSplitProps = {
   wide?: boolean;
   /** Inside the panel, after the body and above the stair blocks. */
   aside?: ReactNode;
-  /** 3b, DA, L and DB: "Pivot Crews", the careers phone header below 1024px
+  /** 3b, DA, L and DB: "From Zero to Hero", the careers phone header below 1024px
    * in place of the brand, and `top` above the title there. */
   careers?: { header: ReactNode; top?: ReactNode };
 };
@@ -50,7 +50,7 @@ export function AuthSplit({
             )}
           >
             <Logo />
-            {careers ? "Pivot Crews" : "From Zero to Hero"}
+            From Zero to Hero
           </Link>
           <main
             className={clsx(

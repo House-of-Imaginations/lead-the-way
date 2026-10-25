@@ -21,6 +21,8 @@ test.each([
   "/careers",
   "/careers/",
   "/careers/journey",
+  "/careers/proof",
+  "/careers/settings",
   "/careers/mapx",
   "/careers/map/x",
   "/careers/map/new/x",
@@ -39,6 +41,7 @@ test.each([
   "/careers/map/",
   "/careers/map/new",
   "/careers/map/new/",
+  "/proof/abc123",
   "/careersx",
   "/homework",
 ])("%s is public", (path) => expect(PRIVATE.test(path)).toBe(false));

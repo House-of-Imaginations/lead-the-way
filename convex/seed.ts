@@ -27,9 +27,14 @@ import {
   demoUserId,
 } from "./lib/demo/cast";
 import { moveClock } from "./lib/demo/moveClock";
-import { writePivotCrews } from "./lib/demo/pivotCrews";
+import {
+  careerTargetValidator,
+  moveCareerClock,
+  writePivotCrews,
+} from "./lib/demo/pivotCrews";
 import { demoTargetValidator } from "./lib/demo/schedule";
 import { INVITE_MESSAGE } from "./lib/demo/script";
+import { insertCareerProfile } from "./lib/careers/writers";
 import { throwUserError } from "./lib/errors";
 import { deleteOrg } from "./lib/orgs/cascade";
 import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
@@ -253,9 +258,9 @@ export const careerProfile = internalMutation({
       return existing._id;
     }
     const name = (await profileOf(ctx, userId))?.displayName.split(" ")[0];
-    return await ctx.db.insert("careerProfiles", {
+    // With its settings row, as every learner has (D8 reads it).
+    return await insertCareerProfile(ctx, {
       userId,
-      kind: "learner",
       firstName: name || "Learner",
       private: isPrivate,
     });
@@ -330,6 +335,20 @@ export const clock = internalMutation({
       );
     }
     return await moveClock(ctx, org, target);
+  },
+});
+
+/**
+ * `pnpm exec convex run seed:careerClock '{"target":"week2"}'`: move the
+ * careers clock without signing in, as `clock` does for Calder Lane. For e2e
+ * and local runs; the app uses `demo.moveCareerClock`.
+ */
+export const careerClock = internalMutation({
+  args: { target: careerTargetValidator },
+  returns: v.object({ now: v.number(), missedWeek: v.boolean() }),
+  handler: async (ctx, { target }) => {
+    assertFlag("demo", true);
+    return await moveCareerClock(ctx, target);
   },
 });
 

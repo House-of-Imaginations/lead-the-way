@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { authComponent } from "../auth";
-import { crewOf, deleteRule } from "../lib/careers/crew";
+import { crewOf, deleteRule, learnerOf } from "../lib/careers/crew";
 import { insertCareerProfile, logCareerEvent } from "../lib/careers/writers";
 import { authenticatedMutation, careerMutation } from "../lib/customFunctions";
 import { throwUserError } from "../lib/errors";
@@ -15,6 +15,48 @@ import { takeDraft } from "./drafts";
 const domainOf = (email: string) => normalEmail(email).split("@").pop() ?? "";
 
 /**
+ * X3: `contactEmail`, normalised, or a refusal when it is not an address, is
+ * the login address, or is on (or under) `openDomain` (the open workspace's;
+ * the caller reads it, so `sources.test.ts` sees the viewer read) or the
+ * domain of any seat the account holds.
+ */
+async function personalEmail(
+  ctx: MutationCtx,
+  userId: string,
+  contactEmail: string,
+  openDomain: string,
+): Promise<string> {
+  const email = normalEmail(contactEmail);
+  if (!EMAIL.test(email)) {
+    throwUserError(
+      "CONTACT_EMAIL_INVALID",
+      "Enter an email address, like name@example.com.",
+    );
+  }
+  const user = await authComponent.getAnyUserById(ctx, userId);
+  if (email === normalEmail(user?.email ?? "")) {
+    throwUserError(
+      "CONTACT_EMAIL_INVALID",
+      "Use a personal address, not the one you log in with.",
+    );
+  }
+  const seats = await seatsOfUser(ctx, userId);
+  const work = [
+    normalEmail(openDomain),
+    ...seats.map((p) => domainOf(p.email)),
+  ];
+  // L3: a subdomain of a work domain is the workplace too.
+  const domain = domainOf(email);
+  if (work.some((w) => w && (domain === w || domain.endsWith(`.${w}`)))) {
+    throwUserError(
+      "CONTACT_EMAIL_INVALID",
+      "Use a personal address, not one on your workplace's domain.",
+    );
+  }
+  return email;
+}
+
+/**
  * MS3: a team account starts a private Change careers track (D3, X3), with
  * the Pivot Map draft if it has one. The contact address is refused when it
  * is the login address, or on (or under) the domain of the open workspace or
@@ -25,34 +67,13 @@ export const startPrivate = authenticatedMutation({
   args: { contactEmail: v.string(), draftToken: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, { contactEmail, draftToken }) => {
-    const email = normalEmail(contactEmail);
-    if (!EMAIL.test(email)) {
-      throwUserError(
-        "CONTACT_EMAIL_INVALID",
-        "Enter an email address, like name@example.com.",
-      );
-    }
+    const email = await personalEmail(
+      ctx,
+      ctx.userId,
+      contactEmail,
+      (await getViewer(ctx))?.org.domain ?? "",
+    );
     const user = await authComponent.getAnyUserById(ctx, ctx.userId);
-    if (email === normalEmail(user?.email ?? "")) {
-      throwUserError(
-        "CONTACT_EMAIL_INVALID",
-        "Use a personal address, not the one you log in with.",
-      );
-    }
-    const viewer = await getViewer(ctx);
-    const seats = await seatsOfUser(ctx, ctx.userId);
-    const work = [
-      normalEmail(viewer?.org.domain ?? ""),
-      ...seats.map((p) => domainOf(p.email)),
-    ];
-    // L3: a subdomain of a work domain is the workplace too.
-    const domain = domainOf(email);
-    if (work.some((w) => w && (domain === w || domain.endsWith(`.${w}`)))) {
-      throwUserError(
-        "CONTACT_EMAIL_INVALID",
-        "Use a personal address, not one on your workplace's domain.",
-      );
-    }
     const map = await takeDraft(ctx, draftToken);
     await insertCareerProfile(ctx, {
       userId: ctx.userId,
@@ -63,6 +84,45 @@ export const startPrivate = authenticatedMutation({
     });
     // ponytail: wall clock; there is no career clock before the profile exists.
     await logCareerEvent(ctx, { name: "privateTrackStarted", at: Date.now() });
+    return null;
+  },
+});
+
+/**
+ * "Save my map" for an account that already has a track (after D8's "Delete
+ * my answers"): the rebuilt draft's answers go onto the existing profile.
+ */
+export const claimDraft = careerMutation({
+  args: { draftToken: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { draftToken }) => {
+    const map = await takeDraft(ctx, draftToken);
+    if (!map) throwUserError("NOT_FOUND", "Your map expired. Build it again.");
+    await ctx.db.patch(learnerOf(ctx.career)._id, map);
+    return null;
+  },
+});
+
+/** D8 Profile: a private track changes its contact address, under MS3's rules (X3). */
+export const setContactEmail = careerMutation({
+  args: { contactEmail: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { contactEmail }) => {
+    const profile = learnerOf(ctx.career);
+    if (!profile.private) {
+      throwUserError(
+        "FORBIDDEN",
+        "Only a private track keeps a separate contact address.",
+      );
+    }
+    await ctx.db.patch(profile._id, {
+      contactEmail: await personalEmail(
+        ctx,
+        ctx.career.userId,
+        contactEmail,
+        (await getViewer(ctx))?.org.domain ?? "",
+      ),
+    });
     return null;
   },
 });

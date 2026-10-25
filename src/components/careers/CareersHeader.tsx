@@ -19,7 +19,7 @@ export function CareersHeader({
       <header className="ltw-ch">
         <span className="flex items-center gap-[10px] px-05 text-body-emphasis">
           <Logo />
-          Pivot Crews
+          From Zero to Hero
         </span>
         <Link href="/login?track=career" className="text-label-01">
           Log in

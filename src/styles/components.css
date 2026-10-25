@@ -1921,6 +1921,25 @@ button.ltw-sn-acct:hover {
 :root[data-theme="dark"] .ltw-ch a:hover {
   background: var(--layer-hover);
 }
+/* The careers member header: the TopBar's menu, brand and avatar on the dark careers bar. */
+.ltw-tb.ltw-ch {
+  justify-content: flex-start;
+  border-bottom: 0;
+}
+.ltw-tb.ltw-ch button {
+  color: inherit;
+}
+.ltw-tb.ltw-ch button:hover {
+  background: var(--button-secondary-hover);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ltw-tb.ltw-ch button:hover {
+    background: var(--layer-hover);
+  }
+}
+:root[data-theme="dark"] .ltw-tb.ltw-ch button:hover {
+  background: var(--layer-hover);
+}
 .ltw-cf {
   position: sticky;
   bottom: 0;

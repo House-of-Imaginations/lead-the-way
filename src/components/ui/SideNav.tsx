@@ -62,7 +62,7 @@ export type SideNavProps = {
   /** Signed out (the careers map before sign-up): no account block. */
   user?: { initials: string; name: string; role: string; manager?: boolean };
   accountMenu?: MenuItem[];
-  /** The careers nav reads "Pivot Crews" (pack DESIGN.md, Logo). */
+  /** The careers nav reads "From Zero to Hero" (pack DESIGN.md, Logo). */
   brand?: string;
   /** The careers path block: an icon in place of the org avatar. */
   orgIcon?: CarbonIconType;
@@ -262,7 +262,7 @@ export function SideNav({
           </div>
         )}
         {sections.map((section, i) => (
-          <Fragment key={section.title ?? i}>
+          <Fragment key={i}>
             {section.title && (
               <div className="ltw-sn-h">
                 <span className="ltw-sn-t">{section.title}</span>

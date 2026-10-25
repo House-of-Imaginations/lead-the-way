@@ -9,7 +9,7 @@ import { safeNext } from "@/lib/url";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-// L and DB: `?track=career` (from the careers screens) is the Pivot Crews
+// L and DB: `?track=career` (from the careers screens) is the From Zero to Hero
 // look. Either way the account lands where `viewer.home` sends it.
 export default async function LogInPage({
   searchParams,
