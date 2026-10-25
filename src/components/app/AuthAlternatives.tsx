@@ -55,9 +55,11 @@ export function AuthAlternatives({
                 callbackURL: next ?? "/home",
                 // R8, Ruling 19: a first OAuth sign-in accepts the terms, then
                 // gets a workspace, or goes back to the join link it came from.
-                newUserCallbackURL: next
-                  ? withParams("/setup/start", "", { next })
-                  : "/setup/start",
+                // The careers forms keep their track, so no workspace is made.
+                newUserCallbackURL: withParams("/setup/start", "", {
+                  next,
+                  track: ibmid ? "career" : null,
+                }),
                 // ponytail: a failed OAuth round trip lands back on log in without a message.
                 errorCallbackURL: "/login",
               })
