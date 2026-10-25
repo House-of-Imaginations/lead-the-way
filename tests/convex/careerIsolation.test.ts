@@ -103,3 +103,35 @@ test("no file imports both a team builder and career identity", () => {
       .map(({ file }) => file),
   ).toEqual([]);
 });
+
+/** L4: the career helpers, imported only where career code lives. */
+test("only career files import from lib/careers/", () => {
+  const importers = sources
+    .filter(({ file, source }) =>
+      [...source.matchAll(/from\s*["'](\.[^"']+)["']/g)].some((m) =>
+        new URL(m[1]!, new URL(file, dir)).href.startsWith(
+          new URL("lib/careers/", dir).href,
+        ),
+      ),
+    )
+    .map(({ file }) => file);
+  // Nothing found would pass vacuously.
+  expect(importers).toContain("home.ts");
+  const ALLOWED = [
+    "demo.ts",
+    "home.ts",
+    "onboarding.ts",
+    "privacy.ts",
+    "seed.ts",
+    "tables/careers.ts",
+    "viewer.ts",
+  ];
+  expect(
+    importers.filter(
+      (file) =>
+        !ALLOWED.includes(file) &&
+        !file.startsWith("careers/") &&
+        !file.startsWith("lib/careers/"),
+    ),
+  ).toEqual([]);
+});
