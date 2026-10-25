@@ -1,6 +1,15 @@
 import { expect, type Page } from "@playwright/test";
 import { E2E_DOMAIN, convex } from "./demo";
 
+/** Reseed, then move the careers clock (`seed:careerClock`) through `targets` in order. */
+export function resetCareers(
+  ...targets: ("week2" | "week3" | "proof" | "missedWeek")[]
+) {
+  convex(["run", "seed:reset"]);
+  for (const target of targets)
+    convex(["run", "seed:careerClock", JSON.stringify({ target })]);
+}
+
 /** The seeded partner (`convex/lib/demo/pivotCrews.ts`). */
 export const PARTNER = "footscray-library";
 
@@ -18,14 +27,6 @@ export async function look(
   await page.emulateMedia({ colorScheme });
 }
 
-/**
- * Reseed (the careers clock back at week 1, Monday 26 October), then move the
- * careers clock forward to `target`, playing Amara's steps on the way.
- */
-export function resetCareers(target?: "week2" | "week3" | "proof") {
-  convex(["run", "seed:reset"]);
-  if (target) convex(["run", "seed:careerClock", JSON.stringify({ target })]);
-}
 
 /** 2 Tell us with its defaults (Retail Store Manager to Data Analyst, 2 hours), then the map. */
 export async function buildMap(page: Page, hours?: "1 hr" | "2 hrs" | "3 hrs") {

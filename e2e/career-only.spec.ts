@@ -17,13 +17,15 @@ test("a career-only account is sent out of the team pages", async ({
     "/home",
     "/me",
     "/manager",
-    "/settings",
     "/workspace/settings",
     "/join/preview",
   ]) {
     await page.goto(path);
-    await expect(page, path).toHaveURL("/careers/journey"); // 404 until P13b
+    await expect(page, path).toHaveURL("/careers/journey");
   }
+  // D8: its settings are the career track's.
+  await page.goto("/settings");
+  await expect(page).toHaveURL("/careers/settings");
   // 11.4: it can still make a workspace.
   await page.goto("/setup/team");
   await expect(page).toHaveURL("/setup/start");

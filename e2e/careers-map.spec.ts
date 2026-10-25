@@ -121,7 +121,7 @@ test("a signed-in account with no track saves its map", async ({ page }) => {
   await page.getByRole("button", { name: "Save my map" }).click();
   await expect(page).toHaveURL("/careers/journey");
   await expect(
-    page.getByRole("heading", { name: "Your map is saved" }),
+    page.getByRole("heading", { level: 1, name: "Welcome back, Kai" }),
   ).toBeVisible();
 });
 
