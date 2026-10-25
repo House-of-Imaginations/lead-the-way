@@ -11,6 +11,8 @@ import type { Page } from "@playwright/test";
 export const PERSONA = {
   priya: "priya.raman@calderlane.com.au",
   dan: "dan.okafor@calderlane.com.au",
+  // The careers demo's learner (`convex/lib/demo/cast.ts`), in Lena's crew.
+  amara: "amara@pivotcrews.example",
 } as const;
 export type Persona = keyof typeof PERSONA;
 

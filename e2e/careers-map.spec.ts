@@ -1,5 +1,5 @@
 import { LOOKS, buildMap, look } from "./careers";
-import { E2E_DOMAIN } from "./demo";
+import { E2E_DOMAIN, signInAs } from "./demo";
 import { expect, test } from "./fixtures";
 
 // 3 and D3 Your Pivot Map (`/careers/map`): from the draft cookie, signed out.
@@ -123,4 +123,27 @@ test("a signed-in account with no track saves its map", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Your map is saved" }),
   ).toBeVisible();
+});
+
+// Signed in with no draft: the map saved on the profile, in the member shell, hours read only.
+test("a learner sees their saved map in the member shell", async ({
+  page,
+  expectAxeClean,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signInAs(page, "amara");
+  await page.goto("/careers/map");
+  await expect(page).toHaveURL("/careers/map");
+  await expect(
+    page.getByRole("heading", { name: "About 9 weeks" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "2 hrs" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Save my map" })).toHaveCount(0);
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await expect(nav.getByRole("link", { name: "My map" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(nav.getByText("Next crew check-in")).toBeVisible();
+  await expectAxeClean(page);
 });

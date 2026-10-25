@@ -89,7 +89,14 @@ test("the full path: partner page, tell us, map, sign up, then home", async ({
     page.getByRole("heading", { name: "Your map is saved" }),
   ).toBeVisible();
 
-  // Sign-up claimed the draft: the map sends the track to its journey.
+  // Sign-up claimed the draft: the map is the saved one, in the member shell.
   await page.goto("/careers/map");
-  await expect(page).toHaveURL("/careers/journey");
+  await expect(page).toHaveURL("/careers/map");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Your Pivot Map" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Save my map" })).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "This week" }).first(),
+  ).toHaveAttribute("href", "/careers/week");
 });
