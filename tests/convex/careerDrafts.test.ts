@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
+import { wipeCareers } from "../../convex/careers/wipe";
 import { seedAuthUser } from "./testHelpers";
 import { addCareer, harness, type T } from "./workspace/helpers";
 
@@ -132,6 +133,20 @@ test("H1: a burst of new drafts is refused after 60, and updating one stays free
   expect(
     await t.mutation(api.careers.drafts.saveAnswers, { ...ANSWERS, token }),
   ).toBe(token);
+});
+
+test("M1: the careers wipe clears more than 1000 events", async () => {
+  const t = harness();
+  vi.stubEnv("DEMO_MODE", "on");
+  await t.run(async (ctx) => {
+    for (let i = 0; i < 1500; i++)
+      await ctx.db.insert("careerEvents", { name: "mapBuilt", at: i });
+  });
+  expect(await t.run((ctx) => wipeCareers(ctx))).toBe(1500);
+  expect(
+    await t.run((ctx) => ctx.db.query("careerEvents").collect()),
+  ).toEqual([]);
+  vi.unstubAllEnvs();
 });
 
 test("P9: the daily expiry deletes drafts older than 30 days", async () => {

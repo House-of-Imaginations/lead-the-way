@@ -42,6 +42,7 @@ const CAREER_TABLE_FILES = [
   "careers/partners.ts",
   "careers/proof.ts",
   "careers/tracks.ts",
+  "careers/wipe.ts",
   "lib/careers/crew.ts",
   "lib/careers/writers.ts",
   // The careers clock and counts (plan A3), and the careers seed.
