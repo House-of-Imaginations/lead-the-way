@@ -19,6 +19,9 @@ const limits = {
   // Invitation emails that really go out, per account (Ruling 5). Spent in
   // `sendInvite` only, so the demo and email-off deployments never spend one.
   inviteEmail: { kind: "token bucket", rate: 50, period: HOUR, capacity: 50 },
+  // A new Pivot Map draft (P9), signed out, so one global bucket: there is
+  // no caller to key on. Updating a draft by its token is free.
+  mapDraft: { kind: "token bucket", rate: 30, period: MINUTE, capacity: 60 },
 } as const;
 
 export const rateLimiter = new RateLimiter(components.rateLimiter, limits);

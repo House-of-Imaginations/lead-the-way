@@ -120,6 +120,20 @@ test("P10: a partner's map logs an event with no person in it", async () => {
   ]);
 });
 
+test("H1: a burst of new drafts is refused after 60, and updating one stays free", async () => {
+  const t = harness();
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-01T00:00:00Z"));
+  let token = "";
+  for (let i = 0; i < 60; i++) token = await draft(t);
+  await expect(draft(t)).rejects.toMatchObject({
+    data: { code: "RATE_LIMITED" },
+  });
+  expect(
+    await t.mutation(api.careers.drafts.saveAnswers, { ...ANSWERS, token }),
+  ).toBe(token);
+});
+
 test("P9: the daily expiry deletes drafts older than 30 days", async () => {
   const t = harness();
   vi.useFakeTimers({ toFake: ["Date"] });

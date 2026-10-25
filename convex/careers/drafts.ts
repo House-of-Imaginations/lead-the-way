@@ -14,6 +14,7 @@ import { logCareerEvent } from "../lib/careers/writers";
 import { publicMutation, publicQuery } from "../lib/customFunctions";
 import { throwUserError } from "../lib/errors";
 import { mintToken } from "../lib/orgs/invites";
+import { reserveRateLimit } from "../lib/rateLimits";
 import { hours, targetRole } from "../tables/careers";
 
 /**
@@ -70,6 +71,7 @@ export const saveAnswers = publicMutation({
       await ctx.db.patch(draft._id, answers);
       return draft.token;
     }
+    await reserveRateLimit(ctx, "mapDraft");
     const partnerId = partner
       ? (
           await ctx.db
