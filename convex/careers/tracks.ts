@@ -1,4 +1,6 @@
 import { v } from "convex/values";
+import type { Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
 import { authComponent } from "../auth";
 import { crewOf, deleteRule } from "../lib/careers/crew";
 import { insertCareerProfile, logCareerEvent } from "../lib/careers/writers";
@@ -106,26 +108,38 @@ export const deleteCareer = careerMutation({
           await deleteRule(ctx, rule._id);
       }
     }
-    for (const table of OWNED) {
-      // ponytail: each table has the same `by_careerProfile` index, so one
-      // name stands in for the union the query builder can't type.
-      const rows = await ctx.db
-        .query(table as "careerSettings")
-        .withIndex("by_careerProfile", (q) =>
-          q.eq("careerProfileId", profile._id),
-        )
-        .collect();
-      for (const row of rows) await ctx.db.delete(row._id);
-    }
-    const choices = await ctx.db
-      .query("ruleChoices")
-      .withIndex("by_careerProfile_and_rule", (q) =>
-        q.eq("careerProfileId", profile._id),
-      )
-      .collect();
-    for (const row of choices) await ctx.db.delete(row._id);
-    await ctx.db.delete(profile._id);
+    await deleteProfileRows(ctx, profile._id);
     await logCareerEvent(ctx, { name: "trackDeleted", at: ctx.career.now });
     return null;
   },
 });
+
+/**
+ * A career profile and every row keyed by it (`OWNED` and its rule choices).
+ * Returns how many rows went. Shared by `deleteCareer` and the demo wipe.
+ */
+export async function deleteProfileRows(
+  ctx: MutationCtx,
+  profileId: Id<"careerProfiles">,
+): Promise<number> {
+  let count = 0;
+  for (const table of OWNED) {
+    // ponytail: each table has the same `by_careerProfile` index, so one
+    // name stands in for the union the query builder can't type.
+    const rows = await ctx.db
+      .query(table as "careerSettings")
+      .withIndex("by_careerProfile", (q) => q.eq("careerProfileId", profileId))
+      .collect();
+    for (const row of rows) await ctx.db.delete(row._id);
+    count += rows.length;
+  }
+  const choices = await ctx.db
+    .query("ruleChoices")
+    .withIndex("by_careerProfile_and_rule", (q) =>
+      q.eq("careerProfileId", profileId),
+    )
+    .collect();
+  for (const row of choices) await ctx.db.delete(row._id);
+  await ctx.db.delete(profileId);
+  return count + choices.length + 1;
+}

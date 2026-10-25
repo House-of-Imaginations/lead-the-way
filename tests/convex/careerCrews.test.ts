@@ -473,11 +473,14 @@ test("P6: re-entry is worked out from completion dates, and nothing is stored", 
   // A lesson in week 1 means no banner.
   await finished(t, amara.careerProfileId, WEEK1, ["data-fundamentals-1"]);
   expect(await amara.as.query(api.careers.learning.reentry, {})).toBeNull();
-  // The demo's missedWeek flag shows it anyway.
+  // The demo's missedWeek flag shows it anyway, in demo mode only.
   await t.run((ctx) => ctx.db.insert("careerDemo", { missedWeek: true }));
+  expect(await amara.as.query(api.careers.learning.reentry, {})).toBeNull();
+  vi.stubEnv("DEMO_MODE", "on");
   expect(
     (await amara.as.query(api.careers.learning.reentry, {}))?.position,
   ).toBe(2);
+  vi.unstubAllEnvs();
   // P6: completions hold no streak or missed-week field.
   const rows = await t.run((ctx) => ctx.db.query("lessonProgress").collect());
   for (const row of rows)

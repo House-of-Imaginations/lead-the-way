@@ -181,9 +181,8 @@ export const reentry = careerQuery({
     if (!crew) return null;
     const week = weekShown(crew, ctx.career.now);
     const completions = await completionsOf(ctx, profile._id);
-    const demo = await ctx.db.query("careerDemo").first();
     const missed =
-      (demo?.missedWeek ?? false) ||
+      ctx.career.missedWeek ||
       (week > 1 &&
         !completions.some((l) => crewWeek(crew, l.completedAt) === week - 1));
     if (!missed) return null;

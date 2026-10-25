@@ -53,6 +53,48 @@ test("the careers reset is idempotent and writes the cast", async () => {
   });
 });
 
+test("P1: the careers reset leaves a real learner's rows alone", async () => {
+  const { t } = await careersDemo();
+  const real = await t.run(async (ctx) => {
+    const careerProfileId = await ctx.db.insert("careerProfiles", {
+      userId: "user_real",
+      kind: "learner",
+      firstName: "Real",
+      private: true,
+    });
+    return [
+      careerProfileId,
+      await ctx.db.insert("careerSettings", {
+        careerProfileId,
+        showDoneToCrew: true,
+        guideSeesProgress: true,
+        reflectionOnProof: false,
+        researchOptIn: false,
+        learningHour: true,
+        crewCheckIn: true,
+        missedWeekNudge: true,
+        sundaySummary: true,
+        listenInstead: false,
+      }),
+      await ctx.db.insert("careerBadges", {
+        userId: "user_real",
+        credentialId: "data-fundamentals",
+        earnedAt: 1,
+      }),
+      await ctx.db.insert("proofLinks", {
+        careerProfileId,
+        slug: "real-proof",
+        credentialId: "data-fundamentals",
+      }),
+    ] as const;
+  });
+  await t.mutation(internal.seed.writeCareers, {});
+  const left = await t.run((ctx) =>
+    Promise.all(real.map((id) => ctx.db.get(id))),
+  );
+  expect(left.every(Boolean)).toBe(true);
+});
+
 test("the careers clock starts at week1, moves forward only and plays each step once", async () => {
   const { as } = await careersDemo();
   const amara = as("amara");
