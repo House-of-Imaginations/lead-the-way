@@ -228,8 +228,8 @@ export default function LandingPage() {
           </h2>
           <p className="lead" data-rise>
             Both run on the same core: a plan, protected time, short lessons,
-            people who check in, and proof at the end. What changes is who
-            backs you, and who can see what.
+            people who check in, and proof at the end. What changes is who backs
+            you, and who can see what.
           </p>
           <div className="tr-grid">
             {TRACKS.map((t) => (
