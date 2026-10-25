@@ -25,7 +25,6 @@ const EMAIL = {
   priya: "priya.raman@calderlane.com.au",
   dan: "dan.okafor@calderlane.com.au",
   amara: "amara@pivotcrews.example",
-  lena: "lena@pivotcrews.example",
 } as const;
 type Who = keyof typeof EMAIL;
 
@@ -232,20 +231,6 @@ export function ResearchSessions() {
               <div className="flex flex-col gap-03">{s.start}</div>
             </li>
           ))}
-          <li className="grid gap-05 border-b border-border-subtle py-05 min-[672px]:grid-cols-[1fr_14rem]">
-            <div className="flex flex-col gap-02">
-              <h3 className="text-heading-04">Lena, the Pathway Guide</h3>
-              <p className="max-w-[65ch] text-body-02 text-text-secondary">
-                Lena guides Amara&apos;s crew. The prototype has no screens for
-                guides, so this opens the careers guide signed in as Lena.
-              </p>
-            </div>
-            <div className="flex flex-col gap-03">
-              <StartAs who="lena" to="/guide/careers">
-                Start as Lena
-              </StartAs>
-            </div>
-          </li>
         </ol>
         <div>
           <ResetDemo />

@@ -156,7 +156,10 @@ test("reset as Dan ends as Priya at setup", async ({ page }) => {
     .getByRole("dialog")
     .getByRole("button", { name: "Reset demo" })
     .click();
-  await expect(page.getByText("You're signed in as Priya")).toBeVisible();
+  // Reset, sign out, sign in, then load the guide: slower than one click.
+  await expect(page.getByText("You're signed in as Priya")).toBeVisible({
+    timeout: 20_000,
+  });
   await expect(page.getByText("Tuesday 1 September at 9:30 AM")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Start as Dan" }).first(),
