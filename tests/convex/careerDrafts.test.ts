@@ -143,9 +143,9 @@ test("M1: the careers wipe clears more than 1000 events", async () => {
       await ctx.db.insert("careerEvents", { name: "mapBuilt", at: i });
   });
   expect(await t.run((ctx) => wipeCareers(ctx))).toBe(1500);
-  expect(
-    await t.run((ctx) => ctx.db.query("careerEvents").collect()),
-  ).toEqual([]);
+  expect(await t.run((ctx) => ctx.db.query("careerEvents").collect())).toEqual(
+    [],
+  );
   vi.unstubAllEnvs();
 });
 
