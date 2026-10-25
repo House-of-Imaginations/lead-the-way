@@ -1,190 +1,310 @@
 import { ArrowRight } from "@carbon/icons-react";
+import clsx from "clsx";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { ConvexClientProvider } from "@/app/_components/ConvexClientProvider";
 import { ButtonLink } from "@/components/ui/Button";
-import { Logo } from "@/components/ui/Logo";
-import { getToken } from "@/lib/account/auth-server";
-import { getHome, getShell } from "@/lib/account/queries";
-import {
-  ASSUMPTIONS,
-  CRITERIA_NOTE,
-  HMW,
-  LEAD,
-  PANELS,
-  STEPS,
-  WALKTHROUGH_NOTE,
-} from "./_components/guideContent";
-import {
-  DemoSection,
-  GuideDemoProvider,
-  StartAsDan,
-} from "./_components/GuideDemo";
-import { StepTile } from "./_components/StepTile";
+import { Tag } from "@/components/ui/Tag";
+import { GuideTable } from "./_components/GuideTable";
+import { ResearchSessions, StartAs } from "./_components/TrackDemo";
 
 export const metadata: Metadata = {
   title: "Prototype guide · From Zero to Hero",
 };
 
-const DISCLAIMER = "Concept prototype. Not an official IBM product.";
+type Screen = [code: string, title: string];
+type Lane = {
+  name: string;
+  tag: "gray" | "purple" | "blue";
+  shared?: boolean;
+  screens: Screen[];
+};
 
-/**
- * Main: the prototype guide (MASTER_PROMPT 9). Private (G-a): the proxy sends a
- * signed-out visitor to log in. Any signed-in session may read it, seated or
- * not (Review Focus 1): only a cookie Convex rejects goes to /signed-out.
- */
-export default async function GuidePage() {
-  const [token, shell] = await Promise.all([getToken(), getShell()]);
-  if (shell === null && (await getHome()) === null) redirect("/signed-out");
+const JOURNEY: Lane[] = [
+  {
+    name: "Shared entry",
+    tag: "gray",
+    shared: true,
+    screens: [
+      ["Landing", "Two doors"],
+      ["MS1", "Choose a track"],
+      ["Log in", "Either track"],
+    ],
+  },
+  {
+    name: "Grow in my role",
+    tag: "purple",
+    screens: [
+      ["01", "Partner email"],
+      ["02a", "Sign up"],
+      ["04", "Protected hour"],
+      ["06", "Team agreement"],
+      ["08", "Manager overview"],
+      ["09", "Dan's invite"],
+      ["11", "This week"],
+      ["14", "Show and tell"],
+      ["16", "Team outcomes"],
+    ],
+  },
+  {
+    name: "Change careers",
+    tag: "blue",
+    screens: [
+      ["1", "Discover"],
+      ["3", "Pivot Map"],
+      ["3b", "Save your map"],
+      ["4", "Join a crew"],
+      ["4b", "Your hours"],
+      ["5", "This week"],
+      ["5b", "Demo day"],
+      ["6", "Prove it"],
+      ["7", "Keep going"],
+    ],
+  },
+  {
+    name: "Both tracks",
+    tag: "gray",
+    shared: true,
+    screens: [
+      ["MS2", "Home, two tracks"],
+      ["MS3", "Start a private track"],
+      ["MS4", "Privacy by track"],
+    ],
+  },
+];
+
+const TWO_TRACKS = [
+  [
+    "For",
+    "People who want to grow where they are",
+    "Career changers aged 25 to 40",
+  ],
+  [
+    "Way in",
+    "A manager, through a business partner",
+    "A library, TAFE or career event link",
+  ],
+  [
+    "Who backs you",
+    "Your manager protects one hour a week",
+    "A Pathway Guide and a crew of 5 to 6",
+  ],
+  ["Length", "A 4-week team sprint", "3 credentials, 6 to 18 weeks"],
+  [
+    "You finish with",
+    "A badge plus an applied work project",
+    "A badge, a project, a reflection and an endorsement",
+  ],
+  [
+    "Privacy",
+    "Manager sees team totals, hidden below 5",
+    "No employer sees anything",
+  ],
+  ["Persona", "Priya (manager) and Dan (employee)", "Amara (career changer)"],
+];
+
+const PRIVACY = [
+  {
+    title: "Grow in my role",
+    text: "The manager sees team totals only, hidden below 5 people. Never a named person's progress, time or answers.",
+  },
+  {
+    title: "Change careers",
+    text: "No employer view at all. An employee in a team sprint can start a private Change careers track (MS3), and the manager never knows it exists.",
+    selected: true,
+  },
+  {
+    title: "Shared rules",
+    text: "Nothing moves between tracks unless the learner moves it. Partners see anonymous totals of 5 or more.",
+  },
+];
+
+const CORE = [
+  [
+    "A plan",
+    "05 Manager pathway, 03 Your team",
+    "3 Pivot Map",
+    "What to learn and why, in 3 parts at most",
+  ],
+  [
+    "Who backs you",
+    "Priya, the manager",
+    "Lena, a Pathway Guide, and a crew",
+    "A person who checks in every week",
+  ],
+  [
+    "An agreement",
+    "06 and 10 Team AI Agreement",
+    "4 Crew Agreement",
+    "Rules the group writes together and signs",
+  ],
+  [
+    "Protected time",
+    "04 Protected hour",
+    "4b Protect your hours",
+    "Time held in the calendar, chosen up front",
+  ],
+  [
+    "Weekly learning",
+    "11 This week, 12 Work project",
+    "5 Learn this week",
+    "15-minute lessons plus one real task",
+  ],
+  [
+    "Show it",
+    "14 Show and tell",
+    "5b Crew demo day",
+    "Present what changed, then reflect",
+  ],
+  [
+    "Proof",
+    "15 Badge and reflection",
+    "6 Prove it",
+    "Badge plus evidence you can share",
+  ],
+  [
+    "Your settings",
+    "19 Settings",
+    "D8 Privacy and settings",
+    "Joined in MS4 Privacy by track",
+  ],
+];
+
+/** M0: the master guide over both tracks, and the researcher's four sessions. */
+export default function MasterGuidePage() {
   return (
-    <ConvexClientProvider initialToken={token}>
-      {/* R7: a 40px background bar, not Main.png's dark strip. */}
-      <header className="flex min-h-control-md flex-wrap items-center justify-between gap-x-05 border-b border-border-subtle px-05 md:px-07">
-        <span className="flex items-center gap-[10px] text-body-02">
-          <Logo />
-          <span className="font-semibold">From Zero to Hero</span>
-          <span className="text-text-secondary">Prototype guide</span>
-        </span>
-        <span className="text-label-01 text-text-secondary">{DISCLAIMER}</span>
-      </header>
-      <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-10 px-05 py-09 md:px-10">
-        <GuideDemoProvider>
-          <section className="grid items-end gap-09 min-[900px]:grid-cols-[6fr_5fr]">
-            <div className="flex flex-col gap-07">
-              <h1 className="text-display-01 font-light">From Zero to Hero</h1>
-              <p className="max-w-[36rem] text-heading-03 text-text-secondary">
-                {LEAD}
-              </p>
-              <div className="flex flex-wrap gap-05">
-                <ButtonLink
-                  href="/demo/partner-email"
-                  icon={ArrowRight}
-                  prefetch={false}
-                >
-                  Start the walkthrough
-                </ButtonLink>
-                <StartAsDan />
-              </div>
-            </div>
-            <div className="flex flex-col gap-05 bg-highlight p-07">
-              <span className="text-label-01 text-text-secondary">
-                How might we
-              </span>
-              <p className="text-heading-03 font-light">{HMW}</p>
-            </div>
-          </section>
+    <>
+      <section className="grid items-start gap-09 min-[1056px]:grid-cols-[1fr_20rem]">
+        <div className="flex flex-col gap-06">
+          <h1 className="max-w-[18ch] text-display-03 font-light text-balance md:text-display-02">
+            Learn what&apos;s next, with people who back you.
+          </h1>
+          <p className="max-w-[60ch] text-body-01 text-text-secondary">
+            One IBM SkillsBuild product with two tracks.{" "}
+            <b className="font-semibold text-text-primary">Grow in my role</b>:
+            a manager protects an hour a week for a 4-week team sprint.{" "}
+            <b className="font-semibold text-text-primary">Change careers</b>: a
+            private path with a Pathway Guide and a crew. Both run on the same
+            core, and each keeps its own privacy rules.
+          </p>
+        </div>
+        <div className="flex flex-col gap-03">
+          <ButtonLink href="/start" icon={ArrowRight} prefetch={false}>
+            Choose a track
+          </ButtonLink>
+          <StartAs who="dan" to="/home" privateTrack arrow>
+            See both tracks
+          </StartAs>
+          <ButtonLink href="/guide/team" kind="tertiary" icon={ArrowRight}>
+            Open team guide
+          </ButtonLink>
+          <ButtonLink href="/guide/careers" kind="tertiary" icon={ArrowRight}>
+            Open careers guide
+          </ButtonLink>
+        </div>
+      </section>
 
-          <section
-            aria-labelledby="walkthrough"
-            className="flex flex-col gap-07"
-          >
-            <div className="flex flex-wrap items-end justify-between gap-05">
-              <h2 id="walkthrough" className="text-heading-01 font-light">
-                Walkthrough
-              </h2>
-              <p className="text-body-02 text-text-secondary">
-                {WALKTHROUGH_NOTE}
-              </p>
-            </div>
-            <div className="grid gap-01 md:grid-cols-2 lg:grid-cols-4">
-              {STEPS.map((step) => (
-                <StepTile key={step.title} step={step} />
-              ))}
-            </div>
-          </section>
-
-          <section
-            aria-labelledby="assumptions"
-            className="flex flex-col gap-07"
-          >
-            <h2 id="assumptions" className="text-heading-01 font-light">
-              Assumptions under test
-            </h2>
-            {/* Only a table scrolls sideways, inside its own container. */}
+      <section aria-labelledby="journey" className="flex flex-col gap-06">
+        <h2 id="journey" className="text-heading-03">
+          The master journey
+        </h2>
+        <div className="flex flex-col gap-05">
+          {JOURNEY.map((lane) => (
             <div
-              role="region"
-              aria-label="Assumptions table"
-              tabIndex={0}
-              className="overflow-x-auto"
+              key={lane.name}
+              className="grid gap-03 min-[1056px]:grid-cols-[11rem_1fr]"
             >
-              <table className="w-full min-w-[720px] border-t border-border-inverse text-left text-body-02">
-                <thead className="bg-layer-selected">
-                  <tr>
-                    {[
-                      "Assumption",
-                      "Question",
-                      "Tested on",
-                      "Observable behaviour",
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        scope="col"
-                        className="h-control-lg px-05 text-label-01 font-semibold first:w-56"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {ASSUMPTIONS.map((a) => (
-                    <tr
-                      key={a.name}
-                      className="border-b border-border-subtle align-top"
-                    >
-                      <th scope="row" className="px-05 py-05 font-semibold">
-                        {a.name}
-                      </th>
-                      <td className="px-05 py-05">{a.question}</td>
-                      <td className="px-05 py-05 text-text-secondary">
-                        {a.testedOn}
-                      </td>
-                      <td className="px-05 py-05 text-text-secondary">
-                        {a.behaviour}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <h3 className="text-heading-04">{lane.name}</h3>
+              <ol className="grid grid-cols-2 gap-01 min-[672px]:grid-cols-3 min-[1056px]:grid-cols-9">
+                {lane.screens.map(([code, title]) => (
+                  <li
+                    key={code}
+                    className={clsx(
+                      "flex min-h-20 flex-col items-start gap-03 p-04",
+                      lane.shared
+                        ? "border-t-[3px] border-interactive bg-highlight"
+                        : "bg-layer-01",
+                    )}
+                  >
+                    <Tag color={lane.tag}>{code}</Tag>
+                    <span className="text-body-02 font-semibold">{title}</span>
+                  </li>
+                ))}
+              </ol>
             </div>
-          </section>
+          ))}
+        </div>
+        <p className="text-label-01 text-text-secondary">
+          Blue-ruled cards are screens shared by both tracks. Each track guide
+          walks through its own screens.
+        </p>
+      </section>
 
-          <section className="grid gap-01 min-[900px]:grid-cols-2">
-            {PANELS.map((panel) => (
+      <div className="grid gap-09 min-[1056px]:grid-cols-2">
+        <section
+          aria-labelledby="two-tracks"
+          className="flex min-w-0 flex-col gap-05"
+        >
+          <h2 id="two-tracks" className="text-heading-03">
+            Two tracks
+          </h2>
+          <GuideTable
+            label="Two tracks"
+            head={["", "Grow in my role", "Change careers"]}
+            rows={TWO_TRACKS}
+            minWidth={560}
+          />
+        </section>
+        <section
+          aria-labelledby="privacy"
+          className="flex min-w-0 flex-col gap-05"
+        >
+          <h2 id="privacy" className="text-heading-03">
+            Privacy, split by track
+          </h2>
+          <div className="flex flex-col gap-03">
+            {PRIVACY.map((p) => (
               <div
-                key={panel.title}
-                className="flex flex-col gap-05 bg-layer-01 p-06"
+                key={p.title}
+                className={clsx(
+                  "flex flex-col gap-02 p-05",
+                  p.selected
+                    ? "border border-border-inverse bg-background"
+                    : "bg-layer-01",
+                )}
               >
-                <div>
-                  <h2 className="text-heading-03">{panel.title}</h2>
-                  <p className="text-body-02 text-text-secondary">
-                    {panel.subtitle}
-                  </p>
-                </div>
-                <dl className="flex flex-col">
-                  {panel.rows.map((row) => (
-                    <div
-                      key={row.text}
-                      className="grid grid-cols-[6rem_1fr] gap-05 border-t border-border-subtle py-04"
-                    >
-                      <dt className="font-semibold tabular-nums">
-                        {row.figure}
-                      </dt>
-                      <dd className="text-body-02">{row.text}</dd>
-                    </div>
-                  ))}
-                </dl>
+                <h3 className="text-heading-04">{p.title}</h3>
+                <p className="text-body-02 text-text-secondary">{p.text}</p>
               </div>
             ))}
-          </section>
+          </div>
+        </section>
+      </div>
 
-          <DemoSection />
+      <section aria-labelledby="core" className="flex flex-col gap-05">
+        <h2 id="core" className="text-heading-03">
+          One core, two ways in
+        </h2>
+        <GuideTable
+          label="One core, two ways in"
+          head={[
+            "Building block",
+            "Grow in my role",
+            "Change careers",
+            "What it does in both",
+          ]}
+          rows={CORE}
+        />
+        <p className="text-label-01 text-text-secondary">
+          The shared design system, side nav, sign up and log in pattern, and
+          the held-hour mark are the same in both tracks.
+        </p>
+      </section>
 
-          <p className="max-w-[65ch] text-body-02 text-text-secondary">
-            {CRITERIA_NOTE}
-          </p>
-        </GuideDemoProvider>
-      </main>
-    </ConvexClientProvider>
+      <ResearchSessions />
+
+      <p className="text-label-01 text-text-secondary">
+        Concept prototype. Not an official IBM product. Names, organisations and
+        figures are examples.
+      </p>
+    </>
   );
 }

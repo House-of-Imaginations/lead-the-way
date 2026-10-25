@@ -1,10 +1,15 @@
-import { literals } from "convex-helpers/validators";
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { wipeCareers } from "../../careers/wipe";
 import { ensureProfile } from "../account/ensureProfile";
 import { throwUserError } from "../errors";
 import { zoned } from "../sprintTime";
+import {
+  CAREER_TARGETS,
+  careerTargetValidator,
+  type CareerTarget,
+  type ClockTarget,
+} from "./careerSchedule";
 import { CAREER_CAST, demoUserId } from "./cast";
 import { DEMO_TIME_ZONE } from "./schedule";
 
@@ -16,22 +21,7 @@ import { DEMO_TIME_ZONE } from "./schedule";
  */
 const at = (date: string, time: string) => zoned(date, time, DEMO_TIME_ZONE);
 
-/** Where the careers clock can jump to. A reset starts it at `week1`. */
-export const CAREER_TARGETS = {
-  week1: at("2026-10-26", "09:00"),
-  week2: at("2026-11-03", "12:00"),
-  week3: at("2026-11-10", "12:00"),
-  proof: at("2026-11-16", "12:00"),
-} as const;
-type ClockTarget = keyof typeof CAREER_TARGETS;
-export const careerTargetValidator = literals(
-  "week1",
-  "week2",
-  "week3",
-  "proof",
-  "missedWeek",
-);
-export type CareerTarget = ClockTarget | "missedWeek";
+export { CAREER_TARGETS, careerTargetValidator, type CareerTarget };
 
 const AMARA_TASK = "Tidy four store sales exports and show weekly trends.";
 

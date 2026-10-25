@@ -44,6 +44,7 @@ import type * as lib_careers_writers from "../lib/careers/writers.js";
 import type * as lib_clock from "../lib/clock.js";
 import type * as lib_customFunctions from "../lib/customFunctions.js";
 import type * as lib_demo_calderLane from "../lib/demo/calderLane.js";
+import type * as lib_demo_careerSchedule from "../lib/demo/careerSchedule.js";
 import type * as lib_demo_cast from "../lib/demo/cast.js";
 import type * as lib_demo_moveClock from "../lib/demo/moveClock.js";
 import type * as lib_demo_pivotCrews from "../lib/demo/pivotCrews.js";
@@ -153,6 +154,7 @@ declare const fullApi: ApiFromModules<{
   "lib/clock": typeof lib_clock;
   "lib/customFunctions": typeof lib_customFunctions;
   "lib/demo/calderLane": typeof lib_demo_calderLane;
+  "lib/demo/careerSchedule": typeof lib_demo_careerSchedule;
   "lib/demo/cast": typeof lib_demo_cast;
   "lib/demo/moveClock": typeof lib_demo_moveClock;
   "lib/demo/pivotCrews": typeof lib_demo_pivotCrews;

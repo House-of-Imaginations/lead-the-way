@@ -24,6 +24,7 @@ const eslintConfig = defineConfig([
                 "!@convex/lib/careers/catalog",
                 "!@convex/lib/demo",
                 "@convex/lib/demo/*",
+                "!@convex/lib/demo/careerSchedule",
                 "!@convex/lib/demo/schedule",
                 "!@convex/lib/initials",
                 "!@convex/lib/inviteRules",

@@ -189,7 +189,7 @@ export function DemoSection() {
             The demo controls work from a seat in Calder Lane. Priya has one
             from the start.
           </InlineNotification>
-          <StartAs who="priya" to="/guide" kind="secondary" />
+          <StartAs who="priya" to="/guide/team" kind="secondary" />
         </div>
       )}
     </section>
@@ -280,7 +280,7 @@ function DemoControls({ demo }: { demo: Demo }) {
                 await reset({ expectOrgId: demo.orgId });
                 // R3: the reset ends as Priya on the guide.
                 if (wasPriya) window.location.reload();
-                else await startAs("priya", "/guide");
+                else await startAs("priya", "/guide/team");
               } catch {
                 setResetFailed(true);
                 setResetting(false);
