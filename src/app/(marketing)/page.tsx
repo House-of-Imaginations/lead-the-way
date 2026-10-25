@@ -15,6 +15,49 @@ export const metadata: Metadata = {
     "A four-week sprint that protects one hour a week for your team to learn AI on real work. Concept prototype. Not an official IBM product.",
 };
 
+const TRACKS = [
+  {
+    title: "Grow in my role",
+    tag: "tag-p",
+    label: "Team sprint, 4 weeks",
+    who: "For teams at work",
+    about:
+      "Your manager protects one hour a week. Your team writes its own AI agreement, learns, applies one idea to real work and shows what changed.",
+    img: "/landing/step-norms.webp",
+    h: 1056,
+    alt: "The Team AI Agreement builder with a live one-page preview",
+    points: [
+      "One protected hour, every week",
+      "A Team AI Agreement you write together",
+      "A real work project and a show and tell",
+      "Your manager sees team totals only",
+    ],
+    href: "/signup",
+    cta: "Start a sprint",
+    primary: false,
+  },
+  {
+    title: "Change careers",
+    tag: "",
+    label: "From Zero to Hero, about 9 weeks",
+    who: "For career changers",
+    about:
+      "Strengths first, then 3 skills your next role needs. A Pathway Guide and a crew of 5 to 6 keep you going until you finish with proof.",
+    img: "/landing/pc-week-desktop.webp",
+    h: 1000,
+    alt: "This week: short lessons, a project step and the Tuesday crew check-in",
+    points: [
+      "A Pivot Map built from your current role",
+      "A guide from the field and a crew",
+      "Learning sized to the hours you choose",
+      "Private: no employer ever sees it",
+    ],
+    href: "/careers/map/new",
+    cta: "Start my map",
+    primary: true,
+  },
+];
+
 const FACTS = [
   ["4 weeks", "A short, finite sprint. Not another open-ended subscription."],
   [
@@ -176,6 +219,65 @@ export default function LandingPage() {
             )}
             <em>{words("one protected hour a week")}</em>
             {words(", a shared set of rules, and a real task to try it on.")}
+          </p>
+        </section>
+
+        <section className="tracks wrap" id="tracks" aria-labelledby="tr-t">
+          <h2 className="h2" id="tr-t" data-rise>
+            Two tracks, one way of learning.
+          </h2>
+          <p className="lead" data-rise>
+            Both run on the same core: a plan, protected time, short lessons,
+            people who check in, and proof at the end. What changes is who
+            backs you, and who can see what.
+          </p>
+          <div className="tr-grid">
+            {TRACKS.map((t) => (
+              <article
+                key={t.title}
+                className={t.primary ? "tr-card tr-b" : "tr-card"}
+                data-rise
+              >
+                <div className="tr-top">
+                  <span className={`tag ${t.tag}`}>{t.label}</span>
+                  <span className="cap">{t.who}</span>
+                </div>
+                <h3>{t.title}</h3>
+                <p>{t.about}</p>
+                <figure className="tr-shot">
+                  <Image
+                    src={t.img}
+                    width={1600}
+                    height={t.h}
+                    sizes="(max-width: 900px) 100vw, 640px"
+                    alt={t.alt}
+                  />
+                </figure>
+                <ul className="lst">
+                  {t.points.map((point) => (
+                    <li key={point}>
+                      <Checkmark className="i" aria-hidden="true" />
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  className={t.primary ? "btn btn-p" : "btn btn-t"}
+                  href={t.href}
+                  prefetch={false}
+                >
+                  {t.cta}
+                  <ArrowRight className="i" aria-hidden="true" />
+                </Link>
+              </article>
+            ))}
+          </div>
+          <p className="tr-note" data-rise>
+            <ViewOff className="i" aria-hidden="true" />
+            <span>
+              <b>Already in a team sprint?</b> Add a private Change careers
+              track any time. Your manager never sees it.
+            </span>
           </p>
         </section>
 

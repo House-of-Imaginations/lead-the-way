@@ -85,11 +85,16 @@ test("every link goes to a real route or an anchor on the page", async ({
     if (href.startsWith("#"))
       await expect(page.locator(href), href).toHaveCount(1);
     else {
-      expect(href, href).toMatch(/^\/(login|signup|guide)$/);
+      expect(href, href).toMatch(/^\/(login|signup|guide|careers\/map\/new)$/);
       routes.add(href);
     }
   }
-  expect([...routes].sort()).toEqual(["/guide", "/login", "/signup"]);
+  expect([...routes].sort()).toEqual([
+    "/careers/map/new",
+    "/guide",
+    "/login",
+    "/signup",
+  ]);
   // The guide is private, so a signed-out request redirects; checked below.
   routes.delete("/guide");
   for (const route of routes) {
