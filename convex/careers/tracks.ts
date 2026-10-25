@@ -15,8 +15,8 @@ const domainOf = (email: string) => normalEmail(email).split("@").pop() ?? "";
 /**
  * MS3: a team account starts a private Change careers track (D3, X3), with
  * the Pivot Map draft if it has one. The contact address is refused when it
- * is the login address, or on the domain of the open workspace or of any
- * seat the account holds. It is stored only on the career profile, never on
+ * is the login address, or on (or under) the domain of the open workspace or
+ * of any seat the account holds. It is stored only on the career profile, never on
  * `people` or the Better Auth user, and no career path mails it.
  */
 export const startPrivate = authenticatedMutation({
@@ -43,7 +43,9 @@ export const startPrivate = authenticatedMutation({
       normalEmail(viewer?.org.domain ?? ""),
       ...seats.map((p) => domainOf(p.email)),
     ];
-    if (work.includes(domainOf(email))) {
+    // L3: a subdomain of a work domain is the workplace too.
+    const domain = domainOf(email);
+    if (work.some((w) => w && (domain === w || domain.endsWith(`.${w}`)))) {
       throwUserError(
         "CONTACT_EMAIL_INVALID",
         "Use a personal address, not one on your workplace's domain.",

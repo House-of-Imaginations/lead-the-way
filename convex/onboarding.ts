@@ -7,6 +7,7 @@ import { authenticatedMutation } from "./lib/customFunctions";
 import { throwUserError } from "./lib/errors";
 import { normalEmail } from "./lib/inviteRules";
 import { MAX_ORG_NAME, createWorkspace } from "./lib/orgs/create";
+import { seatsOfUser } from "./lib/orgs/membership";
 import { firstNameOf } from "./lib/orgs/people";
 import { getViewer } from "./lib/viewer";
 
@@ -59,6 +60,10 @@ export const start = authenticatedMutation({
     // Map draft makes the career profile and deletes the draft; with no draft
     // (none, expired or claimed) /home resolves to /start.
     if (track === "career") {
+      // M4: a seat holder's only way in is the private track (X3).
+      if ((await seatsOfUser(ctx, ctx.userId)).length > 0) {
+        throwUserError("FORBIDDEN", "Start a private track from Home.");
+      }
       const map = await takeDraft(ctx, draftToken);
       if (map) {
         const user = await authComponent.getAnyUserById(ctx, ctx.userId);

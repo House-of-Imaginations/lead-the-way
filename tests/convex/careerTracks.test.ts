@@ -32,6 +32,7 @@ test("X3: startPrivate refuses the login address and any workplace domain", asyn
     "not an address",
     "dan.okafor@calderlane.com.au",
     "Someone@CalderLane.com.au",
+    "dan@mail.calderlane.com.au",
   ]) {
     codes[address] = await start(address).then(
       () => "ok",
@@ -42,6 +43,7 @@ test("X3: startPrivate refuses the login address and any workplace domain", asyn
     "not an address": "CONTACT_EMAIL_INVALID",
     "dan.okafor@calderlane.com.au": "CONTACT_EMAIL_INVALID",
     "Someone@CalderLane.com.au": "CONTACT_EMAIL_INVALID",
+    "dan@mail.calderlane.com.au": "CONTACT_EMAIL_INVALID",
   });
   // The login address on a personal domain, with no workspace at all.
   const pat = t.withIdentity(
@@ -70,6 +72,32 @@ test("X3: startPrivate refuses the login address and any workplace domain", asyn
   expect(
     await t.run((ctx) => ctx.db.query("careerProfiles").collect()),
   ).toEqual([]);
+});
+
+test("M4: onboarding.start refuses a career track for a seat holder", async () => {
+  const { t, as } = await calderLane();
+  await clock(t, "week2");
+  const draftToken = await t.mutation(api.careers.drafts.saveAnswers, {
+    currentRole: "Account Executive",
+    targetRole: "business-analyst",
+    hoursPerWeek: 2,
+    consent: true,
+  });
+  await expect(
+    as("dan").mutation(api.onboarding.start, {
+      acceptTerms: true,
+      track: "career",
+      draftToken,
+    }),
+  ).rejects.toMatchObject({
+    data: { code: "FORBIDDEN", message: "Start a private track from Home." },
+  });
+  expect(
+    await t.run((ctx) => ctx.db.query("careerProfiles").collect()),
+  ).toEqual([]);
+  expect(
+    await t.query(api.careers.drafts.get, { token: draftToken }),
+  ).not.toBeNull();
 });
 
 test("X3: the contact address is stored only on the career profile", async () => {
