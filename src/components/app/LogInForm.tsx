@@ -23,12 +23,15 @@ export function LogInForm({
   next,
   reset,
   cast,
+  career = false,
 }: {
   providers: Provider[];
   next: string | null;
   reset: boolean;
   /** `demo.loginCast`: empty with DEMO_MODE off, and then no picker. */
   cast: DemoCast;
+  /** L and DB (`/login?track=career`): personal email, a way into the map. */
+  career?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   // Task 9: one Log in button. A chosen demo person wins; typing an email clears the choice.
@@ -43,7 +46,9 @@ export function LogInForm({
   function forgot() {
     const address = emailRef.current?.value.trim() ?? "";
     if (!address) {
-      setEmailError("Enter your work email first.");
+      setEmailError(
+        career ? "Enter your email first." : "Enter your work email first.",
+      );
       emailRef.current?.focus();
       return;
     }
@@ -129,7 +134,7 @@ export function LogInForm({
           id="login-email"
           name="email"
           type="email"
-          label="Work email"
+          label={career ? "Email" : "Work email"}
           autoComplete="email"
           ref={emailRef}
           error={emailError ?? undefined}
@@ -147,7 +152,7 @@ export function LogInForm({
               onClick={forgot}
               disabled={pending}
             >
-              Forgot your password?
+              {career ? "Forgot password?" : "Forgot your password?"}
             </button>
           }
           error={error ?? undefined}
@@ -163,19 +168,31 @@ export function LogInForm({
       </form>
       <AuthAlternatives
         providers={providers}
-        ssoLabel="Log in with single sign-on"
+        ssoLabel={career ? "Continue with IBMid" : "Log in with single sign-on"}
         emailId="login-email"
         next={next}
       />
-      <p className="text-center text-body-02">
-        Don&apos;t have an account?{" "}
-        <Link
-          href="/signup"
-          className="text-link underline hover:text-link-hover"
-        >
-          Sign up
-        </Link>
-      </p>
+      {career ? (
+        <p className="text-center text-body-02">
+          New here?{" "}
+          <Link
+            href="/careers/map/new"
+            className="text-link underline hover:text-link-hover"
+          >
+            Start my Pivot Map
+          </Link>
+        </p>
+      ) : (
+        <p className="text-center text-body-02">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/signup"
+            className="text-link underline hover:text-link-hover"
+          >
+            Sign up
+          </Link>
+        </p>
+      )}
     </>
   );
 }

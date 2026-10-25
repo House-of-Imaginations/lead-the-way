@@ -1873,3 +1873,66 @@ button.ltw-sn-acct:hover {
     background: Highlight;
   }
 }
+
+/* Careers phone shell (spec 6.1, pack DESIGN.md Layout): a dark 48px header and a sticky footer action.
+   Careers only; the team phone shell is the TopBar. Dark theme: a layer-01 bar, as text-primary turns light. */
+.ltw-ch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 48px;
+  background: var(--text-primary);
+  color: var(--text-on-color);
+}
+.ltw-ch a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 16px;
+  color: inherit;
+  text-decoration: none;
+}
+.ltw-ch a:hover {
+  background: var(--button-secondary-hover);
+}
+.ltw-ch .ltw-logo {
+  color: inherit;
+}
+.ltw-ch .ltw-ch-icon {
+  width: 48px;
+  padding: 0;
+  justify-content: center;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ltw-ch {
+    background: var(--layer-01);
+    color: var(--text-primary);
+  }
+  :root:not([data-theme="light"]) .ltw-ch a:hover {
+    background: var(--layer-hover);
+  }
+}
+:root[data-theme="dark"] .ltw-ch {
+  background: var(--layer-01);
+  color: var(--text-primary);
+}
+:root[data-theme="dark"] .ltw-ch a:hover {
+  background: var(--layer-hover);
+}
+.ltw-cf {
+  position: sticky;
+  bottom: 0;
+  padding: 16px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--background);
+}
+/* The careers switchers span their column in equal segments at every width. */
+.ltw-cs-fill .ltw-cs {
+  display: flex;
+  width: 100%;
+}
+.ltw-cs-fill .ltw-cs button {
+  flex: 1 1 0;
+}

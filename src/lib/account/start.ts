@@ -1,6 +1,11 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { api } from "@convex/_generated/api";
+import {
+  DRAFT_COOKIE,
+  draftToken as readDraft,
+} from "@/lib/careers/draftCookie";
 import { userMessage } from "@/lib/errors";
 import { fetchAuthMutation } from "./auth-server";
 
@@ -16,13 +21,16 @@ export async function startAccount(
   track?: "team" | "career",
 ): Promise<{ next: string } | { error: string }> {
   try {
-    return {
-      next: await fetchAuthMutation(api.onboarding.start, {
-        acceptTerms,
-        token,
-        track,
-      }),
-    };
+    // Spec 5.3: a career sign-up claims the Pivot Map draft in the cookie.
+    const draftToken = track === "career" ? await readDraft() : undefined;
+    const next = await fetchAuthMutation(api.onboarding.start, {
+      acceptTerms,
+      token,
+      track,
+      draftToken,
+    });
+    if (draftToken) (await cookies()).delete(DRAFT_COOKIE);
+    return { next };
   } catch (error) {
     return {
       error: userMessage(error, "We couldn't set up your account. Try again."),

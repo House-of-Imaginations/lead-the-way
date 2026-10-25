@@ -29,7 +29,7 @@ test("signed out, private pages go to log in and keep where you were going", asy
   ]) {
     await page.goto(path);
     await expect(page, path).toHaveURL(
-      `/login?next=${encodeURIComponent(path)}`,
+      `/login?next=${encodeURIComponent(path)}${path.startsWith("/careers/") ? "&track=career" : ""}`,
     );
   }
   for (const path of [
@@ -38,15 +38,17 @@ test("signed out, private pages go to log in and keep where you were going", asy
     "/login",
     "/reset-password",
     "/start",
-    // The map works from a draft before sign-up (spec 5.3). 404 until P13a.
+    // The map works from a draft before sign-up (spec 5.3). With no draft,
+    // the map starts one.
     "/careers/map/new",
-    "/careers/map",
     // Public (spec 7.1). A 404 before the badge exists still stays at its URL.
     "/credential/dan-okafor-ai-fundamentals",
   ]) {
     await page.goto(path);
     await expect(page, path).toHaveURL(path);
   }
+  await page.goto("/careers/map");
+  await expect(page).toHaveURL("/careers/map/new");
 });
 
 test("signed in, log in and sign up go home", async ({ page }) => {

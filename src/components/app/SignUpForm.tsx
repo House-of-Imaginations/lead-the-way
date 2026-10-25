@@ -64,6 +64,8 @@ export function SignUpForm({
   track?: "career";
 }) {
   const next = invite ? `/join/${encodeURIComponent(invite)}` : null;
+  // 3b and DA: a personal account, no employer linked.
+  const career = track === "career";
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [pending, startTransition] = useTransition();
@@ -76,8 +78,10 @@ export function SignUpForm({
     const email = String(form.get("email")).trim();
     const password = String(form.get("password"));
     const found: Errors = {};
-    if (!name) found.name = "Enter your full name.";
-    if (!email) found.email = "Enter your work email.";
+    if (!name)
+      found.name = career ? "Enter your first name." : "Enter your full name.";
+    if (!email)
+      found.email = career ? "Enter your email." : "Enter your work email.";
     if (password.length < 12) found.password = "Use at least 12 characters.";
     flushSync(() => setErrors(found));
     if (focusFirst(found)) return;
@@ -120,22 +124,24 @@ export function SignUpForm({
         <TextInput
           id="signup-name"
           name="name"
-          label="Full name"
-          autoComplete="name"
+          label={career ? "First name" : "Full name"}
+          autoComplete={career ? "given-name" : "name"}
           error={errors.name}
         />
         <TextInput
           id="signup-email"
           name="email"
           type="email"
-          label="Work email"
+          label={career ? "Email" : "Work email"}
           autoComplete="email"
           readOnly={email !== undefined}
           defaultValue={email}
           helper={
             email
               ? "Your invitation is for this address."
-              : "Use your work address so your team can find you."
+              : career
+                ? "Use a personal email. No employer is ever linked to this account."
+                : "Use your work address so your team can find you."
           }
           error={errors.email}
         />
@@ -160,7 +166,7 @@ export function SignUpForm({
             className="w-full"
             disabled={!agreed || pending}
           >
-            Create account
+            {career ? "Create free account" : "Create account"}
           </Button>
           {errors.form && (
             <p role="alert" className="text-label-01 text-support-error">
@@ -171,14 +177,22 @@ export function SignUpForm({
       </form>
       <AuthAlternatives
         providers={providers}
-        ssoLabel="Sign up with single sign-on"
+        ssoLabel={
+          career ? "Continue with IBMid" : "Sign up with single sign-on"
+        }
         emailId="signup-email"
         next={next}
       />
       <p className="text-center text-body-02">
         Already have an account?{" "}
         <Link
-          href={next ? withParams("/login", "", { next }) : "/login"}
+          href={
+            next
+              ? withParams("/login", "", { next })
+              : career
+                ? "/login?track=career"
+                : "/login"
+          }
           className="text-link underline hover:text-link-hover"
         >
           Log in
