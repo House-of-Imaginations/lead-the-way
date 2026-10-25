@@ -277,8 +277,8 @@ export function ThisWeek({
                   title: "Crew check-in",
                   weeks: 1,
                   startDate: week.checkIn.date,
-                  // ponytail: the browser's zone; crews have none yet.
-                  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                  // The crew's wall clock, as `crewWeek` works it out.
+                  timeZone: "Australia/Melbourne",
                   protectedHour: {
                     weekday: dayOf(week.checkIn.date),
                     start: week.checkIn.time,

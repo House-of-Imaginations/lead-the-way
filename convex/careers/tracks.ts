@@ -88,6 +88,21 @@ export const startPrivate = authenticatedMutation({
   },
 });
 
+/**
+ * "Save my map" for an account that already has a track (after D8's "Delete
+ * my answers"): the rebuilt draft's answers go onto the existing profile.
+ */
+export const claimDraft = careerMutation({
+  args: { draftToken: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { draftToken }) => {
+    const map = await takeDraft(ctx, draftToken);
+    if (!map) throwUserError("NOT_FOUND", "Your map expired. Build it again.");
+    await ctx.db.patch(learnerOf(ctx.career)._id, map);
+    return null;
+  },
+});
+
 /** D8 Profile: a private track changes its contact address, under MS3's rules (X3). */
 export const setContactEmail = careerMutation({
   args: { contactEmail: v.string() },

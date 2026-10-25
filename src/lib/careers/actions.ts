@@ -64,7 +64,17 @@ export async function setMapHours(hoursPerWeek: Hours): Promise<void> {
  * else claims it as a career sign-up does.
  */
 export async function claimMap(): Promise<void> {
-  if ((await getAccountShell())?.team) redirect("/tracks/private/new");
+  const shell = await getAccountShell();
+  // A rebuilt map (after "Delete my answers") goes onto the existing track.
+  const token = await draftToken();
+  if (shell?.career && token) {
+    await fetchAuthMutation(api.careers.tracks.claimDraft, {
+      draftToken: token,
+    });
+    (await cookies()).delete(DRAFT_COOKIE);
+    redirect("/careers/map");
+  }
+  if (shell?.team) redirect("/tracks/private/new");
   const result = await startAccount(false, undefined, "career");
   redirect("next" in result ? result.next : "/start");
 }

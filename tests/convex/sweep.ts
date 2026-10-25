@@ -159,6 +159,7 @@ export const callsFor = ({
   "careers/tracks:deleteCareer": {},
   "careers/drafts:savedMap": {},
   "careers/tracks:setContactEmail": { contactEmail: "pat@home.example" },
+  "careers/tracks:claimDraft": { draftToken: "t" },
   "careers/crews:mine": {},
   "careers/crews:rules": {},
   "careers/crews:status": {},

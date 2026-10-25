@@ -512,6 +512,28 @@ test("P8: deleteAnswers clears the answers and the draft, keeps badges, projects
   ).toBe("NOT_SIGNED_IN");
 });
 
+test("claimDraft puts a rebuilt map onto the existing track and spends the draft", async () => {
+  const { t, amara } = await crewWorld();
+  await amara.mutation(api.careers.careerSettings.deleteAnswers, {});
+  const draftToken = await t.mutation(api.careers.drafts.saveAnswers, {
+    currentRole: "Retail Store Manager",
+    targetRole: "business-analyst",
+    hoursPerWeek: 3,
+    consent: true,
+  });
+  await amara.mutation(api.careers.tracks.claimDraft, { draftToken });
+  expect(
+    (await amara.query(api.careers.careerSettings.mine, {})).answers,
+  ).toEqual({
+    currentRole: "Retail Store Manager",
+    targetRole: "business-analyst",
+    hoursPerWeek: 3,
+  });
+  expect(
+    await codeOf(amara.mutation(api.careers.tracks.claimDraft, { draftToken })),
+  ).toBe("NOT_FOUND");
+});
+
 test("X4: home.summary and privacy.* answer for the signed-in account only", async () => {
   const t = harness();
   const { owner, orgId } = await workspace(t);

@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { api } from "@convex/_generated/api";
 import { CREDENTIALS, TARGETS } from "@convex/lib/careers/catalog";
 import { fetchAuthQuery } from "@/lib/account/auth-server";
-import { getAccountShell, getHome, openOrHome } from "@/lib/account/queries";
+import {
+  currentHour,
+  getAccountShell,
+  getHome,
+  openOrHome,
+} from "@/lib/account/queries";
 import { weeklyCheckIn } from "@/lib/careers/format";
 import { ButtonLink } from "@/components/ui/Button";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
@@ -18,12 +23,13 @@ export const metadata: Metadata = { title: "Keep going · From Zero to Hero" };
  * credentials done, now and next, and the crew for the next one.
  */
 export default async function JourneyPage() {
+  const hour = currentHour();
   const all = await getAccountShell();
   if (!all?.career) redirect((await getHome()) ?? "/signed-out");
   const [reentry, week, crew, proof, settings] = await Promise.all([
-    openOrHome(() => fetchAuthQuery(api.careers.learning.reentry, {})),
-    openOrHome(() => fetchAuthQuery(api.careers.learning.thisWeek, {})),
-    openOrHome(() => fetchAuthQuery(api.careers.crews.mine, {})),
+    openOrHome(() => fetchAuthQuery(api.careers.learning.reentry, { hour })),
+    openOrHome(() => fetchAuthQuery(api.careers.learning.thisWeek, { hour })),
+    openOrHome(() => fetchAuthQuery(api.careers.crews.mine, { hour })),
     openOrHome(() => fetchAuthQuery(api.careers.proof.mine, {})),
     openOrHome(() => fetchAuthQuery(api.careers.careerSettings.mine, {})),
   ]);

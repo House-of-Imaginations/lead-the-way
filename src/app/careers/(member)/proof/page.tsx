@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { api } from "@convex/_generated/api";
 import { initialsOf } from "@convex/lib/initials";
 import { fetchAuthQuery } from "@/lib/account/auth-server";
-import { getAccountShell, getHome, openOrHome } from "@/lib/account/queries";
+import {
+  currentHour,
+  getAccountShell,
+  getHome,
+  openOrHome,
+} from "@/lib/account/queries";
 import { earnedOn } from "@/lib/careers/format";
 import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
@@ -33,11 +38,12 @@ const NOTE = "Endorsements describe what you can do. They never promise a job.";
  * the order of screen 6 (`contents` lets their children take that order).
  */
 export default async function ProofPage() {
+  const hour = currentHour();
   const all = await getAccountShell();
   if (!all?.career) redirect((await getHome()) ?? "/signed-out");
   const [proof, week, settings] = await Promise.all([
     openOrHome(() => fetchAuthQuery(api.careers.proof.mine, {})),
-    openOrHome(() => fetchAuthQuery(api.careers.learning.thisWeek, {})),
+    openOrHome(() => fetchAuthQuery(api.careers.learning.thisWeek, { hour })),
     openOrHome(() => fetchAuthQuery(api.careers.careerSettings.mine, {})),
   ]);
   const badge = proof.badges.at(-1) ?? null;
