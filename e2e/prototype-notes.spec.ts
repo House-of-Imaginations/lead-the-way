@@ -15,7 +15,7 @@ test("notes are off by default and turn on from the guide", async ({
   await signInAs(page, "priya");
   await page.goto("/setup/team");
   await expect(panel(page)).toHaveCount(0);
-  await page.goto("/guide");
+  await page.goto("/guide/team");
   await page.getByRole("switch", { name: "Prototype notes" }).click();
   await page.goto("/setup/team");
   await expect(
@@ -29,7 +29,7 @@ test("the account menu turns notes off, and the choice is remembered", async ({
 }) => {
   resetDemo("week1");
   await signInAs(page, "priya");
-  await page.goto("/guide");
+  await page.goto("/guide/team");
   await page.getByRole("switch", { name: "Prototype notes" }).click();
   await page.goto("/manager");
   await expect(panel(page)).toBeVisible();

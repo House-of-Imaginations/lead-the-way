@@ -7,14 +7,16 @@ test.describe.configure({ mode: "serial" });
 test.beforeAll(() => resetDemo());
 test.afterAll(() => resetDemo());
 
-test("signed out, the guide asks you to log in first", async ({ page }) => {
+test("signed out, the guides ask you to log in first", async ({ page }) => {
   await page.goto("/guide");
   await expect(page).toHaveURL(/\/login\?next=%2Fguide$/);
+  await page.goto("/guide/team");
+  await expect(page).toHaveURL(/\/login\?next=%2Fguide%2Fteam$/);
 });
 
 test("the guide shows Main.png's sections and copy", async ({ page }) => {
   await signInAs(page, "priya");
-  await page.goto("/guide");
+  await page.goto("/guide/team");
   await expect(
     page.getByRole("heading", { level: 1, name: "From Zero to Hero" }),
   ).toBeVisible();
@@ -43,7 +45,7 @@ test("the guide shows Main.png's sections and copy", async ({ page }) => {
 
 test("each walkthrough step links to its screen", async ({ page }) => {
   await signInAs(page, "priya");
-  await page.goto("/guide");
+  await page.goto("/guide/team");
   const steps: [string, string][] = [
     ["Accepts the invitation", "/demo/partner-email"],
     ["Protects one hour", "/setup/protected-hour"],
@@ -70,7 +72,7 @@ for (const theme of ["light", "dark"] as const) {
       await page.setViewportSize({ width, height: 900 });
       await page.emulateMedia({ colorScheme: theme });
       await signInAs(page, "priya");
-      await page.goto("/guide");
+      await page.goto("/guide/team");
       await expect(page.getByLabel("Shared password")).toBeVisible();
       await expectAxeClean(page);
       const spill = await page.evaluate(
@@ -86,7 +88,7 @@ test("the demo section shows the time, the accounts and the counts", async ({
 }) => {
   resetDemo();
   await signInAs(page, "priya");
-  await page.goto("/guide");
+  await page.goto("/guide/team");
   const demo = page.getByRole("region", { name: "Demo controls" });
   await expect(demo.getByText("Tuesday 1 September at 9:30 AM")).toBeVisible();
   await expect(demo.getByText("priya.raman@calderlane.com.au")).toBeVisible();
@@ -99,7 +101,7 @@ test("the shared password shows only to a demo seat, masked", async ({
 }) => {
   resetDemo();
   await signInAs(page, "priya");
-  await page.goto("/guide");
+  await page.goto("/guide/team");
   const field = page.getByLabel("Shared password");
   await expect(field).toHaveAttribute("type", "password");
   // Compare in the page so a failure never prints the password.
@@ -113,7 +115,7 @@ test("the shared password shows only to a demo seat, masked", async ({
 test("Move clock jumps to the chosen week", async ({ page }) => {
   resetDemo();
   await signInAs(page, "priya");
-  await page.goto("/guide");
+  await page.goto("/guide/team");
   await page.getByLabel("Move the demo to").selectOption("week2");
   await page.getByRole("button", { name: "Move clock" }).click();
   await expect(
@@ -126,10 +128,10 @@ test("Start as Dan at setup jumps to week 1 and lands on Dan's home", async ({
 }) => {
   resetDemo();
   await signInAs(page, "priya");
-  await page.goto("/guide");
+  await page.goto("/guide/team");
   await page.getByRole("button", { name: "Start as Dan" }).first().click();
   await expect(page).toHaveURL(/\/me$/);
-  await page.goto("/guide");
+  await page.goto("/guide/team");
   await expect(
     page.getByText("Wednesday 9 September at 1:00 PM"),
   ).toBeVisible();
@@ -138,7 +140,7 @@ test("Start as Dan at setup jumps to week 1 and lands on Dan's home", async ({
 test("a Dan step switches from Priya to Dan", async ({ page }) => {
   resetDemo("week2");
   await signInAs(page, "priya");
-  await page.goto("/guide");
+  await page.goto("/guide/team");
   // The tiles switch only once demo.status has loaded.
   await expect(page.getByRole("button", { name: "Move clock" })).toBeVisible();
   await page.getByRole("link", { name: /Applies it to real work/ }).click();
@@ -148,7 +150,7 @@ test("a Dan step switches from Priya to Dan", async ({ page }) => {
 test("reset as Dan ends as Priya at setup", async ({ page }) => {
   resetDemo("week1");
   await signInAs(page, "dan");
-  await page.goto("/guide");
+  await page.goto("/guide/team");
   await page.getByRole("button", { name: "Reset demo" }).click();
   await page
     .getByRole("dialog")
@@ -166,7 +168,7 @@ test("an account without a demo seat sees only Start as Priya", async ({
 }) => {
   resetDemo();
   await signInAs(page, "dan"); // no seat until 8 September
-  await page.goto("/guide");
+  await page.goto("/guide/team");
   await expect(
     page.getByRole("heading", { level: 1, name: "From Zero to Hero" }),
   ).toBeVisible();
@@ -190,7 +192,7 @@ for (const theme of ["light", "dark"] as const) {
   }) => {
     await page.emulateMedia({ colorScheme: theme });
     await signInAs(page, "priya");
-    await page.goto("/guide");
+    await page.goto("/guide/team");
     await page.getByRole("button", { name: "Reset demo" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expectAxeClean(page);
