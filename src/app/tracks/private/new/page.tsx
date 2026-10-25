@@ -2,11 +2,9 @@ import { ArrowLeft, ViewOff } from "@carbon/icons-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ConvexClientProvider } from "@/app/_components/ConvexClientProvider";
 import { InlineNotification } from "@/components/ui/InlineNotification";
 import { Logo } from "@/components/ui/Logo";
 import { Tag } from "@/components/ui/Tag";
-import { getToken } from "@/lib/account/auth-server";
 import { getAccountShell, getHome } from "@/lib/account/queries";
 import { PrivateTrackForm } from "./_components/PrivateTrackForm";
 
@@ -27,7 +25,7 @@ const KEPT_APART = [
  * team to keep it apart from.
  */
 export default async function PrivateTrackPage() {
-  const [all, token] = await Promise.all([getAccountShell(), getToken()]);
+  const all = await getAccountShell();
   if (!all?.team || all.career) redirect((await getHome()) ?? "/signed-out");
   const { org, workspaceSettings } = all.team;
   const manager = workspaceSettings.owner?.split(" ")[0] ?? "Your manager";
@@ -72,9 +70,7 @@ export default async function PrivateTrackPage() {
         <InlineNotification title="Your team sprint is unchanged.">
           {manager} still sees team totals only, and nothing from this track.
         </InlineNotification>
-        <ConvexClientProvider initialToken={token}>
-          <PrivateTrackForm />
-        </ConvexClientProvider>
+        <PrivateTrackForm />
         <p className="pb-06 text-label-01 text-text-helper">
           Concept prototype. Not an official IBM product.
         </p>

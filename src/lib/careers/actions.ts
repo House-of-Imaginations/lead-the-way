@@ -9,6 +9,7 @@ import type {
   Hours,
   TargetId,
 } from "@convex/lib/careers/catalog";
+import { fetchAuthMutation } from "@/lib/account/auth-server";
 import { userMessage } from "@/lib/errors";
 import { DRAFT_COOKIE, DRAFT_MAX_AGE, draftToken } from "./draftCookie";
 
@@ -52,4 +53,27 @@ export async function setMapHours(hoursPerWeek: Hours): Promise<void> {
   const token = await draftToken();
   if (token)
     await fetchMutation(api.careers.drafts.setHours, { token, hoursPerWeek });
+}
+
+/**
+ * MS3: starts the private track, claiming the Pivot Map draft in the cookie
+ * (spec 5.3), then drops the cookie. Convex checks the session and refuses a
+ * work address (X3).
+ */
+export async function startPrivateTrack(
+  contactEmail: string,
+): Promise<{ error: string } | null> {
+  const token = await draftToken();
+  try {
+    await fetchAuthMutation(api.careers.tracks.startPrivate, {
+      contactEmail,
+      draftToken: token,
+    });
+  } catch (error) {
+    return {
+      error: userMessage(error, "The track wasn't started. Try again."),
+    };
+  }
+  if (token) (await cookies()).delete(DRAFT_COOKIE);
+  return null;
 }

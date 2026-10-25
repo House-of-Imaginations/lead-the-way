@@ -127,12 +127,23 @@ export default async function HomePage() {
                   : "Pivot Crews track"}
               </p>
             </div>
+            {career.step && (
+              <Tag color="blue">{`Credential ${career.step.n} of ${career.step.of}`}</Tag>
+            )}
           </div>
-          <p className="text-heading-03 font-light">
-            {career.targetRole
-              ? `Heading for ${career.targetRole}`
-              : "Your Pivot Map"}
-          </p>
+          {career.currentRole && career.targetRole ? (
+            <p className="flex flex-wrap items-center gap-03 text-heading-03 font-light">
+              {career.currentRole}
+              <ArrowRight aria-label="to" />
+              {career.targetRole}
+            </p>
+          ) : (
+            <p className="text-heading-03 font-light">
+              {career.targetRole
+                ? `Heading for ${career.targetRole}`
+                : "Your Pivot Map"}
+            </p>
+          )}
           {career.credential ? (
             <ProgressBar
               label={career.credential}

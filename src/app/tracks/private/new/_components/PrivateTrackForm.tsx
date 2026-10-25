@@ -1,19 +1,17 @@
 "use client";
 
 import { ArrowRight } from "@carbon/icons-react";
-import { useMutation } from "convex/react";
 import { useState, type FormEvent } from "react";
-import { api } from "@convex/_generated/api";
 import { Button, Checkbox, TextInput } from "@/components/ui";
-import { userMessage } from "@/lib/errors";
+import { startPrivateTrack } from "@/lib/careers/actions";
 
 /**
- * MS3's form. Convex refuses a work address (X3) and says how to fix it; the
- * message shows on the field. ponytail: no draft token yet, the draft cookie
- * is P13a's; pass it to `startPrivate` once that lands.
+ * MS3's form. The server action claims any Pivot Map draft from its cookie;
+ * Convex refuses a work address (X3) and says how to fix it, on the field.
+ * Either way the track lands on /home, as a career sign-up does: a claimed
+ * map has no view of its own until P13b.
  */
 export function PrivateTrackForm() {
-  const startPrivate = useMutation(api.careers.tracks.startPrivate);
   const [email, setEmail] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,15 +22,15 @@ export function PrivateTrackForm() {
     if (!agreed || pending) return;
     setError(null);
     setPending(true);
-    try {
-      await startPrivate({ contactEmail: email });
-      // A full load: the shell gains the second track, and /home shows both.
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
-      window.location.assign("/home");
-    } catch (e) {
-      setError(userMessage(e, "The track wasn't started. Try again."));
+    const result = await startPrivateTrack(email);
+    if (result) {
+      setError(result.error);
       setPending(false);
+      return;
     }
+    // A full load: the shell gains the second track, and /home shows both.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load, above
+    window.location.assign("/home");
   }
 
   return (
