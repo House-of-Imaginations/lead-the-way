@@ -1,6 +1,6 @@
 "use client";
 
-import { Enterprise, Login } from "@carbon/icons-react";
+import { Enterprise, Login, User } from "@carbon/icons-react";
 import { useRef, useState } from "react";
 import { Button, Modal } from "@/components/ui";
 import type { Provider } from "@convex/lib/auth/providers";
@@ -16,7 +16,11 @@ const NAMES: Record<Provider, string> = {
 type AuthAlternativesProps = {
   /** From `authMethods.enabled`: only providers with both env halves set (R9). */
   providers: Provider[];
-  ssoLabel: "Sign up with single sign-on" | "Log in with single sign-on";
+  /** "Continue with IBMid" on the careers forms (3b, L): the same simulated dialog. */
+  ssoLabel:
+    | "Sign up with single sign-on"
+    | "Log in with single sign-on"
+    | "Continue with IBMid";
   /** "Use email" in the SSO dialog focuses this field. */
   emailId: string;
   next: string | null;
@@ -30,6 +34,7 @@ export function AuthAlternatives({
 }: AuthAlternativesProps) {
   const [open, setOpen] = useState(false);
   const useEmail = useRef(false);
+  const ibmid = ssoLabel === "Continue with IBMid";
   return (
     <>
       <div className="flex items-center gap-05 text-label-01 text-text-secondary">
@@ -64,15 +69,25 @@ export function AuthAlternatives({
         {/* R9: single sign-on is always the simulated dialog (spec 7.1). */}
         <Modal
           trigger={
-            <Button kind="sso" icon={Enterprise} className="w-full">
+            <Button
+              kind="sso"
+              icon={ibmid ? User : Enterprise}
+              className="w-full"
+            >
               {ssoLabel}
             </Button>
           }
           open={open}
           onOpenChange={setOpen}
-          label="Single sign-on"
-          title="Single sign-on isn't set up"
-          description="Single sign-on is not set up for this demo workspace. Use your work email and password instead."
+          label={ibmid ? "IBMid" : "Single sign-on"}
+          title={
+            ibmid ? "IBMid isn't connected" : "Single sign-on isn't set up"
+          }
+          description={
+            ibmid
+              ? "IBMid is not connected in this demo. Use your email and password instead."
+              : "Single sign-on is not set up for this demo workspace. Use your work email and password instead."
+          }
           primaryText="Use email"
           onPrimary={() => {
             useEmail.current = true;

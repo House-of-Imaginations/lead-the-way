@@ -59,8 +59,13 @@ export type SideNavProps = {
   sections: SideNavSection[];
   checklist?: SideNavChecklist | null;
   status?: SideNavStatus | null;
-  user: { initials: string; name: string; role: string; manager?: boolean };
-  accountMenu: MenuItem[];
+  /** Signed out (the careers map before sign-up): no account block. */
+  user?: { initials: string; name: string; role: string; manager?: boolean };
+  accountMenu?: MenuItem[];
+  /** The careers nav reads "Pivot Crews" (pack DESIGN.md, Logo). */
+  brand?: string;
+  /** The careers path block: an icon in place of the org avatar. */
+  orgIcon?: CarbonIconType;
   resizable?: boolean;
   /** The saved state as the server read it from the cookie: the first paint matches. */
   initialState?: NavState | null;
@@ -124,7 +129,9 @@ export function SideNav({
   checklist,
   status,
   user,
-  accountMenu,
+  accountMenu = [],
+  brand = "From Zero to Hero",
+  orgIcon: OrgIcon,
   resizable = true,
   initialState = null,
   onWarm,
@@ -196,7 +203,11 @@ export function SideNav({
 
   const orgBlock = (
     <>
-      <Avatar initials={org.initials} kind="org" />
+      {OrgIcon ? (
+        <OrgIcon className="ltw-i text-interactive" aria-hidden="true" />
+      ) : (
+        <Avatar initials={org.initials} kind="org" />
+      )}
       <span className="ltw-sn-who ltw-sn-x">
         <span className="ltw-sn-name">{org.name}</span>
         <span className="ltw-sn-sub">{org.team}</span>
@@ -224,10 +235,10 @@ export function SideNav({
         <Link
           className="ltw-sn-brand"
           href={homeHref}
-          title={collapsed ? "From Zero to Hero" : undefined}
+          title={collapsed ? brand : undefined}
         >
           <Logo />
-          <span className="ltw-sn-t">From Zero to Hero</span>
+          <span className="ltw-sn-t">{brand}</span>
         </Link>
         {tracks ? (
           <TrackSwitcher {...tracks} />
@@ -347,25 +358,27 @@ export function SideNav({
             <span className="ltw-sn-t">Collapse</span>
           </button>
         )}
-        <Menu
-          side="top"
-          items={accountMenu}
-          trigger={
-            <button
-              type="button"
-              className="ltw-sn-acct"
-              title={collapsed ? user.name : undefined}
-              aria-label={user.name}
-            >
-              <Avatar initials={user.initials} manager={user.manager} />
-              <span className="ltw-sn-who ltw-sn-x">
-                <span className="ltw-sn-name">{user.name}</span>
-                <span className="ltw-sn-sub">{user.role}</span>
-              </span>
-              <ChevronSort className="ltw-i ltw-sn-x" aria-hidden="true" />
-            </button>
-          }
-        />
+        {user && (
+          <Menu
+            side="top"
+            items={accountMenu}
+            trigger={
+              <button
+                type="button"
+                className="ltw-sn-acct"
+                title={collapsed ? user.name : undefined}
+                aria-label={user.name}
+              >
+                <Avatar initials={user.initials} manager={user.manager} />
+                <span className="ltw-sn-who ltw-sn-x">
+                  <span className="ltw-sn-name">{user.name}</span>
+                  <span className="ltw-sn-sub">{user.role}</span>
+                </span>
+                <ChevronSort className="ltw-i ltw-sn-x" aria-hidden="true" />
+              </button>
+            }
+          />
+        )}
         <p className="ltw-sn-cap ltw-sn-x">
           Concept prototype. Not an official IBM product.
         </p>

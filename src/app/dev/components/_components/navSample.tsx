@@ -11,7 +11,9 @@ import type { MenuItem, SideNavProps } from "@/components/ui";
 const HREF = "/dev/components#sidenav";
 
 /** Priya's manager shell, as on 08. Every link stays on the gallery. */
-export function sampleNav(onAction: (label: string) => void): SideNavProps {
+export function sampleNav(
+  onAction: (label: string) => void,
+): SideNavProps & Required<Pick<SideNavProps, "user" | "accountMenu">> {
   const act = (label: string): MenuItem => ({
     label,
     onSelect: () => onAction(label),

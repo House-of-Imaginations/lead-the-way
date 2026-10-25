@@ -1,5 +1,5 @@
 export type WhoSeesWhatProps = {
-  rows: { who: string; team: string; career: string }[];
+  rows: { who: string; team: string | null; career: string | null }[];
 };
 
 /** Per track, what each other person can see. State the strongest true thing. */

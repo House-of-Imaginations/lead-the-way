@@ -19,6 +19,9 @@ const eslintConfig = defineConfig([
               group: [
                 "@convex/lib/**",
                 "!@convex/lib/agreementLimits",
+                "!@convex/lib/careers",
+                "@convex/lib/careers/*",
+                "!@convex/lib/careers/catalog",
                 "!@convex/lib/demo",
                 "@convex/lib/demo/*",
                 "!@convex/lib/demo/schedule",

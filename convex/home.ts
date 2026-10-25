@@ -38,8 +38,11 @@ export const summary = authenticatedQuery({
       v.null(),
       v.object({
         private: v.boolean(),
+        currentRole: v.union(v.null(), v.string()),
         targetRole: v.union(v.null(), v.string()),
         credential: v.union(v.null(), v.string()),
+        // "Credential 1 of 3": the credential's place on the target's path.
+        step: v.union(v.null(), v.object({ n: v.number(), of: v.number() })),
         lessonsDone: v.number(),
         lessonsTotal: v.number(),
         // 0 is Sunday; the page words it ("Tuesday, 7 PM").
@@ -97,11 +100,20 @@ export const summary = authenticatedQuery({
         ids.has(p.lessonId),
       ).length;
       const guide = crew && (await ctx.db.get(crew.guideId));
+      const n =
+        (target?.skills.findIndex((s) => s.credentialId === credentialId) ??
+          -1) + 1;
       careerPart = {
         private: profile.private,
+        // "Something else" reads badly before an arrow; the page drops it.
+        currentRole:
+          profile.currentRole && profile.currentRole !== "Something else"
+            ? profile.currentRole
+            : null,
         targetRole: target?.name ?? null,
         credential:
           CREDENTIALS.find((c) => c.id === credentialId)?.name ?? null,
+        step: target && n > 0 ? { n, of: target.skills.length } : null,
         lessonsDone: done,
         lessonsTotal: lessons.length,
         checkIn: crew && { day: crew.checkInDay, time: crew.checkInTime },

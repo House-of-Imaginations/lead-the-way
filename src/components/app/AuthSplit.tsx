@@ -13,6 +13,9 @@ type AuthSplitProps = {
   wide?: boolean;
   /** Inside the panel, after the body and above the stair blocks. */
   aside?: ReactNode;
+  /** 3b, DA, L and DB: "Pivot Crews", the careers phone header below 1024px
+   * in place of the brand, and `top` above the title there. */
+  careers?: { header: ReactNode; top?: ReactNode };
 };
 
 const WEEKS = [1, 2, 3, 4];
@@ -27,6 +30,7 @@ export function AuthSplit({
   children,
   wide,
   aside,
+  careers,
 }: AuthSplitProps) {
   return (
     <div
@@ -35,49 +39,67 @@ export function AuthSplit({
         wide ? "min-[1024px]:grid-cols-[7fr_5fr]" : "min-[1024px]:grid-cols-2",
       )}
     >
-      <div className="flex flex-col gap-07 p-05 md:p-09">
-        <Link
-          href="/"
-          className="flex items-center gap-[10px] self-start text-body-emphasis"
-        >
-          <Logo />
-          From Zero to Hero
-        </Link>
-        <main
-          className={clsx(
-            "mx-auto flex w-full flex-1 flex-col gap-07",
-            wide
-              ? "max-w-[744px] min-[1024px]:justify-center"
-              : "max-w-auth-form justify-center",
-          )}
-        >
-          <div className={clsx("flex flex-col gap-03", !wide && "text-center")}>
-            <h1
+      <div className="flex flex-col">
+        {careers && <div className="min-[1024px]:hidden">{careers.header}</div>}
+        <div className="flex flex-1 flex-col gap-07 p-05 md:p-09">
+          <Link
+            href={careers ? "/careers/map/new" : "/"}
+            className={clsx(
+              "flex items-center gap-[10px] self-start text-body-emphasis",
+              careers && "hidden min-[1024px]:flex",
+            )}
+          >
+            <Logo />
+            {careers ? "Pivot Crews" : "From Zero to Hero"}
+          </Link>
+          <main
+            className={clsx(
+              "mx-auto flex w-full flex-1 flex-col gap-07",
+              wide
+                ? "max-w-[744px] min-[1024px]:justify-center"
+                : careers
+                  ? "max-w-auth-form max-[1023px]:max-w-[600px] min-[1024px]:justify-center"
+                  : "max-w-auth-form justify-center",
+            )}
+          >
+            {careers?.top && (
+              <div className="min-[1024px]:hidden">{careers.top}</div>
+            )}
+            <div
               className={clsx(
-                "text-balance",
-                wide
-                  ? "text-heading-01 min-[1024px]:text-display-03"
-                  : "text-heading-02",
+                "flex flex-col gap-03",
+                careers ? "min-[1024px]:text-center" : !wide && "text-center",
               )}
             >
-              {title}
-            </h1>
-            {lead && (
-              <p
+              <h1
                 className={clsx(
-                  "text-text-secondary",
-                  wide ? "text-body-01" : "text-body-02",
+                  "text-balance",
+                  wide
+                    ? "text-heading-01 min-[1024px]:text-display-03"
+                    : careers
+                      ? "text-heading-01 min-[1024px]:text-heading-02"
+                      : "text-heading-02",
                 )}
               >
-                {lead}
-              </p>
-            )}
-          </div>
-          {children}
-        </main>
-        <p className="text-label-01 text-text-helper">
-          Concept prototype. Not an official IBM product.
-        </p>
+                {title}
+              </h1>
+              {lead && (
+                <p
+                  className={clsx(
+                    "text-text-secondary",
+                    wide ? "text-body-01" : "text-body-02",
+                  )}
+                >
+                  {lead}
+                </p>
+              )}
+            </div>
+            {children}
+          </main>
+          <p className="text-label-01 text-text-helper">
+            Concept prototype. Not an official IBM product.
+          </p>
+        </div>
       </div>
       <aside className="relative hidden min-h-dvh flex-col gap-05 overflow-hidden bg-layer-01 p-09 min-[1024px]:flex">
         {/* Measured from 02a: the title on one line, the body breaking after "then". */}

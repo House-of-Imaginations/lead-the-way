@@ -9,6 +9,7 @@ import {
   DocumentTasks,
   Education,
   Home,
+  Locked,
   Portfolio,
   PresentationFile,
   type CarbonIconType,
@@ -215,6 +216,10 @@ export function AppShell({
       // 17 for the manager area, 19 for everyone else (Ruling 10).
       href: shell.area === "manager" ? "/settings" : "/me/settings",
     },
+    // MS4 with two tracks; MS3 with the team track only.
+    rows
+      ? { label: "Privacy by track", href: "/settings/privacy" }
+      : { label: "Start private track", href: "/tracks/private/new" },
     // Once: an open Workspace settings is in the org items above with two tracks.
     ...(rows && ws.open ? [] : [workspaceItem]),
     {
@@ -243,15 +248,33 @@ export function AppShell({
     org: shell.org,
     orgMenu: !rows && orgMenu.length > 0 ? orgMenu : undefined,
     tracks: rows && { rows, selected: "team" },
-    sections: shell.nav.map((section) => ({
-      title: section.title,
-      links: section.links.map((l) => ({
-        label: l.label,
-        href: l.href,
-        icon: ICONS[l.icon],
-        current: l.label === currentLabel,
+    sections: [
+      ...shell.nav.map((section) => ({
+        title: section.title,
+        links: section.links.map((l) => ({
+          label: l.label,
+          href: l.href,
+          icon: ICONS[l.icon],
+          current: l.label === currentLabel,
+        })),
       })),
-    })),
+      // MS2 and MS4: the pages that join both tracks.
+      ...(rows
+        ? [
+            {
+              title: "You",
+              links: [
+                { label: "Home", href: "/home", icon: Home },
+                {
+                  label: "Privacy by track",
+                  href: "/settings/privacy",
+                  icon: Locked,
+                },
+              ].map((l) => ({ ...l, current: l.href === pathname })),
+            },
+          ]
+        : []),
+    ],
     checklist: shell.checklist,
     status: shell.status,
     user,

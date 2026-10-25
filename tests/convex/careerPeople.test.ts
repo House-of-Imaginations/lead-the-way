@@ -518,6 +518,7 @@ test("X4: home.summary and privacy.* answer for the signed-in account only", asy
   // The owner is two-track: a seat and a private learner profile.
   await addProfile(t, "user_owner", "Priya", "learner", {
     private: true,
+    currentRole: "Account Executive",
     targetRole: "data-analyst",
   });
   const { as: teamOnly } = await seat(t, orgId, "user_lee", []);
@@ -528,8 +529,10 @@ test("X4: home.summary and privacy.* answer for the signed-in account only", asy
   expect(home.team).toEqual({ orgName: "Aster Network", sprint: null });
   expect(home.career).toEqual({
     private: true,
+    currentRole: "Account Executive",
     targetRole: "Data Analyst",
     credential: "Data Fundamentals",
+    step: { n: 1, of: 3 },
     lessonsDone: 0,
     lessonsTotal: 11,
     checkIn: null,
