@@ -15,6 +15,7 @@ import type { FunctionReturnType } from "convex/server";
 import { useState, useTransition } from "react";
 import { CareersHeader } from "@/components/careers/CareersHeader";
 import {
+  Button,
   ButtonLink,
   ContentSwitcher,
   InlineNotification,
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui";
 import type { api } from "@convex/_generated/api";
 import { weeksForHours, type Hours } from "@convex/lib/careers/catalog";
-import { setMapHours } from "@/lib/careers/actions";
+import { claimMap, setMapHours } from "@/lib/careers/actions";
 import { HOUR_OPTIONS } from "../hours";
 
 type PivotMapData = NonNullable<
@@ -47,7 +48,36 @@ function Dot({ n, now }: { n: number; now?: boolean }) {
 }
 
 /** 3 (phone) and D3 (1440): one tree, laid out per width. */
-export function PivotMap({ map }: { map: PivotMapData }) {
+/** Signed out, saving is sign-up; signed in, sign-up would bounce, so it claims here. */
+function SaveMap({
+  signedIn,
+  className,
+}: {
+  signedIn: boolean;
+  className: string;
+}) {
+  if (!signedIn)
+    return (
+      <ButtonLink href={SIGN_UP} icon={ArrowRight} className={className}>
+        Save my map
+      </ButtonLink>
+    );
+  return (
+    <form action={claimMap} className={className}>
+      <Button type="submit" icon={ArrowRight} className="w-full">
+        Save my map
+      </Button>
+    </form>
+  );
+}
+
+export function PivotMap({
+  map,
+  signedIn,
+}: {
+  map: PivotMapData;
+  signedIn: boolean;
+}) {
   const [skill, setSkill] = useState(0);
   const [hours, setHours] = useState<Hours>(map.hoursPerWeek);
   const [, startTransition] = useTransition();
@@ -72,7 +102,7 @@ export function PivotMap({ map }: { map: PivotMapData }) {
   );
 
   return (
-    <div className="flex min-h-dvh bg-background text-text-primary">
+    <div className="group/shell flex min-h-dvh bg-background text-text-primary">
       <div className="hidden lg:flex">
         <SideNav
           brand="Pivot Crews"
@@ -136,13 +166,7 @@ export function PivotMap({ map }: { map: PivotMapData }) {
                 {map.target.name}
               </span>
             </div>
-            <ButtonLink
-              href={SIGN_UP}
-              icon={ArrowRight}
-              className="hidden lg:inline-flex"
-            >
-              Save my map
-            </ButtonLink>
+            <SaveMap signedIn={signedIn} className="hidden lg:inline-flex" />
           </div>
 
           <div className="grid gap-06 lg:grid-cols-[1fr_1.4fr_1.2fr] lg:gap-[40px]">
@@ -278,15 +302,14 @@ export function PivotMap({ map }: { map: PivotMapData }) {
             <p>
               Example roles, job-ad text and credential names are illustrative.
             </p>
-            <p className="text-text-helper lg:hidden">
+            {/* The expanded nav carries the disclaimer; the rail hides every label, so it shows here on phones and beside the rail. */}
+            <p className="text-text-helper lg:hidden lg:group-has-[.ltw-sn-col]/shell:block">
               Concept prototype. Not an official IBM product.
             </p>
           </div>
         </main>
         <div className="ltw-cf lg:hidden">
-          <ButtonLink href={SIGN_UP} icon={ArrowRight} className="w-full">
-            Save my map
-          </ButtonLink>
+          <SaveMap signedIn={signedIn} className="w-full" />
         </div>
       </div>
     </div>

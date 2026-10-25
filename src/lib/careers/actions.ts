@@ -10,6 +10,8 @@ import type {
   TargetId,
 } from "@convex/lib/careers/catalog";
 import { fetchAuthMutation } from "@/lib/account/auth-server";
+import { getAccountShell } from "@/lib/account/queries";
+import { startAccount } from "@/lib/account/start";
 import { userMessage } from "@/lib/errors";
 import { DRAFT_COOKIE, draftToken } from "./draftCookie";
 
@@ -52,6 +54,17 @@ export async function setMapHours(hoursPerWeek: Hours): Promise<void> {
   const token = await draftToken();
   if (token)
     await fetchMutation(api.careers.drafts.setHours, { token, hoursPerWeek });
+}
+
+/**
+ * "Save my map" for a signed-in account, which sign-up would bounce. A seat
+ * holder's only way in is MS3 (X3), which claims the draft itself; anyone
+ * else claims it as a career sign-up does.
+ */
+export async function claimMap(): Promise<void> {
+  if ((await getAccountShell())?.team) redirect("/tracks/private/new");
+  const result = await startAccount(false, undefined, "career");
+  redirect("next" in result ? result.next : "/start");
 }
 
 /**

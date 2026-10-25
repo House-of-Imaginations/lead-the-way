@@ -10,17 +10,12 @@ export const metadata: Metadata = { title: "Your Pivot Map" };
 
 /** 3 and D3: the map from the draft cookie, before any account (spec 5.3). */
 export default async function PivotMapPage() {
-  const token = await draftToken();
+  const [token, shell] = await Promise.all([draftToken(), getAccountShell()]);
   const map = token
     ? await openOrHome(() => fetchQuery(api.careers.drafts.pivotMap, { token }))
     : null;
   // No draft (none, expired or claimed at sign-up): a career track goes to its
   // journey, anyone else starts a new map. ponytail: a saved map's own view is P13b.
-  if (!map)
-    redirect(
-      (await getAccountShell())?.career
-        ? "/careers/journey"
-        : "/careers/map/new",
-    );
-  return <PivotMap map={map} />;
+  if (!map) redirect(shell?.career ? "/careers/journey" : "/careers/map/new");
+  return <PivotMap map={map} signedIn={!!shell} />;
 }

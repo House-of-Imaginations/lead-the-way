@@ -1,4 +1,5 @@
 import { LOOKS, buildMap, look } from "./careers";
+import { E2E_DOMAIN } from "./demo";
 import { expect, test } from "./fixtures";
 
 // 3 and D3 Your Pivot Map (`/careers/map`): from the draft cookie, signed out.
@@ -95,4 +96,31 @@ test("a skill swaps the why, and the hours stay on the draft", async ({
 test("with no draft, the map starts one", async ({ page }) => {
   await page.goto("/careers/map");
   await expect(page).toHaveURL("/careers/map/new");
+});
+
+// Codex P2: sign-up bounces a signed-in account, so "Save my map" claims here.
+test("a signed-in account with no track saves its map", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // A careers sign-up with no draft: it has no track yet, so /start.
+  await page.goto("/signup?track=career");
+  await page.getByLabel("First name").fill("Kai");
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill(
+      `e2e-claim-${Date.now()}-${Math.floor(Math.random() * 1e6)}@${E2E_DOMAIN}`,
+    );
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("a long enough password");
+  await page
+    .getByLabel("I agree to the terms of use and privacy notice.")
+    .check();
+  await page.getByRole("button", { name: "Create free account" }).click();
+  await expect(page).toHaveURL("/start");
+  await buildMap(page);
+  await page.getByRole("button", { name: "Save my map" }).click();
+  await expect(page).toHaveURL("/careers/journey");
+  await expect(
+    page.getByRole("heading", { name: "Your map is saved" }),
+  ).toBeVisible();
 });
