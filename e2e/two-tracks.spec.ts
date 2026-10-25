@@ -10,8 +10,8 @@ test.describe("two tracks", () => {
   test.describe.configure({ mode: "serial" });
   test.afterAll(() => resetDemo());
 
-  // Review Focus 3: /home for two tracks lands on the team home, never loops.
-  test("Dan with a private track sees the switcher, and /home opens his team home", async ({
+  // MS2: /home for two tracks is its own page now (P13c), never a loop.
+  test("Dan with a private track sees the switcher, and /home opens MS2", async ({
     page,
     expectAxeClean,
   }) => {
@@ -20,7 +20,7 @@ test.describe("two tracks", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await signInAs(page, "dan");
     await page.goto("/home");
-    await expect(page).toHaveURL("/me");
+    await expect(page).toHaveURL("/home");
 
     const team = tracks(page).getByRole("link", { name: /Team sprint/ });
     await expect(team).toContainText("Calder Lane, week 2 of 4");

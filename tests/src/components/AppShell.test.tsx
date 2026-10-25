@@ -253,3 +253,10 @@ test("after a switch in another tab, the server's rows stay", () => {
   expect(html).toContain("Your tracks");
   expect(html).toContain("You switched workspace in another tab");
 });
+
+test("two tracks add Home and Privacy by track, Home current on /home", () => {
+  const html = renderRows(rows);
+  expect(html).toContain('href="/settings/privacy"');
+  expect(html).toContain('aria-current="page" href="/home"');
+  expect(renderRows()).not.toContain('href="/settings/privacy"');
+});
