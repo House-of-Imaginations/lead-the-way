@@ -1,5 +1,5 @@
 import type { Doc, Id } from "../../_generated/dataModel";
-import type { QueryCtx } from "../../_generated/server";
+import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { throwUserError } from "../errors";
 import type { Career } from "../viewer";
 import { dayOf, weekOf } from "../sprintTime";
@@ -136,4 +136,17 @@ export function weeklyOf(
   const weeks = new Set(progress.map((l) => crewWeek(crew, l.completedAt)));
   if (!weeks.has(week)) return "notYet";
   return week > 1 && !weeks.has(week - 1) ? "back" : "done";
+}
+
+/** Deletes a crew rule and every crewmate's choice on it. */
+export async function deleteRule(
+  ctx: MutationCtx,
+  ruleId: Id<"crewRules">,
+): Promise<void> {
+  const choices = await ctx.db
+    .query("ruleChoices")
+    .withIndex("by_rule", (q) => q.eq("ruleId", ruleId))
+    .take(100);
+  for (const choice of choices) await ctx.db.delete(choice._id);
+  await ctx.db.delete(ruleId);
 }

@@ -10,8 +10,7 @@ import {
 import { careerMutation, careerQuery } from "../lib/customFunctions";
 import { throwUserError } from "../lib/errors";
 import { addDays, mondayOf } from "../lib/sprintTime";
-import { crewWeek } from "../lib/careers/crew";
-import { crewOf, learnerOf } from "./crews";
+import { crewOf, crewWeek, learnerOf } from "../lib/careers/crew";
 
 async function completionsOf(
   ctx: QueryCtx | MutationCtx,
@@ -68,9 +67,8 @@ export const thisWeek = careerQuery({
   handler: async (ctx) => {
     const { profile } = ctx.career;
     if (profile.kind !== "learner") return null;
-    const joined = await crewOf(ctx, profile._id);
-    if (!joined) return null;
-    const { crew } = joined;
+    const crew = await crewOf(ctx, profile);
+    if (!crew) return null;
     const week = weekShown(crew, ctx.career.now);
     const all = lessonsFor(crew.credentialId);
     const done = new Set(
@@ -179,9 +177,8 @@ export const reentry = careerQuery({
   handler: async (ctx) => {
     const { profile } = ctx.career;
     if (profile.kind !== "learner") return null;
-    const joined = await crewOf(ctx, profile._id);
-    if (!joined) return null;
-    const { crew } = joined;
+    const crew = await crewOf(ctx, profile);
+    if (!crew) return null;
     const week = weekShown(crew, ctx.career.now);
     const completions = await completionsOf(ctx, profile._id);
     const demo = await ctx.db.query("careerDemo").first();

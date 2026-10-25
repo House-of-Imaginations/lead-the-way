@@ -1,8 +1,8 @@
 import { v } from "convex/values";
+import { crewOf, learnerOf } from "../lib/careers/crew";
 import { careerMutation, careerQuery } from "../lib/customFunctions";
 import { throwUserError } from "../lib/errors";
 import { addDays, dayOf, mondayOf } from "../lib/sprintTime";
-import { crewOf, learnerOf } from "./crews";
 
 /** P7: the only title a calendar hold ever has. */
 const HOLD_TITLE = "Busy" as const;
@@ -81,9 +81,8 @@ export const weekPreview = careerQuery({
     const { profile } = ctx.career;
     if (profile.kind !== "learner") return null;
     checkDays(days);
-    const joined = await crewOf(ctx, profile._id);
-    if (!joined) return null;
-    const { crew } = joined;
+    const crew = await crewOf(ctx, profile);
+    if (!crew) return null;
     const monday = mondayOf(crew.startsOn);
     const weeks = [0, 1, 2, 3].map((w) =>
       [0, 1, 2, 3, 4, 5, 6].map((d) => {

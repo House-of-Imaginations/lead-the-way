@@ -5,33 +5,11 @@ import { profileOf } from "../lib/account/profile";
 import { careerMutation, careerQuery } from "../lib/customFunctions";
 import { throwUserError } from "../lib/errors";
 import { initialsOf } from "../lib/initials";
-import { weeklyOf } from "../lib/careers/crew";
-import type { Career } from "../lib/viewer";
+import { crewOf, deleteRule, learnerOf, weeklyOf } from "../lib/careers/crew";
 
 const MAX_RULE = 120;
-
-/** R6: the crew functions are a learner's; a guide profile is refused. */
-export function learnerOf(career: Career): Doc<"careerProfiles"> {
-  if (career.profile.kind !== "learner") {
-    throwUserError("NO_CAREER_TRACK", "Start a Change careers track first.");
-  }
-  return career.profile;
-}
-
-/** The crew a learner has joined, or null. */
-export async function crewOf(
-  ctx: QueryCtx | MutationCtx,
-  careerProfileId: Id<"careerProfiles">,
-): Promise<{ crew: Doc<"crews">; member: Doc<"crewMembers"> } | null> {
-  const member = await ctx.db
-    .query("crewMembers")
-    .withIndex("by_careerProfile", (q) =>
-      q.eq("careerProfileId", careerProfileId),
-    )
-    .first();
-  const crew = member && (await ctx.db.get(member.crewId));
-  return crew ? { crew, member } : null;
-}
+/** Open proposals a learner may have at once (M3). */
+const MAX_PROPOSALS = 3;
 
 async function membersOf(ctx: QueryCtx | MutationCtx, crewId: Id<"crews">) {
   return await ctx.db
@@ -48,8 +26,8 @@ async function crewFor(
   ctx: QueryCtx | MutationCtx,
   profile: Doc<"careerProfiles">,
 ): Promise<Doc<"crews"> | null> {
-  const joined = await crewOf(ctx, profile._id);
-  if (joined) return joined.crew;
+  const joined = await crewOf(ctx, profile);
+  if (joined) return joined;
   if (!profile.targetRole) return null;
   // ponytail: a scan, as there are a handful of crews; index by targetRole when there are hundreds.
   for (const crew of await ctx.db.query("crews").collect()) {
@@ -200,9 +178,8 @@ export const status = careerQuery({
   handler: async (ctx) => {
     const { profile } = ctx.career;
     if (profile.kind !== "learner") return [];
-    const joined = await crewOf(ctx, profile._id);
-    if (!joined) return [];
-    const { crew } = joined;
+    const crew = await crewOf(ctx, profile);
+    if (!crew) return [];
     const now = ctx.career.now;
     const out = [];
     for (const row of await membersOf(ctx, crew._id)) {
@@ -236,8 +213,8 @@ export const joinCrew = careerMutation({
   returns: v.id("crews"),
   handler: async (ctx) => {
     const profile = learnerOf(ctx.career);
-    const joined = await crewOf(ctx, profile._id);
-    if (joined) return joined.crew._id;
+    const joined = await crewOf(ctx, profile);
+    if (joined) return joined._id;
     const crew = await crewFor(ctx, profile);
     if (!crew) {
       throwUserError("NOT_FOUND", "There is no crew with room yet.");
@@ -251,13 +228,17 @@ export const joinCrew = careerMutation({
   },
 });
 
-/** A rule of the learner's crew, or NOT_FOUND, so an id can't be probed. */
+/**
+ * A rule of the crew the learner joined, or NOT_FOUND, so an id can't be
+ * probed. Writes need a joined crew (M3); the preview before joining reads.
+ */
 async function ruleOf(
   ctx: MutationCtx,
   profile: Doc<"careerProfiles">,
   ruleId: Id<"crewRules">,
 ) {
-  const crew = await crewFor(ctx, profile);
+  const crew = await crewOf(ctx, profile);
+  if (!crew) throwUserError("NOT_FOUND", "Join the crew first.");
   const rule = await ctx.db.get(ruleId);
   if (
     !crew ||
@@ -307,9 +288,19 @@ export const proposeRule = careerMutation({
         `Keep your rule to ${MAX_RULE} characters.`,
       );
     }
-    const crew = await crewFor(ctx, profile);
-    if (!crew) {
-      throwUserError("NOT_FOUND", "There is no crew with room yet.");
+    const crew = await crewOf(ctx, profile);
+    if (!crew) throwUserError("NOT_FOUND", "Join the crew first.");
+    const open = (
+      await ctx.db
+        .query("crewRules")
+        .withIndex("by_crew", (q) => q.eq("crewId", crew._id))
+        .take(200)
+    ).filter((r) => r.proposedBy === profile._id && r.status === "proposed");
+    if (open.length >= MAX_PROPOSALS) {
+      throwUserError(
+        "FIELD_REQUIRED",
+        `You can propose up to ${MAX_PROPOSALS} rules at a time.`,
+      );
     }
     return await ctx.db.insert("crewRules", {
       crewId: crew._id,
@@ -331,13 +322,7 @@ export const removeMyRule = careerMutation({
     if (rule.proposedBy !== profile._id || rule.status !== "proposed") {
       throwUserError("NOT_FOUND", "That no longer exists.");
     }
-    for (const choice of await ctx.db
-      .query("ruleChoices")
-      .withIndex("by_rule", (q) => q.eq("ruleId", ruleId))
-      .collect()) {
-      await ctx.db.delete(choice._id);
-    }
-    await ctx.db.delete(ruleId);
+    await deleteRule(ctx, ruleId);
     return null;
   },
 });
@@ -348,10 +333,15 @@ export const agree = careerMutation({
   returns: v.null(),
   handler: async (ctx) => {
     const profile = learnerOf(ctx.career);
-    const joined = await crewOf(ctx, profile._id);
-    if (!joined) throwUserError("NOT_FOUND", "Join the crew first.");
-    if (joined.member.agreedAt === undefined) {
-      await ctx.db.patch(joined.member._id, { agreedAt: ctx.career.now });
+    const member = await ctx.db
+      .query("crewMembers")
+      .withIndex("by_careerProfile", (q) =>
+        q.eq("careerProfileId", profile._id),
+      )
+      .first();
+    if (!member) throwUserError("NOT_FOUND", "Join the crew first.");
+    if (member.agreedAt === undefined) {
+      await ctx.db.patch(member._id, { agreedAt: ctx.career.now });
     }
     return null;
   },

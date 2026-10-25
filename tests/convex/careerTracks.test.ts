@@ -233,6 +233,19 @@ test("X6, P8: deleteCareer empties the track and keeps badges and endorsements",
         credentialId: "business-analysis-fundamentals",
       });
     }
+    // M2: Dan's proposal, with a crewmate's choice on it, goes with him.
+    const proposed = await ctx.db.insert("crewRules", {
+      crewId,
+      text: "Share one link a week",
+      source: "member",
+      proposedBy: id,
+      status: "proposed",
+    });
+    await ctx.db.insert("ruleChoices", {
+      ruleId: proposed,
+      careerProfileId: otherId,
+      on: true,
+    });
     const userId = (await ctx.db.get(id))!.userId;
     await ctx.db.insert("careerBadges", {
       userId,
@@ -263,6 +276,7 @@ test("X6, P8: deleteCareer empties the track and keeps badges and endorsements",
     for (const table of [
       "careerSettings",
       "crewMembers",
+      "crewRules",
       "ruleChoices",
       "protectedHours",
       "lessonProgress",
@@ -285,6 +299,7 @@ test("X6, P8: deleteCareer empties the track and keeps badges and endorsements",
     careerProfiles: 2,
     careerSettings: 0,
     crewMembers: 1,
+    crewRules: 2,
     ruleChoices: 1,
     protectedHours: 1,
     lessonProgress: 1,

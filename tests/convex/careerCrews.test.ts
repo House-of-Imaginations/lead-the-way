@@ -116,6 +116,22 @@ test("crews: join, tick, propose, remove and agree", async () => {
     ["No judgement, ever", true, false],
     ["Camera optional on check-ins", false, false],
   ]);
+  // M3: writing into the crew comes after joining.
+  for (const call of [
+    amara.as.mutation(api.careers.crews.toggleRule, {
+      ruleId: rules[2]!.ruleId,
+      on: true,
+    }),
+    amara.as.mutation(api.careers.crews.proposeRule, { text: "Mine" }),
+  ])
+    expect(await code(call)).toBe("NOT_FOUND");
+
+  // Agreeing comes after joining; both keep the first time.
+  expect(await code(amara.as.mutation(api.careers.crews.agree, {}))).toBe(
+    "NOT_FOUND",
+  );
+  expect(await amara.as.mutation(api.careers.crews.joinCrew, {})).toBe(crewId);
+  expect(await amara.as.mutation(api.careers.crews.joinCrew, {})).toBe(crewId);
 
   await amara.as.mutation(api.careers.crews.toggleRule, {
     ruleId: rules[2]!.ruleId,
@@ -147,12 +163,6 @@ test("crews: join, tick, propose, remove and agree", async () => {
     ["Share one link a week", true, true, "member"],
   ]);
 
-  // Agreeing comes after joining; both keep the first time.
-  expect(await code(amara.as.mutation(api.careers.crews.agree, {}))).toBe(
-    "NOT_FOUND",
-  );
-  expect(await amara.as.mutation(api.careers.crews.joinCrew, {})).toBe(crewId);
-  expect(await amara.as.mutation(api.careers.crews.joinCrew, {})).toBe(crewId);
   await amara.as.mutation(api.careers.crews.agree, {});
   vi.setSystemTime(new Date(WEEK3));
   await amara.as.mutation(api.careers.crews.agree, {});
@@ -208,6 +218,15 @@ test("crews: join, tick, propose, remove and agree", async () => {
       }),
     ),
   ).toBe("NOT_FOUND");
+
+  // M3: three open proposals at a time.
+  for (const text of ["One", "Two", "Three"])
+    await amara.as.mutation(api.careers.crews.proposeRule, { text });
+  expect(
+    await code(
+      amara.as.mutation(api.careers.crews.proposeRule, { text: "Four" }),
+    ),
+  ).toBe("FIELD_REQUIRED");
 
   // P11: another learner's crew is not theirs to read or change.
   const dan = await learner(t, "user_dan", "Dan Okafor", "business-analyst");

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { authComponent } from "../auth";
+import { crewOf, deleteRule } from "../lib/careers/crew";
 import { insertCareerProfile, logCareerEvent } from "../lib/careers/writers";
 import { authenticatedMutation, careerMutation } from "../lib/customFunctions";
 import { throwUserError } from "../lib/errors";
@@ -86,6 +87,22 @@ export const deleteCareer = careerMutation({
     const { profile } = ctx.career;
     if (profile.kind !== "learner") {
       throwUserError("NO_CAREER_TRACK", "Start a Change careers track first.");
+    }
+    // X6: the rules this learner proposed or suggested go too, with every
+    // crewmate's choice on them, as `removeMyRule` removes one (M2).
+    const crew = await crewOf(ctx, profile);
+    if (crew) {
+      const rules = await ctx.db
+        .query("crewRules")
+        .withIndex("by_crew", (q) => q.eq("crewId", crew._id))
+        .take(200);
+      for (const rule of rules) {
+        if (
+          rule.proposedBy === profile._id &&
+          (rule.status === "proposed" || rule.status === "suggested")
+        )
+          await deleteRule(ctx, rule._id);
+      }
     }
     for (const table of OWNED) {
       // ponytail: each table has the same `by_careerProfile` index, so one
