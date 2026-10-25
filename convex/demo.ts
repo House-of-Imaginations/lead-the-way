@@ -5,8 +5,13 @@ import {
   publicQuery,
   viewerMutation,
 } from "./lib/customFunctions";
-import { demoAccounts, writeCalderLane } from "./lib/demo/calderLane";
-import { ACCOUNT_HOLDERS, castOf } from "./lib/demo/cast";
+import { insertCareerProfile, logCareerEvent } from "./lib/careers/writers";
+import {
+  DEMO_SLUG,
+  demoAccounts,
+  writeCalderLane,
+} from "./lib/demo/calderLane";
+import { ACCOUNT_HOLDERS, castOf, demoUserId } from "./lib/demo/cast";
 import { moveClock } from "./lib/demo/moveClock";
 import {
   careerTargetValidator,
@@ -14,7 +19,7 @@ import {
   writePivotCrews,
 } from "./lib/demo/pivotCrews";
 import { isDemoAccount } from "./lib/orgs/people";
-import { demoTargetValidator } from "./lib/demo/schedule";
+import { DEMO_TARGETS, demoTargetValidator } from "./lib/demo/schedule";
 import { throwUserError } from "./lib/errors";
 import { getViewer, type Viewer } from "./lib/viewer";
 import { EVENT_TYPES, eventTypeValidator } from "./tables/sprint";
@@ -66,6 +71,79 @@ async function assertCareerDemo(
     throwUserError("FORBIDDEN", "Only a demo account can do that.");
   }
 }
+
+/**
+ * `reset` for the master and careers guides (P14b): the same writes, gated
+ * on a demo account rather than a Calder Lane seat, since Amara and Lena
+ * hold none. NO PERMISSION CHECK, ON PURPOSE, as with `reset`.
+ */
+export const resetAll = authenticatedMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx): Promise<null> => {
+    await assertCareerDemo(ctx, ctx.userId);
+    await writeCalderLane(ctx, await demoAccounts(ctx));
+    await writePivotCrews(ctx);
+    return null;
+  },
+});
+
+/** Dan's contact address for the guide shortcut (spec 7). */
+const DAN_CONTACT = "dan@pivotcrews.example";
+
+/**
+ * Get Dan ready before the guide signs in as him (D4): his seat starts on
+ * 8 September, so a team clock before week 1 jumps there. With
+ * `privateTrack`, he also gets the private Change careers track MS3 would
+ * make, with a seeded Business Analyst map, unless he has a track already.
+ * NO PERMISSION CHECK, ON PURPOSE: any demo account may, as with `resetAll`.
+ */
+export const prepareDan = authenticatedMutation({
+  args: { privateTrack: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, { privateTrack }): Promise<null> => {
+    await assertCareerDemo(ctx, ctx.userId);
+    const org = await ctx.db
+      .query("orgs")
+      .withIndex("by_slug", (q) => q.eq("slug", DEMO_SLUG))
+      .unique();
+    if (!org?.isDemo) {
+      throwUserError("DEMO_NOT_SEEDED", "Reset the demo, then try again.");
+    }
+    if ((org.demoNow ?? 0) < DEMO_TARGETS.week1)
+      await moveClock(ctx, org, "week1");
+    if (!privateTrack) return null;
+
+    const dan = castOf("dan");
+    const userId = await demoUserId(ctx, dan.email);
+    if (!userId) {
+      throwUserError("DEMO_NOT_SEEDED", "Reset the demo, then try again.");
+    }
+    const existing = await ctx.db
+      .query("careerProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+    if (existing) return null;
+    // Seeded with the careers demo, so it is there whenever Dan is.
+    const at = (await ctx.db.query("careerDemo").first())?.now;
+    if (at === undefined) {
+      throwUserError("DEMO_NOT_SEEDED", "Reset the demo, then try again.");
+    }
+    // What `tracks.startPrivate` writes, with the map MS3 would bring.
+    await insertCareerProfile(ctx, {
+      userId,
+      firstName: dan.name.split(" ")[0]!,
+      private: true,
+      contactEmail: DAN_CONTACT,
+      currentRole: dan.jobTitle,
+      targetRole: "business-analyst",
+      hoursPerWeek: 2,
+      consentAt: at,
+    });
+    await logCareerEvent(ctx, { name: "privateTrackStarted", at });
+    return null;
+  },
+});
 
 /**
  * Move the careers clock forward (week1, week2, week3, proof) or simulate a

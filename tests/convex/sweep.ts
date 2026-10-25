@@ -154,6 +154,8 @@ export const callsFor = ({
   "demo:reset": { expectOrgId: orgId },
   "demo:setClock": { target: "week1", expectOrgId: orgId },
   "demo:moveCareerClock": { target: "week2" },
+  "demo:resetAll": {},
+  "demo:prepareDan": { privateTrack: true },
   "onboarding:start": { acceptTerms: true },
   "careers/tracks:startPrivate": { contactEmail: "pat@home.example" },
   "careers/tracks:deleteCareer": {},

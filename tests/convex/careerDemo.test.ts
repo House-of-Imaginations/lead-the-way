@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import { isDemoAddress } from "../../convex/lib/demo/cast";
 import { CAREER_TARGETS } from "../../convex/lib/demo/pivotCrews";
+import { DEMO_TARGETS } from "../../convex/lib/demo/schedule";
 import { sendEmail, type EmailCtx } from "../../convex/lib/email/send";
 import { CAREER_TABLES } from "../../convex/lib/orgs/cascade";
 import { isDemoAccount } from "../../convex/lib/orgs/people";
@@ -205,6 +206,62 @@ test("Dan is team-only after either reset", async () => {
   expect(
     await as("amara").run(async (ctx) => (await getCareer(ctx))?.now),
   ).toBe(CAREER_TARGETS.week1);
+});
+
+const teamNow = (t: Awaited<ReturnType<typeof careersDemo>>["t"]) =>
+  t.run(async (ctx) => (await ctx.db.query("orgs").first())?.demoNow);
+
+test("resetAll rewrites both tracks for any demo account, and no one else", async () => {
+  const { t, as } = await careersDemo();
+  await as("amara").mutation(api.demo.moveCareerClock, { target: "week2" });
+  await t.mutation(internal.seed.clock, { target: "week2" });
+  // Amara holds no Calder Lane seat, so `reset` can't serve her; resetAll does.
+  await as("amara").mutation(api.demo.resetAll, {});
+  expect(
+    await as("amara").run(async (ctx) => (await getCareer(ctx))?.now),
+  ).toBe(CAREER_TARGETS.week1);
+  expect(await teamNow(t)).toBe(DEMO_TARGETS.setup);
+
+  await expect(
+    t
+      .withIdentity({ subject: "user_stranger" })
+      .mutation(api.demo.resetAll, {}),
+  ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  vi.stubEnv("DEMO_MODE", "");
+  await expect(
+    as("lena").mutation(api.demo.resetAll, {}),
+  ).rejects.toMatchObject({ data: { code: "FEATURE_UNAVAILABLE" } });
+});
+
+test("prepareDan seats Dan at week 1 and, if asked, starts his private track once", async () => {
+  const { t, as } = await careersDemo();
+  const dan = as("dan");
+  const career = () => dan.run((ctx) => getCareer(ctx));
+
+  await as("amara").mutation(api.demo.prepareDan, { privateTrack: false });
+  expect(await teamNow(t)).toBe(DEMO_TARGETS.week1);
+  expect(await career()).toBeNull();
+
+  await as("lena").mutation(api.demo.prepareDan, { privateTrack: true });
+  expect((await career())?.profile).toMatchObject({
+    private: true,
+    contactEmail: "dan@pivotcrews.example",
+    targetRole: "business-analyst",
+  });
+  // Twice is once.
+  await as("lena").mutation(api.demo.prepareDan, { privateTrack: true });
+  expect(
+    await t.run(
+      async (ctx) => (await ctx.db.query("careerProfiles").collect()).length,
+    ),
+  ).toBe(11);
+  expect(await dan.query(api.viewer.home, {})).toBe("/home");
+
+  await expect(
+    t
+      .withIdentity({ subject: "user_stranger" })
+      .mutation(api.demo.prepareDan, { privateTrack: true }),
+  ).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
 });
 
 test("both demo domains are behind the mail gate and the account lock", async () => {
