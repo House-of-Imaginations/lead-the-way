@@ -29,8 +29,12 @@ const DAYS = [
 const TIMES = ["06:00", "07:00", "12:00", "19:00", "20:00", "21:00"].map(
   (value) => ({ value, label: clockLabel(value) }),
 );
-const LEARNING = "bg-interactive text-text-on-color";
-const CREW = "bg-border-inverse text-text-inverse";
+// Forced colours drop fills, so the cells and their legend repaint in system colours.
+const LEARNING =
+  "bg-interactive text-text-on-color forced-colors:bg-[Highlight] forced-colors:text-[HighlightText] forced-colors:forced-color-adjust-none";
+// A fill that stays dark in both themes; border-inverse turns white in dark.
+const CREW =
+  "bg-button-secondary text-text-on-color forced-colors:bg-[CanvasText] forced-colors:text-[Canvas] forced-colors:forced-color-adjust-none";
 const SWAP = [
   "",
   "Picking another swaps it out.",
