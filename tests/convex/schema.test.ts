@@ -68,13 +68,15 @@ test("fieldsOf looks inside nested objects", () => {
   ).toEqual(["a", "a.employerName", "b", "b.c"]);
 });
 
-test("X1: career tables hold no workspace data, and team tables no career ids", () => {
+test("X1 and P1: career tables hold no workspace or employer data, and team tables no career ids", () => {
   const team = [...ORG_LAYER, ...ORG_TABLES] as (keyof typeof schema.tables)[];
   for (const name of CAREER_TABLES) {
     const validator = schema.tables[name].validator;
     expect(
       fieldsOf(validator).filter((f) =>
-        /org|employer|company|workspace/i.test(f),
+        /org|employer|company|workspace|workplace|domain|work_?email|seat|people|person/i.test(
+          f,
+        ),
       ),
       name,
     ).toEqual([]);

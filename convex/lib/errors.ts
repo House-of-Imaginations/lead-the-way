@@ -28,6 +28,9 @@ export type ErrorCode =
   | "NO_WORKSPACE"
   // Signed in, but no career profile: the client sends them to start a track.
   | "NO_CAREER_TRACK"
+  // Change careers: a second learner track, and a contact address X3 refuses.
+  | "CAREER_TRACK_EXISTS"
+  | "CONTACT_EMAIL_INVALID"
   | "FORBIDDEN"
   | "PERMISSION_ESCALATION"
   | "ORG_NAME_REQUIRED"

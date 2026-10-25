@@ -70,9 +70,28 @@ const ALLOWED: {
   },
   {
     file: "lib/viewer.ts",
-    line: "return Date.now()",
-    reason:
-      "`Career.now`: careers have no clock until P12a's careerDemo (spec 7)",
+    line: "return clock?.now ?? Date.now()",
+    reason: "`Career.now`: real time outside the careers demo (spec 7)",
+  },
+  {
+    file: "careers/drafts.ts",
+    line: "const now = Date.now()",
+    reason: "a Pivot Map draft has no account, so no careers clock (P9)",
+  },
+  {
+    file: "careers/drafts.ts",
+    line: "const cutoff = Date.now()",
+    reason: "a draft expires 30 days after it was made, in real time (P9)",
+  },
+  {
+    file: "careers/tracks.ts",
+    line: 'name: "privateTrackStarted", at: Date.now()',
+    reason: "the event is logged before the career profile has a clock",
+  },
+  {
+    file: "onboarding.ts",
+    line: "at: Date.now(),",
+    reason: "a claimed draft's event, before the career profile has a clock",
   },
   {
     file: "lib/storage.ts",

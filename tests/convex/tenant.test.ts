@@ -110,6 +110,10 @@ test("no public function reads another workspace's ids", async () => {
   for (const fn of publicFunctions()) {
     const fixed = calls[fn.name];
     if (!fixed) continue;
+    // X1: a career function names no workspace, and refuses a caller with no
+    // track. Its P11 checks live in careerCrews and careerPeople, and X2 is
+    // swept in careerIsolation.test.ts.
+    if (fn.name.startsWith("careers/")) continue;
     let args = fixed;
     // Otherwise the only foreign id is `expectOrgId`: the workspace check
     // itself must refuse the victim's (R6).

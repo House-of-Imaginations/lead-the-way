@@ -26,9 +26,30 @@ export const ORG_TABLES = [
 
 /**
  * Every career table (D12): keyed by `userId`, never `orgId`, so a workspace
- * deletion never touches them. P12a lists each new career table here.
+ * deletion never touches them. `tests/convex/schema.test.ts` fails when a
+ * career table is added to the schema and not here.
  */
-export const CAREER_TABLES = ["careerProfiles"] as const;
+export const CAREER_TABLES = [
+  "careerProfiles",
+  "careerSettings",
+  "mapDrafts",
+  "careerPartners",
+  "crews",
+  "crewMembers",
+  "crewRules",
+  "ruleChoices",
+  "protectedHours",
+  "lessonProgress",
+  "careerProjects",
+  "demoDays",
+  "presentations",
+  "careerBadges",
+  "endorsements",
+  "proofLinks",
+  "confidence",
+  "careerDemo",
+  "careerEvents",
+] as const;
 
 /**
  * What removing a member (`dropSeat`) does to each table holding a person id

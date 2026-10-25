@@ -1,0 +1,145 @@
+import { v } from "convex/values";
+import type { Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
+import { authComponent } from "../auth";
+import { crewOf, deleteRule } from "../lib/careers/crew";
+import { insertCareerProfile, logCareerEvent } from "../lib/careers/writers";
+import { authenticatedMutation, careerMutation } from "../lib/customFunctions";
+import { throwUserError } from "../lib/errors";
+import { EMAIL, normalEmail } from "../lib/inviteRules";
+import { seatsOfUser } from "../lib/orgs/membership";
+import { firstNameOf } from "../lib/orgs/people";
+import { getViewer } from "../lib/viewer";
+import { takeDraft } from "./drafts";
+
+const domainOf = (email: string) => normalEmail(email).split("@").pop() ?? "";
+
+/**
+ * MS3: a team account starts a private Change careers track (D3, X3), with
+ * the Pivot Map draft if it has one. The contact address is refused when it
+ * is the login address, or on (or under) the domain of the open workspace or
+ * of any seat the account holds. It is stored only on the career profile, never on
+ * `people` or the Better Auth user, and no career path mails it.
+ */
+export const startPrivate = authenticatedMutation({
+  args: { contactEmail: v.string(), draftToken: v.optional(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, { contactEmail, draftToken }) => {
+    const email = normalEmail(contactEmail);
+    if (!EMAIL.test(email)) {
+      throwUserError(
+        "CONTACT_EMAIL_INVALID",
+        "Enter an email address, like name@example.com.",
+      );
+    }
+    const user = await authComponent.getAnyUserById(ctx, ctx.userId);
+    if (email === normalEmail(user?.email ?? "")) {
+      throwUserError(
+        "CONTACT_EMAIL_INVALID",
+        "Use a personal address, not the one you log in with.",
+      );
+    }
+    const viewer = await getViewer(ctx);
+    const seats = await seatsOfUser(ctx, ctx.userId);
+    const work = [
+      normalEmail(viewer?.org.domain ?? ""),
+      ...seats.map((p) => domainOf(p.email)),
+    ];
+    // L3: a subdomain of a work domain is the workplace too.
+    const domain = domainOf(email);
+    if (work.some((w) => w && (domain === w || domain.endsWith(`.${w}`)))) {
+      throwUserError(
+        "CONTACT_EMAIL_INVALID",
+        "Use a personal address, not one on your workplace's domain.",
+      );
+    }
+    const map = await takeDraft(ctx, draftToken);
+    await insertCareerProfile(ctx, {
+      userId: ctx.userId,
+      firstName: firstNameOf(user?.name ?? ""),
+      private: true,
+      contactEmail: email,
+      ...map,
+    });
+    // ponytail: wall clock; there is no career clock before the profile exists.
+    await logCareerEvent(ctx, { name: "privateTrackStarted", at: Date.now() });
+    return null;
+  },
+});
+
+/** Every table keyed by `careerProfileId` that `deleteCareer` empties (spec 5.4). */
+const OWNED = [
+  "careerSettings",
+  "crewMembers",
+  "protectedHours",
+  "lessonProgress",
+  "careerProjects",
+  "presentations",
+  "confidence",
+  "proofLinks",
+] as const;
+
+/**
+ * MS4, X6 and P8: deletes the learner's career track in one mutation. The
+ * badges and endorsements stay, keyed by `userId`. A guide profile is not a
+ * track, so a guide is refused.
+ */
+export const deleteCareer = careerMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const { profile } = ctx.career;
+    if (profile.kind !== "learner") {
+      throwUserError("NO_CAREER_TRACK", "Start a Change careers track first.");
+    }
+    // X6: the rules this learner proposed or suggested go too, with every
+    // crewmate's choice on them, as `removeMyRule` removes one (M2).
+    const crew = await crewOf(ctx, profile);
+    if (crew) {
+      const rules = await ctx.db
+        .query("crewRules")
+        .withIndex("by_crew", (q) => q.eq("crewId", crew._id))
+        .take(200);
+      for (const rule of rules) {
+        if (
+          rule.proposedBy === profile._id &&
+          (rule.status === "proposed" || rule.status === "suggested")
+        )
+          await deleteRule(ctx, rule._id);
+      }
+    }
+    await deleteProfileRows(ctx, profile._id);
+    await logCareerEvent(ctx, { name: "trackDeleted", at: ctx.career.now });
+    return null;
+  },
+});
+
+/**
+ * A career profile and every row keyed by it (`OWNED` and its rule choices).
+ * Returns how many rows went. Shared by `deleteCareer` and the demo wipe.
+ */
+export async function deleteProfileRows(
+  ctx: MutationCtx,
+  profileId: Id<"careerProfiles">,
+): Promise<number> {
+  let count = 0;
+  for (const table of OWNED) {
+    // ponytail: each table has the same `by_careerProfile` index, so one
+    // name stands in for the union the query builder can't type.
+    const rows = await ctx.db
+      .query(table as "careerSettings")
+      .withIndex("by_careerProfile", (q) => q.eq("careerProfileId", profileId))
+      .collect();
+    for (const row of rows) await ctx.db.delete(row._id);
+    count += rows.length;
+  }
+  const choices = await ctx.db
+    .query("ruleChoices")
+    .withIndex("by_careerProfile_and_rule", (q) =>
+      q.eq("careerProfileId", profileId),
+    )
+    .collect();
+  for (const row of choices) await ctx.db.delete(row._id);
+  await ctx.db.delete(profileId);
+  return count + choices.length + 1;
+}

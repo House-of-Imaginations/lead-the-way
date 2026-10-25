@@ -62,6 +62,9 @@ export type Ids = {
   personId: Id<"people">;
   inviteId: Id<"orgInvites">;
   storageId: Id<"_storage">;
+  // Optional: the canary builds its own ids, and sweeps no career mutation.
+  careerProfileId?: Id<"careerProfiles">;
+  careerProjectId?: Id<"careerProjects">;
 };
 
 /** Real ids, so argument validation passes and the auth check is what answers. */
@@ -96,7 +99,30 @@ export async function fixtures(t: T): Promise<Ids> {
       createdAt: 0,
     });
     const storageId = await ctx.storage.store(new Blob(["x"]));
-    return { orgId, roleId, personId, inviteId, storageId };
+    const careerProfileId = await ctx.db.insert("careerProfiles", {
+      userId: "user_amara",
+      kind: "learner",
+      firstName: "Amara",
+      private: false,
+    });
+    const careerProjectId = await ctx.db.insert("careerProjects", {
+      careerProfileId,
+      credentialId: "data-fundamentals",
+      task: "Tidy four store sales exports.",
+      whatIDid: "",
+      reflection: "",
+      skills: [],
+      addReflectionToProof: true,
+    });
+    return {
+      orgId,
+      roleId,
+      personId,
+      inviteId,
+      storageId,
+      careerProfileId,
+      careerProjectId,
+    };
   });
 }
 
@@ -118,6 +144,8 @@ export const callsFor = ({
   personId,
   inviteId,
   storageId,
+  careerProfileId,
+  careerProjectId,
 }: Ids): Record<string, Record<string, unknown>> => ({
   // These two answer signed out (SIGNED_OUT in signedOut.test.ts); the
   // tenant and canary sweeps still read them as a seated caller.
@@ -125,7 +153,58 @@ export const callsFor = ({
   "demo:status": {},
   "demo:reset": { expectOrgId: orgId },
   "demo:setClock": { target: "week1", expectOrgId: orgId },
+  "demo:moveCareerClock": { target: "week2" },
   "onboarding:start": { acceptTerms: true },
+  "careers/tracks:startPrivate": { contactEmail: "pat@home.example" },
+  "careers/tracks:deleteCareer": {},
+  "careers/crews:mine": {},
+  "careers/crews:rules": {},
+  "careers/crews:status": {},
+  "careers/crews:joinCrew": {},
+  // convex-test reads an id's table from its suffix, so this passes validation.
+  "careers/crews:toggleRule": { ruleId: "1crewRules", on: true },
+  "careers/crews:proposeRule": { text: "Camera optional on check-ins" },
+  "careers/crews:removeMyRule": { ruleId: "1crewRules" },
+  "careers/crews:agree": {},
+  "careers/hours:mine": {},
+  "careers/hours:weekPreview": { days: [0, 4] },
+  "careers/hours:save": {
+    days: [0, 4],
+    startTime: "20:00",
+    calendarHold: true,
+  },
+  "careers/learning:thisWeek": {},
+  "careers/learning:completeLesson": { lessonId: "data-fundamentals-4" },
+  "careers/learning:setListen": { on: true },
+  "careers/learning:reentry": {},
+  "careers/demoDay:session": {},
+  "careers/demoDay:saveReflection": { reflection: "" },
+  "careers/demoDay:setAddToProof": { on: true },
+  "careers/demoDay:present": {},
+  "careers/proof:mine": {},
+  "careers/proof:rateConfidence": {
+    credentialId: "data-fundamentals",
+    value: 4,
+  },
+  "careers/proof:createProofLink": { credentialId: "data-fundamentals" },
+  "careers/guide:myLearners": {},
+  "careers/guide:endorse": {
+    careerProfileId,
+    credentialId: "data-fundamentals",
+    text: "Good work",
+  },
+  "careers/guide:reviewProject": { projectId: careerProjectId },
+  "careers/careerSettings:mine": {},
+  "careers/careerSettings:set": { key: "researchOptIn", on: true },
+  "careers/careerSettings:deleteAnswers": {},
+  "home:summary": {},
+  "privacy:byTrack": {},
+  "privacy:setTeam": {
+    key: "includeInTeamTotals",
+    on: false,
+    expectOrgId: orgId,
+  },
+  "privacy:setCareer": { key: "showDoneToCrew", on: false },
   "orgs:active": {},
   "orgs:bySlug": { slug: "aster-network" },
   "orgs:create": { name: "Aster Network" },

@@ -43,8 +43,31 @@ const SIGNED_OUT: Record<
   "demo:status": { args: {}, answer: null },
   // The guide stays subscribed through a sign-out too; null signed out, and null with DEMO_MODE off.
   "demo:personaPassword": { args: {}, answer: null },
+  // The careers half of the guide, beside `status`: null signed out and with DEMO_MODE off.
+  "demo:careerStatus": { args: {}, answer: null },
   // The log-in page's demo picker (Task 9): empty with DEMO_MODE off.
   "demo:loginCast": { args: {}, answer: [] },
+  // The Pivot Map before an account (P9): the token is the key, and a token
+  // with no draft reads null and writes nothing. saveAnswers mints a token.
+  "careers/drafts:get": { args: { token: "tok" }, answer: null },
+  "careers/drafts:pivotMap": { args: { token: "tok" }, answer: null },
+  "careers/drafts:setHours": {
+    args: { token: "tok", hoursPerWeek: 2 },
+    answer: null,
+  },
+  "careers/drafts:saveAnswers": {
+    args: {
+      currentRole: "Primary Teacher",
+      targetRole: "data-analyst",
+      hoursPerWeek: 2,
+      consent: true,
+    },
+    answer: expect.any(String),
+  },
+  // Public proof and partner pages (P4, P5): a slug nobody holds answers null.
+  "careers/proof:publicProof": { args: { slug: "nobody" }, answer: null },
+  "careers/partners:bySlug": { args: { slug: "nobody" }, answer: null },
+  "careers/partners:totals": { args: { slug: "nobody" }, answer: null },
   // The public credential: a slug nobody holds answers null (the page's 404).
   "badges:publicBySlug": {
     args: { slug: "dan-okafor-ai-fundamentals" },

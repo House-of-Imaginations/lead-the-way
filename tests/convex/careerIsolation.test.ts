@@ -32,6 +32,22 @@ function imported(source: string): Set<string> {
 }
 
 const CAREER_TABLE_FILES = [
+  "careers/careerSettings.ts",
+  "careers/crews.ts",
+  "careers/demoDay.ts",
+  "careers/drafts.ts",
+  "careers/guide.ts",
+  "careers/hours.ts",
+  "careers/learning.ts",
+  "careers/partners.ts",
+  "careers/proof.ts",
+  "careers/tracks.ts",
+  "careers/wipe.ts",
+  "lib/careers/crew.ts",
+  "lib/careers/writers.ts",
+  // The careers clock and counts (plan A3), and the careers seed.
+  "demo.ts",
+  "lib/demo/pivotCrews.ts",
   "lib/orgs/cascade.ts",
   "lib/viewer.ts",
   "schema.ts",
@@ -46,20 +62,21 @@ test.each(CAREER_TABLES)(
     const found = sources
       .filter(({ source }) => named.test(source))
       .map(({ file }) => file);
-    // Nothing found would pass vacuously.
-    expect(found).toContain("lib/viewer.ts");
+    // Nothing found would pass vacuously: `CAREER_TABLES` names every one.
+    expect(found).toContain("lib/orgs/cascade.ts");
     expect(found.filter((file) => !CAREER_TABLE_FILES.includes(file))).toEqual(
       [],
     );
   },
 );
 
-test("only viewer.ts imports getAccount", () => {
+test("only the shared functions import getAccount (spec 5.2)", () => {
   expect(
     sources
       .filter(({ source }) => imported(source).has("getAccount"))
-      .map(({ file }) => file),
-  ).toEqual(["viewer.ts"]);
+      .map(({ file }) => file)
+      .sort(),
+  ).toEqual(["home.ts", "privacy.ts", "viewer.ts"]);
 });
 
 const TEAM_BUILDERS = ["viewerQuery", "viewerMutation", "timedViewerQuery"];
@@ -84,5 +101,37 @@ test("no file imports both a team builder and career identity", () => {
         return CAREER_IDENTITY.some((n) => names.has(n));
       })
       .map(({ file }) => file),
+  ).toEqual([]);
+});
+
+/** L4: the career helpers, imported only where career code lives. */
+test("only career files import from lib/careers/", () => {
+  const importers = sources
+    .filter(({ file, source }) =>
+      [...source.matchAll(/from\s*["'](\.[^"']+)["']/g)].some((m) =>
+        new URL(m[1]!, new URL(file, dir)).href.startsWith(
+          new URL("lib/careers/", dir).href,
+        ),
+      ),
+    )
+    .map(({ file }) => file);
+  // Nothing found would pass vacuously.
+  expect(importers).toContain("home.ts");
+  const ALLOWED = [
+    "demo.ts",
+    "home.ts",
+    "onboarding.ts",
+    "privacy.ts",
+    "seed.ts",
+    "tables/careers.ts",
+    "viewer.ts",
+  ];
+  expect(
+    importers.filter(
+      (file) =>
+        !ALLOWED.includes(file) &&
+        !file.startsWith("careers/") &&
+        !file.startsWith("lib/careers/"),
+    ),
   ).toEqual([]);
 });

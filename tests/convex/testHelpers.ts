@@ -11,7 +11,7 @@ import resend from "@convex-dev/resend/test";
 import type { GenericSchema, SchemaDefinition } from "convex/server";
 import type { TestConvex } from "convex-test";
 import { components } from "../../convex/_generated/api";
-import { ACCOUNT_HOLDERS } from "../../convex/lib/demo/cast";
+import { ACCOUNT_HOLDERS, CAREER_CAST } from "../../convex/lib/demo/cast";
 import schema from "../../convex/schema";
 
 const componentTest = (t: TestConvex<typeof schema>) =>
@@ -74,7 +74,7 @@ export async function seedDemoAccounts(
   skip: string[] = [],
 ): Promise<Record<string, string>> {
   const ids: Record<string, string> = {};
-  for (const person of ACCOUNT_HOLDERS) {
+  for (const person of [...ACCOUNT_HOLDERS, ...CAREER_CAST]) {
     if (skip.includes(person.key)) continue;
     const { subject } = await seedAuthUser(t, {
       name: person.name,
