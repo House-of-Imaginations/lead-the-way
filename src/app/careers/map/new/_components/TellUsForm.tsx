@@ -103,6 +103,9 @@ export function TellUsForm({
             onChange={(e) => setConsent(e.currentTarget.checked)}
           />
         </div>
+        <p className="mt-auto text-label-01 text-text-helper">
+          Concept prototype. Not an official IBM product.
+        </p>
       </main>
       <div className="ltw-cf">
         <div className="mx-auto flex max-w-[568px] flex-col gap-03">
