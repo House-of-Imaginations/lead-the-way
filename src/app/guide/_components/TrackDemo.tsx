@@ -2,6 +2,7 @@
 
 import { ArrowRight } from "@carbon/icons-react";
 import { useConvex, useMutation, useQuery } from "convex/react";
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { api } from "@convex/_generated/api";
 import {
@@ -31,6 +32,48 @@ type Who = keyof typeof EMAIL;
 // ponytail: one switch at a time across every button on the page. A switch
 // that works navigates away, so only a failure clears it.
 let switching = false;
+
+/** A walkthrough link that signs in as Amara first, so her screens don't send another persona home. */
+export function AmaraLink({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className: string;
+  children: ReactNode;
+}) {
+  const convex = useConvex();
+  const [failed, setFailed] = useState(false);
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      className={className}
+      onClick={async (e) => {
+        // A new tab or window is the browser's to open, not a switch.
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        if (switching) return;
+        switching = true;
+        setFailed(false);
+        try {
+          await switchPersona(convex, EMAIL.amara, href);
+        } catch {
+          switching = false;
+          setFailed(true);
+        }
+      }}
+    >
+      {children}
+      {failed && (
+        <span role="alert" className="text-label-01 text-support-error">
+          Couldn&apos;t switch to Amara. Reload the page and try again.
+        </span>
+      )}
+    </Link>
+  );
+}
 
 function ErrorLine({ children }: { children: string }) {
   return (

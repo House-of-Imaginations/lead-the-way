@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ButtonLink } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
 import { GuideTable } from "../_components/GuideTable";
-import { CareerControls, StartAs } from "../_components/TrackDemo";
+import { AmaraLink, CareerControls, StartAs } from "../_components/TrackDemo";
 
 export const metadata: Metadata = {
   title: "Change careers guide · From Zero to Hero",
@@ -99,6 +99,12 @@ const STEPS: Step[] = [
     href: "/careers/journey",
   },
 ];
+
+/** Screens up to Save your map work signed out; the rest open as Amara. */
+const SAVE_MAP = STEPS.findIndex((s) => s.code === "3b");
+
+const TILE =
+  "flex w-full flex-col items-start gap-02 border-t-[3px] border-interactive bg-layer-01 p-05 pb-06 text-text-primary transition-colors duration-[70ms] ease-productive hover:bg-layer-hover";
 
 const KEPT = [
   [
@@ -257,13 +263,9 @@ export default function CareersGuidePage() {
           </p>
         </div>
         <ol className="grid gap-01 min-[672px]:grid-cols-2 min-[1056px]:grid-cols-5">
-          {STEPS.map((s) => (
-            <li key={s.code} className="flex">
-              <Link
-                href={s.href}
-                prefetch={false}
-                className="flex w-full flex-col items-start gap-02 border-t-[3px] border-interactive bg-layer-01 p-05 pb-06 text-text-primary transition-colors duration-[70ms] ease-productive hover:bg-layer-hover"
-              >
+          {STEPS.map((s, i) => {
+            const tile = (
+              <>
                 <span className="text-label-01 text-text-secondary">
                   {s.stage}
                 </span>
@@ -273,13 +275,26 @@ export default function CareersGuidePage() {
                   {s.detail}
                 </span>
                 {s.merged && <Tag>From manager-first</Tag>}
-              </Link>
-            </li>
-          ))}
+              </>
+            );
+            return (
+              <li key={s.code} className="flex">
+                {i > SAVE_MAP ? (
+                  <AmaraLink href={s.href} className={TILE}>
+                    {tile}
+                  </AmaraLink>
+                ) : (
+                  <Link href={s.href} prefetch={false} className={TILE}>
+                    {tile}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
         </ol>
         <p className="text-label-01 text-text-secondary">
           Screens 1 to 7 follow the low-fidelity prototype. 3b, 4b and 5b were
-          added when we merged in the manager-first prototype. Screens before 3b
+          added when we merged in the manager-first prototype. Screens up to 3b
           work signed out; the rest open as Amara.
         </p>
       </section>
