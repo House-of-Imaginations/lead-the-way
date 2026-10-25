@@ -34,6 +34,7 @@ import {
 } from "./lib/demo/pivotCrews";
 import { demoTargetValidator } from "./lib/demo/schedule";
 import { INVITE_MESSAGE } from "./lib/demo/script";
+import { insertCareerProfile } from "./lib/careers/writers";
 import { throwUserError } from "./lib/errors";
 import { deleteOrg } from "./lib/orgs/cascade";
 import { insertInvite, inviteRoleOf } from "./lib/orgs/invites";
@@ -257,9 +258,9 @@ export const careerProfile = internalMutation({
       return existing._id;
     }
     const name = (await profileOf(ctx, userId))?.displayName.split(" ")[0];
-    return await ctx.db.insert("careerProfiles", {
+    // With its settings row, as every learner has (D8 reads it).
+    return await insertCareerProfile(ctx, {
       userId,
-      kind: "learner",
       firstName: name || "Learner",
       private: isPrivate,
     });

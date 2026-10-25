@@ -158,6 +158,7 @@ export const callsFor = ({
   "careers/tracks:startPrivate": { contactEmail: "pat@home.example" },
   "careers/tracks:deleteCareer": {},
   "careers/drafts:savedMap": {},
+  "careers/tracks:setContactEmail": { contactEmail: "pat@home.example" },
   "careers/crews:mine": {},
   "careers/crews:rules": {},
   "careers/crews:status": {},
