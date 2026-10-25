@@ -18,7 +18,7 @@ export function proxy(request: NextRequest) {
   if (!signedIn && PRIVATE.test(pathname)) {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", pathname + search);
-    // L: a careers page asks for the Pivot Crews log in.
+    // L: a careers page asks for the From Zero to Hero log in.
     if (pathname.startsWith("/careers/"))
       login.searchParams.set("track", "career");
     return NextResponse.redirect(login);

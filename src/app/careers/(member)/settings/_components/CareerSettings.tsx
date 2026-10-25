@@ -185,8 +185,8 @@ export function CareerSettings({
                     ))}
                   </ul>
                   <p className="text-label-01 text-text-secondary">
-                    There is no employer view in Pivot Crews. Partners only see
-                    anonymous totals of 5 people or more.
+                    There is no employer view in From Zero to Hero. Partners
+                    only see anonymous totals of 5 people or more.
                   </p>
                 </aside>
               </div>

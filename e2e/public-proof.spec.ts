@@ -51,7 +51,7 @@ for (const { width, colorScheme } of LOOKS) {
     await expect(
       page.getByText("Concept prototype. Not an official IBM product."),
     ).toBeVisible();
-    // Never confidence, lessons or crew ("Pivot Crews" is the brand).
+    // Never confidence, lessons or crew ("From Zero to Hero" is the brand).
     await expect(page.getByText(/confiden|lesson|\bcrew\b/i)).toHaveCount(0);
     await expectAxeClean(page);
   });
@@ -69,7 +69,7 @@ test("the reflection goes when either switch is off", async ({
   });
   await off.click();
   await expect(off).toHaveAttribute("aria-checked", "false");
-  await expect(page.getByText("Setting saved.")).toBeVisible();
+  await expect(page.getByText("Setting saved.", { exact: true })).toBeVisible();
 
   const visitor = await browser.newPage();
   await visitor.goto(path);

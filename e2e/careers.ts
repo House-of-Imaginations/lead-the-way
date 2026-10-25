@@ -27,7 +27,6 @@ export async function look(
   await page.emulateMedia({ colorScheme });
 }
 
-
 /** 2 Tell us with its defaults (Retail Store Manager to Data Analyst, 2 hours), then the map. */
 export async function buildMap(page: Page, hours?: "1 hr" | "2 hrs" | "3 hrs") {
   await page.goto(`/careers/map/new?partner=${PARTNER}`);

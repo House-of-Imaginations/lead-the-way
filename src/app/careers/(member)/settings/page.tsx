@@ -6,7 +6,7 @@ import { getAccountShell, getHome, openOrHome } from "@/lib/account/queries";
 import { CareerSettings } from "./_components/CareerSettings";
 
 export const metadata: Metadata = {
-  title: "Privacy and settings · Pivot Crews",
+  title: "Privacy and settings · From Zero to Hero",
 };
 
 /** D8: profile, reminders and privacy for the career track, opening on Privacy. */
@@ -31,9 +31,6 @@ export default async function CareerSettingsPage() {
         hasAnswers={mine.answers.targetRole !== null}
         guide={crew?.guide.firstName || null}
       />
-      <p className="text-label-01 text-text-helper">
-        Concept prototype. Not an official IBM product.
-      </p>
     </div>
   );
 }

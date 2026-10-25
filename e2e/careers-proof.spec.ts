@@ -46,7 +46,10 @@ for (const { width, colorScheme } of LOOKS) {
       ),
     ).toBeVisible();
     await expect(
-      page.getByText("Concept prototype. Not an official IBM product.").last(),
+      page
+        .getByText("Concept prototype. Not an official IBM product.")
+        .filter({ visible: true })
+        .first(),
     ).toBeVisible();
     // The three-part line is the phone's.
     await expect(page.getByText("The field agrees")).toBeVisible({
@@ -76,7 +79,9 @@ test("Add to LinkedIn is simulated with a toast", async ({ page }) => {
   await signInAs(page, "amara");
   await page.goto("/careers/proof");
   await page.getByRole("button", { name: "Add to LinkedIn" }).click();
-  await expect(page.getByText("Added to LinkedIn.")).toBeVisible();
+  await expect(
+    page.getByText("Added to LinkedIn.", { exact: true }),
+  ).toBeVisible();
 });
 
 test("the link is made once and keeps both switches", async ({ page }) => {

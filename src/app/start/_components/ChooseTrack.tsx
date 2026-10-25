@@ -78,7 +78,7 @@ export function ChooseTrack({ state }: { state: StartState }) {
         <TrackTile
           kind="career"
           icon={Location}
-          tag="Pivot Crews, about 9 weeks"
+          tag="With a crew, about 9 weeks"
           title="Change careers"
           body="On your own, privately, with a guide and a crew. No employer ever sees it."
           selected={track === "career"}

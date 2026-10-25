@@ -79,7 +79,7 @@ test.describe("MS3 start a private track", () => {
     await expect(page).toHaveURL("/home");
     await expect(
       page.getByRole("region", { name: "Change careers", exact: true }),
-    ).toContainText("Private Pivot Crews track");
+    ).toContainText("Private career track");
     await expect(
       nav(page).getByRole("group", { name: "Your tracks" }),
     ).toBeVisible();

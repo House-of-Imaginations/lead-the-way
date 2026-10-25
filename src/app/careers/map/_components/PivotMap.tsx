@@ -265,7 +265,7 @@ export function PivotMap({
     <div className="group/shell flex min-h-dvh bg-background text-text-primary">
       <div className="hidden lg:flex">
         <SideNav
-          brand="Pivot Crews"
+          brand="From Zero to Hero"
           homeHref="/careers/map"
           org={{
             initials: "",

@@ -417,7 +417,7 @@ export async function tracksOf(
     {
       kind: "career",
       name: "Change careers",
-      caption: career.profile.private ? "Private" : "Pivot Crews",
+      caption: career.profile.private ? "Private" : "Change careers",
       private: career.profile.private,
       href: "/careers/journey",
     },

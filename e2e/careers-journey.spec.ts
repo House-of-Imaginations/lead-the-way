@@ -50,7 +50,10 @@ for (const { width, colorScheme } of LOOKS) {
       "/careers/week",
     );
     await expect(
-      page.getByText("Concept prototype. Not an official IBM product.").last(),
+      page
+        .getByText("Concept prototype. Not an official IBM product.")
+        .filter({ visible: true })
+        .first(),
     ).toBeVisible();
     await expectAxeClean(page);
   });
@@ -77,7 +80,7 @@ test("after the badge, the next crew is credential 2", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Credential 2: Data visualisation" }),
   ).toBeVisible();
-  await expect(page.getByText("Next crew")).toBeVisible();
+  await expect(page.getByText("Next crew", { exact: true })).toBeVisible();
   await expect(
     page.getByText(
       "Lena stays your guide. You join changers at the same stage, Tuesdays 7 to 8 PM.",

@@ -43,7 +43,7 @@ for (const { width, colorScheme } of LOOKS) {
         page.getByRole("heading", { name: "About 9 weeks" }),
       ).toBeVisible();
       const nav = page.getByRole("navigation", { name: "Main" });
-      await expect(nav.getByText("Pivot Crews")).toBeVisible();
+      await expect(nav.getByText("From Zero to Hero")).toBeVisible();
       await expect(nav.getByText("from Retail Store Manager")).toBeVisible();
       await expect(nav.getByRole("link", { name: "My map" })).toHaveAttribute(
         "aria-current",

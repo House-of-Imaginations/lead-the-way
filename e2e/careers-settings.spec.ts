@@ -45,7 +45,10 @@ for (const { width, colorScheme } of LOOKS) {
       page.getByRole("button", { name: "Delete this track" }),
     ).toBeVisible();
     await expect(
-      page.getByText("Concept prototype. Not an official IBM product.").last(),
+      page
+        .getByText("Concept prototype. Not an official IBM product.")
+        .filter({ visible: true })
+        .first(),
     ).toBeVisible();
     await expectAxeClean(page);
   });
@@ -59,7 +62,7 @@ test("a switch saves at once and stays saved", async ({ page }) => {
     name: "Include my answers in anonymous research",
   });
   await research.click();
-  await expect(page.getByText("Setting saved.")).toBeVisible();
+  await expect(page.getByText("Setting saved.", { exact: true })).toBeVisible();
   await page.reload();
   await expect(research).toHaveAttribute("aria-checked", "true");
   await research.click();
@@ -121,7 +124,7 @@ test("a private track edits its contact email, then deletes the track", async ({
   ).toBeVisible();
   await field.fill("kai@home.example");
   await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByText("Changes saved.")).toBeVisible();
+  await expect(page.getByText("Changes saved.", { exact: true })).toBeVisible();
   await page.reload();
   await page.getByRole("tab", { name: "Profile" }).click();
   await expect(field).toHaveValue("kai@home.example");

@@ -27,10 +27,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const proof = await proofBySlug((await params).slug);
   const robots = { index: false };
-  if (proof === null) return { title: "Proof · Pivot Crews", robots };
+  if (proof === null) return { title: "Proof · From Zero to Hero", robots };
   const title = `${proof.firstName}'s proof`;
   return {
-    title: `${title} · Pivot Crews`,
+    title: `${title} · From Zero to Hero`,
     description: LEAD,
     robots,
     openGraph: { title, description: LEAD, type: "website" },
@@ -55,7 +55,7 @@ export default async function PublicProofPage({ params }: { params: Params }) {
       <header className="flex min-h-control-lg flex-wrap items-center justify-between gap-x-05 border-b border-border-subtle px-05">
         <p className="flex items-center gap-[10px] text-body-emphasis">
           <Logo />
-          Pivot Crews
+          From Zero to Hero
         </p>
         <p className="text-body-02 text-text-secondary">
           Shared by {proof.firstName}

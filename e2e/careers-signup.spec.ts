@@ -47,7 +47,7 @@ for (const { width, colorScheme } of LOOKS) {
         page.getByRole("heading", { name: "Your map is ready." }),
       ).toBeVisible();
       await expect(
-        page.getByRole("link", { name: "Pivot Crews" }),
+        page.getByRole("link", { name: "From Zero to Hero" }),
       ).toBeVisible();
     }
     await expectAxeClean(page);

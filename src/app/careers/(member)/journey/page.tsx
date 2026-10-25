@@ -10,7 +10,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { ReentryBanner } from "./_components/ReentryBanner";
 
-export const metadata: Metadata = { title: "Keep going · Pivot Crews" };
+export const metadata: Metadata = { title: "Keep going · From Zero to Hero" };
 
 /**
  * 7 Keep going, where log in lands. The re-entry banner after a missed week
@@ -128,9 +128,6 @@ export default async function JourneyPage() {
           </ButtonLink>
         )}
       </div>
-      <p className="text-label-01 text-text-helper">
-        Concept prototype. Not an official IBM product.
-      </p>
     </div>
   );
 }

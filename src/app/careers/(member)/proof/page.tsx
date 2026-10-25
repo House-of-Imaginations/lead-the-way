@@ -16,7 +16,7 @@ import {
   ShareProof,
 } from "./_components/ProofControls";
 
-export const metadata: Metadata = { title: "Proof · Pivot Crews" };
+export const metadata: Metadata = { title: "Proof · From Zero to Hero" };
 
 const THREE_PARTS = [
   ["Badge", "I learned it"],
@@ -229,9 +229,6 @@ export default async function ProofPage() {
           {next}
         </div>
       )}
-      <p className="text-label-01 text-text-helper">
-        Concept prototype. Not an official IBM product.
-      </p>
     </div>
   );
 }

@@ -64,7 +64,7 @@ export function TracksSection() {
           kind="career"
           title="Change careers"
           body="On your own, privately, with a guide and a crew. No employer ever sees it."
-          tag="Pivot Crews, about 9 weeks"
+          tag="With a crew, about 9 weeks"
           icon={Location}
           selected={track === "career"}
           onSelect={() => setTrack("career")}

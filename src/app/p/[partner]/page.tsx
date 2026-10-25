@@ -13,7 +13,7 @@ import { CareersHeader } from "@/components/careers/CareersHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import { openOrHome } from "@/lib/account/queries";
 
-export const metadata: Metadata = { title: "Pivot Crews" };
+export const metadata: Metadata = { title: "From Zero to Hero" };
 
 const POINTS = [
   {

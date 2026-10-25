@@ -15,7 +15,7 @@ export type TopBarProps = {
   accountMenu: MenuItem[];
   /** The drawer contents: the SideNav with resizable={false}. */
   children: ReactNode;
-  /** The careers bar reads "Pivot Crews" on the dark careers header (spec 6.1). */
+  /** The careers bar reads "From Zero to Hero" on the dark careers header (spec 6.1). */
   brand?: string;
   dark?: boolean;
 };

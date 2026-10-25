@@ -103,9 +103,9 @@ test("the team caption is the workspace alone outside an active sprint", async (
     (await as("priya").query(api.viewer.shell, {}))?.switcher?.map(
       (r) => r.caption,
     );
-  expect(await captions()).toEqual(["Calder Lane", "Pivot Crews"]);
+  expect(await captions()).toEqual(["Calder Lane", "Change careers"]);
   await clock(t, "complete");
-  expect(await captions()).toEqual(["Calder Lane", "Pivot Crews"]);
+  expect(await captions()).toEqual(["Calder Lane", "Change careers"]);
 });
 
 test("a guide profile beside a seat shows no switcher", async () => {

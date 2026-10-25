@@ -122,9 +122,7 @@ export default async function HomePage() {
                 Change careers
               </h2>
               <p className="text-label-01 text-text-secondary">
-                {career.private
-                  ? "Private Pivot Crews track"
-                  : "Pivot Crews track"}
+                {career.private ? "Private career track" : "Career track"}
               </p>
             </div>
             {career.step && (

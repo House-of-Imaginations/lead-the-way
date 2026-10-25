@@ -46,7 +46,7 @@ test.describe("MS2 home with two tracks", () => {
     ).toHaveAttribute("href", "/me");
 
     const career = card(page, "Change careers");
-    await expect(career).toContainText("Private Pivot Crews track");
+    await expect(career).toContainText("Private career track");
     await expect(career).toContainText(
       "Calder Lane never sees this track, not even that it exists.",
     );

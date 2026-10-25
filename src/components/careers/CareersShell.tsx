@@ -77,12 +77,12 @@ export function CareersShell({
     },
   ];
   const nav: SideNavProps = {
-    brand: "Pivot Crews",
+    brand: "From Zero to Hero",
     homeHref: "/careers/week",
     org: {
       initials: "",
       name: data.target ?? "Change careers",
-      team: data.from ? `from ${data.from}` : "Pivot Crews",
+      team: data.from ? `from ${data.from}` : "Change careers",
     },
     orgIcon: MapIcon,
     tracks: data.switcher
@@ -129,7 +129,7 @@ export function CareersShell({
           ) : (
             <TopBar
               dark
-              brand="Pivot Crews"
+              brand="From Zero to Hero"
               homeHref="/careers/week"
               user={user}
               accountMenu={accountMenu}
