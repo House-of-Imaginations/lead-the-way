@@ -66,13 +66,34 @@ test("confidence is saved as it moves", async ({ page }) => {
   const slider = page.getByLabel(
     "How confident are you about your next career step?",
   );
-  // A fill before hydration moves the native slider but never reaches onChange.
-  await page.waitForLoadState("networkidle");
   await slider.fill("5");
   await expect(page.getByText("5 of 5: Very confident")).toBeVisible();
   await expect(async () => {
     await page.reload();
     await expect(slider).toHaveValue("5", { timeout: 1000 });
+  }).toPass();
+});
+
+test("a move before hydration is still saved", async ({ page }) => {
+  await look(page, 1440, "light");
+  await signInAs(page, "amara");
+  // Hold the page's scripts so the slider moves before React hydrates.
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/_next/static/chunks/**/*.js", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/careers/proof", { waitUntil: "commit" });
+  const slider = page.getByLabel(
+    "How confident are you about your next career step?",
+  );
+  await slider.fill("2");
+  release();
+  await expect(page.getByText("2 of 5: A little confident")).toBeVisible();
+  await expect(async () => {
+    await page.reload();
+    await expect(slider).toHaveValue("2", { timeout: 1000 });
   }).toPass();
 });
 

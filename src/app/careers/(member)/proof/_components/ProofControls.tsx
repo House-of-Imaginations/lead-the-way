@@ -2,7 +2,7 @@
 
 import { Copy, Launch, Share } from "@carbon/icons-react";
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { CredentialId } from "@convex/lib/careers/catalog";
 import { Button, Toggle, useToast } from "@/components/ui";
 import {
@@ -51,13 +51,31 @@ export function Confidence({
   const id = useId();
   const [value, setValue] = useState(initial ?? 3);
   const [error, setError] = useState<string | null>(null);
+  const ref = useRef<HTMLInputElement>(null);
   const text = `${value} of 5: ${WORDS[value - 1]}`;
+
+  function save(next: number) {
+    setValue(next);
+    setError(null);
+    void rateConfidence(credentialId, next).then((r) =>
+      setError(r?.error ?? null),
+    );
+  }
+
+  // A move before hydration changes the native slider but never reaches
+  // onChange, and hydration keeps the moved value: adopt it once, then save.
+  useEffect(() => {
+    const moved = Number(ref.current?.value);
+    if (moved !== value) save(moved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on hydration
+  }, []);
   return (
     <div className="flex flex-col gap-04">
       <label htmlFor={id} className="text-heading-04">
         How confident are you about your next career step?
       </label>
       <input
+        ref={ref}
         id={id}
         type="range"
         min={1}
@@ -66,14 +84,7 @@ export function Confidence({
         value={value}
         aria-valuetext={text}
         className="h-06 w-full accent-interactive"
-        onChange={(e) => {
-          const next = Number(e.target.value);
-          setValue(next);
-          setError(null);
-          void rateConfidence(credentialId, next).then((r) =>
-            setError(r?.error ?? null),
-          );
-        }}
+        onChange={(e) => save(Number(e.target.value))}
       />
       <div className="flex justify-between gap-03 text-label-01 text-text-secondary">
         <span aria-hidden="true">Not yet</span>
