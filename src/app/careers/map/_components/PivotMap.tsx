@@ -36,7 +36,7 @@ function Dot({ n, now }: { n: number; now?: boolean }) {
   return (
     <span
       className={clsx(
-        "inline-flex size-[28px] shrink-0 items-center justify-center rounded-round bg-background text-label-01 font-semibold",
+        "inline-flex size-[28px] shrink-0 items-center justify-center rounded-round bg-background text-label-01 font-semibold forced-colors:forced-color-adjust-auto",
         now
           ? "border-2 border-interactive text-interactive"
           : "border border-border-strong text-text-secondary",
@@ -170,8 +170,9 @@ export function PivotMap({
                   onClick={() => setSkill(i)}
                   className={clsx(
                     "flex w-full items-center gap-04 border bg-layer-01 px-05 py-[13px] text-left hover:bg-layer-hover",
+                    // Forced colours paint every border CanvasText, so the chosen one repaints in Highlight.
                     i === skill
-                      ? "border-border-inverse"
+                      ? "border-border-inverse forced-colors:border-[Highlight] forced-colors:shadow-[inset_0_0_0_1px_Highlight] forced-colors:bg-[Canvas]! forced-colors:text-[CanvasText] forced-colors:forced-color-adjust-none"
                       : "border-transparent",
                   )}
                 >

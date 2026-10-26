@@ -9,9 +9,12 @@ import { startAccount } from "@/lib/account/start";
 export function StartForm({
   needsTerms,
   token,
+  track,
 }: {
   needsTerms: boolean;
   token?: string;
+  /** A first OAuth sign-in from the careers forms: no workspace is made. */
+  track?: "career";
 }) {
   const [agreed, setAgreed] = useState(!needsTerms);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +26,7 @@ export function StartForm({
         e.preventDefault();
         setError(null);
         startTransition(async () => {
-          const started = await startAccount(needsTerms, token);
+          const started = await startAccount(needsTerms, token, track);
           if ("error" in started) setError(started.error);
           else window.location.assign(started.next);
         });

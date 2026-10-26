@@ -59,6 +59,22 @@ test.describe("protect your hours", () => {
     });
   }
 
+  test("the crew's cells use a fill that stays dark in dark mode", async ({
+    page,
+  }) => {
+    await look(page, 1440, "dark");
+    await signInAs(page, "amara");
+    await page.goto("/careers/crew/hours");
+    const crew = page
+      .getByRole("row", { name: /^Week 1/ })
+      .getByRole("cell")
+      .nth(1);
+    await expect(crew).toHaveText("27, Crew");
+    // button-secondary in dark (#6f6f6f), never border-inverse's #f4f4f4.
+    await expect(crew).toHaveCSS("background-color", "rgb(111, 111, 111)");
+    await expect(crew).toHaveCSS("color", "rgb(255, 255, 255)");
+  });
+
   test("a third day swaps out the oldest", async ({ page }) => {
     await look(page, 390, "light");
     await signInAs(page, "amara");

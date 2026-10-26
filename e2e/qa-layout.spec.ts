@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import { resetCareers } from "./careers";
 import { resetDemo, signInAs } from "./demo";
 import { expect, test } from "./fixtures";
 
@@ -94,6 +95,65 @@ test("forced colours keep the chosen tile dot, toggle, checkbox and progress vis
   await expectForcedMark(bar, "progress track");
   await expectForcedMark(bar.locator(".ltw-pb-fill"), "progress fill");
   await shoot(bar.locator(".."), "forced-progress");
+});
+
+test("forced colours keep the careers marks visible", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.emulateMedia({ forcedColors: "active" });
+  resetCareers("week2");
+  await signInAs(page, "amara");
+  const main = page.getByRole("main");
+
+  // 3: every skill's border turns CanvasText, so the chosen one needs its own.
+  await page.goto("/careers/map");
+  const chosen = main.getByRole("button", { pressed: true });
+  await expectForcedMark(chosen, "chosen skill");
+  const border = (l: Locator) =>
+    l.evaluate((el) => getComputedStyle(el).borderTopColor);
+  expect(await border(chosen)).not.toBe(
+    await border(main.getByRole("button", { pressed: false }).first()),
+  );
+  await shoot(chosen.locator("xpath=ancestor::ul[1]"), "forced-skill");
+
+  // 5: the shared progress bar, and status icons that keep a painted fill.
+  await page.goto("/careers/week");
+  const bar = main.getByRole("progressbar", { name: "Credential progress" });
+  await expectForcedMark(bar, "credential progress track");
+  await expectForcedMark(
+    bar.locator(".ltw-pb-fill"),
+    "credential progress fill",
+  );
+  const lessons = main.locator("ul", {
+    has: page.locator("li[aria-current=step]"),
+  });
+  for (const icon of await lessons.locator("svg").all())
+    expect(
+      await icon.evaluate((el) => getComputedStyle(el).fill),
+      "lesson icon",
+    ).not.toMatch(/^(none|rgba\(0, 0, 0, 0\))$/);
+  await shoot(lessons, "forced-lessons");
+
+  // 4b: the calendar's learning and crew cells, and their legend.
+  await page.goto("/careers/crew/hours");
+  const week1 = main.getByRole("row", { name: /^Week 1/ }).getByRole("cell");
+  await expectForcedMark(week1.nth(1), "crew cell");
+  await expectForcedMark(week1.nth(3), "learning cell");
+  for (const swatch of await main.locator("li > span[aria-hidden]").all())
+    await expectForcedMark(swatch, "legend swatch");
+  await shoot(main.getByRole("table"), "forced-hours");
+
+  // 4: the Crew Agreement's native checkboxes, as R11's.
+  await page.goto("/careers/crew/join");
+  const boxes = main.getByRole("checkbox");
+  await expect(boxes.first()).toBeVisible();
+  for (const box of await boxes.all()) {
+    const cb = await box.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { adjust: s.forcedColorAdjust, accent: s.accentColor };
+    });
+    expect(cb.adjust).toBe("none");
+    expect(cb.accent).not.toBe("auto");
+  }
 });
 
 test("04 at 1280: the preview's hours sit top right and time chips stay on one line", async ({

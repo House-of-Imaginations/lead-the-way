@@ -100,3 +100,32 @@ test("the full path: partner page, tell us, map, sign up, then home", async ({
     page.getByRole("link", { name: "This week" }).first(),
   ).toHaveAttribute("href", "/careers/week");
 });
+
+// AuthAlternatives' newUserCallbackURL from the careers forms. Social
+// providers are off in the dev deployment, so the account is made the way a
+// first OAuth sign-in leaves it: a session, no terms, no workspace.
+test("a first social sign-up from save your map stays on the careers path", async ({
+  page,
+}) => {
+  await buildMap(page);
+  const res = await page.request.post("/api/auth/sign-up/email", {
+    data: {
+      name: "Kai",
+      email: freshEmail(),
+      password: "a long enough password",
+    },
+    headers: { origin: "http://localhost:3000" },
+  });
+  expect(res.ok()).toBe(true);
+  await page.goto("/setup/start?track=career");
+  await page
+    .getByLabel("I agree to the terms of use and privacy notice.")
+    .check();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL("/careers/journey");
+  await page.goto("/careers/map");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Your Pivot Map" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Save my map" })).toHaveCount(0);
+});
