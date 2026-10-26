@@ -66,6 +66,8 @@ test("confidence is saved as it moves", async ({ page }) => {
   const slider = page.getByLabel(
     "How confident are you about your next career step?",
   );
+  // A fill before hydration moves the native slider but never reaches onChange.
+  await page.waitForLoadState("networkidle");
   await slider.fill("5");
   await expect(page.getByText("5 of 5: Very confident")).toBeVisible();
   await expect(async () => {
