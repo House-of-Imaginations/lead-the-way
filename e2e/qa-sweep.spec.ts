@@ -1,9 +1,12 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Browser, Locator, Page } from "@playwright/test";
+import { PARTNER, resetCareers } from "./careers";
 import {
   type DemoTarget,
   type Persona,
+  PERSONA,
   demoBadgeSlug,
   resetDemo,
+  seedCareer,
   signInAs,
 } from "./demo";
 import { expect, test } from "./fixtures";
@@ -11,12 +14,52 @@ import { expect, test } from "./fixtures";
 const DISCLAIMER = "Concept prototype. Not an official IBM product.";
 const WIDTHS = [390, 768, 1056, 1440];
 
-/** `#<tab>` opens that tab after load; `:slug` is Dan's credential slug. */
-const TEAM_ROUTES: { path: string; who: Persona | null; at: DemoTarget }[] = [
-  { path: "/login", who: null, at: "week4" },
-  { path: "/signup", who: null, at: "week4" },
-  { path: "/reset-password", who: null, at: "week4" },
-  { path: "/credential/:slug", who: null, at: "week4" },
+/** The careers clock (`seed:careerClock`) after a reseed, or Dan with a private career track at week 2. */
+type CareersAt = "careers week2" | "careers week3" | "careers proof";
+type At = DemoTarget | CareersAt | "dan two tracks";
+
+function prepare(at: At) {
+  if (at === "dan two tracks") {
+    resetDemo("week2");
+    seedCareer(PERSONA.dan);
+  } else if (at.startsWith("careers "))
+    resetCareers(at.slice("careers ".length) as "week2" | "week3" | "proof");
+  else resetDemo(at as DemoTarget);
+}
+
+/** Amara's public proof link, made (or read) on 6 Prove it. */
+async function proofSlug(browser: Browser): Promise<string> {
+  const page = await browser.newPage();
+  await signInAs(page, "amara");
+  await page.goto("/careers/proof");
+  const create = page.getByRole("button", { name: "Create link" });
+  if (await create.isVisible()) await create.click();
+  const link = page.getByText(/^\/proof\/.+/);
+  await expect(link).toBeVisible();
+  const slug = (await link.textContent())!.replace("/proof/", "");
+  await page.close();
+  return slug;
+}
+
+/**
+ * `#<tab>` opens that tab after load; `:slug` is Dan's credential slug and
+ * `:proof` Amara's proof slug. The guides need a session (G-a), any one.
+ */
+const ROUTES: { path: string; who: Persona | null; at: At }[] = [
+  ...[
+    "/login",
+    "/signup",
+    "/reset-password",
+    "/credential/:slug",
+    "/",
+    "/start",
+    `/p/${PARTNER}`,
+    "/careers/map/new",
+    "/signup?track=career",
+    "/login?track=career",
+    "/demo/partner-email",
+  ].map((path) => ({ path, who: null, at: "week4" as const })),
+  { path: "/proof/:proof", who: null, at: "careers proof" },
   { path: "/setup/team", who: "priya", at: "setup" },
   { path: "/setup/protected-hour", who: "priya", at: "setup" },
   ...[
@@ -33,6 +76,10 @@ const TEAM_ROUTES: { path: string; who: Persona | null; at: DemoTarget }[] = [
     "/workspace/settings#Data and privacy",
     "/workspace/settings#Roles",
     "/workspace/new",
+    "/guide",
+    "/guide/team",
+    "/guide/careers",
+    "/guide/blueprint",
   ].map((path) => ({ path, who: "priya" as const, at: "week2" as const })),
   ...[
     "/me",
@@ -42,14 +89,40 @@ const TEAM_ROUTES: { path: string; who: Persona | null; at: DemoTarget }[] = [
     "/me/credential",
     "/me/agreement",
     "/me/settings",
+    // MS3 is for a team-only account: Dan before he has a private track.
+    "/tracks/private/new",
   ].map((path) => ({ path, who: "dan" as const, at: "week2" as const })),
+  ...[
+    "/careers/map",
+    "/careers/week",
+    "/careers/crew/join",
+    "/careers/crew/hours",
+    "/careers/journey",
+    "/careers/settings",
+  ].map((path) => ({
+    path,
+    who: "amara" as const,
+    at: "careers week2" as const,
+  })),
+  // Week 3 has the project written up; proof needs the badge.
+  { path: "/careers/crew/demo-day", who: "amara", at: "careers week3" },
+  { path: "/careers/proof", who: "amara", at: "careers proof" },
+  ...["/home", "/settings/privacy"].map((path) => ({
+    path,
+    who: "dan" as const,
+    at: "dan two tracks" as const,
+  })),
 ];
 
 let slug = "";
+let proof = "";
 test.afterAll(() => resetDemo());
 
 async function visit(page: Page, path: string) {
-  const [url, tab] = path.replace(":slug", slug).split("#");
+  const [url, tab] = path
+    .replace(":slug", slug)
+    .replace(":proof", proof)
+    .split("#");
   await page.goto(url);
   await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   if (tab) {
@@ -61,17 +134,16 @@ async function visit(page: Page, path: string) {
   await page.waitForLoadState("networkidle");
 }
 
-const groups = Map.groupBy(
-  TEAM_ROUTES,
-  (r) => `${r.at} ${r.who ?? "signed out"}`,
-);
+const groups = Map.groupBy(ROUTES, (r) => `${r.at} ${r.who ?? "signed out"}`);
 
 for (const [name, routes] of groups) {
   const { at, who } = routes[0];
   test.describe(name, () => {
-    test.beforeAll(() => {
-      resetDemo(at);
+    test.beforeAll(async ({ browser }) => {
+      prepare(at);
       if (routes.some((r) => r.path.includes(":slug"))) slug = demoBadgeSlug();
+      if (routes.some((r) => r.path.includes(":proof")))
+        proof = await proofSlug(browser);
     });
     test.beforeEach(async ({ page }) => {
       if (who) await signInAs(page, who);
@@ -107,7 +179,12 @@ for (const [name, routes] of groups) {
           for (const colorScheme of ["light", "dark"] as const) {
             await test.step(`${width} ${colorScheme}`, async () => {
               await page.setViewportSize({ width, height: 900 });
-              await page.emulateMedia({ colorScheme });
+              // R14, as landing.spec.ts: the landing's manifesto sits at 16%
+              // until it is scrolled through, so axe reads it with motion off.
+              await page.emulateMedia({
+                colorScheme,
+                reducedMotion: path === "/" ? "reduce" : null,
+              });
               await visit(page, path);
               await expectAxeClean(page);
             });
@@ -195,5 +272,20 @@ test.describe("keyboard", () => {
     await expect(toggle).toHaveAttribute("aria-checked", flipped);
     await page.keyboard.press("Space");
     await expect(toggle).toHaveAttribute("aria-checked", start!);
+  });
+
+  test("Amara proposes a crew rule by keyboard", async ({ page }) => {
+    await signInAs(page, "amara");
+    await page.goto("/careers/crew/join");
+    const rule = page.getByLabel("Add your own rule");
+    await expect(rule).toBeVisible();
+    await tabTo(page, rule);
+    await page.keyboard.type("Share one useful link a week");
+    await tabTo(page, page.getByRole("button", { name: "Add", exact: true }));
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByRole("checkbox", { name: "Share one useful link a week" }),
+    ).toBeVisible();
+    await expect(rule).toHaveValue("");
   });
 });
