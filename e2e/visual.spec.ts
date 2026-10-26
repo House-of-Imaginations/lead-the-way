@@ -6,6 +6,8 @@ import { expect, test } from "./fixtures";
 // Screenshot baselines at 1440, light (P15). Each group's clock target fixes
 // every date and count on screen; the demo banner and clock are masked.
 // Update with `pnpm exec playwright test e2e/visual.spec.ts --update-snapshots`.
+// The -linux set comes from mcr.microsoft.com/playwright:v1.63.0-noble (the
+// installed @playwright/test version) run with --network host against pnpm dev.
 test.describe.configure({ mode: "serial" });
 test.afterAll(() => resetDemo());
 
